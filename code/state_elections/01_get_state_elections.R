@@ -1,0 +1,198 @@
+# Code to download and clean state election data
+
+rm(list = ls())
+
+# Load
+load("01_Data/13_LTW/Elections_Clean.RData")
+
+
+library(wiesbaden)
+library(devtools)
+library(reshape2)
+library(pbapply)
+#install_github('sumtxt/wiesbaden')
+
+genesis <- c(user="RE010680", password="BayernMuenchen1900!", db="regio")
+test_login(genesis=genesis)
+
+
+## Make party dict
+
+pdict <- c('afd' = 'AFD', 'greens' = 'B90-GRUENE', 'cdu_csu' = 'CDU',
+           'cdu_csu' = 'CSU', 'fdp' = 'FDP', 'left' = 'PDS', 'spd' = 'SPD',
+           'other_party' = 'SONSTIGE')
+
+## Landtagswahlen table list
+
+# list <- retrieve_datalist(tableseries="143*", genesis=genesis)
+# list <- retrieve_datalist(tableseries="14331*", genesis=genesis)
+
+# tableseries start with 14331* to 14346*
+# have to build list of 14331:14346 but with the * at the end
+labs <- c(paste0("1433", 1:9, "*"), paste0("1434", 0:6, "*"))
+
+i <- labs[1]
+
+## Apply this to all tables 
+
+out <- pblapply(1:length(labs), function(i) {
+  
+  cat('\nIteration is ', i)
+  
+  d <- retrieve_datalist(tableseries=labs[i], genesis=genesis) 
+  
+  ## Get Table ID
+  
+  id <- d %>% dplyr::filter(str_detect(description, "Gemeinden")) %>%
+    dplyr::filter(str_detect(description, 'Parteien')) %>% .[, 1] %>% unlist() %>%
+    as.character()
+  
+  ## Get ID for the turnout table
+  
+  id_turnout <- d %>% dplyr::filter(str_detect(description, "Gemeinden")) %>%
+    dplyr::filter(str_detect(description, 'Wahlbeteiligung')) %>% .[, 1] %>% unlist()%>%
+    as.character()
+  
+  ## Only continue if something was found
+  
+  if (!length(id) == 0) {
+    
+    ## 
+    
+    cat('\nGemeiden found')
+    
+    ## Get data
+    
+    data <- retrieve_data(tablename=id, genesis=genesis) %>%
+      dplyr::select(GEMEIN, PART03, STAG, WAHL04_val)
+    
+    
+    ## Get total votes
+    
+    votes_tot <- data %>%
+      group_by(GEMEIN, STAG) %>%
+      summarise(valid = sum(WAHL04_val, na.rm = T))
+    
+    ## Merge to the main data
+    
+    data <- left_join(data, votes_tot)
+    
+    ## Get % shares
+    
+    data <- data %>%
+      mutate(voteshare = WAHL04_val / valid * 100) %>%
+      dplyr::select(GEMEIN, PART03, STAG, voteshare)
+    
+    ## rename parties
+    
+    data$PART03 <- factor(data$PART03)
+    
+    ## Via Loop
+    
+    for (j in 1:length(levels(data$PART03))) {
+      print(j)
+      levels(data$PART03)[j] <- names(pdict)[pdict == levels(data$PART03)[j]]
+    }
+    
+    ## To character
+    
+    data <- data %>%
+      mutate(PART03 = as.character(PART03)) %>%
+      rename(party = PART03, ags = GEMEIN, date = STAG) %>%
+      mutate(date = as.Date(date, format = '%d.%m.%Y'))
+    
+    ## NaN to NA
+    
+    data$voteshare[is.nan(data$voteshare)] <- NA
+    
+    ## Reshape long to wide
+    
+    data_wide <- data %>% spread(party, voteshare)
+    
+    ## Get turnout
+    cat('Getting turnout')
+    turn_data <- retrieve_data(tablename=id_turnout, genesis=genesis) %>%
+      dplyr::select(GEMEIN, STAG, WAHLSR_val) %>%
+      dplyr::mutate(ags = GEMEIN, date = as.Date(STAG, format = '%d.%m.%Y')) %>%
+      mutate(turnout = WAHLSR_val) %>%
+      dplyr::select(ags, date, turnout) %>%
+      distinct(ags, date, .keep_all = T)
+    
+    ## Merge to the main results
+    
+    data_wide <- left_join(data_wide, turn_data)
+    
+    ## Return
+    
+    data_wide
+  }
+})
+
+## To Big DF
+
+out_df <- out %>%
+  reduce(rbind) %>%
+  arrange(ags, date)
+
+## 
+
+parties <- colnames(out_df)[3:10]
+
+## Check for total missings
+
+is_miss <- pbapply(out_df[, parties], 1, function(x) all(is.na(x)))
+sum(is_miss) / nrow(out_df)
+
+## Looks pretty good
+## Check if the AGS make sense
+
+table(nchar(out_df$ags))
+
+out_df <- out_df %>%
+  dplyr::filter(!nchar(ags) == 7)
+
+## Add year / state
+
+library(lubridate)
+
+## 
+
+out_df <- out_df %>% 
+  mutate(year = lubridate::year(date),
+         land = substr(ags, 1, 2))
+
+## Gen left right
+
+lparties <- c('spd', 'left', 'greens')
+rparties <- c('cdu_csu', 'fdp')
+
+ltot <- apply(out_df[, lparties], 1, sum, na.rm = T)
+rtot <- apply(out_df[, rparties], 1, sum, na.rm = T)
+
+out_df <- out_df %>%
+  mutate(left_total = ltot,
+         right_total = rtot)
+
+##
+
+state_elections <- out_df
+
+## Distribution
+
+table(out_df$year, out_df$land)
+
+## Save for now
+
+save(state_elections, 
+     file = '01_Data/13_LTW/vh_Elections_Clean.RData')
+write_rds(x = state_elections, 
+          file = '01_Data/13_LTW/vh_Elections_Clean.RDS')
+
+
+
+
+# Get Sachsen state elections 2019 ----------------------------------------
+
+
+
+
