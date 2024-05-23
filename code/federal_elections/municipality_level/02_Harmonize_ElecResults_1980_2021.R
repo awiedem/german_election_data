@@ -1,104 +1,15 @@
 ### Harmonize BTW electoral results 1980-2021
+# Vincent Heddesheimer, Hanno Hilbig
+# May, 23, 2024
 
 rm(list = ls())
 
 # Disallow scientific notation: leads to errors when loading data
 options(scipen = 999)
 
-# Load packages
-pacman::p_load(tidyverse, data.table, readxl, kableExtra, haschaR)
-
-conflicts_prefer(dplyr::filter)
-
 
 # Read crosswalk files ----------------------------------------------------
-
-cw90 <- read_excel(path = "01_Data/02_umsteigeschlüssel/gmd_auf_2021/ref-gemeinden-umrech-2021-1990-1999.xlsx", sheet = 1) |>
-    select(
-        ags = `Gemeinden\r\n 31.12.1996`,
-        # note that excel data names are wrong for this sheet; I checked that this is the correct data
-        pop_cw = `bevölkerungs- \r\nproportionaler \r\nUmsteige- \r\nschlüssel`,
-        area_cw = `flächen-\r\nproportionaler\r\nUmsteige-schlüssel`,
-        ags_21 = `Gemeinden\r\n 31.12.2021`,
-        area = `Fläche am 31.12.1996 in km²`,
-        population = `Bevölkerung am 31.12.1996 in 100`
-    ) |>
-    mutate(year = 1990)
-
-cw94 <- read_excel(path = "01_Data/02_umsteigeschlüssel/gmd_auf_2021/ref-gemeinden-umrech-2021-1990-1999.xlsx", sheet = 5) |>
-    select(
-        ags = `Gemeinden\r\n 31.12.1994`,
-        pop_cw = `bevölkerungs- \r\nproportionaler \r\nUmsteige- \r\nschlüssel`,
-        area_cw = `flächen-\r\nproportionaler\r\nUmsteige-schlüssel`,
-        ags_21 = `Gemeinden\r\n 31.12.2021`,
-        area = `Fläche am 31.12.1994 in km²`,
-        population = `Bevölkerung am 31.12.1994 in 100`
-    ) |>
-    mutate(year = 1994)
-cw98 <- read_excel(path = "01_Data/02_umsteigeschlüssel/gmd_auf_2021/ref-gemeinden-umrech-2021-1990-1999.xlsx", sheet = 9) |>
-    select(
-        ags = `Gemeinden\r\n 31.12.1998`,
-        pop_cw = `bevölkerungs- \r\nproportionaler \r\nUmsteige- \r\nschlüssel`,
-        area_cw = `flächen-\r\nproportionaler\r\nUmsteige-schlüssel`,
-        ags_21 = `Gemeinden\r\n 31.12.2021`,
-        area = `Fläche am 31.12.1998 in km²`,
-        population = `Bevölkerung am 31.12.1998 in 100`
-    ) |>
-    mutate(year = 1998)
-cw02 <- read_excel(path = "01_Data/02_umsteigeschlüssel/gmd_auf_2021/ref-gemeinden-umrech-2021-2000-2010.xlsx", sheet = 3) |>
-    select(
-        ags = `Gemeinden\r\n 31.12.2002`,
-        pop_cw = `bevölkerungs- \r\nproportionaler \r\nUmsteige- \r\nschlüssel`,
-        area_cw = `flächen-\r\nproportionaler\r\nUmsteige-schlüssel`,
-        ags_21 = `Gemeinden\r\n 31.12.2021`,
-        area = `Fläche am 31.12.2002 in km²`,
-        population = `Bevölkerung am 31.12.2002 in 100`
-    ) |>
-    mutate(year = 2002)
-cw05 <- read_excel(path = "01_Data/02_umsteigeschlüssel/gmd_auf_2021/ref-gemeinden-umrech-2021-2000-2010.xlsx", sheet = 6) |>
-    select(
-        ags = `Gemeinden\r\n 31.12.2005`,
-        pop_cw = `bevölkerungs- \r\nproportionaler \r\nUmsteige- \r\nschlüssel`,
-        area_cw = `flächen-\r\nproportionaler\r\nUmsteige-schlüssel`,
-        ags_21 = `Gemeinden\r\n 31.12.2021`,
-        area = `Fläche am 31.12.2005 in km²`,
-        population = `Bevölkerung am 31.12.2005 in 100`
-    ) |>
-    mutate(year = 2005)
-cw09 <- read_excel(path = "01_Data/02_umsteigeschlüssel/gmd_auf_2021/ref-gemeinden-umrech-2021-2000-2010.xlsx", sheet = 10) |>
-    select(
-        ags = `Gemeinden\r\n 31.12.2009`,
-        pop_cw = `bevölkerungs- \r\nproportionaler \r\nUmsteige- \r\nschlüssel`,
-        area_cw = `flächen-\r\nproportionaler\r\nUmsteige-schlüssel`,
-        ags_21 = `Gemeinden\r\n 31.12.2021`,
-        area = `Fläche am 31.12.2009 in km²`,
-        population = `Bevölkerung am 31.12.2009 in 100`
-    ) |>
-    mutate(year = 2009)
-cw13 <- read_excel(path = "01_Data/02_umsteigeschlüssel/gmd_auf_2021/ref-gemeinden-umrech-2021-2011-2020.xlsx", sheet = 3) |>
-    select(
-        ags = `Gemeinden\r\n 31.12.2013`,
-        pop_cw = `bevölkerungs- \r\nproportionaler \r\nUmsteige- \r\nschlüssel`,
-        area_cw = `flächen-\r\nproportionaler\r\nUmsteige-schlüssel`,
-        ags_21 = `Gemeinden\r\n 31.12.2021`,
-        area = `Fläche am 31.12.2013 in km²`,
-        population = `Bevölkerung am 31.12.2013 in 100`
-    ) |>
-    mutate(year = 2013)
-cw17 <- read_excel(path = "01_Data/02_umsteigeschlüssel/gmd_auf_2021/ref-gemeinden-umrech-2021-2011-2020.xlsx", sheet = 7) |>
-    select(
-        ags = `Gemeinden\r\n 31.12.2017`,
-        pop_cw = `bevölkerungs- \r\nproportionaler \r\nUmsteige- \r\nschlüssel`,
-        area_cw = `flächen-\r\nproportionaler\r\nUmsteige-schlüssel`,
-        ags_21 = `Gemeinden\r\n 31.12.2021`,
-        area = `Fläche am 31.12.2017 in km²`,
-        population = `Bevölkerung am 31.12.2017 in 100`
-    ) |>
-    mutate(year = 2017)
-
-# Combine to one dataframe
-cw <- Filter(function(x) is(x, "data.frame"), mget(ls())) |>
-    reduce(bind_rows)
+cw <- fread("data/crosswalks/ags_crosswalks.csv")
 
 # how many ags_21 for each year?
 cw |>
@@ -117,7 +28,7 @@ cw_info_ever_merged_ags_21 <- cw %>%
 
 # Merge with unharmonized election data -----------------------------------
 
-df <- fread("01_Data/01_BTW/btw_1980_2021_unharm.csv") |>
+df <- fread("data/federal_elections/municipality_level/processed_data/btw_1980_2021_unharm.csv") |>
     # remove population & area that were used for weighting multi mail-in districts
     select(-c(pop, area)) |>
     # create year variable for merging
@@ -193,7 +104,7 @@ area_pop <- df |>
     ungroup()
 
 # Get population & area for 2021
-ags21 <- read_excel(path = "01_Data/02_umsteigeschlüssel/31122021_Auszug_GV.xlsx", sheet = 2) |>
+ags21 <- read_excel(path = "data/crosswalks/31122021_Auszug_GV.xlsx", sheet = 2) |>
     select(
         Land = `...3`,
         RB = `...4`,
@@ -290,104 +201,6 @@ df_harm <- df_harm %>%
 ## Save this now:
 
 # Write .csv file
-fwrite(df_harm, file = "01_Data/01_BTW/btw_1980_2021_harm21.csv")
+fwrite(df_harm, file = "data/federal_elections/municipality_level/processed_data/btw_1980_2021_harm21.csv")
 
-fwrite(df_harm, file = "~/Dropbox (Princeton)/german_energy_transition/data/09_bundestag_election_data/btw_1980_2021_harm21.csv")
-
-
-fwrite(df_harm, file = "/Users/hanno/Library/CloudStorage/Dropbox/Research/03_German_Energy_Transition/data/09_bundestag_election_data/btw_1980_2021_harm21.csv")
-
-# inspect ---------------------------------------------------------------- (hanno)
-inspect <- df_harm %>%
-    select(-c(left_wing, left_wing_wLinke, right_wing, cdu_csu)) %>%
-    mutate(total_votes = rowSums(select(., cdu:zentrum), na.rm = TRUE))
-
-mean(inspect$total_votes > 1.000001) * 100
-quantile(inspect$total_votes, probs = seq(0.90, 1, 0.01))
-quantile(inspect$total_votes, probs = seq(0.0, 0.1, 0.01))
-nrow(inspect)
-
-## Code below is based on previous procedure where we had places w/ sum > 1 -> this is not the case anymore now
-
-# Sum greater than one ---------------------------------------------
-
-df_harm_greater_one <- inspect %>%
-    filter(election_year > 2004) %>%
-    group_by(ags) %>%
-    filter(any(total_votes > 1.07)) %>%
-    distinct(ags, .keep_all = T) %>%
-    ungroup()
-
-## Compare this to the df that indicates whether there was ever merger
-
-df_harm_greater_one <- df_harm_greater_one %>%
-    left_join_check_obs(
-        cw_info_ever_merged_ags_21 %>%
-            mutate(ags_21 = as.character(ags_21)) %>%
-            mutate(ags_21 = pad_zero_conditional(ags_21, 7)),
-        by = c("ags" = "ags_21")
-    )
-
-## Pick a random AGs
-
-ags_check <- df_harm_greater_one %>%
-    filter(ever_merged == 0) %>%
-    slice(1) %>%
-    pull(ags)
-
-## Check original data set
-
-cw_check <- cw %>%
-    filter(ags_21 == as.numeric(ags_check))
-
-glimpse(cw_check)
-
-## This is the original election df
-
-df_check <- df %>%
-    filter(ags == as.numeric(ags_check)) %>%
-    dplyr::select(-right_wing, -left_wing, -left_wing_wLinke, -cdu_csu)
-
-## Row sums of all parties as above:
-
-df_check <- df_check %>%
-    mutate(
-        total_votes = rowSums(select(., cdu:zentrum), na.rm = TRUE)
-    )
-
-View(df_check)
-
-## Compare to valid votes
-
-data.frame(
-    valid = df_check$valid_votes,
-    total = df_check$total_votes
-) %>%
-    mutate(
-        diff = valid - total,
-        ratio = valid / total
-    )
-
-## Check the same place in the harmonized data
-
-df_harm_check <- inspect %>%
-    filter(ags == ags_check)
-
-df_harm_check$total_votes
-
-View(df_harm_check)
-
-## Check distribution of population in inspect for total_votes > 1.0001
-
-inspect %>%
-    filter(total_votes > 1.002) %>%
-    pull(valid_votes) %>%
-    summary()
-
-## all these places are pretty small
-
-
-
-
-glimpse(df_check)
-
+### END
