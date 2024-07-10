@@ -1,0 +1,5 @@
+load("/Users/andreas/Dropbox (Princeton)/Research/*Spatial_Inequality/RA_work/Data collection/Germany_Kommunalwahlen/final_output/muni_elec_sub.RData")
+load("/Users/flosic/Library/CloudStorage/Dropbox/RA_work/Data collection/Germany_Kommunalwahlen/final_output/muni_elec_sub.RData")
+load("/Users/flosic/Library/CloudStorage/Dropbox/RA_work/Data collection/Germany_Kommunalwahlen/final_output/muni_elec.RData")
+load("/Users/flosic/Library/CloudStorage/Dropbox/RA_work/Data collection/Germany_Kommunalwahlen/final_output/muni_elec_UPDATED.RData")
+load("/Users/abw2/Dropbox (Princeton)/Research/*Spatial_Inequality/RA_work/Data collection/Germany_Kommunalwahlen/final_output/muni_elec_FINAL.RData")
