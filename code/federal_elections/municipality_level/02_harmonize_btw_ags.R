@@ -1,4 +1,4 @@
-### Harmonize BTW electoral results 1980-2021
+### Harmonize BTW electoral results at muni level 1980-2021
 # Vincent Heddesheimer, Hanno Hilbig
 # May, 23, 2024
 

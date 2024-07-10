@@ -1,4 +1,4 @@
-### Harmonize BTW electoral results 1980-2021
+### Harmonize BTW electoral results at couty level 1953-2021
 # Vincent Heddesheimer
 # Created: June, 18, 2024
 # Last updated: 
@@ -10,32 +10,28 @@ options(scipen = 999)
 
 
 # Read crosswalk files ----------------------------------------------------
-cw <- fread("data/crosswalks/ags_crosswalks.csv")
+cw <- fread("data/crosswalks/county_crosswalks.csv")
 
-# how many ags_21 for each year?
+glimpse(cw)
+
+# how many county_code_21 for each year?
 cw |>
-  distinct(ags_21, year) |>
+  distinct(county_code_21, year) |>
   count(year)
 
 ## DF : in year 2021, was the muni ever part of a merger?
 
-cw_info_ever_merged_ags_21 <- cw %>%
-  group_by(ags_21, year) %>%
+cw_info_ever_merged_cc_21 <- cw %>%
+  group_by(county_code_21, year) %>%
   count() %>%
   ungroup() %>%
-  group_by(ags_21) %>%
+  group_by(county_code_21) %>%
   summarise(ever_merged = any(n > 1)) %>%
   ungroup()
 
 # Merge with unharmonized election data -----------------------------------
 
-df <- fread("data/federal_elections/municipality_level/processed_data/btw_1980_2021_unharm.csv") |>
-  # remove population & area that were used for weighting multi mail-in districts
-  select(-c(pop, area)) |>
-  # create year variable for merging
-  mutate(year = ifelse(election_year < 1990, 1990, election_year)) |>
-  left_join_check_obs(cw, by = c("ags", "year")) |>
-  arrange(ags, election_year)
+df <- read_rds("data/federal_elections/county_level/processed_data/btw_cty_1953_2021_unharm.rds")
 
 ## Check means of some variables by year
 
