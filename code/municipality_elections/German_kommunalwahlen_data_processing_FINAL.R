@@ -6,41 +6,41 @@
 rm(list = ls())
 gc()
 
+library(pacman)
+pacman::p_load(writexl, readr, stringr, tidyverse, grid, gridExtra, tidyverse, broom, tidyr, data.table, readxl, dplyr, stringi)
 
-# Load packages
-if("dplyr" %in% (.packages())){
-  detach("package:dplyr", unload=TRUE)
-  detach("package:plyr", unload=TRUE)
-}
-
-library(dplyr)
-
-library(foreign)
-library(ggplot2)
-library(reshape2)
-library(lmtest)
-library(sandwich)
-library(MASS)
-library(car)
-library(lme4)
-library(data.table)
-library(gridExtra)
-library(grid)
-library(broom)
-library(readxl)
-library(viridis)
-library(tidyverse)
-library(stringr)
-library(readr)
-library(writexl)
-library(stringi)
-library(tidyr)
+# library(dplyr)
+# library(here)
+# library(foreign)
+# library(ggplot2)
+# library(reshape2)
+# library(lmtest)
+# library(sandwich)
+# library(MASS)
+# library(car)
+# library(lme4)
+# library(data.table)
+# library(gridExtra)
+# library(grid)
+# library(broom)
+# library(readxl)
+# library(viridis)
+# library(tidyverse)
+# library(stringr)
+# library(readr)
+# library(writexl)
+# library(stringi)
+# library(tidyr)
 
 # https://github.com/seligerf/Imputation-of-missing-location-information-for-worldwide-patent-data
 # https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/OTTBDX
 # https://www.nature.com/articles/s41597-019-0264-6
 
 # Set WD
+setwd(here::here("data/municipal_elections"))
+
+??as.data.table
+
 setwd("/Users/flosic/Dropbox/RA_work/Data collection/Germany_Kommunalwahlen")
 
 # ----
@@ -478,7 +478,7 @@ bayern_kommunalwahlen <- bayern_kommunalwahlen %>%
 
 
 # Save
-#write_csv(bayern_kommunalwahlen, file="final_output/bayern_kommunalwahlen.csv")
+#write_csv(bayern_kommunalwahlen, here::here("output/bayern_kommunalwahlen.csv"))
 
 # ----
 ######### THUERINGEN ----
@@ -1157,10 +1157,10 @@ bayern_kommunalwahlen <- bayern_kommunalwahlen %>%
 # thueringen_kommunalwahlen$AGS_8dig <- paste("160", thueringen_kommunalwahlen$AGS_8dig, sep="")
 # 
 # # Save
-# #write_csv(thueringen_kommunalwahlen, file="final_output/thueringen_kommunalwahlen.csv")
+# #write_csv(thueringen_kommunalwahlen, here::here("output/thueringen_kommunalwahlen.csv")
 
 # READ IN THUERINGEN FROM CSV BECAUSE EXCEL SHEETS ARE CORRUPTED ----
-thueringen_kommunalwahlen <- read_csv(file="final_output/Archive/thueringen_kommunalwahlen.csv")
+thueringen_kommunalwahlen <- read_csv(here::here("data/municipal_elections/final_output/Archive/thueringen_kommunalwahlen.csv"))
 
 # ----
 # ----
@@ -1639,7 +1639,7 @@ hamburg_kommunalwahlen$Turnout <-  str_replace_all(hamburg_kommunalwahlen$Turnou
 hamburg_kommunalwahlen[hamburg_kommunalwahlen == "-"] <- NA
 
 # Save
-#write_csv(hamburg_kommunalwahlen, file="final_output/hamburg_kommunalwahlen.csv")
+#write_csv(hamburg_kommunalwahlen, here::here("output/hamburg_kommunalwahlen.csv"))
 
 ######### BERLIN ----
 ###### Berlin 1990 Kommunalwahlen Zweitstimmen ----
@@ -2796,7 +2796,7 @@ berlin_kommunalwahlen$Turnout <-  str_replace_all(berlin_kommunalwahlen$Turnout,
 berlin_kommunalwahlen[berlin_kommunalwahlen == "-"] <- NA
 
 # Save
-#write_csv(berlin_kommunalwahlen, file="final_output/berlin_kommunalwahlen.csv")
+#write_csv(berlin_kommunalwahlen, here::here("output/berlin_kommunalwahlen.csv"))
 
 
 # ----
@@ -3346,7 +3346,7 @@ nrw_kommunalwahlen[nrw_kommunalwahlen == "-"] <- NA
 nrw_kommunalwahlen$AGS_8dig <- stri_pad_left(nrw_kommunalwahlen$AGS_8dig, 8, 0)
 
 # Save
-#write_csv(nrw_kommunalwahlen, file="final_output/nrw_kommunalwahlen.csv")
+#write_csv(nrw_kommunalwahlen, here::here("output/nrw_kommunalwahlen.csv"))
 
 
 
@@ -3437,7 +3437,7 @@ saarland_kommunalwahlen_data_sub <- saarland_kommunalwahlen_data_sub[
 ####### Merge files and save overall output for Saarland ----
 
 # Save
-#write_csv(saarland_kommunalwahlen_data_sub, file="final_output/saarland_kommunalwahlen.csv")
+#write_csv(saarland_kommunalwahlen_data_sub, here::here("output/saarland_kommunalwahlen.csv"))
 
 
 ######### SACHSEN-ANHALT ----
@@ -3932,7 +3932,7 @@ sachsen_anhalt_kommunalwahlen$Turnout <-  str_replace_all(sachsen_anhalt_kommuna
 sachsen_anhalt_kommunalwahlen[sachsen_anhalt_kommunalwahlen == "-"] <- NA
 
 # Save
-#write_csv(sachsen_anhalt_kommunalwahlen, file="final_output/sachsen_anhalt_kommunalwahlen.csv")
+#write_csv(sachsen_anhalt_kommunalwahlen, here::here("output/sachsen_anhalt_kommunalwahlen.csv"))
 
 ######### BADEN-WUERTTEMBERG ----
 ###### Baden-Wuerttemberg 1989 Gemeinderatswahlen ----
@@ -4501,7 +4501,7 @@ baden_wuerttemberg_kommunalwahlen[baden_wuerttemberg_kommunalwahlen == "-"] <- N
 baden_wuerttemberg_kommunalwahlen$AGS_8dig <- paste("08",baden_wuerttemberg_kommunalwahlen$AGS_8dig, sep="")
 
 # Save
-#write_csv(baden_wuerttemberg_kommunalwahlen, file="final_output/baden_wuerttemberg_kommunalwahlen.csv")
+#write_csv(baden_wuerttemberg_kommunalwahlen, here::here("output/baden_wuerttemberg_kommunalwahlen.csv"))
 
 
 ######## MECKLENBURG-VORPOMMERN
@@ -5078,7 +5078,7 @@ mecklenburg_vorpommern_kommunalwahlen[mecklenburg_vorpommern_kommunalwahlen == "
 mecklenburg_vorpommern_kommunalwahlen$AGS_8dig <- stri_pad_left(mecklenburg_vorpommern_kommunalwahlen$AGS_8dig, 8, 0)
 
 # Save
-#write_csv(mecklenburg_vorpommern_kommunalwahlen, file="final_output/mecklenburg_vorpommern_kommunalwahlen.csv")
+#write_csv(mecklenburg_vorpommern_kommunalwahlen, here::here("output/mecklenburg_vorpommern_kommunalwahlen.csv"))
 
 # ----
 ######### HESSEN ----
@@ -5816,7 +5816,7 @@ hessen_kommunalwahlen[hessen_kommunalwahlen == "-"] <- NA
 hessen_kommunalwahlen$AGS_8dig <- paste("06",hessen_kommunalwahlen$AGS_8dig, sep="")
 
 # Save
-#write_csv(hessen_kommunalwahlen, file="final_output/hessen_kommunalwahlen.csv")
+#write_csv(hessen_kommunalwahlen, here::here("output/hessen_kommunalwahlen.csv"))
 
 # ----
 ######### NIEDERSACHSEN ----
@@ -6326,7 +6326,7 @@ niedersachsen_kommunalwahlen$Gebietsname <- str_replace(niedersachsen_kommunalwa
 
 
 # Save
-#write_csv(niedersachsen_kommunalwahlen, file="final_output/niedersachsen_kommunalwahlen.csv")
+#write_csv(niedersachsen_kommunalwahlen, here::here("output/niedersachsen_kommunalwahlen.csv"))
 
 # ----
 # ----
@@ -6822,7 +6822,7 @@ sachsen_kommunalwahlen[sachsen_kommunalwahlen == "-"] <- NA
 sachsen_kommunalwahlen$AGS_8dig <- stri_pad_right(sachsen_kommunalwahlen$AGS_8dig, 8, 0)
 
 # Save
-#write_csv(sachsen_kommunalwahlen, file="final_output/sachsen_kommunalwahlen.csv")
+#write_csv(sachsen_kommunalwahlen, here::here("output/sachsen_kommunalwahlen.csv"))
 
 
 # ----
@@ -6910,7 +6910,7 @@ bremen_overall_buergerschaftswahl_data_sub$Turnout <- bremen_overall_buergerscha
 
 ####### Merge files and save overall output for Bremen ----
 # Save
-#write_csv(bremen_overall_buergerschaftswahl_data_sub, file="final_output/bremen_buergerschaftswahlen.csv")
+#write_csv(bremen_overall_buergerschaftswahl_data_sub, here::here("output/bremen_buergerschaftswahlen.csv"))
 
 # ----
 # ----
@@ -7628,7 +7628,7 @@ brandenburg_kommunalwahlen[brandenburg_kommunalwahlen == "-"] <- NA
 brandenburg_kommunalwahlen$AGS_8dig <- strtrim(brandenburg_kommunalwahlen$AGS_8dig, 8)
 
 # Save
-#write_csv(brandenburg_kommunalwahlen, file="final_output/brandenburg_kommunalwahlen.csv")
+#write_csv(brandenburg_kommunalwahlen, here::here("output/brandenburg_kommunalwahlen.csv"))
 
 brandenburg_kommunalwahlen %>%
   group_by(election_year) %>%
@@ -8188,7 +8188,7 @@ rlp_kommunalwahlen <- rlp_kommunalwahlen %>%
   mutate(AGS_8dig = paste0("0",substr(AGS_8dig,1,4), substr(AGS_8dig,7,9)))
 
 # Save
-write_csv(rlp_kommunalwahlen, file="final_output/rlp_kommunalwahlen.csv")
+write_csv(rlp_kommunalwahlen, here::here("output/rlp_kommunalwahlen.csv"))
 
 
 # ----
@@ -8728,7 +8728,7 @@ sh_kommunalwahlen[sh_kommunalwahlen == "-"] <- NA
 sh_kommunalwahlen$AGS_8dig <- stri_pad_left(sh_kommunalwahlen$AGS_8dig, 8, 0)
 
 # Save
-write_csv(sh_kommunalwahlen, file="final_output/sh_kommunalwahlen.csv")
+write_csv(sh_kommunalwahlen, here::here("output/sh_kommunalwahlen.csv"))
 
 
 # ----
@@ -8816,7 +8816,7 @@ dim(test4)
 
 # Save ----
 
-write_csv(kommunalwahlen_merge, file="final_output/germany_kommunalwahlen_1990_2021_FINAL.csv")
+write_csv(kommunalwahlen_merge, file=here::here("output/germany_kommunalwahlen_1990_2021_FINAL.csv"))
 
-save(kommunalwahlen_merge, file = "final_output/muni_elec_FINAL.RData")
+save(kommunalwahlen_merge, file = here::here("output/muni_elec_FINAL.RData"))
 
