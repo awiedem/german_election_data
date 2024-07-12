@@ -482,685 +482,682 @@ bayern_kommunalwahlen <- bayern_kommunalwahlen %>%
 
 # ----
 ######### THUERINGEN ----
-# ###### Thueringen 1994 Gemeinderatswahlen ----
-# #### Load election data ----
-# thueringen_1994_kommunalwahlen_data <- as.data.table(read_csv("raw_data/thueringen/thueringen_1999.csv"))
-# 
-# thueringen_1994_kommunalwahlen_data <- as.data.table(read_excel("raw_data/thueringen/thueringen_1994.xlsx", sheet="thueringen_1994"))
-# thueringen_1994_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/thueringen/thueringen_1994_sitze.xlsx", sheet="thueringen_1994_sitze"))
-# names(thueringen_1994_kommunalwahlen_data_sitze) <- str_c(names(thueringen_1994_kommunalwahlen_data_sitze), "_sitze", sep="")
-# 
-# 
-# # Merge Stimmen and Sitze
-# thueringen_1994_kommunalwahlen_data <- merge(thueringen_1994_kommunalwahlen_data, thueringen_1994_kommunalwahlen_data_sitze, by.x="Gemeinde", by.y="Gemeinde_sitze")
-# thueringen_1994_kommunalwahlen_data[thueringen_1994_kommunalwahlen_data == "-"] <- NA
-# 
-# #### Delete white space ----
-# names(thueringen_1994_kommunalwahlen_data) <-  str_replace_all(names(thueringen_1994_kommunalwahlen_data), fixed(" "), "")
-# 
-# 
-# #### Recoding ----
-# # Create new dataframe ----
-# thueringen_1994_kommunalwahlen_data_sub <- thueringen_1994_kommunalwahlen_data
-# 
-# names(thueringen_1994_kommunalwahlen_data_sub)
-# 
-# # Creating non-existing variables ----
-# thueringen_1994_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
-# thueringen_1994_kommunalwahlen_data_sub[ , Bundesland := "Thueringen"]
-# thueringen_1994_kommunalwahlen_data_sub[ , Gebietsname := ""]
-# thueringen_1994_kommunalwahlen_data_sub[ , election_year := "1994"]
-# thueringen_1994_kommunalwahlen_data_sub[ , election_type := "Gemeinderatswahlen"]
-# thueringen_1994_kommunalwahlen_data_sub[ , IDIRB := ""]
-# thueringen_1994_kommunalwahlen_data_sub[ , IDBA := ""]
-# 
-# # Renaming existing variables ----
-# thueringen_1994_kommunalwahlen_data_sub$AGS_8dig <- thueringen_1994_kommunalwahlen_data_sub$Gemeinde
-# thueringen_1994_kommunalwahlen_data_sub$Gebietsname <- thueringen_1994_kommunalwahlen_data_sub$Gemeindename
-# thueringen_1994_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$Wahlberechtigte)
-# thueringen_1994_kommunalwahlen_data_sub$Wähler <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$Waehler)
-# thueringen_1994_kommunalwahlen_data_sub$GültigeStimmen <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$Gueltige_stimmen)
-# 
-# thueringen_1994_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$CDU)
-# thueringen_1994_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$abs_CDU)
-# 
-# thueringen_1994_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$SPD)
-# thueringen_1994_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$abs_SPD)
-# 
-# thueringen_1994_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$PDS)
-# thueringen_1994_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$abs_DIELINKE)
-# 
-# thueringen_1994_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$GRE)
-# thueringen_1994_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$abs_GRÜNE)
-# 
-# thueringen_1994_kommunalwahlen_data_sub$abs_AfD <- NA
-# thueringen_1994_kommunalwahlen_data_sub$abs_AfD <- NA
-# 
-# thueringen_1994_kommunalwahlen_data_sub$abs_PIRATEN <- NA
-# thueringen_1994_kommunalwahlen_data_sub$abs_PIRATEN <- NA
-# 
-# thueringen_1994_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$FDP)
-# thueringen_1994_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$abs_FDP)
-# 
-# thueringen_1994_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$FREIE_WAEHLER)
-# thueringen_1994_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$abs_FREIEWÄHLER)
-# 
-# thueringen_1994_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$Waehlergruppen)
-# thueringen_1994_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$abs_Wählergruppen)
-# 
-# 
-# thueringen_1994_kommunalwahlen_data_sub$gew_CDU <- NA
-# thueringen_1994_kommunalwahlen_data_sub$gew_SPD <- NA
-# thueringen_1994_kommunalwahlen_data_sub$gew_DIELINKE <- NA
-# thueringen_1994_kommunalwahlen_data_sub$gew_GRÜNE <- NA
-# thueringen_1994_kommunalwahlen_data_sub$gew_AfD <- NA
-# thueringen_1994_kommunalwahlen_data_sub$gew_PIRATEN <- NA
-# thueringen_1994_kommunalwahlen_data_sub$gew_FDP <- NA
-# thueringen_1994_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
-# thueringen_1994_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
-# thueringen_1994_kommunalwahlen_data_sub$gew_Wählergruppen <- NA
-# 
-# thueringen_1994_kommunalwahlen_data_sub$sitze_CDU <- thueringen_1994_kommunalwahlen_data_sub$CDU_sitze
-# thueringen_1994_kommunalwahlen_data_sub$sitze_SPD <- thueringen_1994_kommunalwahlen_data_sub$SPD_sitze
-# thueringen_1994_kommunalwahlen_data_sub$sitze_DIELINKE <- thueringen_1994_kommunalwahlen_data_sub$PDS_sitze
-# thueringen_1994_kommunalwahlen_data_sub$sitze_GRÜNE <- thueringen_1994_kommunalwahlen_data_sub$GRE_sitze
-# thueringen_1994_kommunalwahlen_data_sub$sitze_AfD <- NA
-# thueringen_1994_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
-# thueringen_1994_kommunalwahlen_data_sub$sitze_FDP <- thueringen_1994_kommunalwahlen_data_sub$FDP_sitze
-# thueringen_1994_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_1994_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
-# thueringen_1994_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_1994_kommunalwahlen_data_sub$Waehlergruppen_sitze
-# 
-# # Creating new dataframe with selected vars ----
-# thueringen_1994_kommunalwahlen_data_sub <- thueringen_1994_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
-#                                                                                        Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
-#                                                                                        abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
-#                                                                                        gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
-#                                                                                        sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
-# 
-# thueringen_1994_kommunalwahlen_data_sub[thueringen_1994_kommunalwahlen_data_sub == "-"] <- NA
-# 
-# 
-# # Calculating vote shares ----
-# # https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
-# 
-# thueringen_1994_kommunalwahlen_data_sub <-
-#   thueringen_1994_kommunalwahlen_data_sub %>%
-#   mutate_at(vars(contains("abs")), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
-#   rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
-#   rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
-# 
-# # Calculating turnout ----
-# thueringen_1994_kommunalwahlen_data_sub$Turnout <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$Wähler) / as.numeric(thueringen_1994_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
-# 
-# ###### Thueringen 1999 Gemeinderatswahlen ----
-# #### Load election data ----
-# thueringen_1999_kommunalwahlen_data <- as.data.table(read_excel("raw_data/thueringen/thueringen_1999.xlsx", sheet="thueringen_1999"))
-# thueringen_1999_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/thueringen/thueringen_1999_sitze.xlsx", sheet="thueringen_1999_sitze"))
-# names(thueringen_1999_kommunalwahlen_data_sitze) <- str_c(names(thueringen_1999_kommunalwahlen_data_sitze), "_sitze", sep="")
-# 
-# 
-# # Merge Stimmen and Sitze
-# thueringen_1999_kommunalwahlen_data <- merge(thueringen_1999_kommunalwahlen_data, thueringen_1999_kommunalwahlen_data_sitze, by.x="Gemeinde", by.y="Gemeinde_sitze")
-# thueringen_1999_kommunalwahlen_data[thueringen_1999_kommunalwahlen_data == "-"] <- NA
-# 
-# #### Delete white space ----
-# names(thueringen_1999_kommunalwahlen_data) <-  str_replace_all(names(thueringen_1999_kommunalwahlen_data), fixed(" "), "")
-# 
-# #### Recoding ----
-# # Create new dataframe ----
-# thueringen_1999_kommunalwahlen_data_sub <- thueringen_1999_kommunalwahlen_data
-# 
-# names(thueringen_1999_kommunalwahlen_data_sub)
-# 
-# # Creating non-existing variables ----
-# thueringen_1999_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
-# thueringen_1999_kommunalwahlen_data_sub[ , Bundesland := "Thueringen"]
-# thueringen_1999_kommunalwahlen_data_sub[ , Gebietsname := ""]
-# thueringen_1999_kommunalwahlen_data_sub[ , election_year := "1999"]
-# thueringen_1999_kommunalwahlen_data_sub[ , election_type := "Gemeinderatswahlen"]
-# thueringen_1999_kommunalwahlen_data_sub[ , IDIRB := ""]
-# thueringen_1999_kommunalwahlen_data_sub[ , IDBA := ""]
-# 
-# # Renaming existing variables ----
-# thueringen_1999_kommunalwahlen_data_sub$AGS_8dig <- thueringen_1999_kommunalwahlen_data_sub$Gemeinde
-# thueringen_1999_kommunalwahlen_data_sub$Gebietsname <- thueringen_1999_kommunalwahlen_data_sub$Gemeindename
-# thueringen_1999_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$Wahlberechtigte)
-# thueringen_1999_kommunalwahlen_data_sub$Wähler <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$Waehler)
-# thueringen_1999_kommunalwahlen_data_sub$GültigeStimmen <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$Gueltige_stimmen)
-# 
-# thueringen_1999_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$CDU)
-# thueringen_1999_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$abs_CDU)
-# 
-# thueringen_1999_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$SPD)
-# thueringen_1999_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$abs_SPD)
-# 
-# thueringen_1999_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$PDS)
-# thueringen_1999_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$abs_DIELINKE)
-# 
-# thueringen_1999_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$GRE)
-# thueringen_1999_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$abs_GRÜNE)
-# 
-# thueringen_1999_kommunalwahlen_data_sub$abs_AfD <- as.numeric(0)
-# thueringen_1999_kommunalwahlen_data_sub$abs_AfD <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$abs_AfD)
-# 
-# thueringen_1999_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(0)
-# thueringen_1999_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$abs_PIRATEN)
-# 
-# thueringen_1999_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$FDP)
-# thueringen_1999_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$abs_FDP)
-# 
-# thueringen_1999_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$FREIE_WAEHLER)
-# thueringen_1999_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$abs_FREIEWÄHLER)
-# 
-# thueringen_1999_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$Waehlergruppen)
-# thueringen_1999_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$abs_Wählergruppen)
-# 
-# 
-# thueringen_1999_kommunalwahlen_data_sub$gew_CDU <- NA
-# thueringen_1999_kommunalwahlen_data_sub$gew_SPD <- NA
-# thueringen_1999_kommunalwahlen_data_sub$gew_DIELINKE <- NA
-# thueringen_1999_kommunalwahlen_data_sub$gew_GRÜNE <- NA
-# thueringen_1999_kommunalwahlen_data_sub$gew_AfD <- NA
-# thueringen_1999_kommunalwahlen_data_sub$gew_PIRATEN <- NA
-# thueringen_1999_kommunalwahlen_data_sub$gew_FDP <- NA
-# thueringen_1999_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
-# thueringen_1999_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
-# thueringen_1999_kommunalwahlen_data_sub$gew_Wählergruppen <- NA
-# 
-# thueringen_1999_kommunalwahlen_data_sub$sitze_CDU <- thueringen_1999_kommunalwahlen_data_sub$CDU_sitze
-# thueringen_1999_kommunalwahlen_data_sub$sitze_SPD <- thueringen_1999_kommunalwahlen_data_sub$SPD_sitze
-# thueringen_1999_kommunalwahlen_data_sub$sitze_DIELINKE <- thueringen_1999_kommunalwahlen_data_sub$PDS_sitze
-# thueringen_1999_kommunalwahlen_data_sub$sitze_GRÜNE <- thueringen_1999_kommunalwahlen_data_sub$GRE_sitze
-# thueringen_1999_kommunalwahlen_data_sub$sitze_AfD <- NA
-# thueringen_1999_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
-# thueringen_1999_kommunalwahlen_data_sub$sitze_FDP <- thueringen_1999_kommunalwahlen_data_sub$FDP_sitze
-# thueringen_1999_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_1999_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
-# thueringen_1999_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_1999_kommunalwahlen_data_sub$Waehlergruppen_sitze
-# 
-# 
-# # Creating new dataframe with selected vars ----
-# thueringen_1999_kommunalwahlen_data_sub <- thueringen_1999_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
-#                                                                                        Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
-#                                                                                        abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
-#                                                                                        gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
-#                                                                                        sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
-# 
-# thueringen_1999_kommunalwahlen_data_sub[thueringen_1999_kommunalwahlen_data_sub == "-"] <- NA
-# 
-# 
-# # Calculating vote shares ----
-# # https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
-# 
-# thueringen_1999_kommunalwahlen_data_sub <-
-#   thueringen_1999_kommunalwahlen_data_sub %>%
-#   mutate_at(vars(contains("abs")), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
-#   rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
-#   rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
-# 
-# # Calculating turnout ----
-# thueringen_1999_kommunalwahlen_data_sub$Turnout <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$Wähler) / as.numeric(thueringen_1999_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
-# 
-# ###### Thueringen 2004 Gemeinderatswahlen ----
-# #### Load election data ----
-# 
-# thueringen_2004_kommunalwahlen_data <- as.data.table(read_excel("raw_data/thueringen/thueringen_2004.xlsx", sheet="thueringen_2004"))
-# thueringen_2004_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/thueringen/thueringen_2004_sitze.xlsx", sheet="thueringen_2004_sitze"))
-# names(thueringen_2004_kommunalwahlen_data_sitze) <- str_c(names(thueringen_2004_kommunalwahlen_data_sitze), "_sitze", sep="")
-# 
-# 
-# # Merge Stimmen and Sitze
-# thueringen_2004_kommunalwahlen_data <- merge(thueringen_2004_kommunalwahlen_data, thueringen_2004_kommunalwahlen_data_sitze, by.x="Gemeinde", by.y="Gemeinde_sitze")
-# thueringen_2004_kommunalwahlen_data[thueringen_2004_kommunalwahlen_data == "-"] <- NA
-# 
-# #### Delete white space ----
-# names(thueringen_2004_kommunalwahlen_data) <-  str_replace_all(names(thueringen_2004_kommunalwahlen_data), fixed(" "), "")
-# 
-# 
-# #### Recoding ----
-# # Create new dataframe ----
-# thueringen_2004_kommunalwahlen_data_sub <- thueringen_2004_kommunalwahlen_data
-# 
-# names(thueringen_2004_kommunalwahlen_data_sub)
-# 
-# # Creating non-existing variables ----
-# thueringen_2004_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
-# thueringen_2004_kommunalwahlen_data_sub[ , Bundesland := "Thueringen"]
-# thueringen_2004_kommunalwahlen_data_sub[ , Gebietsname := ""]
-# thueringen_2004_kommunalwahlen_data_sub[ , election_year := "2004"]
-# thueringen_2004_kommunalwahlen_data_sub[ , election_type := "Gemeinderatswahlen"]
-# thueringen_2004_kommunalwahlen_data_sub[ , IDIRB := ""]
-# thueringen_2004_kommunalwahlen_data_sub[ , IDBA := ""]
-# 
-# # Renaming existing variables ----
-# thueringen_2004_kommunalwahlen_data_sub$AGS_8dig <- thueringen_2004_kommunalwahlen_data_sub$Gemeinde
-# thueringen_2004_kommunalwahlen_data_sub$Gebietsname <- thueringen_2004_kommunalwahlen_data_sub$Gemeindename
-# thueringen_2004_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$Wahlberechtigte)
-# thueringen_2004_kommunalwahlen_data_sub$Wähler <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$Waehler)
-# thueringen_2004_kommunalwahlen_data_sub$GültigeStimmen <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$Gueltige_stimmen)
-# 
-# thueringen_2004_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$CDU)
-# thueringen_2004_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$abs_CDU)
-# 
-# thueringen_2004_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$SPD)
-# thueringen_2004_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$abs_SPD)
-# 
-# thueringen_2004_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$PDS)
-# thueringen_2004_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$abs_DIELINKE)
-# 
-# thueringen_2004_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$GRE)
-# thueringen_2004_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$abs_GRÜNE)
-# 
-# thueringen_2004_kommunalwahlen_data_sub$abs_AfD <- as.numeric(0)
-# thueringen_2004_kommunalwahlen_data_sub$abs_AfD <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$abs_AfD)
-# 
-# thueringen_2004_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(0)
-# thueringen_2004_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$abs_PIRATEN)
-# 
-# thueringen_2004_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$FDP)
-# thueringen_2004_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$abs_FDP)
-# 
-# thueringen_2004_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$FREIE_WAEHLER)
-# thueringen_2004_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$abs_FREIEWÄHLER)
-# 
-# thueringen_2004_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$Waehlergruppen)
-# thueringen_2004_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$abs_Wählergruppen)
-# 
-# 
-# thueringen_2004_kommunalwahlen_data_sub$gew_CDU <- NA
-# thueringen_2004_kommunalwahlen_data_sub$gew_SPD <- NA
-# thueringen_2004_kommunalwahlen_data_sub$gew_DIELINKE <- NA
-# thueringen_2004_kommunalwahlen_data_sub$gew_GRÜNE <- NA
-# thueringen_2004_kommunalwahlen_data_sub$gew_AfD <- NA
-# thueringen_2004_kommunalwahlen_data_sub$gew_PIRATEN <- NA
-# thueringen_2004_kommunalwahlen_data_sub$gew_FDP <- NA
-# thueringen_2004_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
-# thueringen_2004_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
-# thueringen_2004_kommunalwahlen_data_sub$gew_Wählergruppen <- NA
-# 
-# thueringen_2004_kommunalwahlen_data_sub$sitze_CDU <- thueringen_2004_kommunalwahlen_data_sub$CDU_sitze
-# thueringen_2004_kommunalwahlen_data_sub$sitze_SPD <- thueringen_2004_kommunalwahlen_data_sub$SPD_sitze
-# thueringen_2004_kommunalwahlen_data_sub$sitze_DIELINKE <- thueringen_2004_kommunalwahlen_data_sub$PDS_sitze
-# thueringen_2004_kommunalwahlen_data_sub$sitze_GRÜNE <- thueringen_2004_kommunalwahlen_data_sub$GRE_sitze
-# thueringen_2004_kommunalwahlen_data_sub$sitze_AfD <- NA
-# thueringen_2004_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
-# thueringen_2004_kommunalwahlen_data_sub$sitze_FDP <- thueringen_2004_kommunalwahlen_data_sub$FDP_sitze
-# thueringen_2004_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_2004_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
-# thueringen_2004_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_2004_kommunalwahlen_data_sub$Waehlergruppen_sitze
-# 
-# 
-# # Creating new dataframe with selected vars ----
-# thueringen_2004_kommunalwahlen_data_sub <- thueringen_2004_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
-#                                                                                        Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
-#                                                                                        abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
-#                                                                                        gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
-#                                                                                        sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
-# 
-# thueringen_2004_kommunalwahlen_data_sub[thueringen_2004_kommunalwahlen_data_sub == "-"] <- NA
-# 
-# 
-# # Calculating vote shares ----
-# # https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
-# 
-# thueringen_2004_kommunalwahlen_data_sub <-
-#   thueringen_2004_kommunalwahlen_data_sub %>%
-#   mutate_at(vars(contains("abs")), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
-#   rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
-#   rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
-# 
-# # Calculating turnout ----
-# thueringen_2004_kommunalwahlen_data_sub$Turnout <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$Wähler) / as.numeric(thueringen_2004_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
-# 
-# ###### Thueringen 2009 Gemeinderatswahlen ----
-# #### Load election data ----
-# 
-# thueringen_2009_kommunalwahlen_data <- as.data.table(read_excel("raw_data/thueringen/thueringen_2009.xlsx", sheet="thueringen_2009"))
-# thueringen_2009_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/thueringen/thueringen_2009_sitze.xlsx", sheet="thueringen_2009_sitze"))
-# names(thueringen_2009_kommunalwahlen_data_sitze) <- str_c(names(thueringen_2009_kommunalwahlen_data_sitze), "_sitze", sep="")
-# 
-# 
-# # Merge Stimmen and Sitze
-# thueringen_2009_kommunalwahlen_data <- merge(thueringen_2009_kommunalwahlen_data, thueringen_2009_kommunalwahlen_data_sitze, by.x="Gemeinde", by.y="Gemeinde_sitze")
-# thueringen_2009_kommunalwahlen_data[thueringen_2009_kommunalwahlen_data == "-"] <- NA
-# 
-# #### Delete white space ----
-# names(thueringen_2009_kommunalwahlen_data) <-  str_replace_all(names(thueringen_2009_kommunalwahlen_data), fixed(" "), "")
-# 
-# 
-# #### Recoding ----
-# # Create new dataframe ----
-# thueringen_2009_kommunalwahlen_data_sub <- thueringen_2009_kommunalwahlen_data
-# 
-# names(thueringen_2009_kommunalwahlen_data_sub)
-# 
-# # Creating non-existing variables ----
-# thueringen_2009_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
-# thueringen_2009_kommunalwahlen_data_sub[ , Bundesland := "Thueringen"]
-# thueringen_2009_kommunalwahlen_data_sub[ , Gebietsname := ""]
-# thueringen_2009_kommunalwahlen_data_sub[ , election_year := "2009"]
-# thueringen_2009_kommunalwahlen_data_sub[ , election_type := "Gemeinderatswahlen"]
-# thueringen_2009_kommunalwahlen_data_sub[ , IDIRB := ""]
-# thueringen_2009_kommunalwahlen_data_sub[ , IDBA := ""]
-# 
-# # Renaming existing variables ----
-# thueringen_2009_kommunalwahlen_data_sub$AGS_8dig <- thueringen_2009_kommunalwahlen_data_sub$Gemeinde
-# thueringen_2009_kommunalwahlen_data_sub$Gebietsname <- thueringen_2009_kommunalwahlen_data_sub$Gemeindename
-# thueringen_2009_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$Wahlberechtigte)
-# thueringen_2009_kommunalwahlen_data_sub$Wähler <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$Waehler)
-# thueringen_2009_kommunalwahlen_data_sub$GültigeStimmen <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$Gueltige_stimmen)
-# 
-# thueringen_2009_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$CDU)
-# thueringen_2009_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$abs_CDU)
-# 
-# thueringen_2009_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$SPD)
-# thueringen_2009_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$abs_SPD)
-# 
-# thueringen_2009_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$DIE_LINKE)
-# thueringen_2009_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$abs_DIELINKE)
-# 
-# thueringen_2009_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$GRE)
-# thueringen_2009_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$abs_GRÜNE)
-# 
-# thueringen_2009_kommunalwahlen_data_sub$abs_AfD <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$AfD)
-# thueringen_2009_kommunalwahlen_data_sub$abs_AfD <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$abs_AfD)
-# 
-# thueringen_2009_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(0)
-# thueringen_2009_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$abs_PIRATEN)
-# 
-# thueringen_2009_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$FDP)
-# thueringen_2009_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$abs_FDP)
-# 
-# thueringen_2009_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$FREIE_WAEHLER)
-# thueringen_2009_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$abs_FREIEWÄHLER)
-# 
-# thueringen_2009_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$Waehlergruppen)
-# thueringen_2009_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$abs_Wählergruppen)
-# 
-# 
-# thueringen_2009_kommunalwahlen_data_sub$gew_CDU <- NA
-# thueringen_2009_kommunalwahlen_data_sub$gew_SPD <- NA
-# thueringen_2009_kommunalwahlen_data_sub$gew_DIELINKE <- NA
-# thueringen_2009_kommunalwahlen_data_sub$gew_GRÜNE <- NA
-# thueringen_2009_kommunalwahlen_data_sub$gew_AfD <- NA
-# thueringen_2009_kommunalwahlen_data_sub$gew_PIRATEN <- NA
-# thueringen_2009_kommunalwahlen_data_sub$gew_FDP <- NA
-# thueringen_2009_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
-# thueringen_2009_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
-# thueringen_2009_kommunalwahlen_data_sub$gew_Wählergruppen <- NA
-# 
-# thueringen_2009_kommunalwahlen_data_sub$sitze_CDU <- thueringen_2009_kommunalwahlen_data_sub$CDU_sitze
-# thueringen_2009_kommunalwahlen_data_sub$sitze_SPD <- thueringen_2009_kommunalwahlen_data_sub$SPD_sitze
-# thueringen_2009_kommunalwahlen_data_sub$sitze_DIELINKE <- thueringen_2009_kommunalwahlen_data_sub$DIE_LINKE_sitze
-# thueringen_2009_kommunalwahlen_data_sub$sitze_GRÜNE <- thueringen_2009_kommunalwahlen_data_sub$GRE_sitze
-# thueringen_2009_kommunalwahlen_data_sub$sitze_AfD <- NA
-# thueringen_2009_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
-# thueringen_2009_kommunalwahlen_data_sub$sitze_FDP <- thueringen_2009_kommunalwahlen_data_sub$FDP_sitze
-# thueringen_2009_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_2009_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
-# thueringen_2009_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_2009_kommunalwahlen_data_sub$Waehlergruppen_sitze
-# 
-# 
-# # Creating new dataframe with selected vars ----
-# thueringen_2009_kommunalwahlen_data_sub <- thueringen_2009_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
-#                                                                                        Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
-#                                                                                        abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
-#                                                                                        gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
-#                                                                                        sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
-# 
-# thueringen_2009_kommunalwahlen_data_sub[thueringen_2009_kommunalwahlen_data_sub == "-"] <- NA
-# 
-# 
-# # Calculating vote shares ----
-# # https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
-# 
-# thueringen_2009_kommunalwahlen_data_sub <-
-#   thueringen_2009_kommunalwahlen_data_sub %>%
-#   mutate_at(vars(contains("abs")), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
-#   rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
-#   rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
-# 
-# # Calculating turnout ----
-# thueringen_2009_kommunalwahlen_data_sub$Turnout <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$Wähler) / as.numeric(thueringen_2009_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
-# 
-# ###### Thueringen 2014 Gemeinderatswahlen ----
-# #### Load election data ----
-# 
-# thueringen_2014_kommunalwahlen_data <- as.data.table(read_excel("raw_data/thueringen/thueringen_2014.xlsx", sheet="thueringen_2014"))
-# thueringen_2014_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/thueringen/thueringen_2014_sitze.xlsx", sheet="thueringen_2014_sitze"))
-# names(thueringen_2014_kommunalwahlen_data_sitze) <- str_c(names(thueringen_2014_kommunalwahlen_data_sitze), "_sitze", sep="")
-# 
-# 
-# # Merge Stimmen and Sitze
-# thueringen_2014_kommunalwahlen_data <- merge(thueringen_2014_kommunalwahlen_data, thueringen_2014_kommunalwahlen_data_sitze, by.x="Gemeinde", by.y="Gemeinde_sitze")
-# thueringen_2014_kommunalwahlen_data[thueringen_2014_kommunalwahlen_data == "-"] <- NA
-# 
-# #### Delete white space ----
-# names(thueringen_2014_kommunalwahlen_data) <-  str_replace_all(names(thueringen_2014_kommunalwahlen_data), fixed(" "), "")
-# 
-# 
-# #### Recoding ----
-# # Create new dataframe ----
-# thueringen_2014_kommunalwahlen_data_sub <- thueringen_2014_kommunalwahlen_data
-# 
-# names(thueringen_2014_kommunalwahlen_data_sub)
-# 
-# # Creating non-existing variables ----
-# thueringen_2014_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
-# thueringen_2014_kommunalwahlen_data_sub[ , Bundesland := "Thueringen"]
-# thueringen_2014_kommunalwahlen_data_sub[ , Gebietsname := ""]
-# thueringen_2014_kommunalwahlen_data_sub[ , election_year := "2014"]
-# thueringen_2014_kommunalwahlen_data_sub[ , election_type := "Gemeinderatswahlen"]
-# thueringen_2014_kommunalwahlen_data_sub[ , IDIRB := ""]
-# thueringen_2014_kommunalwahlen_data_sub[ , IDBA := ""]
-# 
-# # Renaming existing variables ----
-# thueringen_2014_kommunalwahlen_data_sub$AGS_8dig <- thueringen_2014_kommunalwahlen_data_sub$Gemeinde
-# thueringen_2014_kommunalwahlen_data_sub$Gebietsname <- thueringen_2014_kommunalwahlen_data_sub$Gemeindename
-# thueringen_2014_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$Wahlberechtigte)
-# thueringen_2014_kommunalwahlen_data_sub$Wähler <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$Waehler)
-# thueringen_2014_kommunalwahlen_data_sub$GültigeStimmen <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$Gueltige_stimmen)
-# 
-# thueringen_2014_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$CDU)
-# thueringen_2014_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$abs_CDU)
-# 
-# thueringen_2014_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$SPD)
-# thueringen_2014_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$abs_SPD)
-# 
-# thueringen_2014_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$DIE_LINKE)
-# thueringen_2014_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$abs_DIELINKE)
-# 
-# thueringen_2014_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$GRE)
-# thueringen_2014_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$abs_GRÜNE)
-# 
-# thueringen_2014_kommunalwahlen_data_sub$abs_AfD <- thueringen_2014_kommunalwahlen_data_sub$AfD
-# thueringen_2014_kommunalwahlen_data_sub$abs_AfD <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$abs_AfD)
-# 
-# thueringen_2014_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(0)
-# thueringen_2014_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$abs_PIRATEN)
-# 
-# thueringen_2014_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$FDP)
-# thueringen_2014_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$abs_FDP)
-# 
-# thueringen_2014_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$FREIE_WAEHLER)
-# thueringen_2014_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$abs_FREIEWÄHLER)
-# 
-# thueringen_2014_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$Waehlergruppen)
-# thueringen_2014_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$abs_Wählergruppen)
-# 
-# thueringen_2014_kommunalwahlen_data_sub$gew_CDU <- NA
-# thueringen_2014_kommunalwahlen_data_sub$gew_SPD <- NA
-# thueringen_2014_kommunalwahlen_data_sub$gew_DIELINKE <- NA
-# thueringen_2014_kommunalwahlen_data_sub$gew_GRÜNE <- NA
-# thueringen_2014_kommunalwahlen_data_sub$gew_AfD <- NA
-# thueringen_2014_kommunalwahlen_data_sub$gew_PIRATEN <- NA
-# thueringen_2014_kommunalwahlen_data_sub$gew_FDP <- NA
-# thueringen_2014_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
-# thueringen_2014_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
-# thueringen_2014_kommunalwahlen_data_sub$gew_Wählergruppen <- NA
-# 
-# thueringen_2014_kommunalwahlen_data_sub$sitze_CDU <- thueringen_2014_kommunalwahlen_data_sub$CDU_sitze
-# thueringen_2014_kommunalwahlen_data_sub$sitze_SPD <- thueringen_2014_kommunalwahlen_data_sub$SPD_sitze
-# thueringen_2014_kommunalwahlen_data_sub$sitze_DIELINKE <- thueringen_2014_kommunalwahlen_data_sub$DIE_LINKE_sitze
-# thueringen_2014_kommunalwahlen_data_sub$sitze_GRÜNE <- thueringen_2014_kommunalwahlen_data_sub$GRE_sitze
-# thueringen_2014_kommunalwahlen_data_sub$sitze_AfD <- thueringen_2014_kommunalwahlen_data_sub$AfD_sitze
-# thueringen_2014_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
-# thueringen_2014_kommunalwahlen_data_sub$sitze_FDP <- thueringen_2014_kommunalwahlen_data_sub$FDP_sitze
-# thueringen_2014_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_2014_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
-# thueringen_2014_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_2014_kommunalwahlen_data_sub$Waehlergruppen_sitze
-# 
-# 
-# # Creating new dataframe with selected vars ----
-# thueringen_2014_kommunalwahlen_data_sub <- thueringen_2014_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
-#                                                                                        Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
-#                                                                                        abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
-#                                                                                        gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
-#                                                                                        sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
-# 
-# thueringen_2014_kommunalwahlen_data_sub[thueringen_2014_kommunalwahlen_data_sub == "-"] <- NA
-# 
-# 
-# # Calculating vote shares ----
-# # https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
-# 
-# thueringen_2014_kommunalwahlen_data_sub <-
-#   thueringen_2014_kommunalwahlen_data_sub %>%
-#   mutate_at(vars(contains("abs")), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
-#   rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
-#   rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
-# 
-# # Calculating turnout ----
-# thueringen_2014_kommunalwahlen_data_sub$Turnout <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$Wähler) / as.numeric(thueringen_2014_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
-# 
-# ###### Thueringen 2019 Gemeinderatswahlen ----
-# #### Load election data ----
-# 
-# thueringen_2019_kommunalwahlen_data <- as.data.table(read_excel("raw_data/thueringen/thueringen_2019.xlsx", sheet="thueringen_2019"))
-# thueringen_2019_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/thueringen/thueringen_2019_sitze.xlsx", sheet="thueringen_2019_sitze"))
-# names(thueringen_2019_kommunalwahlen_data_sitze) <- str_c(names(thueringen_2019_kommunalwahlen_data_sitze), "_sitze", sep="")
-# 
-# 
-# # Merge Stimmen and Sitze
-# thueringen_2019_kommunalwahlen_data <- merge(thueringen_2019_kommunalwahlen_data, thueringen_2019_kommunalwahlen_data_sitze, by.x="Gemeinde", by.y="Gemeinde_sitze")
-# thueringen_2019_kommunalwahlen_data[thueringen_2019_kommunalwahlen_data == "-"] <- NA
-# 
-# #### Delete white space ----
-# names(thueringen_2019_kommunalwahlen_data) <-  str_replace_all(names(thueringen_2019_kommunalwahlen_data), fixed(" "), "")
-# 
-# 
-# #### Recoding ----
-# # Create new dataframe ----
-# thueringen_2019_kommunalwahlen_data_sub <- thueringen_2019_kommunalwahlen_data
-# 
-# names(thueringen_2019_kommunalwahlen_data_sub)
-# 
-# # Creating non-existing variables ----
-# thueringen_2019_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
-# thueringen_2019_kommunalwahlen_data_sub[ , Bundesland := "Thueringen"]
-# thueringen_2019_kommunalwahlen_data_sub[ , Gebietsname := ""]
-# thueringen_2019_kommunalwahlen_data_sub[ , election_year := "2019"]
-# thueringen_2019_kommunalwahlen_data_sub[ , election_type := "Gemeinderatswahlen"]
-# thueringen_2019_kommunalwahlen_data_sub[ , IDIRB := ""]
-# thueringen_2019_kommunalwahlen_data_sub[ , IDBA := ""]
-# 
-# # Renaming existing variables ----
-# thueringen_2019_kommunalwahlen_data_sub$AGS_8dig <- thueringen_2019_kommunalwahlen_data_sub$Gemeinde
-# thueringen_2019_kommunalwahlen_data_sub$Gebietsname <- thueringen_2019_kommunalwahlen_data_sub$Gemeindename
-# thueringen_2019_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$Wahlberechtigte)
-# thueringen_2019_kommunalwahlen_data_sub$Wähler <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$Waehler)
-# thueringen_2019_kommunalwahlen_data_sub$GültigeStimmen <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$Gueltige_stimmen)
-# 
-# thueringen_2019_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$CDU)
-# thueringen_2019_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$abs_CDU)
-# 
-# thueringen_2019_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$SPD)
-# thueringen_2019_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$abs_SPD)
-# 
-# thueringen_2019_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$PDS)
-# thueringen_2019_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$abs_DIELINKE)
-# 
-# thueringen_2019_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$GRE)
-# thueringen_2019_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$abs_GRÜNE)
-# 
-# thueringen_2019_kommunalwahlen_data_sub$abs_AfD <- thueringen_2019_kommunalwahlen_data_sub$AfD
-# thueringen_2019_kommunalwahlen_data_sub$abs_AfD <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$abs_AfD)
-# 
-# thueringen_2019_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(0)
-# thueringen_2019_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$abs_PIRATEN)
-# 
-# thueringen_2019_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$FDP)
-# thueringen_2019_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$abs_FDP)
-# 
-# thueringen_2019_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$FREIE_WAEHLER)
-# thueringen_2019_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$abs_FREIEWÄHLER)
-# 
-# thueringen_2019_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$Waehlergruppen)
-# thueringen_2019_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$abs_Wählergruppen)
-# 
-# thueringen_2019_kommunalwahlen_data_sub$gew_CDU <- NA
-# thueringen_2019_kommunalwahlen_data_sub$gew_SPD <- NA
-# thueringen_2019_kommunalwahlen_data_sub$gew_DIELINKE <- NA
-# thueringen_2019_kommunalwahlen_data_sub$gew_GRÜNE <- NA
-# thueringen_2019_kommunalwahlen_data_sub$gew_AfD <- NA
-# thueringen_2019_kommunalwahlen_data_sub$gew_PIRATEN <- NA
-# thueringen_2019_kommunalwahlen_data_sub$gew_FDP <- NA
-# thueringen_2019_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
-# thueringen_2019_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
-# thueringen_2019_kommunalwahlen_data_sub$gew_Wählergruppen <- NA
-# 
-# thueringen_2019_kommunalwahlen_data_sub$sitze_CDU <- thueringen_2019_kommunalwahlen_data_sub$CDU_sitze
-# thueringen_2019_kommunalwahlen_data_sub$sitze_SPD <- thueringen_2019_kommunalwahlen_data_sub$SPD_sitze
-# thueringen_2019_kommunalwahlen_data_sub$sitze_DIELINKE <- thueringen_2019_kommunalwahlen_data_sub$DIE_LINKE_sitze
-# thueringen_2019_kommunalwahlen_data_sub$sitze_GRÜNE <- thueringen_2019_kommunalwahlen_data_sub$GRE_sitze
-# thueringen_2019_kommunalwahlen_data_sub$sitze_AfD <- thueringen_2019_kommunalwahlen_data_sub$AfD_sitze
-# thueringen_2019_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
-# thueringen_2019_kommunalwahlen_data_sub$sitze_FDP <- thueringen_2019_kommunalwahlen_data_sub$FDP_sitze
-# thueringen_2019_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_2019_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
-# thueringen_2019_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_2019_kommunalwahlen_data_sub$Waehlergruppen_sitze
-# 
-# 
-# # Creating new dataframe with selected vars ----
-# thueringen_2019_kommunalwahlen_data_sub <- thueringen_2019_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
-#                                                                                        Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
-#                                                                                        abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
-#                                                                                        gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
-#                                                                                        sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
-# 
-# thueringen_2019_kommunalwahlen_data_sub[thueringen_2019_kommunalwahlen_data_sub == "-"] <- NA
-# 
-# 
-# # Calculating vote shares ----
-# # https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
-# 
-# thueringen_2019_kommunalwahlen_data_sub <-
-#   thueringen_2019_kommunalwahlen_data_sub %>%
-#   mutate_at(vars(contains("abs")), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
-#   rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
-#   rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
-# 
-# # Calculating turnout ----
-# thueringen_2019_kommunalwahlen_data_sub$Turnout <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$Wähler) / as.numeric(thueringen_2019_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
-# 
-# 
-# ####### Merge files and save overall output for Thueringen ----
-# # Merge
-# thueringen_kommunalwahlen <- rbind(thueringen_1994_kommunalwahlen_data_sub, thueringen_1999_kommunalwahlen_data_sub,thueringen_2004_kommunalwahlen_data_sub,thueringen_2009_kommunalwahlen_data_sub,thueringen_2014_kommunalwahlen_data_sub, thueringen_2019_kommunalwahlen_data_sub)
-# 
-# thueringen_kommunalwahlen <- 
-#   thueringen_kommunalwahlen %>%
-#   mutate(abs_Gemeinsame_Wahlvorschläge = NA, 
-#          gew_Gemeinsame_Wahlvorschläge = NA,
-#          prop_Gemeinsame_Wahlvorschläge = NA,
-#          sitze_Gemeinsame_Wahlvorschläge = NA)
-# 
-# # Replace - with NA
-# thueringen_kommunalwahlen[thueringen_kommunalwahlen == "-"] <- NA
-# 
-# # Fix AGS
-# thueringen_kommunalwahlen$AGS_8dig <- paste("160", thueringen_kommunalwahlen$AGS_8dig, sep="")
-# 
-# # Save
-# #write_csv(thueringen_kommunalwahlen, here::here("output/thueringen_kommunalwahlen.csv")
+###### Thueringen 1994 Gemeinderatswahlen ----
+#### Load election data ----
+thueringen_1994_kommunalwahlen_data <- as.data.table(read_csv("raw_data/thueringen/thueringen_1999.csv"))
 
-# READ IN THUERINGEN FROM CSV BECAUSE EXCEL SHEETS ARE CORRUPTED ----
-thueringen_kommunalwahlen <- read_csv(here::here("data/municipal_elections/final_output/Archive/thueringen_kommunalwahlen.csv"))
+thueringen_1994_kommunalwahlen_data <- as.data.table(read_excel("raw_data/thueringen/thueringen_1994.xlsx", sheet="thueringen_1994"))
+thueringen_1994_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/thueringen/thueringen_1994_sitze.xlsx", sheet="thueringen_1994_sitze"))
+names(thueringen_1994_kommunalwahlen_data_sitze) <- str_c(names(thueringen_1994_kommunalwahlen_data_sitze), "_sitze", sep="")
+
+
+# Merge Stimmen and Sitze
+thueringen_1994_kommunalwahlen_data <- merge(thueringen_1994_kommunalwahlen_data, thueringen_1994_kommunalwahlen_data_sitze, by.x="Gemeinde", by.y="Gemeinde_sitze")
+thueringen_1994_kommunalwahlen_data[thueringen_1994_kommunalwahlen_data == "-"] <- NA
+
+#### Delete white space ----
+names(thueringen_1994_kommunalwahlen_data) <-  str_replace_all(names(thueringen_1994_kommunalwahlen_data), fixed(" "), "")
+
+
+#### Recoding ----
+# Create new dataframe ----
+thueringen_1994_kommunalwahlen_data_sub <- thueringen_1994_kommunalwahlen_data
+
+names(thueringen_1994_kommunalwahlen_data_sub)
+
+# Creating non-existing variables ----
+thueringen_1994_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
+thueringen_1994_kommunalwahlen_data_sub[ , Bundesland := "Thueringen"]
+thueringen_1994_kommunalwahlen_data_sub[ , Gebietsname := ""]
+thueringen_1994_kommunalwahlen_data_sub[ , election_year := "1994"]
+thueringen_1994_kommunalwahlen_data_sub[ , election_type := "Gemeinderatswahlen"]
+thueringen_1994_kommunalwahlen_data_sub[ , IDIRB := ""]
+thueringen_1994_kommunalwahlen_data_sub[ , IDBA := ""]
+
+# Renaming existing variables ----
+thueringen_1994_kommunalwahlen_data_sub$AGS_8dig <- thueringen_1994_kommunalwahlen_data_sub$Gemeinde
+thueringen_1994_kommunalwahlen_data_sub$Gebietsname <- thueringen_1994_kommunalwahlen_data_sub$Gemeindename
+thueringen_1994_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$Wahlberechtigte)
+thueringen_1994_kommunalwahlen_data_sub$Wähler <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$Waehler)
+thueringen_1994_kommunalwahlen_data_sub$GültigeStimmen <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$Gueltige_stimmen)
+
+thueringen_1994_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$CDU)
+thueringen_1994_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$abs_CDU)
+
+thueringen_1994_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$SPD)
+thueringen_1994_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$abs_SPD)
+
+thueringen_1994_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$PDS)
+thueringen_1994_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$abs_DIELINKE)
+
+thueringen_1994_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$GRE)
+thueringen_1994_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$abs_GRÜNE)
+
+thueringen_1994_kommunalwahlen_data_sub$abs_AfD <- NA
+thueringen_1994_kommunalwahlen_data_sub$abs_AfD <- NA
+
+thueringen_1994_kommunalwahlen_data_sub$abs_PIRATEN <- NA
+thueringen_1994_kommunalwahlen_data_sub$abs_PIRATEN <- NA
+
+thueringen_1994_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$FDP)
+thueringen_1994_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$abs_FDP)
+
+thueringen_1994_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$FREIE_WAEHLER)
+thueringen_1994_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$abs_FREIEWÄHLER)
+
+thueringen_1994_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$Waehlergruppen)
+thueringen_1994_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$abs_Wählergruppen)
+
+
+thueringen_1994_kommunalwahlen_data_sub$gew_CDU <- NA
+thueringen_1994_kommunalwahlen_data_sub$gew_SPD <- NA
+thueringen_1994_kommunalwahlen_data_sub$gew_DIELINKE <- NA
+thueringen_1994_kommunalwahlen_data_sub$gew_GRÜNE <- NA
+thueringen_1994_kommunalwahlen_data_sub$gew_AfD <- NA
+thueringen_1994_kommunalwahlen_data_sub$gew_PIRATEN <- NA
+thueringen_1994_kommunalwahlen_data_sub$gew_FDP <- NA
+thueringen_1994_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
+thueringen_1994_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
+thueringen_1994_kommunalwahlen_data_sub$gew_Wählergruppen <- NA
+
+thueringen_1994_kommunalwahlen_data_sub$sitze_CDU <- thueringen_1994_kommunalwahlen_data_sub$CDU_sitze
+thueringen_1994_kommunalwahlen_data_sub$sitze_SPD <- thueringen_1994_kommunalwahlen_data_sub$SPD_sitze
+thueringen_1994_kommunalwahlen_data_sub$sitze_DIELINKE <- thueringen_1994_kommunalwahlen_data_sub$PDS_sitze
+thueringen_1994_kommunalwahlen_data_sub$sitze_GRÜNE <- thueringen_1994_kommunalwahlen_data_sub$GRE_sitze
+thueringen_1994_kommunalwahlen_data_sub$sitze_AfD <- NA
+thueringen_1994_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
+thueringen_1994_kommunalwahlen_data_sub$sitze_FDP <- thueringen_1994_kommunalwahlen_data_sub$FDP_sitze
+thueringen_1994_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_1994_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
+thueringen_1994_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_1994_kommunalwahlen_data_sub$Waehlergruppen_sitze
+
+# Creating new dataframe with selected vars ----
+thueringen_1994_kommunalwahlen_data_sub <- thueringen_1994_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                       Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                       abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
+                                                                                       gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
+                                                                                       sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
+
+thueringen_1994_kommunalwahlen_data_sub[thueringen_1994_kommunalwahlen_data_sub == "-"] <- NA
+
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+thueringen_1994_kommunalwahlen_data_sub <-
+  thueringen_1994_kommunalwahlen_data_sub %>%
+  mutate_at(vars(contains("abs")), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+thueringen_1994_kommunalwahlen_data_sub$Turnout <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$Wähler) / as.numeric(thueringen_1994_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
+
+###### Thueringen 1999 Gemeinderatswahlen ----
+#### Load election data ----
+thueringen_1999_kommunalwahlen_data <- as.data.table(read_excel("raw_data/thueringen/thueringen_1999.xlsx", sheet="thueringen_1999"))
+thueringen_1999_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/thueringen/thueringen_1999_sitze.xlsx", sheet="thueringen_1999_sitze"))
+names(thueringen_1999_kommunalwahlen_data_sitze) <- str_c(names(thueringen_1999_kommunalwahlen_data_sitze), "_sitze", sep="")
+
+
+# Merge Stimmen and Sitze
+thueringen_1999_kommunalwahlen_data <- merge(thueringen_1999_kommunalwahlen_data, thueringen_1999_kommunalwahlen_data_sitze, by.x="Gemeinde", by.y="Gemeinde_sitze")
+thueringen_1999_kommunalwahlen_data[thueringen_1999_kommunalwahlen_data == "-"] <- NA
+
+#### Delete white space ----
+names(thueringen_1999_kommunalwahlen_data) <-  str_replace_all(names(thueringen_1999_kommunalwahlen_data), fixed(" "), "")
+
+#### Recoding ----
+# Create new dataframe ----
+thueringen_1999_kommunalwahlen_data_sub <- thueringen_1999_kommunalwahlen_data
+
+names(thueringen_1999_kommunalwahlen_data_sub)
+
+# Creating non-existing variables ----
+thueringen_1999_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
+thueringen_1999_kommunalwahlen_data_sub[ , Bundesland := "Thueringen"]
+thueringen_1999_kommunalwahlen_data_sub[ , Gebietsname := ""]
+thueringen_1999_kommunalwahlen_data_sub[ , election_year := "1999"]
+thueringen_1999_kommunalwahlen_data_sub[ , election_type := "Gemeinderatswahlen"]
+thueringen_1999_kommunalwahlen_data_sub[ , IDIRB := ""]
+thueringen_1999_kommunalwahlen_data_sub[ , IDBA := ""]
+
+# Renaming existing variables ----
+thueringen_1999_kommunalwahlen_data_sub$AGS_8dig <- thueringen_1999_kommunalwahlen_data_sub$Gemeinde
+thueringen_1999_kommunalwahlen_data_sub$Gebietsname <- thueringen_1999_kommunalwahlen_data_sub$Gemeindename
+thueringen_1999_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$Wahlberechtigte)
+thueringen_1999_kommunalwahlen_data_sub$Wähler <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$Waehler)
+thueringen_1999_kommunalwahlen_data_sub$GültigeStimmen <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$Gueltige_stimmen)
+
+thueringen_1999_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$CDU)
+thueringen_1999_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$abs_CDU)
+
+thueringen_1999_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$SPD)
+thueringen_1999_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$abs_SPD)
+
+thueringen_1999_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$PDS)
+thueringen_1999_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$abs_DIELINKE)
+
+thueringen_1999_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$GRE)
+thueringen_1999_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$abs_GRÜNE)
+
+thueringen_1999_kommunalwahlen_data_sub$abs_AfD <- as.numeric(0)
+thueringen_1999_kommunalwahlen_data_sub$abs_AfD <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$abs_AfD)
+
+thueringen_1999_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(0)
+thueringen_1999_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$abs_PIRATEN)
+
+thueringen_1999_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$FDP)
+thueringen_1999_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$abs_FDP)
+
+thueringen_1999_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$FREIE_WAEHLER)
+thueringen_1999_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$abs_FREIEWÄHLER)
+
+thueringen_1999_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$Waehlergruppen)
+thueringen_1999_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$abs_Wählergruppen)
+
+
+thueringen_1999_kommunalwahlen_data_sub$gew_CDU <- NA
+thueringen_1999_kommunalwahlen_data_sub$gew_SPD <- NA
+thueringen_1999_kommunalwahlen_data_sub$gew_DIELINKE <- NA
+thueringen_1999_kommunalwahlen_data_sub$gew_GRÜNE <- NA
+thueringen_1999_kommunalwahlen_data_sub$gew_AfD <- NA
+thueringen_1999_kommunalwahlen_data_sub$gew_PIRATEN <- NA
+thueringen_1999_kommunalwahlen_data_sub$gew_FDP <- NA
+thueringen_1999_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
+thueringen_1999_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
+thueringen_1999_kommunalwahlen_data_sub$gew_Wählergruppen <- NA
+
+thueringen_1999_kommunalwahlen_data_sub$sitze_CDU <- thueringen_1999_kommunalwahlen_data_sub$CDU_sitze
+thueringen_1999_kommunalwahlen_data_sub$sitze_SPD <- thueringen_1999_kommunalwahlen_data_sub$SPD_sitze
+thueringen_1999_kommunalwahlen_data_sub$sitze_DIELINKE <- thueringen_1999_kommunalwahlen_data_sub$PDS_sitze
+thueringen_1999_kommunalwahlen_data_sub$sitze_GRÜNE <- thueringen_1999_kommunalwahlen_data_sub$GRE_sitze
+thueringen_1999_kommunalwahlen_data_sub$sitze_AfD <- NA
+thueringen_1999_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
+thueringen_1999_kommunalwahlen_data_sub$sitze_FDP <- thueringen_1999_kommunalwahlen_data_sub$FDP_sitze
+thueringen_1999_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_1999_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
+thueringen_1999_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_1999_kommunalwahlen_data_sub$Waehlergruppen_sitze
+
+
+# Creating new dataframe with selected vars ----
+thueringen_1999_kommunalwahlen_data_sub <- thueringen_1999_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                       Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                       abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
+                                                                                       gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
+                                                                                       sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
+
+thueringen_1999_kommunalwahlen_data_sub[thueringen_1999_kommunalwahlen_data_sub == "-"] <- NA
+
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+thueringen_1999_kommunalwahlen_data_sub <-
+  thueringen_1999_kommunalwahlen_data_sub %>%
+  mutate_at(vars(contains("abs")), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+thueringen_1999_kommunalwahlen_data_sub$Turnout <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$Wähler) / as.numeric(thueringen_1999_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
+
+###### Thueringen 2004 Gemeinderatswahlen ----
+#### Load election data ----
+
+thueringen_2004_kommunalwahlen_data <- as.data.table(read_excel("raw_data/thueringen/thueringen_2004.xlsx", sheet="thueringen_2004"))
+thueringen_2004_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/thueringen/thueringen_2004_sitze.xlsx", sheet="thueringen_2004_sitze"))
+names(thueringen_2004_kommunalwahlen_data_sitze) <- str_c(names(thueringen_2004_kommunalwahlen_data_sitze), "_sitze", sep="")
+
+
+# Merge Stimmen and Sitze
+thueringen_2004_kommunalwahlen_data <- merge(thueringen_2004_kommunalwahlen_data, thueringen_2004_kommunalwahlen_data_sitze, by.x="Gemeinde", by.y="Gemeinde_sitze")
+thueringen_2004_kommunalwahlen_data[thueringen_2004_kommunalwahlen_data == "-"] <- NA
+
+#### Delete white space ----
+names(thueringen_2004_kommunalwahlen_data) <-  str_replace_all(names(thueringen_2004_kommunalwahlen_data), fixed(" "), "")
+
+
+#### Recoding ----
+# Create new dataframe ----
+thueringen_2004_kommunalwahlen_data_sub <- thueringen_2004_kommunalwahlen_data
+
+names(thueringen_2004_kommunalwahlen_data_sub)
+
+# Creating non-existing variables ----
+thueringen_2004_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
+thueringen_2004_kommunalwahlen_data_sub[ , Bundesland := "Thueringen"]
+thueringen_2004_kommunalwahlen_data_sub[ , Gebietsname := ""]
+thueringen_2004_kommunalwahlen_data_sub[ , election_year := "2004"]
+thueringen_2004_kommunalwahlen_data_sub[ , election_type := "Gemeinderatswahlen"]
+thueringen_2004_kommunalwahlen_data_sub[ , IDIRB := ""]
+thueringen_2004_kommunalwahlen_data_sub[ , IDBA := ""]
+
+# Renaming existing variables ----
+thueringen_2004_kommunalwahlen_data_sub$AGS_8dig <- thueringen_2004_kommunalwahlen_data_sub$Gemeinde
+thueringen_2004_kommunalwahlen_data_sub$Gebietsname <- thueringen_2004_kommunalwahlen_data_sub$Gemeindename
+thueringen_2004_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$Wahlberechtigte)
+thueringen_2004_kommunalwahlen_data_sub$Wähler <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$Waehler)
+thueringen_2004_kommunalwahlen_data_sub$GültigeStimmen <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$Gueltige_stimmen)
+
+thueringen_2004_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$CDU)
+thueringen_2004_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$abs_CDU)
+
+thueringen_2004_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$SPD)
+thueringen_2004_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$abs_SPD)
+
+thueringen_2004_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$PDS)
+thueringen_2004_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$abs_DIELINKE)
+
+thueringen_2004_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$GRE)
+thueringen_2004_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$abs_GRÜNE)
+
+thueringen_2004_kommunalwahlen_data_sub$abs_AfD <- as.numeric(0)
+thueringen_2004_kommunalwahlen_data_sub$abs_AfD <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$abs_AfD)
+
+thueringen_2004_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(0)
+thueringen_2004_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$abs_PIRATEN)
+
+thueringen_2004_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$FDP)
+thueringen_2004_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$abs_FDP)
+
+thueringen_2004_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$FREIE_WAEHLER)
+thueringen_2004_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$abs_FREIEWÄHLER)
+
+thueringen_2004_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$Waehlergruppen)
+thueringen_2004_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$abs_Wählergruppen)
+
+
+thueringen_2004_kommunalwahlen_data_sub$gew_CDU <- NA
+thueringen_2004_kommunalwahlen_data_sub$gew_SPD <- NA
+thueringen_2004_kommunalwahlen_data_sub$gew_DIELINKE <- NA
+thueringen_2004_kommunalwahlen_data_sub$gew_GRÜNE <- NA
+thueringen_2004_kommunalwahlen_data_sub$gew_AfD <- NA
+thueringen_2004_kommunalwahlen_data_sub$gew_PIRATEN <- NA
+thueringen_2004_kommunalwahlen_data_sub$gew_FDP <- NA
+thueringen_2004_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
+thueringen_2004_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
+thueringen_2004_kommunalwahlen_data_sub$gew_Wählergruppen <- NA
+
+thueringen_2004_kommunalwahlen_data_sub$sitze_CDU <- thueringen_2004_kommunalwahlen_data_sub$CDU_sitze
+thueringen_2004_kommunalwahlen_data_sub$sitze_SPD <- thueringen_2004_kommunalwahlen_data_sub$SPD_sitze
+thueringen_2004_kommunalwahlen_data_sub$sitze_DIELINKE <- thueringen_2004_kommunalwahlen_data_sub$PDS_sitze
+thueringen_2004_kommunalwahlen_data_sub$sitze_GRÜNE <- thueringen_2004_kommunalwahlen_data_sub$GRE_sitze
+thueringen_2004_kommunalwahlen_data_sub$sitze_AfD <- NA
+thueringen_2004_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
+thueringen_2004_kommunalwahlen_data_sub$sitze_FDP <- thueringen_2004_kommunalwahlen_data_sub$FDP_sitze
+thueringen_2004_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_2004_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
+thueringen_2004_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_2004_kommunalwahlen_data_sub$Waehlergruppen_sitze
+
+
+# Creating new dataframe with selected vars ----
+thueringen_2004_kommunalwahlen_data_sub <- thueringen_2004_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                       Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                       abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
+                                                                                       gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
+                                                                                       sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
+
+thueringen_2004_kommunalwahlen_data_sub[thueringen_2004_kommunalwahlen_data_sub == "-"] <- NA
+
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+thueringen_2004_kommunalwahlen_data_sub <-
+  thueringen_2004_kommunalwahlen_data_sub %>%
+  mutate_at(vars(contains("abs")), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+thueringen_2004_kommunalwahlen_data_sub$Turnout <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$Wähler) / as.numeric(thueringen_2004_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
+
+###### Thueringen 2009 Gemeinderatswahlen ----
+#### Load election data ----
+
+thueringen_2009_kommunalwahlen_data <- as.data.table(read_excel("raw_data/thueringen/thueringen_2009.xlsx", sheet="thueringen_2009"))
+thueringen_2009_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/thueringen/thueringen_2009_sitze.xlsx", sheet="thueringen_2009_sitze"))
+names(thueringen_2009_kommunalwahlen_data_sitze) <- str_c(names(thueringen_2009_kommunalwahlen_data_sitze), "_sitze", sep="")
+
+
+# Merge Stimmen and Sitze
+thueringen_2009_kommunalwahlen_data <- merge(thueringen_2009_kommunalwahlen_data, thueringen_2009_kommunalwahlen_data_sitze, by.x="Gemeinde", by.y="Gemeinde_sitze")
+thueringen_2009_kommunalwahlen_data[thueringen_2009_kommunalwahlen_data == "-"] <- NA
+
+#### Delete white space ----
+names(thueringen_2009_kommunalwahlen_data) <-  str_replace_all(names(thueringen_2009_kommunalwahlen_data), fixed(" "), "")
+
+
+#### Recoding ----
+# Create new dataframe ----
+thueringen_2009_kommunalwahlen_data_sub <- thueringen_2009_kommunalwahlen_data
+
+names(thueringen_2009_kommunalwahlen_data_sub)
+
+# Creating non-existing variables ----
+thueringen_2009_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
+thueringen_2009_kommunalwahlen_data_sub[ , Bundesland := "Thueringen"]
+thueringen_2009_kommunalwahlen_data_sub[ , Gebietsname := ""]
+thueringen_2009_kommunalwahlen_data_sub[ , election_year := "2009"]
+thueringen_2009_kommunalwahlen_data_sub[ , election_type := "Gemeinderatswahlen"]
+thueringen_2009_kommunalwahlen_data_sub[ , IDIRB := ""]
+thueringen_2009_kommunalwahlen_data_sub[ , IDBA := ""]
+
+# Renaming existing variables ----
+thueringen_2009_kommunalwahlen_data_sub$AGS_8dig <- thueringen_2009_kommunalwahlen_data_sub$Gemeinde
+thueringen_2009_kommunalwahlen_data_sub$Gebietsname <- thueringen_2009_kommunalwahlen_data_sub$Gemeindename
+thueringen_2009_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$Wahlberechtigte)
+thueringen_2009_kommunalwahlen_data_sub$Wähler <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$Waehler)
+thueringen_2009_kommunalwahlen_data_sub$GültigeStimmen <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$Gueltige_stimmen)
+
+thueringen_2009_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$CDU)
+thueringen_2009_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$abs_CDU)
+
+thueringen_2009_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$SPD)
+thueringen_2009_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$abs_SPD)
+
+thueringen_2009_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$DIE_LINKE)
+thueringen_2009_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$abs_DIELINKE)
+
+thueringen_2009_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$GRE)
+thueringen_2009_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$abs_GRÜNE)
+
+thueringen_2009_kommunalwahlen_data_sub$abs_AfD <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$AfD)
+thueringen_2009_kommunalwahlen_data_sub$abs_AfD <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$abs_AfD)
+
+thueringen_2009_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(0)
+thueringen_2009_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$abs_PIRATEN)
+
+thueringen_2009_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$FDP)
+thueringen_2009_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$abs_FDP)
+
+thueringen_2009_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$FREIE_WAEHLER)
+thueringen_2009_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$abs_FREIEWÄHLER)
+
+thueringen_2009_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$Waehlergruppen)
+thueringen_2009_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$abs_Wählergruppen)
+
+
+thueringen_2009_kommunalwahlen_data_sub$gew_CDU <- NA
+thueringen_2009_kommunalwahlen_data_sub$gew_SPD <- NA
+thueringen_2009_kommunalwahlen_data_sub$gew_DIELINKE <- NA
+thueringen_2009_kommunalwahlen_data_sub$gew_GRÜNE <- NA
+thueringen_2009_kommunalwahlen_data_sub$gew_AfD <- NA
+thueringen_2009_kommunalwahlen_data_sub$gew_PIRATEN <- NA
+thueringen_2009_kommunalwahlen_data_sub$gew_FDP <- NA
+thueringen_2009_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
+thueringen_2009_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
+thueringen_2009_kommunalwahlen_data_sub$gew_Wählergruppen <- NA
+
+thueringen_2009_kommunalwahlen_data_sub$sitze_CDU <- thueringen_2009_kommunalwahlen_data_sub$CDU_sitze
+thueringen_2009_kommunalwahlen_data_sub$sitze_SPD <- thueringen_2009_kommunalwahlen_data_sub$SPD_sitze
+thueringen_2009_kommunalwahlen_data_sub$sitze_DIELINKE <- thueringen_2009_kommunalwahlen_data_sub$DIE_LINKE_sitze
+thueringen_2009_kommunalwahlen_data_sub$sitze_GRÜNE <- thueringen_2009_kommunalwahlen_data_sub$GRE_sitze
+thueringen_2009_kommunalwahlen_data_sub$sitze_AfD <- NA
+thueringen_2009_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
+thueringen_2009_kommunalwahlen_data_sub$sitze_FDP <- thueringen_2009_kommunalwahlen_data_sub$FDP_sitze
+thueringen_2009_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_2009_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
+thueringen_2009_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_2009_kommunalwahlen_data_sub$Waehlergruppen_sitze
+
+
+# Creating new dataframe with selected vars ----
+thueringen_2009_kommunalwahlen_data_sub <- thueringen_2009_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                       Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                       abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
+                                                                                       gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
+                                                                                       sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
+
+thueringen_2009_kommunalwahlen_data_sub[thueringen_2009_kommunalwahlen_data_sub == "-"] <- NA
+
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+thueringen_2009_kommunalwahlen_data_sub <-
+  thueringen_2009_kommunalwahlen_data_sub %>%
+  mutate_at(vars(contains("abs")), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+thueringen_2009_kommunalwahlen_data_sub$Turnout <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$Wähler) / as.numeric(thueringen_2009_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
+
+###### Thueringen 2014 Gemeinderatswahlen ----
+#### Load election data ----
+
+thueringen_2014_kommunalwahlen_data <- as.data.table(read_excel("raw_data/thueringen/thueringen_2014.xlsx", sheet="thueringen_2014"))
+thueringen_2014_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/thueringen/thueringen_2014_sitze.xlsx", sheet="thueringen_2014_sitze"))
+names(thueringen_2014_kommunalwahlen_data_sitze) <- str_c(names(thueringen_2014_kommunalwahlen_data_sitze), "_sitze", sep="")
+
+
+# Merge Stimmen and Sitze
+thueringen_2014_kommunalwahlen_data <- merge(thueringen_2014_kommunalwahlen_data, thueringen_2014_kommunalwahlen_data_sitze, by.x="Gemeinde", by.y="Gemeinde_sitze")
+thueringen_2014_kommunalwahlen_data[thueringen_2014_kommunalwahlen_data == "-"] <- NA
+
+#### Delete white space ----
+names(thueringen_2014_kommunalwahlen_data) <-  str_replace_all(names(thueringen_2014_kommunalwahlen_data), fixed(" "), "")
+
+
+#### Recoding ----
+# Create new dataframe ----
+thueringen_2014_kommunalwahlen_data_sub <- thueringen_2014_kommunalwahlen_data
+
+names(thueringen_2014_kommunalwahlen_data_sub)
+
+# Creating non-existing variables ----
+thueringen_2014_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
+thueringen_2014_kommunalwahlen_data_sub[ , Bundesland := "Thueringen"]
+thueringen_2014_kommunalwahlen_data_sub[ , Gebietsname := ""]
+thueringen_2014_kommunalwahlen_data_sub[ , election_year := "2014"]
+thueringen_2014_kommunalwahlen_data_sub[ , election_type := "Gemeinderatswahlen"]
+thueringen_2014_kommunalwahlen_data_sub[ , IDIRB := ""]
+thueringen_2014_kommunalwahlen_data_sub[ , IDBA := ""]
+
+# Renaming existing variables ----
+thueringen_2014_kommunalwahlen_data_sub$AGS_8dig <- thueringen_2014_kommunalwahlen_data_sub$Gemeinde
+thueringen_2014_kommunalwahlen_data_sub$Gebietsname <- thueringen_2014_kommunalwahlen_data_sub$Gemeindename
+thueringen_2014_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$Wahlberechtigte)
+thueringen_2014_kommunalwahlen_data_sub$Wähler <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$Waehler)
+thueringen_2014_kommunalwahlen_data_sub$GültigeStimmen <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$Gueltige_stimmen)
+
+thueringen_2014_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$CDU)
+thueringen_2014_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$abs_CDU)
+
+thueringen_2014_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$SPD)
+thueringen_2014_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$abs_SPD)
+
+thueringen_2014_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$DIE_LINKE)
+thueringen_2014_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$abs_DIELINKE)
+
+thueringen_2014_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$GRE)
+thueringen_2014_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$abs_GRÜNE)
+
+thueringen_2014_kommunalwahlen_data_sub$abs_AfD <- thueringen_2014_kommunalwahlen_data_sub$AfD
+thueringen_2014_kommunalwahlen_data_sub$abs_AfD <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$abs_AfD)
+
+thueringen_2014_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(0)
+thueringen_2014_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$abs_PIRATEN)
+
+thueringen_2014_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$FDP)
+thueringen_2014_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$abs_FDP)
+
+thueringen_2014_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$FREIE_WAEHLER)
+thueringen_2014_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$abs_FREIEWÄHLER)
+
+thueringen_2014_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$Waehlergruppen)
+thueringen_2014_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$abs_Wählergruppen)
+
+thueringen_2014_kommunalwahlen_data_sub$gew_CDU <- NA
+thueringen_2014_kommunalwahlen_data_sub$gew_SPD <- NA
+thueringen_2014_kommunalwahlen_data_sub$gew_DIELINKE <- NA
+thueringen_2014_kommunalwahlen_data_sub$gew_GRÜNE <- NA
+thueringen_2014_kommunalwahlen_data_sub$gew_AfD <- NA
+thueringen_2014_kommunalwahlen_data_sub$gew_PIRATEN <- NA
+thueringen_2014_kommunalwahlen_data_sub$gew_FDP <- NA
+thueringen_2014_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
+thueringen_2014_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
+thueringen_2014_kommunalwahlen_data_sub$gew_Wählergruppen <- NA
+
+thueringen_2014_kommunalwahlen_data_sub$sitze_CDU <- thueringen_2014_kommunalwahlen_data_sub$CDU_sitze
+thueringen_2014_kommunalwahlen_data_sub$sitze_SPD <- thueringen_2014_kommunalwahlen_data_sub$SPD_sitze
+thueringen_2014_kommunalwahlen_data_sub$sitze_DIELINKE <- thueringen_2014_kommunalwahlen_data_sub$DIE_LINKE_sitze
+thueringen_2014_kommunalwahlen_data_sub$sitze_GRÜNE <- thueringen_2014_kommunalwahlen_data_sub$GRE_sitze
+thueringen_2014_kommunalwahlen_data_sub$sitze_AfD <- thueringen_2014_kommunalwahlen_data_sub$AfD_sitze
+thueringen_2014_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
+thueringen_2014_kommunalwahlen_data_sub$sitze_FDP <- thueringen_2014_kommunalwahlen_data_sub$FDP_sitze
+thueringen_2014_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_2014_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
+thueringen_2014_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_2014_kommunalwahlen_data_sub$Waehlergruppen_sitze
+
+
+# Creating new dataframe with selected vars ----
+thueringen_2014_kommunalwahlen_data_sub <- thueringen_2014_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                       Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                       abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
+                                                                                       gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
+                                                                                       sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
+
+thueringen_2014_kommunalwahlen_data_sub[thueringen_2014_kommunalwahlen_data_sub == "-"] <- NA
+
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+thueringen_2014_kommunalwahlen_data_sub <-
+  thueringen_2014_kommunalwahlen_data_sub %>%
+  mutate_at(vars(contains("abs")), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+thueringen_2014_kommunalwahlen_data_sub$Turnout <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$Wähler) / as.numeric(thueringen_2014_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
+
+###### Thueringen 2019 Gemeinderatswahlen ----
+#### Load election data ----
+
+thueringen_2019_kommunalwahlen_data <- as.data.table(read_excel("raw_data/thueringen/thueringen_2019.xlsx", sheet="thueringen_2019"))
+thueringen_2019_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/thueringen/thueringen_2019_sitze.xlsx", sheet="thueringen_2019_sitze"))
+names(thueringen_2019_kommunalwahlen_data_sitze) <- str_c(names(thueringen_2019_kommunalwahlen_data_sitze), "_sitze", sep="")
+
+
+# Merge Stimmen and Sitze
+thueringen_2019_kommunalwahlen_data <- merge(thueringen_2019_kommunalwahlen_data, thueringen_2019_kommunalwahlen_data_sitze, by.x="Gemeinde", by.y="Gemeinde_sitze")
+thueringen_2019_kommunalwahlen_data[thueringen_2019_kommunalwahlen_data == "-"] <- NA
+
+#### Delete white space ----
+names(thueringen_2019_kommunalwahlen_data) <-  str_replace_all(names(thueringen_2019_kommunalwahlen_data), fixed(" "), "")
+
+
+#### Recoding ----
+# Create new dataframe ----
+thueringen_2019_kommunalwahlen_data_sub <- thueringen_2019_kommunalwahlen_data
+
+names(thueringen_2019_kommunalwahlen_data_sub)
+
+# Creating non-existing variables ----
+thueringen_2019_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
+thueringen_2019_kommunalwahlen_data_sub[ , Bundesland := "Thueringen"]
+thueringen_2019_kommunalwahlen_data_sub[ , Gebietsname := ""]
+thueringen_2019_kommunalwahlen_data_sub[ , election_year := "2019"]
+thueringen_2019_kommunalwahlen_data_sub[ , election_type := "Gemeinderatswahlen"]
+thueringen_2019_kommunalwahlen_data_sub[ , IDIRB := ""]
+thueringen_2019_kommunalwahlen_data_sub[ , IDBA := ""]
+
+# Renaming existing variables ----
+thueringen_2019_kommunalwahlen_data_sub$AGS_8dig <- thueringen_2019_kommunalwahlen_data_sub$Gemeinde
+thueringen_2019_kommunalwahlen_data_sub$Gebietsname <- thueringen_2019_kommunalwahlen_data_sub$Gemeindename
+thueringen_2019_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$Wahlberechtigte)
+thueringen_2019_kommunalwahlen_data_sub$Wähler <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$Waehler)
+thueringen_2019_kommunalwahlen_data_sub$GültigeStimmen <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$Gueltige_stimmen)
+
+thueringen_2019_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$CDU)
+thueringen_2019_kommunalwahlen_data_sub$abs_CDU <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$abs_CDU)
+
+thueringen_2019_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$SPD)
+thueringen_2019_kommunalwahlen_data_sub$abs_SPD <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$abs_SPD)
+
+thueringen_2019_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$PDS)
+thueringen_2019_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$abs_DIELINKE)
+
+thueringen_2019_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$GRE)
+thueringen_2019_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$abs_GRÜNE)
+
+thueringen_2019_kommunalwahlen_data_sub$abs_AfD <- thueringen_2019_kommunalwahlen_data_sub$AfD
+thueringen_2019_kommunalwahlen_data_sub$abs_AfD <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$abs_AfD)
+
+thueringen_2019_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(0)
+thueringen_2019_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$abs_PIRATEN)
+
+thueringen_2019_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$FDP)
+thueringen_2019_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$abs_FDP)
+
+thueringen_2019_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$FREIE_WAEHLER)
+thueringen_2019_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$abs_FREIEWÄHLER)
+
+thueringen_2019_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$Waehlergruppen)
+thueringen_2019_kommunalwahlen_data_sub$abs_Wählergruppen <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$abs_Wählergruppen)
+
+thueringen_2019_kommunalwahlen_data_sub$gew_CDU <- NA
+thueringen_2019_kommunalwahlen_data_sub$gew_SPD <- NA
+thueringen_2019_kommunalwahlen_data_sub$gew_DIELINKE <- NA
+thueringen_2019_kommunalwahlen_data_sub$gew_GRÜNE <- NA
+thueringen_2019_kommunalwahlen_data_sub$gew_AfD <- NA
+thueringen_2019_kommunalwahlen_data_sub$gew_PIRATEN <- NA
+thueringen_2019_kommunalwahlen_data_sub$gew_FDP <- NA
+thueringen_2019_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
+thueringen_2019_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
+thueringen_2019_kommunalwahlen_data_sub$gew_Wählergruppen <- NA
+
+thueringen_2019_kommunalwahlen_data_sub$sitze_CDU <- thueringen_2019_kommunalwahlen_data_sub$CDU_sitze
+thueringen_2019_kommunalwahlen_data_sub$sitze_SPD <- thueringen_2019_kommunalwahlen_data_sub$SPD_sitze
+thueringen_2019_kommunalwahlen_data_sub$sitze_DIELINKE <- thueringen_2019_kommunalwahlen_data_sub$DIE_LINKE_sitze
+thueringen_2019_kommunalwahlen_data_sub$sitze_GRÜNE <- thueringen_2019_kommunalwahlen_data_sub$GRE_sitze
+thueringen_2019_kommunalwahlen_data_sub$sitze_AfD <- thueringen_2019_kommunalwahlen_data_sub$AfD_sitze
+thueringen_2019_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
+thueringen_2019_kommunalwahlen_data_sub$sitze_FDP <- thueringen_2019_kommunalwahlen_data_sub$FDP_sitze
+thueringen_2019_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_2019_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
+thueringen_2019_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_2019_kommunalwahlen_data_sub$Waehlergruppen_sitze
+
+
+# Creating new dataframe with selected vars ----
+thueringen_2019_kommunalwahlen_data_sub <- thueringen_2019_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                       Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                       abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
+                                                                                       gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
+                                                                                       sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
+
+thueringen_2019_kommunalwahlen_data_sub[thueringen_2019_kommunalwahlen_data_sub == "-"] <- NA
+
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+thueringen_2019_kommunalwahlen_data_sub <-
+  thueringen_2019_kommunalwahlen_data_sub %>%
+  mutate_at(vars(contains("abs")), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+thueringen_2019_kommunalwahlen_data_sub$Turnout <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$Wähler) / as.numeric(thueringen_2019_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
+
+
+####### Merge files and save overall output for Thueringen ----
+# Merge
+thueringen_kommunalwahlen <- rbind(thueringen_1994_kommunalwahlen_data_sub, thueringen_1999_kommunalwahlen_data_sub,thueringen_2004_kommunalwahlen_data_sub,thueringen_2009_kommunalwahlen_data_sub,thueringen_2014_kommunalwahlen_data_sub, thueringen_2019_kommunalwahlen_data_sub)
+
+thueringen_kommunalwahlen <-
+  thueringen_kommunalwahlen %>%
+  mutate(abs_Gemeinsame_Wahlvorschläge = NA,
+         gew_Gemeinsame_Wahlvorschläge = NA,
+         prop_Gemeinsame_Wahlvorschläge = NA,
+         sitze_Gemeinsame_Wahlvorschläge = NA)
+
+# Replace - with NA
+thueringen_kommunalwahlen[thueringen_kommunalwahlen == "-"] <- NA
+
+# Fix AGS
+thueringen_kommunalwahlen$AGS_8dig <- paste("160", thueringen_kommunalwahlen$AGS_8dig, sep="")
+
+# Save
+#write_csv(thueringen_kommunalwahlen, here::here("output/thueringen_kommunalwahlen.csv")
 
 # ----
 # ----
@@ -8744,21 +8741,7 @@ kommunalwahlen_merge <- rbind(baden_wuerttemberg_kommunalwahlen, bayern_kommunal
                           niedersachsen_kommunalwahlen, nrw_kommunalwahlen,
                           rlp_kommunalwahlen, saarland_kommunalwahlen_data_sub,
                           sachsen_anhalt_kommunalwahlen, sachsen_kommunalwahlen,
-                          sh_kommunalwahlen, fill=TRUE)
-                          #thueringen_kommunalwahlen, fill=TRUE)
-
-thueringen_kommunalwahlen$AGS_8dig <- as.character(thueringen_kommunalwahlen$AGS_8dig)
-thueringen_kommunalwahlen$election_year <- as.character(thueringen_kommunalwahlen$election_year)
-thueringen_kommunalwahlen$sitze_CDU <- as.character(thueringen_kommunalwahlen$sitze_CDU)
-thueringen_kommunalwahlen$sitze_SPD <- as.character(thueringen_kommunalwahlen$sitze_SPD)
-thueringen_kommunalwahlen$sitze_DIELINKE <- as.character(thueringen_kommunalwahlen$sitze_DIELINKE)
-thueringen_kommunalwahlen$sitze_GRÜNE <- as.character(thueringen_kommunalwahlen$sitze_GRÜNE)
-thueringen_kommunalwahlen$sitze_FDP <- as.character(thueringen_kommunalwahlen$sitze_FDP)
-thueringen_kommunalwahlen$Turnout <- as.character(thueringen_kommunalwahlen$Turnout)
-
-kommunalwahlen_merge <- kommunalwahlen_merge %>%
-  bind_rows(thueringen_kommunalwahlen)
-
+                          sh_kommunalwahlen, thueringen_kommunalwahlen, fill=TRUE)
               
 # Fix AGS ----
 kommunalwahlen_merge <- kommunalwahlen_merge %>%
