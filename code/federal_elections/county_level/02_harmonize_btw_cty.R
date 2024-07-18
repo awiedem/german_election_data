@@ -10,7 +10,8 @@ options(scipen = 999)
 
 
 # Read crosswalk files ----------------------------------------------------
-cw <- fread("data/crosswalks/county_crosswalks.csv")
+cw <- fread("data/crosswalks/county_crosswalks.csv") |>
+  mutate(county_code = pad_zero_conditional(county_code, 4))
 
 glimpse(cw)
 
@@ -28,15 +29,23 @@ cw_info_ever_merged_cc_21 <- cw %>%
   group_by(county_code_21) %>%
   summarise(ever_merged = any(n > 1)) %>%
   ungroup()
+cw_info_ever_merged_cc_21 |>
+  print(n=Inf)
 
 # Merge with unharmonized election data -----------------------------------
 
-df <- read_rds("data/federal_elections/county_level/processed_data/btw_cty_1953_2021_unharm.rds")
+df <- read_rds("data/federal_elections/county_level/processed_data/btw_cty_1953_2021_unharm.rds") |>
+  mutate(election_year = year) |>
+  left_join_check_obs(cw, by = c("ags" = "county_code", "year")) |>
+  arrange(ags, year)
+# obs. increased, but this is wanted: means that we have changing counties
 
+
+glimpse(df)
 ## Check means of some variables by year
 
 agg_df <- df %>%
-  group_by(election_year) %>%
+  group_by(year) %>%
   summarise(
     mean_valid_votes = mean(valid_votes, na.rm = TRUE),
     mean_number_voters = mean(number_voters, na.rm = TRUE),
@@ -50,7 +59,7 @@ agg_df <- df %>%
 
 ## Distribution
 
-ggplot(agg_df, aes(x = election_year, y = value, color = variable)) +
+ggplot(agg_df, aes(x = year, y = value, color = variable)) +
   geom_point() +
   theme_hanno() +
   labs(
@@ -64,23 +73,23 @@ ggplot(agg_df, aes(x = election_year, y = value, color = variable)) +
 
 # Harmonize ---------------------------------------------------------------
 
-df$election_year
+df$year
+
+glimpse(df)
 
 ## Votes: weighted sum -----------------------------------------------------
 votes <- df |>
-  filter(election_year < 2021) |>
-  group_by(ags_21, election_year) |>
+  filter(year < 2021) |>
+  group_by(county_code_21, election_year) |>
   summarise(
-    unique_mailin = max(unique_mailin),
-    unique_multi_mailin = max(unique_multi_mailin),
     across(
-      eligible_voters:left_wing_wLinke,
+      eligible_voters:cdu_csu,
       ~ sum(.x * pop_cw, na.rm = TRUE)
     )
   ) |>
   # Round
   mutate(across(
-    eligible_voters:left_wing_wLinke,
+    eligible_voters:cdu_csu,
     ~ round(.x, digits = 0)
   )) |>
   ungroup()
@@ -88,7 +97,7 @@ votes <- df |>
 ## Population & area: weighted sum -----------------------------------------
 area_pop <- df |>
   filter(election_year < 2021) |>
-  group_by(ags_21, election_year) |>
+  group_by(county_code_21, election_year) |>
   summarise(
     area = sum(area * area_cw, na.rm = TRUE),
     population = sum(population * pop_cw, na.rm = TRUE)
@@ -101,54 +110,54 @@ area_pop <- df |>
   ungroup()
 
 # Get population & area for 2021
-ags21 <- read_excel(path = "data/crosswalks/31122021_Auszug_GV.xlsx", sheet = 2) |>
+ags21 <- read_excel(path = "data/crosswalks/04_KreiseVorjahr.xlsx", sheet = 2) |>
   select(
-    Land = `...3`,
-    RB = `...4`,
-    Kreis = `...5`,
-    Gemeinde = `...7`,
-    area = `...9`,
-    population = `...10`
+    ags = `Kreisfreie Städte und Landkreise nach Fläche, Bevölkerung und Bevölkerungsdichte`,
+    area = `...5`,
+    population = `...6`
   ) |>
   mutate(
-    Land = pad_zero_conditional(Land, 1),
-    Kreis = pad_zero_conditional(Kreis, 1),
-    Gemeinde = pad_zero_conditional(Gemeinde, 1, "00"),
-    Gemeinde = pad_zero_conditional(Gemeinde, 2, "0"),
-    ags = paste0(Land, RB, Kreis, Gemeinde),
     election_year = 2021
   ) |>
-  slice(6:16065) |>
-  filter(!is.na(Gemeinde)) |>
-  select(ags, election_year, area, population)
+  slice(8:476) |>
+  filter(!is.na(ags)) |>
+  select(ags, election_year, area, population) |>
+  # keep only if ags has 5 digits
+  filter(nchar(ags) == 5) |>
+  # round area to two digits
+  mutate(area = as.numeric(area))
 
 # Create full df ----------------------------------------------------------
 
 # Bind back to dataframe
 df_harm <- votes |>
   # Rename ags
-  left_join_check_obs(area_pop, by = c("ags_21", "election_year")) |>
-  rename(ags = ags_21) |>
+  left_join_check_obs(area_pop, by = c("county_code_21", "election_year")) |>
+  rename(county_code = county_code_21) |>
+  mutate(county_code = pad_zero_conditional(county_code, 4)) |>
   # Bind 2021 data (that was unharmonized)
   bind_rows(df |>
+              rename(county_code = ags) |>
               filter(election_year == 2021) |>
               select(-c(
-                state, state_name, year,
-                pop_cw, area_cw, ags_21
+                county_name, area, population,
+                county_name_21, emp_cw, employees,
+                area_cw, pop_cw, county_code_21
               ))) |>
   # Create state variable
   mutate(
-    ags = pad_zero_conditional(ags, 7),
-    state = str_sub(ags, end = -7),
-    county = substr(ags, 1, 5)
+    county_code = pad_zero_conditional(county_code, 4),
+    state = str_sub(county_code, end = -4)
   ) |>
   relocate(state, .after = election_year)
+
+glimpse(df_harm)
 
 # Continue transformation
 df_harm <- df_harm |>
   # Remove rows that have no voting data
   filter(eligible_voters != 0 & number_voters != 0) %>%
-  left_join_check_obs(ags21, by = c("ags", "election_year")) |>
+  left_join_check_obs(ags21, by = c("county_code" = "ags", "election_year")) |>
   mutate(
     area = ifelse(!is.na(area.x), area.x, area.y),
     population = ifelse(!is.na(population.x), population.x, population.y)
@@ -179,14 +188,15 @@ df_harm <- df_harm %>%
 
 df_harm <- df_harm |>
   mutate(
-    across(cdu:left_wing_wLinke, ~ .x / total_votes),
+    across(cdu:cdu_csu, ~ .x / total_votes),
     turnout = total_votes / eligible_voters
   ) |>
   # Relocate columns
   relocate(turnout, .before = cdu) |>
   relocate(right_wing, .after = bsa) |>
   relocate(left_wing, .after = right_wing) |>
-  relocate(left_wing_wLinke, .after = left_wing)
+  relocate(left_wing_wLinke, .after = left_wing) |>
+  relocate(cdu_csu, .after = csu)
 
 # AfD to NA for years prior to 2013
 
@@ -195,9 +205,32 @@ df_harm <- df_harm %>%
     afd = ifelse(election_year < 2013, NA, afd)
   )
 
+# inspect total votes vs valid votes
+df_harm %>%
+  select(valid_votes, total_votes)
+
+# do they ever differ?
+inspect <- df_harm %>%
+  filter(valid_votes != total_votes) %>%
+  select(county_code, election_year, eligible_voters, number_voters, valid_votes, total_votes)
+# yes sometimes they do
+
+
 ## Save this now:
 
 # Write .csv file
-fwrite(df_harm, file = "data/federal_elections/municipality_level/processed_data/btw_1980_2021_harm21.csv")
+fwrite(df_harm, file = "data/federal_elections/county_level/processed_data/btw_1990_2021_harm21.csv")
+
+
+
+# Inspect -----------------------------------------------------------------
+
+df_harm <- fread("data/federal_elections/county_level/processed_data/btw_1990_2021_harm21.csv")
+df_harm <- fread("~/Documents/GitHub/german_election_data/data/federal_elections/county_level/processed_data/btw_1990_2021_harm21.csv")
+
+
+inspect <- df_harm |>
+  filter(election_year >= 1998)
+
 
 ### END
