@@ -233,6 +233,5 @@ inspect <- df_harm |>
   filter(election_year >= 1998)
 
 
-Hallo
 
 ### END
