@@ -1,9 +1,9 @@
-### Clean and combine BTW electoral results at municipality level 1980-2021
-# Vincent Heddesheimer, Hanno Hilbig
-# May, 23, 2024
+### Clean and combine BTW electoral results at municipality level 1980-2021 
+# Disregard multi mail-in voting districts
+# Vincent Heddesheimer
+# August, 6, 2024
 
-rm(list=ls())
-
+rm(list = ls())
 
 
 # Create dataframe to store mail-in descriptives --------------------------
@@ -29,7 +29,7 @@ df80 <- fread("data/federal_elections/municipality_level/raw_data/BTW80/BTW80_Zw
     Gemeinde = pad_zero_conditional(Gemeinde, 1, "00"),
     Gemeinde = pad_zero_conditional(Gemeinde, 2, "0"),
     ags = paste0(Land, RB, Kreis, Gemeinde)
-    ) |>
+  ) |>
   group_by(ags) |>
   summarise_at(vars(A:Sonstige), sum, na.rm = TRUE) |>
   mutate(
@@ -49,7 +49,7 @@ dupl <- df80 |>
   count(ags, election_year) |>
   filter(n>1)
 nrow(dupl) # 0 duplicates
-  
+
 # 1983 --------------------------------------------------------------------
 
 df83 <- fread("data/federal_elections/municipality_level/raw_data/BTW83/BTW83_Zweitstimmen_Wahlbezirke.txt", encoding = 'Latin-1') |>
@@ -84,7 +84,17 @@ df83 <- df83_bezirksarten |>
   # Remove parties that got no votes
   select(where(~ any(. != 0))) |>
   # variable for whether ags had unique mailin
-  mutate(unique_mailin = ifelse(ags %in% ags_w_mailin83, 1, 0))
+  mutate(
+    unique_mailin = ifelse(ags %in% ags_w_mailin83, 1, 0),
+    joint_mailin = ifelse(str_ends(ags, "999"), 1, 0)
+    )
+
+# check whether unique mailin districts are ever joint_mailin
+inspect <- df83 |>
+  filter(unique_mailin == 1) |>
+  filter(joint_mailin == 1)
+# yes they are because all joint-mailin that end on 999 are also BZA == 5
+# does not matter though
 
 
 ## Mail-in voting ---------------------------------------------------------
@@ -132,54 +142,6 @@ df83 <- df83 |>
   mutate(pop_weight = pop / county_pop,
          area_weight = area / county_area)
 
-# mail-in counties in long format
-mailin83_long <- df83 |> 
-  filter(str_ends(ags, "999")) |>
-  select(c(A:UST, county)) |>
-  # pivot longer
-  pivot_longer(
-    cols = A:UST,
-    names_to = "var",
-    values_to = "mailin_value"
-  )
-
-
-# Distribute multi mail-in votes across ags by population weight 
-df83_long <- df83 |>
-  # pivot longer
-  pivot_longer(
-    cols = A:UST,
-    names_to = "var",
-    values_to = "ags_value"
-  ) |>
-  left_join(mailin83_long, by = c("county", "var")) |>
-  rowwise() |>
-  mutate(
-    # weight multi mail-in values by population share
-    # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * pop_weight), digits = 0),
-    # add to original ags value
-    ags_value_v2 = ifelse(
-      unique_mailin == 0,
-      sum(ags_value, weighted_value, na.rm = T),
-      ags_value
-    )
-  )
-# works!
-
-# Bring back to wide format
-df83 <- df83_long |>
-  select(-ags_value) |>
-  rename(ags_value = ags_value_v2) |>
-  select(-c(mailin_value, weighted_value)) |>
-  # pivot back to wide format
-  pivot_wider(
-    names_from = var,
-    values_from = ags_value
-  ) |>
-  # remove multi mail-in ags
-  filter(!str_ends(ags, "999"))
-
 # Check duplicates
 dupl <- df83 |>
   count(ags, election_year) |>
@@ -218,7 +180,10 @@ df87 <- df87_bezirksarten |>
   # Remove parties that got no votes
   select(where(~ any(. != 0))) |>
   # variable for whether ags had unique mailin
-  mutate(unique_mailin = ifelse(ags %in% ags_w_mailin87, 1, 0))
+  mutate(
+    unique_mailin = ifelse(ags %in% ags_w_mailin87, 1, 0),
+    joint_mailin = ifelse(str_ends(ags, "999"), 1, 0)
+    )
 
 
 ## Mail-in voting ---------------------------------------------------------
@@ -266,54 +231,6 @@ df87 <- df87 |>
   mutate(pop_weight = pop / county_pop,
          area_weight = area / county_area)
 
-# mail-in counties in long format
-mailin87_long <- df87 |> 
-  filter(str_ends(ags, "999")) |>
-  select(c(A:Patrioten, county)) |>
-  # pivot longer
-  pivot_longer(
-    cols = A:Patrioten,
-    names_to = "var",
-    values_to = "mailin_value"
-  )
-
-
-# Distribute multi mail-in votes across ags by population weight 
-df87_long <- df87 |>
-  # pivot longer
-  pivot_longer(
-    cols = A:Patrioten,
-    names_to = "var",
-    values_to = "ags_value"
-  ) |>
-  left_join(mailin87_long, by = c("county", "var")) |>
-  rowwise() |>
-  mutate(
-    # weight multi mail-in values by population share
-    # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * pop_weight), digits = 0),
-    # add to original ags value
-    ags_value_v2 = ifelse(
-      unique_mailin == 0,
-      sum(ags_value, weighted_value, na.rm = T),
-      ags_value
-    )
-  )
-# works!
-
-# Bring back to wide format
-df87 <- df87_long |>
-  select(-ags_value) |>
-  rename(ags_value = ags_value_v2) |>
-  select(-c(mailin_value, weighted_value)) |>
-  # pivot back to wide format
-  pivot_wider(
-    names_from = var,
-    values_from = ags_value
-  ) |>
-  # remove multi mail-in ags
-  filter(!str_ends(ags, "999"))
-
 # Check duplicates
 dupl <- df87 |>
   count(ags, election_year) |>
@@ -359,7 +276,10 @@ df90 <- df90_bezirksarten |>
   # Remove parties that got no votes
   select(where(~ any(. != 0))) |>
   # variable for whether ags had unique mailin
-  mutate(unique_mailin = ifelse(ags %in% ags_w_mailin90, 1, 0))
+  mutate(
+    unique_mailin = ifelse(ags %in% ags_w_mailin90, 1, 0),
+    joint_mailin = ifelse(str_ends(ags, "999"), 1, 0)
+    )
 
 
 
@@ -409,59 +329,12 @@ df90 <- df90 |>
   mutate(pop_weight = pop / county_pop,
          area_weight = area / county_area)
 
-# mail-in counties in long format
-mailin90_long <- df90 |> 
-  filter(str_ends(ags, "999")) |>
-  select(c(`Wahlberechtigte (A)`:VAA,county)) |>
-  # pivot longer
-  pivot_longer(
-    cols = `Wahlberechtigte (A)`:VAA,
-    names_to = "var",
-    values_to = "mailin_value"
-  )
-
-
-# Distribute multi mail-in votes across ags by population weight 
-df90_long <- df90 |>
-  # pivot longer
-  pivot_longer(
-    cols = `Wahlberechtigte (A)`:VAA,
-    names_to = "var",
-    values_to = "ags_value"
-  ) |>
-  left_join(mailin90_long, by = c("county", "var")) |>
-  rowwise() |>
-  mutate(
-    # weight multi mail-in values by population share
-    # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * pop_weight), digits = 0),
-    # add to original ags value
-    ags_value_v2 = ifelse(
-      unique_mailin == 0,
-      sum(ags_value, weighted_value, na.rm = T),
-      ags_value
-    )
-  )
-# works!
-
-# Bring back to wide format
-df90 <- df90_long |>
-  select(-ags_value) |>
-  rename(ags_value = ags_value_v2) |>
-  select(-c(mailin_value, weighted_value)) |>
-  # pivot back to wide format
-  pivot_wider(
-    names_from = var,
-    values_from = ags_value
-  ) |>
-  # remove multi mail-in ags
-  filter(!str_ends(ags, "999"))
-
 # Check duplicates
 dupl <- df90 |>
   count(ags, election_year) |>
   filter(n>1)
 nrow(dupl) # 0
+
 
 # 1994 --------------------------------------------------------------------
 
@@ -496,7 +369,10 @@ df94 <- df94_bezirksarten |>
   # Remove parties that got no votes
   select(where(~ any(. != 0))) |>
   # variable for whether ags had unique mailin
-  mutate(unique_mailin = ifelse(ags %in% ags_w_mailin94, 1, 0))
+  mutate(
+    unique_mailin = ifelse(ags %in% ags_w_mailin94, 1, 0),
+    joint_mailin = ifelse(str_ends(ags, "999"), 1, 0)
+    )
 
 
 
@@ -546,54 +422,6 @@ df94 <- df94 |>
   mutate(pop_weight = pop / county_pop,
          area_weight = area / county_area)
 
-# mail-in counties in long format
-mailin94_long <- df94 |> 
-  filter(str_ends(ags, "999")) |>
-  select(c(A:`STATT Partei`,county)) |>
-  # pivot longer
-  pivot_longer(
-    cols = A:`STATT Partei`,
-    names_to = "var",
-    values_to = "mailin_value"
-  )
-
-
-# Distribute multi mail-in votes across ags by population weight 
-df94_long <- df94 |>
-  # pivot longer
-  pivot_longer(
-    cols = A:`STATT Partei`,
-    names_to = "var",
-    values_to = "ags_value"
-  ) |>
-  left_join(mailin94_long, by = c("county", "var")) |>
-  rowwise() |>
-  mutate(
-    # weight multi mail-in values by population share
-    # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * pop_weight), digits = 0),
-    # add to original ags value
-    ags_value_v2 = ifelse(
-      unique_mailin == 0,
-      sum(ags_value, weighted_value, na.rm = T),
-      ags_value
-    )
-  )
-# works!
-
-# Bring back to wide format
-df94 <- df94_long |>
-  select(-ags_value) |>
-  rename(ags_value = ags_value_v2) |>
-  select(-c(mailin_value, weighted_value)) |>
-  # pivot back to wide format
-  pivot_wider(
-    names_from = var,
-    values_from = ags_value
-  ) |>
-  # remove multi mail-in ags
-  filter(!str_ends(ags, "999"))
-
 # Check duplicates
 dupl <- df94 |>
   count(ags, election_year) |>
@@ -634,7 +462,10 @@ df98 <- df98_bezirksarten |>
   # Remove parties that got no votes
   select(where(~ any(. != 0))) |>
   # variable for whether ags had unique mailin
-  mutate(unique_mailin = ifelse(ags %in% ags_w_mailin98, 1, 0))
+  mutate(
+    unique_mailin = ifelse(ags %in% ags_w_mailin98, 1, 0),
+    joint_mailin = ifelse(str_ends(ags, "999"), 1, 0)
+    )
 
 
 
@@ -683,59 +514,13 @@ df98 <- df98 |>
   mutate(pop_weight = pop / county_pop,
          area_weight = area / county_area)
 
-# mail-in counties in long format
-mailin98_long <- df98 |> 
-  filter(str_ends(ags, "999")) |>
-  select(c(A:PSG,county)) |>
-  # pivot longer
-  pivot_longer(
-    cols = A:PSG,
-    names_to = "var",
-    values_to = "mailin_value"
-  )
-
-
-# Distribute multi mail-in votes across ags by population weight 
-df98_long <- df98 |>
-  # pivot longer
-  pivot_longer(
-    cols = A:PSG,
-    names_to = "var",
-    values_to = "ags_value"
-  ) |>
-  left_join(mailin98_long, by = c("county", "var")) |>
-  rowwise() |>
-  mutate(
-    # weight multi mail-in values by population share
-    # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * pop_weight), digits = 0),
-    # add to original ags value
-    ags_value_v2 = ifelse(
-      unique_mailin == 0,
-      sum(ags_value, weighted_value, na.rm = T),
-      ags_value
-    )
-  )
-# works!
-
-# Bring back to wide format
-df98 <- df98_long |>
-  select(-ags_value) |>
-  rename(ags_value = ags_value_v2) |>
-  select(-c(mailin_value, weighted_value)) |>
-  # pivot back to wide format
-  pivot_wider(
-    names_from = var,
-    values_from = ags_value
-  ) |>
-  # remove multi mail-in ags
-  filter(!str_ends(ags, "999"))
-
 # Check duplicates
 dupl <- df98 |>
   count(ags, election_year) |>
   filter(n>1)
 nrow(dupl) # 0
+
+
 
 # 2002 --------------------------------------------------------------------
 
@@ -793,7 +578,10 @@ df02 <- df02_vg_bezirksarten |>
   # Remove parties that got no votes
   select(where(~ any(. != 0))) |>
   # variable for whether ags had unique mailin
-  mutate(unique_mailin = ifelse(ags %in% ags_w_mailin02, 1, 0))
+  mutate(
+    unique_mailin = ifelse(ags %in% ags_w_mailin02, 1, 0),
+    joint_mailin = ifelse(str_ends(ags, "999"), 0, 1)
+    )
 
 
 
@@ -844,63 +632,6 @@ df02 <- df02 |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_vg_pop,
          area_weight = area / county_vg_area)
-
-# # Inspect
-# inspect <- df02y |> 
-#   filter(county == "01053") |>
-#   select(ags, VG, unique_mailin, pop, county_vg_pop)
-# # works!
-
-# mail-in counties in long format
-mailin02_long <- df02 |> 
-  filter(str_ends(ags, "999")) |>
-  select(c(A:Schill,county, VG)) |>
-  # pivot longer
-  pivot_longer(
-    cols = A:Schill,
-    names_to = "var",
-    values_to = "mailin_value"
-  )
-
-
-# Distribute multi mail-in votes across ags by population weight 
-df02_long <- df02 |>
-  # pivot longer
-  pivot_longer(
-    cols = A:Schill,
-    names_to = "var",
-    values_to = "ags_value"
-  ) |>
-  left_join(mailin02_long, by = c("county", "VG", "var")) |>
-  rowwise() |>
-  mutate(
-    # weight multi mail-in values by population share
-    # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * pop_weight), digits = 0),
-    # add to original ags value
-    ags_value_v2 = ifelse(
-      unique_mailin == 0,
-      sum(ags_value, weighted_value, na.rm = T),
-      ags_value
-    )
-  )
-# # Inspect
-# inspect <- df02_long |> filter(county == "01053")
-# # works!
-
-# Bring back to wide format
-df02 <- df02_long |>
-  select(-ags_value) |>
-  rename(ags_value = ags_value_v2) |>
-  select(-c(mailin_value, weighted_value)) |>
-  # pivot back to wide format
-  pivot_wider(
-    names_from = var,
-    values_from = ags_value
-  ) |>
-  # remove multi mail-in ags
-  filter(!str_ends(ags, "999")) |>
-  select(-VG)
 
 # Check duplicates
 dupl <- df02 |>
@@ -964,8 +695,10 @@ df05 <- df05_bezirksarten |>
   # Remove parties that got no votes
   select(where(~ any(. != 0))) |>
   # variable for whether ags had unique mailin
-  mutate(unique_mailin = ifelse(ags %in% ags_w_mailin05, 1, 0))
-
+  mutate(
+    unique_mailin = ifelse(ags %in% ags_w_mailin05, 1, 0),
+    joint_mailin = ifelse(str_ends(ags, "999"), 1, 0)
+    )
 
 # Check duplicates
 dupl <- df05 |>
@@ -1018,64 +751,9 @@ df05 <- df05 |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_bwbez_pop,
-         area_weight = area / county_bwbez_area)
-
-# # Inspect
-# inspect <- df05 |>
-#   filter(county == "01053") |>
-#   select(ags, BWBez, unique_mailin, pop, county_bwbez_pop)
-# # works!
-
-# mail-in counties in long format
-mailin05_long <- df05 |> 
-  filter(str_ends(ags, "999")) |>
-  select(c(A:`Pro DM`,county, BWBez)) |>
-  # pivot longer
-  pivot_longer(
-    cols = A:`Pro DM`,
-    names_to = "var",
-    values_to = "mailin_value"
-  )
-
-
-# Distribute multi mail-in votes across ags by population weight 
-df05_long <- df05 |>
-  # pivot longer
-  pivot_longer(
-    cols = A:`Pro DM`,
-    names_to = "var",
-    values_to = "ags_value"
-  ) |>
-  left_join(mailin05_long, by = c("county", "BWBez", "var")) |>
-  rowwise() |>
-  mutate(
-    # weight multi mail-in values by population share
-    # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * pop_weight), digits = 0),
-    # add to original ags value
-    ags_value_v2 = ifelse(
-      unique_mailin == 0,
-      sum(ags_value, weighted_value, na.rm = T),
-      ags_value
-    )
-  )
-# # Inspect
-# inspect <- df05_long |> filter(county == "01053")
-# # works!
-
-# Bring back to wide format
-df05 <- df05_long |>
-  select(-ags_value) |>
-  rename(ags_value = ags_value_v2) |>
-  select(-c(mailin_value, weighted_value)) |>
-  # pivot back to wide format
-  pivot_wider(
-    names_from = var,
-    values_from = ags_value
-  ) |>
-  # remove multi mail-in ags
-  filter(!str_ends(ags, "999")) |>
-  select(-BWBez)
+         area_weight = area / county_bwbez_area) |>
+  # BWBez to character
+  mutate(BWBez = as.character(BWBez))
 
 # Check duplicates
 dupl <- df05 |>
@@ -1161,8 +839,9 @@ df09 <- df09_bezirksarten |>
   select(where(~ any(. != 0))) |>
   # variable for whether ags had unique mailin
   mutate(
-    unique_mailin = ifelse(ags %in% ags_w_mailin09, 1, 0)
-    )
+    unique_mailin = ifelse(ags %in% ags_w_mailin09, 1, 0),
+    joint_mailin = ifelse(str_ends(ags, "996|997|998|999"), 1, 0)
+  )
 
 # Check duplicates
 dupl <- df09 |>
@@ -1216,64 +895,9 @@ df09 <- df09 |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_bwbez_pop,
-         area_weight = area / county_bwbez_area)
-
-# # Inspect
-# inspect <- df09 |>
-#   filter(county == "01093") |>
-#   select(ags, BWBez, unique_mailin, pop, county_bwbez_pop)
-# # works!
-
-# mail-in counties in long format
-mailin09_long <- df09 |> 
-  filter(str_ends(ags, "996|997|998|999")) |>
-  select(c(A:RENTNER, county, BWBez)) |>
-  # pivot longer
-  pivot_longer(
-    cols = A:RENTNER,
-    names_to = "var",
-    values_to = "mailin_value"
-  )
-
-
-# Distribute multi mail-in votes across ags by population weight 
-df09_long <- df09 |>
-  # pivot longer
-  pivot_longer(
-    cols = A:RENTNER,
-    names_to = "var",
-    values_to = "ags_value"
-  ) |>
-  left_join(mailin09_long, by = c("county", "BWBez", "var")) |>
-  rowwise() |>
-  mutate(
-    # weight multi mail-in values by population share
-    # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * pop_weight), digits = 0),
-    # add to original ags value
-    ags_value_v2 = ifelse(
-      unique_mailin == 0,
-      sum(ags_value, weighted_value, na.rm = T),
-      ags_value
-    )
-  )
-# Inspect
-inspect <- df09_long |> filter(county == "01053")
-# works!
-
-# Bring back to wide format
-df09 <- df09_long |>
-  select(-ags_value) |>
-  rename(ags_value = ags_value_v2) |>
-  select(-c(mailin_value, weighted_value)) |>
-  # pivot back to wide format
-  pivot_wider(
-    names_from = var,
-    values_from = ags_value
-  ) |>
-  # remove multi mail-in ags
-  filter(!str_ends(ags, "996|997|998|999")) |>
-  select(-BWBez)
+         area_weight = area / county_bwbez_area) |>
+  # BWBez to character
+  mutate(BWBez = as.character(BWBez))
 
 # Check duplicates
 dupl <- df09 |>
@@ -1281,28 +905,6 @@ dupl <- df09 |>
   filter(n>1) |>
   pull(ags)
 length(dupl)
-
-# Sum up
-df09 <- df09 |>
-  group_by(ags) |>
-  arrange(unique_mailin) |>
-  summarise(
-    election_year = first(election_year),
-    county = first(county),
-    unique_mailin = max(unique_mailin),
-    area = first(area),
-    pop = first(pop),
-    county_bwbez_pop = first(county_bwbez_pop),
-    county_bwbez_area = first(county_bwbez_area),
-    area_weight = first(area_weight),
-    pop_weight = first(pop_weight),
-    across(A:RENTNER, ~ sum(.x, na.rm = TRUE))
-  ) |>
-  mutate(unique_multi_mailin = ifelse(ags %in% dupl, 1, 0))
-# Check duplicate ags
-df09 |> count(ags) |> filter(n>1)
-# Works
-
 
 # 2013 --------------------------------------------------------------------
 
@@ -1377,7 +979,8 @@ df13 <- df13_bezirksarten |>
   # variable for whether ags had unique mailin
   mutate(
     #ags_bwbez = paste0(ags, "_", BWBez),
-    unique_mailin = ifelse(ags %in% ags_w_mailin13, 1, 0)
+    unique_mailin = ifelse(ags %in% ags_w_mailin13, 1, 0),
+    joint_mailin = ifelse(str_ends(ags, "996|997|998|999"), 1, 0)
   )
 
 
@@ -1428,64 +1031,10 @@ df13 <- df13 |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_bwbez_pop,
-         area_weight = area / county_bwbez_area)
+         area_weight = area / county_bwbez_area) |>
+  # BWBez to character
+  mutate(BWBez = as.character(BWBez))
 
-# # Inspect
-# inspect <- df13 |>
-#   filter(county == "01133") |>
-#   select(ags, BWBez, unique_mailin, pop, county_bwbez_pop)
-# # works!
-
-# mail-in counties in long format
-mailin13_long <- df13 |> 
-  filter(str_ends(ags, "996|997|998|999")) |>
-  select(c(A:`Die PARTEI`, county, BWBez)) |>
-  # pivot longer
-  pivot_longer(
-    cols = A:`Die PARTEI`,
-    names_to = "var",
-    values_to = "mailin_value"
-  )
-
-
-# Distribute multi mail-in votes across ags by population weight 
-df13_long <- df13 |>
-  # pivot longer
-  pivot_longer(
-    cols = A:`Die PARTEI`,
-    names_to = "var",
-    values_to = "ags_value"
-  ) |>
-  left_join(mailin13_long, by = c("county", "BWBez", "var")) |>
-  rowwise() |>
-  mutate(
-    # weight multi mail-in values by population share
-    # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * pop_weight), digits = 0),
-    # add to original ags value
-    ags_value_v2 = ifelse(
-      unique_mailin == 0,
-      sum(ags_value, weighted_value, na.rm = T),
-      ags_value
-    )
-  )
-# # Inspect
-# inspect <- df13_long |> filter(county == "01053")
-# # works!
-
-# Bring back to wide format
-df13 <- df13_long |>
-  select(-ags_value) |>
-  rename(ags_value = ags_value_v2) |>
-  select(-c(mailin_value, weighted_value)) |>
-  # pivot back to wide format
-  pivot_wider(
-    names_from = var,
-    values_from = ags_value
-  ) |>
-  # remove multi mail-in ags
-  filter(!str_ends(ags, "996|997|998|999")) |>
-  select(-BWBez)
 
 # Check duplicates
 dupl <- df13 |>
@@ -1493,29 +1042,6 @@ dupl <- df13 |>
   filter(n>1) |>
   pull(ags)
 length(dupl) # 0
-
-# Sum up
-df13 <- df13 |>
-  group_by(ags) |>
-  arrange(unique_mailin) |>
-  summarise(
-    election_year = first(election_year),
-    county = first(county),
-    unique_mailin = max(unique_mailin),
-    area = first(area),
-    pop = first(pop),
-    county_bwbez_pop = first(county_bwbez_pop),
-    county_bwbez_area = first(county_bwbez_area),
-    area_weight = first(area_weight),
-    pop_weight = first(pop_weight),
-    across(A:`Die PARTEI`, ~ sum(.x, na.rm = TRUE))
-  ) |>
-  mutate(unique_multi_mailin = ifelse(ags %in% dupl, 1, 0))
-# Check duplicate ags
-df13 |>
-  count(ags) |>
-  filter(n>1) # 0
-# Works
 
 
 # 2017 --------------------------------------------------------------------
@@ -1578,7 +1104,10 @@ df17 <- df17_bezirksarten |>
   # Remove parties that got no votes
   select(where(~ any(. != 0))) |>
   # variable for whether ags had unique mailin
-  mutate(unique_mailin = ifelse(ags %in% ags_w_mailin13, 1, 0))
+  mutate(
+    unique_mailin = ifelse(ags %in% ags_w_mailin13, 1, 0),
+    joint_mailin = ifelse(str_sub(ags, -3, -3) == "9", 1, 0)
+    )
 
 
 ## Mail-in voting ---------------------------------------------------------
@@ -1626,64 +1155,9 @@ df17 <- df17 |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_bwbez_pop,
-         area_weight = area / county_bwbez_area)
-
-# # Inspect
-# inspect <- df17 |>
-#   filter(county == "01173") |>
-#   select(ags, BWBez, unique_mailin, pop, county_bwbez_pop)
-# # works!
-
-# mail-in counties in long format
-mailin17_long <- df17 |> 
-  filter(str_sub(ags, -3, -3) == "9") |>
-  select(c(`Wahlberechtigte (A)`:`V-Partei³`, county, BWBez)) |>
-  # pivot longer
-  pivot_longer(
-    cols = `Wahlberechtigte (A)`:`V-Partei³`,
-    names_to = "var",
-    values_to = "mailin_value"
-  )
-
-
-# Distribute multi mail-in votes across ags by population weight 
-df17_long <- df17 |>
-  # pivot longer
-  pivot_longer(
-    cols = `Wahlberechtigte (A)`:`V-Partei³`,
-    names_to = "var",
-    values_to = "ags_value"
-  ) |>
-  left_join(mailin17_long, by = c("county", "BWBez", "var")) |>
-  rowwise() |>
-  mutate(
-    # weight multi mail-in values by population share
-    # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * pop_weight), digits = 0),
-    # add to original ags value
-    ags_value_v2 = ifelse(
-      unique_mailin == 0,
-      sum(ags_value, weighted_value, na.rm = T),
-      ags_value
-    )
-  )
-# # Inspect
-# inspect <- df17_long |> filter(county == "01053")
-# # works!
-
-# Bring back to wide format
-df17 <- df17_long |>
-  select(-ags_value) |>
-  rename(ags_value = ags_value_v2) |>
-  select(-c(mailin_value, weighted_value)) |>
-  # pivot back to wide format
-  pivot_wider(
-    names_from = var,
-    values_from = ags_value
-  ) |>
-  # remove multi mail-in ags
-  filter(str_sub(ags, -3, -3) != "9") |>
-  select(-BWBez)
+         area_weight = area / county_bwbez_area) |>
+  # BWBez to character
+  mutate(BWBez = as.character(BWBez))
 
 # Check duplicates
 dupl <- df17 |>
@@ -1691,17 +1165,6 @@ dupl <- df17 |>
   filter(n>1) |>
   pull(ags)
 nrow(dupl) # 0
-
-### 
-# Berlin ags have multiple multi mail-in districts causing duplicates.
-# Therefore, the code that follows is different from the code before.
-
-# Sum up
-df17 <- df17 |>
-  group_by(ags) |>
-  mutate_at(vars(`Wahlberechtigte (A)`:`V-Partei³`), sum, na.rm = TRUE) |>
-  ungroup() |>
-  distinct()
 
 
 # 2021 --------------------------------------------------------------------
@@ -1767,7 +1230,10 @@ df21 <- df21_bezirksarten |>
   # Remove parties that got no votes
   select(where(~ any(. != 0))) |>
   # variable for whether ags had unique mailin
-  mutate(unique_mailin = ifelse(ags %in% ags_w_mailin21, 1, 0))
+  mutate(
+    unique_mailin = ifelse(ags %in% ags_w_mailin21, 1, 0),
+    join_mailin = ifelse(str_sub(ags, -3, -3) == "9", 1, 0)
+    )
 
 
 
@@ -1816,64 +1282,9 @@ df21 <- df21 |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_bwbez_pop,
-         area_weight = area / county_bwbez_area)
-
-# # Inspect
-# inspect <- df21 |>
-#   filter(county == "01213") |>
-#   select(ags, BWBez, unique_mailin, pop, county_bwbez_pop)
-# # works!
-
-# mail-in counties in long format
-mailin21_long <- df21 |> 
-  filter(str_sub(ags, -3, -3) == "9") |>
-  select(c(`Wahlberechtigte (A)`:Volt, county, BWBez)) |>
-  # pivot longer
-  pivot_longer(
-    cols = `Wahlberechtigte (A)`:Volt,
-    names_to = "var",
-    values_to = "mailin_value"
-  )
-
-
-# Distribute multi mail-in votes across ags by population weight 
-df21_long <- df21 |>
-  # pivot longer
-  pivot_longer(
-    cols = `Wahlberechtigte (A)`:Volt,
-    names_to = "var",
-    values_to = "ags_value"
-  ) |>
-  left_join(mailin21_long, by = c("county", "BWBez", "var")) |>
-  rowwise() |>
-  mutate(
-    # weight multi mail-in values by population share
-    # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * pop_weight), digits = 0),
-    # add to original ags value
-    ags_value_v2 = ifelse(
-      unique_mailin == 0,
-      sum(ags_value, weighted_value, na.rm = T),
-      ags_value
-    )
-  )
-# Inspect
-inspect <- df21_long |> filter(county == "01053")
-# works!
-
-# Bring back to wide format
-df21 <- df21_long |>
-  select(-ags_value) |>
-  rename(ags_value = ags_value_v2) |>
-  select(-c(mailin_value, weighted_value)) |>
-  # pivot back to wide format
-  pivot_wider(
-    names_from = var,
-    values_from = ags_value
-  ) |>
-  # remove multi mail-in ags
-  filter(str_sub(ags, -3, -3) != "9") |>
-  select(-BWBez)
+         area_weight = area / county_bwbez_area) |>
+  # BWBez to character
+  mutate(BWBez = as.character(BWBez))
 
 # Check duplicates
 dupl <- df21 |>
@@ -1881,17 +1292,6 @@ dupl <- df21 |>
   filter(n>1) |>
   pull(ags)
 nrow(dupl) # 0 duplicates
-
-### 
-# Berlin ags have multiple multi mail-in districts causing duplicates.
-# Therefore, the code that follows is different from the code before.
-
-# Sum up
-df21 <- df21 |>
-  group_by(ags) |>
-  mutate_at(vars(`Wahlberechtigte (A)`:Volt), sum, na.rm = TRUE) |>
-  ungroup() |>
-  distinct()
 
 
 # Recoding ----------------------------------------------------------------
@@ -1955,7 +1355,10 @@ df_objects_t <- df_objects |>
 # Create one dataframe ----------------------------------------------------
 
 ## Sort col names alphabetically
-# sort(colnames(df_list_t |> reduce(bind_rows)))
+# sort(colnames(df_objects_t |> reduce(bind_rows)))
+
+# for each dataframe in the list of dfs that have the column bwbez, transform the bwbez column to a character
+
 
 df <- df_objects_t |>
   reduce(bind_rows)
@@ -1965,6 +1368,8 @@ df <- df_objects_t |>
 dupl <- df |>
   count(ags, election_year) |>
   filter(n>1)
+nrow(dupl) # 603
+# all are the join_mailin districts
 
 df <- df |>
   # Get Bundesland / state from ags
@@ -1975,7 +1380,7 @@ df <- df |>
     ags, county, election_year, state, eligible_voters, number_voters, valid_votes,
     voters_wo_blockingnotice, voters_blockingnotice, voters_par25_2, voters_w_ballot,
     # Mail-in voting
-    unique_mailin, unique_multi_mailin, pop, area, pop_weight, area_weight,
+    unique_mailin, joint_mailin, pop, area, pop_weight, area_weight,
     # Main
     cdu, csu, cdu_csu, spd, grüne, fdp, linke_pds, `b90/gr`,
     # Right-wing
@@ -1983,17 +1388,17 @@ df <- df |>
     # Left-wing
     dkp, kpd, mlpd, sgp, kbw, v, spad, bsa,
     # Others
-    `50plus`, `ab 2000`, `ad-demokraten`, adm, agfg, apd, appd, asd, aufbruch, `b*`, bfb, bge, big, bp, bündnis21, `bündnis c`, bürgerbewegung, bürgerpartei, büso, bwk, `chance 2000`, cbv, cm, deutschland, dib, diebasis, `die partei`, `die humanisten`, dm, dpd, `du.`, eap, familie, forum, frauen, `freie wähler`,fwd, gartenpartei, gesundheitsforschung, graue, hp, lfk, liebe, liga, lkr,  mg, `menschliche welt`, naturgesetz, ödp, `offensive d`, `öko-union`, `partei der vernunft`, pass, patrioten, pbc, pdf, pdv, piraten, prg, `pro deutschland`,`pro dm`, rentner, rrp, schill, ssw, `statt partei`, tierschutz, `team todenhöfer`, tierschutzallianz, unabhängige, ust, vaa, violetten, volksabstimmung, volt, `v-partei³`, zentrum 
-    ) %>%
+    `50plus`, `ab 2000`, `ad-demokraten`, adm, agfg, apd, appd, asd, aufbruch, `b*`, bfb, bge, big, bp, bündnis21, `bündnis c`, bürgerbewegung, bürgerpartei, büso, bwk, `chance 2000`, cbv, cm, deutschland, dib, diebasis, `die partei`, `die humanisten`, dm, dpd, `du.`, eap, familie, forum, frauen, `freie wähler`,fwd, gartenpartei, gesundheitsforschung, graue, hp, lfk, liebe, liga, lkr,  mg, `menschliche welt`, mündige, naturgesetz, nichtwähler, ödp, `offensive d`, `öko-union`, `partei der vernunft`, pass, patrioten, pbc, pdf, pdv, piraten, prg, `pro deutschland`,`pro dm`, rentner, rrp, schill, ssw, `statt partei`, tierschutz, `team todenhöfer`, tierschutzallianz, unabhängige, ust, vaa, violetten, volksabstimmung, volt, `v-partei³`, zentrum 
+  ) %>%
   # Calculate extremist votes
   mutate(
     right_wing = rowSums(select(., afd:dsu), na.rm = TRUE),
     left_wing = rowSums(select(., dkp:bsa), na.rm = TRUE)
-    ) %>%
+  ) %>%
   # Left wing with votes for Linke/PDS
   mutate(
     left_wing_wLinke = rowSums(select(., linke_pds, left_wing), na.rm = TRUE)
-    )
+  )
 ### Extremist parties
 ## Right wing
 # npd, fap (freiheitliche deutsche arbeiterpartei), rep (die republikaner),
@@ -2025,54 +1430,40 @@ df <- df %>%
     state_name = state_id_to_names(state)
   )
 
-# Cases with 0 eligible voters --------------------------------------------
 
-(zero_elig <- df |> filter(eligible_voters == 0))
-# 179 ags (all in 2021) for which there are zero eligible voters registered
-# Our algorithm assigns some voters from multi mail-in districts
-# We want to correct for that
+
+# Deal with Berlin and Hamburg --------------------------------------------
+
+# Berlin: 1990 one district, 1994-2021 several districts
+# Hamburg:  1990-2017 one district, 2021 several districts
+# Solution: aggregate all districts to one
+
+berlin_hamburg <- df |>
+  filter(state %in% c("11", "02")) |>
+  group_by(election_year, state) |>
+  summarise(across(
+    eligible_voters:left_wing_wLinke, sum, na.rm = TRUE
+  )) |>
+  mutate(
+    ags = case_when(
+      state == "11" ~ "11000000",
+      state == "02" ~ "02000000"
+    ),
+    county = case_when(
+      state == "11" ~ "Berlin",
+      state == "02" ~ "Hamburg"
+    ),
+    state_name = state_id_to_names(state),
+    unique_mailin = ifelse(unique_mailin > 0, 1, 0)
+  )
 
 df <- df |>
-  mutate(mutate(across(
-    number_voters:zentrum, ~ ifelse(eligible_voters == 0, 0, .)
-  )))
-
-
-
-# Diagnosis ---------------------------------------------------------------
-
-# diagnose_web_report(df)
+  filter(!(state %in% c("11", "02"))) |>
+  bind_rows(berlin_hamburg)
 
 # Write unharmonized df ---------------------------------------------------
 
-write_rds(df, file = "data/federal_elections/municipality_level/processed_data/btw_1980_2021_unharm.csv")
-
-
-# # Create latex table of mailin_df -----------------------------------------
-# 
-# pacman::p_load(kableExtra)
-# 
-# # create kableextra latex table w booktabs
-# mailin_df |>
-#   rename("Election" = election_year,
-#          "Joint mail-in voting districts" = mailin_join) |>
-#   kable(
-#     booktabs = TRUE,
-#     escape = FALSE,
-#     format = "latex",
-#     linesep = "",
-#     align = "ll"
-#   ) |>
-#   kable_styling(latex_options = c("hold_position")) |>
-#   save_kable(file = "04_Tables/n_mailin.tex", keep_tex = T)
-
-
-
-# Inspect -----------------------------------------------------------------
-
-# number of municipalities per election-year
-df |>
-  group_by(election_year) |>
-  summarise(n = n())
+write_rds(df, file = "output/federal_muni_raw.rds")
+fwrite(df, file = "output/federal_muni_raw.csv")
 
 ### END

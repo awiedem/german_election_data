@@ -283,4 +283,7 @@ glimpse(df)
 df <- df |>
   mutate(ags = pad_zero_conditional(ags, 4))
 
-write_rds(df, "data/federal_elections/county_level/processed_data/btw_cty_1953_2021_unharm.rds")
+write_rds(df, "output/federal_cty_unharm.rds")
+fwrite(df, "output/federal_cty_unharm.csv")
+
+### END

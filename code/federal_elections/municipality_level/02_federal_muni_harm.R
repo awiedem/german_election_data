@@ -9,12 +9,13 @@ options(scipen = 999)
 
 
 # Read crosswalk files ----------------------------------------------------
-cw <- fread("data/crosswalks/ags_crosswalks.csv")
+cw <- fread("data/crosswalks/ags_crosswalks.csv") |>
+  mutate(ags = pad_zero_conditional(ags, 7))
 
 # how many ags_21 for each year?
 cw |>
-    distinct(ags_21, year) |>
-    count(year)
+  distinct(ags_21, year) |>
+  count(year)
 
 ## DF : in year 2021, was the muni ever part of a merger?
 
@@ -28,13 +29,20 @@ cw_info_ever_merged_ags_21 <- cw %>%
 
 # Merge with unharmonized election data -----------------------------------
 
-df <- fread("data/federal_elections/municipality_level/processed_data/btw_1980_2021_unharm.csv") |>
-    # remove population & area that were used for weighting multi mail-in districts
-    select(-c(pop, area)) |>
-    # create year variable for merging
-    mutate(year = ifelse(election_year < 1990, 1990, election_year)) |>
-    left_join_check_obs(cw, by = c("ags", "year")) |>
+df <- read_rds("output/federal_muni_unharm.rds") |>
+  # remove population & area that were used for weighting multi mail-in districts
+  select(-c(pop, area)) |>
+  # filter years before 1990: no crosswalks available
+  filter(election_year >= 1990)
+
+glimpse(df)
+glimpse(cw)
+
+# bind with crosswalks
+df <- df |>
+    left_join_check_obs(cw, by = c("ags", "election_year" = "year")) |>
     arrange(ags, election_year)
+# number of obs increases: but this is wanted, as we want to harmonize the data
 
 ## Check means of some variables by year
 
@@ -127,25 +135,28 @@ ags21 <- read_excel(path = "data/crosswalks/31122021_Auszug_GV.xlsx", sheet = 2)
 
 # Create full df ----------------------------------------------------------
 
+glimpse(votes)
+
 # Bind back to dataframe
 df_harm <- votes |>
-    # Rename ags
-      left_join_check_obs(area_pop, by = c("ags_21", "election_year")) |>
-    rename(ags = ags_21) |>
-    # Bind 2021 data (that was unharmonized)
-    bind_rows(df |>
-        filter(election_year == 2021) |>
-        select(-c(
-            state, state_name, year,
-            pop_cw, area_cw, ags_21
-        ))) |>
-    # Create state variable
-    mutate(
-        ags = pad_zero_conditional(ags, 7),
-        state = str_sub(ags, end = -7),
-        county = substr(ags, 1, 5)
-    ) |>
-    relocate(state, .after = election_year)
+  # Rename ags
+  left_join_check_obs(area_pop, by = c("ags_21", "election_year")) |>
+  rename(ags = ags_21) |>
+  mutate(ags = pad_zero_conditional(ags, 7)) |>
+  # Bind 2021 data (that was unharmonized)
+  bind_rows(df |>
+              filter(election_year == 2021) |>
+              select(-c(
+                state, state_name, election_year,
+                pop_cw, area_cw, ags_21
+                ))) |>
+  # Create state variable
+  mutate(
+    ags = pad_zero_conditional(ags, 7),
+    state = str_sub(ags, end = -7),
+    county = substr(ags, 1, 5)
+  ) |>
+  relocate(state, .after = election_year)
 
 # Continue transformation
 df_harm <- df_harm |>
@@ -175,15 +186,114 @@ summary(row_sums)
 
 ## Merge to data
 
+### inspect ----
 df_harm <- df_harm %>%
-    mutate(
-        total_votes = row_sums
-    )
+  mutate(
+    total_votes = row_sums,
+    flag_total_votes_incongruent = ifelse(total_votes != valid_votes, 1, 0),
+    total_votes_incogruence = total_votes - valid_votes,
+    perc_total_votes_incogruence = total_votes_incogruence / valid_votes
+  )
 
+table(df_harm$total_votes_incogruence, useNA = "ifany")
+table(df_harm$flag_total_votes_incongruent, useNA = "ifany")
+
+# points
+df_harm %>% 
+  filter(flag_total_votes_incongruent == 1) %>% 
+  ggplot(aes(x = log(total_votes), y = perc_total_votes_incogruence)) +
+  geom_point()
+
+# histogram
+df_harm %>% 
+  # filter(flag_total_votes_incongruent == 1) %>% 
+  ggplot(aes(x = total_votes_incogruence)) +
+  geom_histogram(bins = 50) +
+  # number of observations above each bar
+  geom_text(
+    aes(label = stat(count)),
+    stat = "count",
+    vjust = -0.5,
+    size = 3
+  ) +
+  theme_hanno() +
+  labs(
+    x = "Difference between own calculation of total votes\nand total votes in data",
+    y = "Count"
+  ) +
+  # increase max of y-axis to make room for text
+  scale_y_continuous(limits = c(0, 65000)) +
+  # x axis labels for all values
+  scale_x_continuous(breaks = seq(-17, 6, by = 1)) +
+  # axis labels a bit smaller
+  theme(axis.text.x = element_text(size = 9),
+        axis.text.y = element_text(size = 9))
+
+ggsave("figures/total_votes_incongruence_hist.pdf", width = 7, height = 4)
+
+move_plots_to_overleaf("code")
+
+mean(df_harm$flag_total_votes_incongruent)
+
+inspect <- df_harm |>
+  filter(unique_mailin == 1 & flag_total_votes_incongruent == 1) |>
+  select(ags, election_year, unique_mailin,flag_total_votes_incongruent, 
+         total_votes, valid_votes, total_votes_incogruence, perc_total_votes_incogruence,
+         cdu_csu, spd)
+
+# check total_votes vs. other vote variables
+inspect <- df_harm |>
+  select(ags, election_year, 
+         eligible_voters, number_voters, valid_votes, 
+         total_votes, 
+         unique_mailin, flag_total_votes_incongruent, total_votes_incogruence, perc_total_votes_incogruence)
+
+# inspect_98 <- df_harm |>
+#   filter(ags == "05111000" & election_year == 1998) |>
+#   pivot_longer(
+#     cols = c(cdu:zentrum),
+#     names_to = "variable",
+#     values_to = "value"
+#   ) |>
+#   filter(value != 0) |>
+#   select(variable, value) |>
+#   filter(variable != "cdu_csu")
+
+# inspect_90 <- df_harm |>
+#   filter(ags == "12053000" & election_year == 1990) |>
+#   pivot_longer(
+#     cols = c(cdu:zentrum),
+#     names_to = "variable",
+#     values_to = "value"
+#   ) |>
+#   filter(value != 0) |>
+#   select(variable, value) |>
+#   filter(variable != "cdu_csu")
+  
+
+# inspect different vote counts
+inspect <- df_harm |>
+  select(ags, election_year,
+         eligible_voters, number_voters, valid_votes, total_votes)
+
+# is total votes anywhere higher than number of voters?
+inspect |>
+  filter(total_votes > number_voters) |>
+  mutate(
+    diff = total_votes - number_voters
+  ) |>
+  arrange(desc(diff))
+# yes in 151 cases, but the highest difference is 3 votes
+## We use the number of voters for calculating turnout
+
+
+
+# calculate vote share & turnout
 df_harm <- df_harm |>
     mutate(
         across(cdu:left_wing_wLinke, ~ .x / total_votes),
-        turnout = total_votes / eligible_voters
+        # turnout = (valid + invalid) / eligible_voters
+        turnout = number_voters / eligible_voters
     ) |>
     # Relocate columns
     relocate(turnout, .before = cdu) |>
@@ -201,6 +311,18 @@ df_harm <- df_harm %>%
 ## Save this now:
 
 # Write .csv file
-fwrite(df_harm, file = "data/federal_elections/municipality_level/processed_data/btw_1980_2021_harm21.csv")
+fwrite(df_harm, file = "output/federal_muni_harm.csv")
+write_rds(df_harm, "output/federal_muni_harm.rds")
+
+
+
+# Inspect -----------------------------------------------------------------
+
+df_harm <- fread("output/federal_muni_harm.csv")
+
+# Berlin
+inspect <- df_harm |>
+  filter(state=="11")
+
 
 ### END

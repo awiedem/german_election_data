@@ -34,8 +34,11 @@ cw_info_ever_merged_cc_21 |>
 
 # Merge with unharmonized election data -----------------------------------
 
-df <- read_rds("data/federal_elections/county_level/processed_data/btw_cty_1953_2021_unharm.rds") |>
+df <- read_rds("output/federal_cty_unharm.rds") |>
   mutate(election_year = year) |>
+  filter(election_year >= 1990)
+
+df <- df |>
   left_join_check_obs(cw, by = c("ags" = "county_code", "year")) |>
   arrange(ags, year)
 # obs. increased, but this is wanted: means that we have changing counties
@@ -167,9 +170,10 @@ df_harm <- df_harm |>
 # Calculate vote share & turnout ------------------------------------------
 
 ## First: row sum of votes for all parties
+names(df_harm)
 
 row_sums <- df_harm %>%
-  select(-c(left_wing, left_wing_wLinke, right_wing, cdu_csu)) %>%
+  # select(-c(left_wing, left_wing_wLinke, right_wing, cdu_csu)) %>%
   select(cdu:zentrum) %>%
   rowSums(na.rm = TRUE)
 
@@ -189,7 +193,7 @@ df_harm <- df_harm %>%
 df_harm <- df_harm |>
   mutate(
     across(cdu:cdu_csu, ~ .x / total_votes),
-    turnout = total_votes / eligible_voters
+    turnout = number_voters / eligible_voters
   ) |>
   # Relocate columns
   relocate(turnout, .before = cdu) |>
@@ -216,21 +220,46 @@ inspect <- df_harm %>%
 # yes sometimes they do
 
 
+
 ## Save this now:
 
 # Write .csv file
-fwrite(df_harm, file = "data/federal_elections/county_level/processed_data/btw_1990_2021_harm21.csv")
+fwrite(df_harm, file = "output/federal_cty_harm.csv")
+write_rds(df_harm, file = "output/federal_cty_harm.rds")
 
 
 
 # Inspect -----------------------------------------------------------------
 
-df_harm <- fread("data/federal_elections/county_level/processed_data/btw_1990_2021_harm21.csv")
-df_harm <- fread("~/Documents/GitHub/german_election_data/data/federal_elections/county_level/processed_data/btw_1990_2021_harm21.csv")
+df_harm <- read_rds("output/federal_cty_harm.rds")
 
 
-inspect <- df_harm |>
-  filter(election_year >= 1998)
+insp_harm <- df_harm |>
+  filter(county_code == "03101" & election_year == 1994) |>
+  mutate(across(cdu:zentrum, ~ .x * total_votes)) |>
+  pivot_longer(
+    cols = cdu:zentrum,
+    names_to = "var",
+    values_to = "value"
+  ) |>
+  filter(value != 0) |>
+  select(var, value) |>
+  filter(!(var %in% c("right_wing", "left_wing", "left_wing_wLinke", "cdu_csu")))
+
+
+inspect_unharm <- read_rds("output/federal_cty_unharm.rds") 
+
+# inspect
+names(inspect_unharm)
+insp <- inspect_unharm |>
+  filter(ags == "03101" & year == 1994) |>
+  pivot_longer(
+    cols = cdu:zentrum,
+    names_to = "var",
+    values_to = "value"
+  ) |>
+  filter(value != 0) |>
+  select(var, value)
 
 
 
