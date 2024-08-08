@@ -1,9 +1,12 @@
-# Code to download and clean state election data
+### Download and clean state election data
+# Vincent Heddesheimer, Hanno Hilbig
+# First: March, 06, 2024
+# Last: Aug, 08, 2024
 
 rm(list = ls())
 
 # Load
-load("01_Data/13_LTW/Elections_Clean.RData")
+load("data/state_elections/Elections_Clean.RData")
 
 
 library(wiesbaden)
@@ -12,8 +15,14 @@ library(reshape2)
 library(pbapply)
 #install_github('sumtxt/wiesbaden')
 
+# Plug in your credentials
+# See wiesbaden package documentation for details
 genesis <- c(user="RE010680", password="BayernMuenchen1900!", db="regio")
 test_login(genesis=genesis)
+
+### Use this for final code and delete the above!!!
+# genesis <- c(user="", password="", db="regio")
+# test_login(genesis=genesis)
 
 
 ## Make party dict
@@ -183,16 +192,7 @@ table(out_df$year, out_df$land)
 
 ## Save for now
 
-save(state_elections, 
-     file = '01_Data/13_LTW/vh_Elections_Clean.RData')
-write_rds(x = state_elections, 
-          file = '01_Data/13_LTW/vh_Elections_Clean.RDS')
+fwrite(state_elections, 'output/state_unharm.csv')
+write_rds(state_elections, 'output/state_unharm.rds')
 
-
-
-
-# Get Sachsen state elections 2019 ----------------------------------------
-
-
-
-
+### END

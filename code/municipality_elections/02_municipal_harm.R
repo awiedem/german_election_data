@@ -91,3 +91,63 @@ means <- df_cw |>
     ags = ags_21, year = election_year
   ) |>
   ungroup()
+
+
+# Create plot -------------------------------------------------------------
+
+# Load municipality level data
+muni <- read_rds("data/municipal_covars/ags_area_pop_emp.rds") |>
+  rename(ags = ags_21) |>
+  mutate(ags = pad_zero_conditional(ags, 7)) |>
+  filter(year >= 2006 & year < 2020)
+
+# Merge
+df_final <- muni |>
+  left_join_check_obs(df_harm, by = c("ags", "year"))
+
+# Create variable indicating whether there was election in given year
+df_final <- df_final |>
+  mutate(
+    election_bin = ifelse(!is.na(turnout), 1, 0)
+  )
+
+glimpse(df_final)
+
+# state variable
+df_final <- df_final |>
+  mutate(
+    state = substr(ags, 1, 2),
+    state_name = state_id_to_names(state)
+  )
+
+table(df_harm$year)
+
+# create plot_df
+plot_df <- df_final |>
+  group_by(state_name, year) |>
+  summarise(election_bin = max(election_bin, na.rm = TRUE)) |>
+  ungroup()
+
+plot_df |>
+  ggplot(aes(x = as.factor(year), 
+             y = factor(state_name, 
+                        levels = rev(levels(factor(state_name)))), 
+             fill = as.factor(election_bin))
+  ) +
+  geom_tile(color = "white") + # Add borders to the squares
+  scale_fill_manual(values = c("1" = "darkgrey", "0" = "white"), name = "Election") +
+  labs(x = "Year", y = "State") +
+  theme_hanno() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1), # Rotate x-axis labels for better readability
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  )
+
+ggsave("figures/state_elections.pdf", width = 7, height = 4)
+
+move_plots_to_overleaf("code")
+
+
+### END
