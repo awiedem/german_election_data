@@ -249,24 +249,25 @@ harm_tab <- harmonization_counts %>%
     Year = year, 
     N = n_ags_harmonized, 
     `Total population (1000s)` = total_population_harmonized,
-    `Total area (km^2)` = total_area_harmonized,
+    `Total area (km$^{2}$)` = total_area_harmonized,
     `Average population (1000s)` = avg_population_harmonized,
-    `Average area (km^2)` = avg_area_harmonized
+    `Average area (km$^{2}$)` = avg_area_harmonized
   ) %>%
   kable(
     format = "latex", 
     digits = 2, 
+    escape = FALSE,
     booktabs = TRUE, 
     align = "lrrrrrr",
     linesep = "",
     caption = "Number of municipalities affected by mergers per year \\label{tab:mergers}") %>%
   kable_styling(full_width = FALSE, latex_options = c("hold_position")) %>%
-  column_spec(1, "2cm") %>%
-  column_spec(2, "1cm") %>%
-  column_spec(3, "2cm") %>%
-  column_spec(4, "2cm") %>%
-  column_spec(5, "2cm") %>%
-  column_spec(6, "2cm")
+  column_spec(1, "1cm") %>%
+  column_spec(2, ".5cm") %>%
+  column_spec(3, "3cm") %>%
+  column_spec(4, "3cm") %>%
+  column_spec(5, "3cm") %>%
+  column_spec(6, "3cm")
 
 save_kable(harm_tab, "tables/harmonization_counts.tex", keep_tex = T)
 save_kable(harm_tab, file = "~/Dropbox (Princeton)/Apps/Overleaf/ElectionPaper/tables/harmonization_counts.tex", keep_tex = T)

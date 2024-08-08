@@ -2152,10 +2152,12 @@ mailin_tab <- mailin_df |>
   ) |>
   kable_styling(full_width = FALSE, latex_options = c("hold_position")) %>%
   column_spec(1, "1cm") %>%
-  column_spec(2, "2cm") %>%
-  column_spec(3, "3cm") %>%
-  column_spec(4, "3cm") %>%
-  column_spec(5, "3cm")
+  column_spec(2, "3.5cm") %>%
+  column_spec(3, "3.5cm") %>%
+  column_spec(4, "3.5cm") %>%
+  column_spec(5, "3.5cm")
+
+1+3.5+3.5+3.5+3.5
 
 save_kable(mailin_tab, file = "tables/federal/n_mailin.tex", keep_tex = T)
 save_kable(mailin_tab, file = "~/Dropbox (Princeton)/Apps/Overleaf/ElectionPaper/tables/n_mailin.tex", keep_tex = T)
