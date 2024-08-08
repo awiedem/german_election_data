@@ -185,8 +185,6 @@ summary(row_sums)
 ## But we should maybe still investigate? 
 
 ## Merge to data
-
-### inspect ----
 df_harm <- df_harm %>%
   mutate(
     total_votes = row_sums,
@@ -195,8 +193,12 @@ df_harm <- df_harm %>%
     perc_total_votes_incogruence = total_votes_incogruence / valid_votes
   )
 
+### inspect incongruence ----
+
 table(df_harm$total_votes_incogruence, useNA = "ifany")
 table(df_harm$flag_total_votes_incongruent, useNA = "ifany")
+mean(df_harm$flag_total_votes_incongruent)
+
 
 # points
 df_harm %>% 
@@ -233,13 +235,9 @@ ggsave("figures/total_votes_incongruence_hist.pdf", width = 7, height = 4)
 
 move_plots_to_overleaf("code")
 
-mean(df_harm$flag_total_votes_incongruent)
-
-inspect <- df_harm |>
-  filter(unique_mailin == 1 & flag_total_votes_incongruent == 1) |>
-  select(ags, election_year, unique_mailin,flag_total_votes_incongruent, 
-         total_votes, valid_votes, total_votes_incogruence, perc_total_votes_incogruence,
-         cdu_csu, spd)
+df_harm |>
+  filter(unique_mailin == 1 & flag_total_votes_incongruent == 1)
+# no place that has unique_mailin == 1 has this problem
 
 # check total_votes vs. other vote variables
 inspect <- df_harm |>
@@ -318,11 +316,14 @@ write_rds(df_harm, "output/federal_muni_harm.rds")
 
 # Inspect -----------------------------------------------------------------
 
-df_harm <- fread("output/federal_muni_harm.csv")
+df_harm <- read_rds("output/federal_muni_harm.rds")
 
 # Berlin
 inspect <- df_harm |>
   filter(state=="11")
+
+
+names(df_harm)
 
 
 ### END

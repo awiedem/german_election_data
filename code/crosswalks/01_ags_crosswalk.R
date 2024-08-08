@@ -1,6 +1,7 @@
 ### Municipality level crosswalks
 # Vincent Heddesheimer
-# Last update: May, 23, 2024
+# First draft: May, 23, 2024
+# Last update: Aug, 07, 2024
 
 # remove scientific notation
 options(scipen = 999)
@@ -82,6 +83,7 @@ cw_combined <- bind_rows(cw_combined, cw_list) |>
 
 # write crosswalk df
 fwrite(cw_combined, "data/crosswalks/ags_crosswalks.csv")
+write_rds(cw_combined, "data/crosswalks/ags_crosswalks.rds")
 
 # Create covariate dataframe ----------------------------------------------
 
@@ -173,7 +175,7 @@ cw |>
   print(n = 32)
 # ags_21 ags_name_21                                      
 # <dbl> <chr>                                            
-#   1  7000999 Gemeinsames deutsch-luxemburgisches Hoheitsgebiet
+# 1  7000999 Gemeinsames deutsch-luxemburgisches Hoheitsgebiet
 # 2 10042999 Deutsch-luxemburgisches Hoheitsgebiet            
 # 3 13000999 Küstengewässer einschl. Anteil am Festlandsockel 
 
@@ -193,5 +195,95 @@ cw <- cw |>
 
 # write
 fwrite(cw, "data/municipal_covars/ags_area_pop_emp.csv")
+write_rds(cw, "data/municipal_covars/ags_area_pop_emp.rds")
+
+
+
+# Create table harmonizations per year -------------------------------------------
+
+cw_combined <- read_rds("data/crosswalks/ags_crosswalks.rds")
+
+glimpse(cw_combined)
+
+# Want to create a table and a plot that shows the number of ags affected by harmonization per year
+# For this, we need to count the number of ags that are affected by harmonization per year
+# We can do this by counting the number of ags per year that have a pop_cw value below 1
+
+
+# First, check whether there are cases where area_cw is below 1 but pop_cw is 1
+inspect <- cw_combined %>%
+  filter(area_cw < 1 & pop_cw == 1)
+# that means, the population comes from exactly one ags, but the area is below 1
+# that also means, that we should use pop_cw as crosswalk
+
+# Second, check whether there are cases where pop_cw is below 1 but area_cw is 1
+inspect <- cw_combined %>%
+  filter(pop_cw < 1 & area_cw == 1)
+# zero!
+
+# merged_ags
+merged_ags <- cw_combined %>%
+  filter(pop_cw < 1)
+
+
+# Count the number of ags per year that are affected by harmonization
+harmonization_counts <- cw_combined %>%
+  mutate(population = population / 10) %>%
+  group_by(year) %>%
+  summarise(
+    n_ags = n(),
+    n_ags_harmonized = sum(pop_cw < 1),
+    # calculate total population & area for ags with pop_cw < 1
+    total_population_harmonized = sum(population[pop_cw < 1], na.rm = TRUE),
+    total_area_harmonized = sum(area[pop_cw < 1], na.rm = TRUE),
+    # calculate average population & area for ags with pop_cw < 1
+    avg_population_harmonized = mean(population[pop_cw < 1], na.rm = TRUE),
+    avg_area_harmonized = mean(area[pop_cw < 1], na.rm = TRUE)
+  )
+# population measured in 1000s
+# area measured in km^2
+
+# produce latex table
+harm_tab <- harmonization_counts %>%
+  select(
+    Year = year, 
+    N = n_ags_harmonized, 
+    `Total population (1000s)` = total_population_harmonized,
+    `Total area (km^2)` = total_area_harmonized,
+    `Average population (1000s)` = avg_population_harmonized,
+    `Average area (km^2)` = avg_area_harmonized
+  ) %>%
+  kable(
+    format = "latex", 
+    digits = 2, 
+    booktabs = TRUE, 
+    align = "lrrrrrr",
+    linesep = "",
+    caption = "Number of municipalities affected by mergers per year \\label{tab:mergers}") %>%
+  kable_styling(full_width = FALSE, latex_options = c("hold_position")) %>%
+  column_spec(1, "2cm") %>%
+  column_spec(2, "1cm") %>%
+  column_spec(3, "2cm") %>%
+  column_spec(4, "2cm") %>%
+  column_spec(5, "2cm") %>%
+  column_spec(6, "2cm")
+
+save_kable(harm_tab, "tables/harmonization_counts.tex", keep_tex = T)
+save_kable(harm_tab, file = "~/Dropbox (Princeton)/Apps/Overleaf/ElectionPaper/tables/harmonization_counts.tex", keep_tex = T)
+
+# produce plot
+harmonization_counts %>%
+  ggplot(aes(x = year, y = n_ags_harmonized)) +
+  geom_col() +
+  geom_text(aes(label = n_ags_harmonized), vjust = -0.5, size = 2.75) +
+  labs(
+    x = "Year",
+    y = "Number of municipalities\n affected by mergers"
+  ) +
+  theme_hanno() +
+  scale_y_continuous(limits = c(0, 85))
+
+ggsave("figures/mergers.pdf", width = 7, height = 3.5)
+ggsave("~/Dropbox (Princeton)/Apps/Overleaf/ElectionPaper/figures/mergers.pdf", width = 7, height = 3.5)
 
 ### END

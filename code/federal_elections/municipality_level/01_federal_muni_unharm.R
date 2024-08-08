@@ -2106,24 +2106,76 @@ df <- df |>
 write_rds(df, file = "output/federal_muni_unharm.rds")
 fwrite(df, file = "output/federal_muni_unharm.csv")
 
-# # Create latex table of mailin_df -----------------------------------------
-# 
-# pacman::p_load(kableExtra)
-# 
-# # create kableextra latex table w booktabs
-# mailin_df |>
-#   rename("Election" = election_year,
-#          "Joint mail-in voting districts" = mailin_join) |>
-#   kable(
-#     booktabs = TRUE,
-#     escape = FALSE,
-#     format = "latex",
-#     linesep = "",
-#     align = "ll"
-#   ) |>
-#   kable_styling(latex_options = c("hold_position")) |>
-#   save_kable(file = "04_Tables/n_mailin.tex", keep_tex = T)
+write_rds <- mailin_df |>
+  write_rds("data/federal_elections/municipality_level/processed_data/mailin_df.rds")
 
+# Create latex table of mailin_df -----------------------------------------
+
+pacman::p_load(kableExtra)
+
+mailin_df <- read_rds("data/federal_elections/municipality_level/processed_data/mailin_df.rds")
+df <- read_rds("output/federal_muni_unharm.rds")
+
+# number of ags with unique_mailin == 0 in each election
+n_joint <- df |>
+  group_by(election_year) |>
+  summarise(
+    n = n_distinct(ags),
+    n_ags_joint_mailin = sum(unique_mailin == 0),
+    ags_share = n_ags_joint_mailin / n * 100
+    ) |>
+  ungroup()
+
+# create kableextra latex table w booktabs
+mailin_tab <- mailin_df |>
+  left_join_check_obs(n_joint, by = "election_year") |>
+  mutate(
+    # where NA in n_ags_joint_mailin & share set to 0
+    n_ags_joint_mailin = ifelse(is.na(n_ags_joint_mailin), 0, n_ags_joint_mailin),
+    ags_share = ifelse(is.na(ags_share), 0, ags_share)
+  ) |>
+  select(
+    "Election" = election_year,
+    "Joint mail-in districts" = mailin_join,
+    "Municipalities w/ joint mail-in districts" = n_ags_joint_mailin,
+    "Total municipalities (unharmonized)" = n,
+    "Share of municipalities w/ joint mail-in districts (in \\%)" = ags_share
+    ) |>
+  kable(
+    booktabs = TRUE,
+    escape = FALSE,
+    format = "latex",
+    linesep = "",
+    align = "lrrrr",
+    digits = 2,
+    caption = "Joint mail-in voting districts in each election \\label{tab:n_mailin}"
+  ) |>
+  kable_styling(full_width = FALSE, latex_options = c("hold_position")) %>%
+  column_spec(1, "1cm") %>%
+  column_spec(2, "2cm") %>%
+  column_spec(3, "3cm") %>%
+  column_spec(4, "3cm") %>%
+  column_spec(5, "3cm")
+
+save_kable(mailin_tab, file = "tables/federal/n_mailin.tex", keep_tex = T)
+save_kable(mailin_tab, file = "~/Dropbox (Princeton)/Apps/Overleaf/ElectionPaper/tables/n_mailin.tex", keep_tex = T)
+
+# plot barplot
+mailin_df %>% 
+  ggplot(aes(x = factor(election_year), y = mailin_join)) +
+  geom_col() +
+  # value of mailin_join as text above each year
+  geom_text(aes(label = mailin_join), vjust = -0.5) +
+  theme_hanno() +
+  labs(
+    x = "Election",
+    y = "Joint mail-in voting districts"
+  ) +
+  # increase max of y-axis to make room for text
+  scale_y_continuous(limits = c(0, 750))
+  
+ggsave("figures/n_mailin.pdf", width = 7, height = 3.5)
+ggsave("~/Dropbox (Princeton)/Apps/Overleaf/ElectionPaper/figures/n_mailin.pdf", width = 7, height = 3.5)
 
 
 # Inspect -----------------------------------------------------------------

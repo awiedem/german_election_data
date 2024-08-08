@@ -1430,37 +1430,6 @@ df <- df %>%
     state_name = state_id_to_names(state)
   )
 
-
-
-# Deal with Berlin and Hamburg --------------------------------------------
-
-# Berlin: 1990 one district, 1994-2021 several districts
-# Hamburg:  1990-2017 one district, 2021 several districts
-# Solution: aggregate all districts to one
-
-berlin_hamburg <- df |>
-  filter(state %in% c("11", "02")) |>
-  group_by(election_year, state) |>
-  summarise(across(
-    eligible_voters:left_wing_wLinke, sum, na.rm = TRUE
-  )) |>
-  mutate(
-    ags = case_when(
-      state == "11" ~ "11000000",
-      state == "02" ~ "02000000"
-    ),
-    county = case_when(
-      state == "11" ~ "Berlin",
-      state == "02" ~ "Hamburg"
-    ),
-    state_name = state_id_to_names(state),
-    unique_mailin = ifelse(unique_mailin > 0, 1, 0)
-  )
-
-df <- df |>
-  filter(!(state %in% c("11", "02"))) |>
-  bind_rows(berlin_hamburg)
-
 # Write unharmonized df ---------------------------------------------------
 
 write_rds(df, file = "output/federal_muni_raw.rds")
