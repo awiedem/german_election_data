@@ -288,16 +288,18 @@ inspect |>
 
 # calculate vote share & turnout
 df_harm <- df_harm |>
-    mutate(
-        across(cdu:left_wing_wLinke, ~ .x / total_votes),
-        # turnout = (valid + invalid) / eligible_voters
-        turnout = number_voters / eligible_voters
-    ) |>
-    # Relocate columns
-    relocate(turnout, .before = cdu) |>
-    relocate(right_wing, .after = bsa) |>
-    relocate(left_wing, .after = right_wing) |>
-    relocate(left_wing_wLinke, .after = left_wing)
+  mutate(
+    across(cdu:left_wing_wLinke, ~ .x / total_votes),
+    # turnout = (valid + invalid) / eligible_voters
+    turnout = number_voters / eligible_voters
+  ) |>
+  # Relocate columns
+  relocate(turnout, .before = cdu) |>
+  relocate(right_wing, .after = bsa) |>
+  relocate(left_wing, .after = right_wing) |>
+  relocate(left_wing_wLinke, .after = left_wing) |>
+  relocate(county, .after = state) |>
+  select(-c(ags_name, ags_name_21, emp_cw, employees))
 
 # AfD to NA for years prior to 2013
 
