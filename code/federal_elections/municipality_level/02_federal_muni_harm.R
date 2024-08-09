@@ -27,7 +27,8 @@ cw_info_ever_merged_ags_21 <- cw %>%
     summarise(ever_merged = any(n > 1)) %>%
     ungroup()
 
-# Merge with unharmonized election data -----------------------------------
+
+# Read unharmonized election data -----------------------------------------
 
 df <- read_rds("output/federal_muni_unharm.rds") |>
   # remove population & area that were used for weighting multi mail-in districts
@@ -35,50 +36,209 @@ df <- read_rds("output/federal_muni_unharm.rds") |>
   # filter years before 1990: no crosswalks available
   filter(election_year >= 1990)
 
+
+# Naive merge with unharmonized election data -----------------------------------
+
 glimpse(df)
 glimpse(cw)
 
 # bind with crosswalks
-df <- df |>
+df_naive_merge <- df |>
     left_join_check_obs(cw, by = c("ags", "election_year" = "year")) |>
     arrange(ags, election_year)
 # number of obs increases: but this is wanted, as we want to harmonize the data
 
+# is there any ags that did not get merged to ags_21?
+not_merged_naive <- df_naive_merge %>%
+  filter(election_year < 2021) %>%
+  filter(is.na(ags_21)) %>%
+  select(ags, election_year) %>%
+  distinct() %>%
+  mutate(id = paste0(ags, "_", election_year))
+not_merged_naive
+# If we do not follow the steps below, there are >1,600 cases.
+# We found these by the below code.
+
+# filter out all observations for ags that were not merged
+obs_not_merged_ags <- df_naive_merge %>%
+  filter(ags %in% not_merged_naive$ags) %>%
+  select(ags, ags_name, election_year)
+
+# how often do these ags appear in the data?
+table(obs_not_merged_ags$ags)
+# some one time, some two, some three
+
+# get all ags that appear one time in obs_not_merged_ags
+one_time_ags <- obs_not_merged_ags %>%
+  group_by(ags) %>%
+  filter(n() == 1) %>%
+  select(ags, election_year) %>%
+  mutate(id = paste0(ags, "_", election_year)) %>%
+  distinct()
+# the great majority of one-timers are from 1990
+# 1. attempt: use 1991 as crosswalk year for these ags
+# This worked very well! Reduced from 1656 cases to 266 cases!
+
+# fill out the missing values in ags_name:employees with the values for which values are existing
+cw_not_merged <- cw |>
+  filter(ags %in% not_merged_naive$ags)
+
+
+# Dealing with unsuccessful mergers ---------------------------------------
+
+# define cases where we want to use year - 1
+ags_year_cw <- not_merged_naive %>%
+  filter(
+    grepl("^031", id) |           # id starts with 031
+      grepl("^05", id) |    
+      id == "07143217_1994" |       # id equals 07143217_1994
+      grepl("^12", id) |          # id starts with 120
+      grepl("^14", id) |            # id starts with 14
+      grepl("^15", id) |            # id starts with 15
+      grepl("^16", id)              # id starts with 16
+  ) %>%
+  pull(id)
+
+# apply the two rules
+df <- df |>
+  mutate(
+    id = paste0(ags, "_", election_year),
+    ags = case_when(
+      id == "16063057_1994" ~ "16063094", # Moorgrund
+      TRUE ~ ags
+    ),
+    year_cw = case_when(
+      # 0. # have to adjust some who only exist in 1990
+      id == "15144280_1990" ~ 1990, 
+      id == "15228170_1990" ~ 1990, 
+      id == "15228220_1990" ~ 1990, 
+      id == "15228280_1990" ~ 1990, 
+      id == "15228380_1990" ~ 1990, 
+      id == "15320590_1990" ~ 1990, 
+      id == "15336010_1990" ~ 1990, 
+      id == "15336290_1990" ~ 1990, 
+      id == "15336660_1990" ~ 1990, 
+      id == "16022540_1990" ~ 1990, 
+      # 1. if in 1990, try 1991 as merge year
+      id %in% not_merged_naive[not_merged_naive$election_year == 1990, ]$id ~ 1991,
+      # 2. remaining cases
+      id == "15085255_2013" ~ 2010,
+      id == "14082220_1994" ~ 1993, # Krumbach (but also have to change ags)
+      id == "14085170_1994" ~ 1993, # Naunhof (but also have to change ags)
+      id == "16063047_1994" ~ 1993, # Kupfersuhl (but also have to change ags)
+      id == "16063056_1994" ~ 1993, # Möhra (but also have to change ags)
+      id == "16063057_1994" ~ 1994, # Moorgrund (but also have to change ags)
+      id == "16069022_1994" ~ 1993, # Heßberg (but also have to change ags)
+      id == "16073098_1994" ~ 1993, # Weißen (but also have to change ags)
+      id == "12071180_1998" ~ 1996, # Horno (but also have to change ags)
+      # 3. if not in 1990, try year - 1
+      id %in% not_merged_naive[not_merged_naive$election_year > 1990, ]$id ~ election_year - 1,
+      TRUE ~ election_year
+    ),
+    # wrong third digit: checked with election results Leitband 
+    # and manually matched ags names btw. election results & crosswalk files
+    ags = case_when(
+      id == "15144280_1990" ~ "15044280", # REINHARZ 
+      id == "15228170_1990" ~ "15028170", # KLEINHERINGEN 
+      id == "15228220_1990" ~ "15028220", # LISSDORF
+      id == "15228280_1990" ~ "15028280", # NEIDSCHUETZ
+      id == "15228380_1990" ~ "15028380", # WETTABURG
+      id == "15320590_1990" ~ "15020590", # WEDRINGEN
+      id == "15336010_1990" ~ "15036010", # ABBENDORF
+      id == "15336290_1990" ~ "15036290", # HOLZHAUSEN
+      id == "15336660_1990" ~ "15036660", # WADDEKATH
+      id == "16022540_1990" ~ "15036710", # WOLMERSDORF
+      id == "14082220_1994" ~ "14032270", # Krumbach (but also have to change year_cw)
+      id == "14085170_1994" ~ "14031310", # Naunhof (but also have to change year_cw)
+      id == "16063047_1994" ~ "16016410", # Kupfersuhl (but also have to change year_cw)
+      id == "16063056_1994" ~ "16015420", # Möhra (but also have to change year_cw)
+      id == "16069022_1994" ~ "16023360", # Heßberg (but also have to change year_cw)
+      id == "16073098_1994" ~ "16033700", # Weißen (but also have to change year_cw)
+      id == "12071180_1998" ~ "12071180", # Horno (but also have to change year_cw)
+      TRUE ~ ags
+    )
+  )
+
+# Streitholz non existent in crosswalks
+# https://www.destatis.de/DE/Themen/Laender-Regionen/Regionales/Gemeindeverzeichnis/Namens-Grenz-Aenderung/1991.html
+streitholz <- data.frame(
+  ags = "16022540", ags_name = "Streitholz", year = 1990,
+  area_cw = 1, pop_cw = 1,
+  area = 1.59, population = 0.104,
+  ags_21 = 16061049, ags_name_21 = "Hohes Kreuz",
+  emp_cw = NA, employees = NA
+)
+
+names(cw)
+
+# bind to cw
+cw <- cw |>
+  bind_rows(streitholz) |>
+  arrange(ags, year)
+
+
+# Merge crosswalks with election data -------------------------------------
+
+# Merge crosswalks
+df_cw <- df |>
+  left_join_check_obs(cw, by = c("ags", "year_cw" = "year"))
+# number of obs increases: but this is wanted, as we want to harmonize the data
+
+glimpse(df_cw)
+
+# is there any ags that did not get merged to ags_21?
+not_merged <- df_cw %>%
+  filter(election_year < 2021) %>%
+  filter(is.na(ags_21)) %>%
+  select(ags, election_year) %>%
+  distinct()
+not_merged
+# now, there is no unsuccessful merge.
+
+# Flag the cases where we had to change the ags
+df_cw <- df_cw |>
+  mutate(
+    flag_unsuccessful_naive_merge = ifelse(id %in% not_merged_naive$id, 1, 0)
+  )
+
+glimpse(df_cw)
+
 ## Check means of some variables by year
 
-agg_df <- df %>%
-    group_by(election_year) %>%
-    summarise(
-        mean_valid_votes = mean(valid_votes, na.rm = TRUE),
-        mean_number_voters = mean(number_voters, na.rm = TRUE),
-        mean_population = mean(population, na.rm = TRUE),
-        mean_cdu_csu = mean(cdu_csu, na.rm = TRUE)
-    ) %>%
-    pivot_longer(
-        cols = contains("mean"),
-        names_to = "variable", values_to = "value"
-    )
+agg_df <- df_cw %>%
+  group_by(election_year) %>%
+  summarise(
+    mean_valid_votes = mean(valid_votes, na.rm = TRUE),
+    mean_number_voters = mean(number_voters, na.rm = TRUE),
+    mean_population = mean(population, na.rm = TRUE),
+    mean_cdu_csu = mean(cdu_csu, na.rm = TRUE)
+  ) %>%
+  pivot_longer(
+    cols = contains("mean"),
+    names_to = "variable", values_to = "value"
+  )
 
 ## Distribution
 
 ggplot(agg_df, aes(x = election_year, y = value, color = variable)) +
-    geom_point() +
-    theme_hanno() +
-    labs(
-        title = "Descriptives of BTW data",
-        x = "Year",
-        y = "Mean value"
-    ) +
-    theme(legend.position = "bottom") +
-    scale_color_brewer(palette = "Set1", name = "") +
-    facet_wrap(~variable, scales = "free_y")
+  geom_point() +
+  theme_hanno() +
+  labs(
+    title = "Descriptives of BTW data",
+    x = "Year",
+    y = "Mean value"
+  ) +
+  theme(legend.position = "bottom") +
+  scale_color_brewer(palette = "Set1", name = "") +
+  facet_wrap(~variable, scales = "free_y")
+
 
 # Harmonize ---------------------------------------------------------------
 
-df$election_year
+df_cw$election_year
 
 ## Votes: weighted sum -----------------------------------------------------
-votes <- df |>
+votes <- df_cw |>
     filter(election_year < 2021) |>
     group_by(ags_21, election_year) |>
     summarise(
@@ -97,7 +257,7 @@ votes <- df |>
     ungroup()
 
 ## Population & area: weighted sum -----------------------------------------
-area_pop <- df |>
+area_pop <- df_cw |>
     filter(election_year < 2021) |>
     group_by(ags_21, election_year) |>
     summarise(

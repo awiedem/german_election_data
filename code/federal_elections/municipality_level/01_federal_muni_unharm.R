@@ -361,7 +361,16 @@ df90 <- df90_bezirksarten |>
   # variable for whether ags had unique mailin
   mutate(unique_mailin = ifelse(ags %in% ags_w_mailin90, 1, 0))
 
-
+# read in leitband
+leitband90 <- fread("data/federal_elections/municipality_level/raw_data/BTW90/BTW90_Leitband.csv") |>
+  mutate(
+    Land = pad_zero_conditional(Land, 1),
+    Kreis = pad_zero_conditional(Kreis, 1),
+    # Verbandsgemeinde & Gemeinde in same column: separate and only take Gemeinde for ags
+    Gemeinde = pad_zero_conditional(Gemeinde, 1, "00"),
+    Gemeinde = pad_zero_conditional(Gemeinde, 2, "0"),
+    ags = paste0(Land, Regierungsbezirk, Kreis, Gemeinde)
+  )
 
 ## Mail-in voting ---------------------------------------------------------
 
@@ -490,6 +499,15 @@ df94 <- fread("data/federal_elections/municipality_level/raw_data/BTW94/BTW94_Zw
     Gemeinde = pad_zero_conditional(Gemeinde, 2, "0"),
     ags = paste0(Land, RB, Kreis, Gemeinde)
   ) 
+
+# also read leitband
+leitband94 <- read_delim("data/federal_elections/municipality_level/raw_data/BTW94/BTW94_Leitband.txt",
+                         delim = ";", 
+                         locale = locale(encoding = "Latin1"), 
+                         col_names = TRUE) |>
+  mutate(
+    ags = paste0(Land, RB, Kreis, Gemeinde)
+  )
 
 # Summarize all variables by ags & Bezirksart
 df94_bezirksarten <- df94 |>
@@ -625,6 +643,15 @@ df98 <- fread("data/federal_elections/municipality_level/raw_data/BTW98/BTW98_Zw
     Kreis = pad_zero_conditional(Kreis, 1),
     Gemeinde = pad_zero_conditional(Gemeinde, 1, "00"),
     Gemeinde = pad_zero_conditional(Gemeinde, 2, "0"),
+    ags = paste0(Land, RB, Kreis, Gemeinde)
+  )
+
+# also read leitband
+leitband98 <- read_delim("data/federal_elections/municipality_level/raw_data/BTW98/BTW98_Leitband.txt",
+                         delim = ";", 
+                         locale = locale(encoding = "Latin1"), 
+                         col_names = TRUE) |>
+  mutate(
     ags = paste0(Land, RB, Kreis, Gemeinde)
   )
 
