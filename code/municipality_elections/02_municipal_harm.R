@@ -145,7 +145,7 @@ plot_df |>
     legend.position = "none"
   )
 
-ggsave("figures/state_elections.pdf", width = 7, height = 4)
+ggsave("output/figures/state_elections.pdf", width = 7, height = 4)
 
 move_plots_to_overleaf("code")
 

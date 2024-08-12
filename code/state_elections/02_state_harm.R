@@ -263,6 +263,15 @@ write_rds(df_harm, "output/state_harm.rds")
 
 # Create plot -------------------------------------------------------------
 
+# read
+df_harm <- read_rds("output/state_harm.rds")
+
+# for which years do we have non-NA afd values?
+df_harm %>%
+  filter(!is.na(afd)) %>%
+  select(year) %>%
+  distinct()
+
 # Load municipality level data
 muni <- read_rds("data/municipal_covars/ags_area_pop_emp.rds") |>
   rename(ags = ags_21) |>
@@ -313,7 +322,7 @@ plot_df |>
     legend.position = "none"
   )
 
-ggsave("figures/state_elections.pdf", width = 7, height = 4)
+ggsave("output/figures/state_elections.pdf", width = 7, height = 4)
 
 move_plots_to_overleaf("code")
 

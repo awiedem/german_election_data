@@ -32,22 +32,88 @@ cw_info_ever_merged_cc_21 <- cw %>%
 cw_info_ever_merged_cc_21 |>
   print(n=Inf)
 
-# Merge with unharmonized election data -----------------------------------
+# Read unharmonized election data -----------------------------------------
 
 df <- read_rds("output/federal_cty_unharm.rds") |>
   mutate(election_year = year) |>
   filter(election_year >= 1990)
 
-df <- df |>
+# Naive merge with unharmonized election data -----------------------------------
+
+df_naive_merge <- df |>
   left_join_check_obs(cw, by = c("ags" = "county_code", "year")) |>
   arrange(ags, year)
 # obs. increased, but this is wanted: means that we have changing counties
 
+# is there any ags that did not get merged to ags_21?
+not_merged_naive <- df_naive_merge %>%
+  filter(election_year < 2021) %>%
+  filter(is.na(county_code_21)) %>%
+  select(ags, election_year) %>%
+  distinct() %>%
+  mutate(id = paste0(ags, "_", election_year))
+not_merged_naive
+# If we do not follow the steps below, there are 50 cases.
+# We found these by the below code.
 
 glimpse(df)
 ## Check means of some variables by year
 
-agg_df <- df %>%
+# Dealing with unsuccessful mergers ---------------------------------------
+
+# apply the rules
+df <- df |>
+  mutate(
+    id = paste0(ags, "_", election_year),
+    year_cw = case_when(
+      # 1. if in 1990, try 1991 as merge year
+      id %in% not_merged_naive[not_merged_naive$election_year == 1990, ]$id ~ 1991,
+      # 2. if not in 1990, try year - 1
+      id %in% not_merged_naive[not_merged_naive$election_year > 1990, ]$id ~ election_year - 1,
+      TRUE ~ election_year
+    )
+  )
+
+# 3. The remaining ags that cannot be merged are districts in Berlin.
+# We change their ags to the overall Berlin ags.
+df <- df |>
+  mutate(
+    ags = case_when(
+      # when ags starts with "11"
+      str_sub(ags, 1, 2) == "11" ~ "11000",
+      TRUE ~ ags
+    )
+  )
+
+# Merge crosswalks with election data -------------------------------------
+
+# Merge crosswalks
+df_cw <- df |>
+  left_join_check_obs(cw, by = c("ags" = "county_code", "year_cw" = "year"))
+# number of obs increases: but this is wanted, as we want to harmonize the data
+
+glimpse(df_cw)
+
+# is there any ags that did not get merged to ags_21?
+not_merged <- df_cw %>%
+  filter(election_year < 2021) %>%
+  filter(is.na(county_code_21)) %>%
+  select(ags, election_year) %>%
+  distinct()
+not_merged
+# now, there is no unsuccessful merge.
+
+# Flag the cases where we had to change the ags
+df_cw <- df_cw |>
+  mutate(
+    flag_unsuccessful_naive_merge = ifelse(id %in% not_merged_naive$id, 1, 0)
+  )
+
+table(df_cw$flag_unsuccessful_naive_merge, useNA = "ifany")
+
+glimpse(df_cw)
+
+agg_df <- df_cw %>%
   group_by(year) %>%
   summarise(
     mean_valid_votes = mean(valid_votes, na.rm = TRUE),
@@ -76,12 +142,12 @@ ggplot(agg_df, aes(x = year, y = value, color = variable)) +
 
 # Harmonize ---------------------------------------------------------------
 
-df$year
+df_cw$year
 
-glimpse(df)
+glimpse(df_cw)
 
 ## Votes: weighted sum -----------------------------------------------------
-votes <- df |>
+votes <- df_cw |>
   filter(year < 2021) |>
   group_by(county_code_21, election_year) |>
   summarise(
@@ -98,7 +164,7 @@ votes <- df |>
   ungroup()
 
 ## Population & area: weighted sum -----------------------------------------
-area_pop <- df |>
+area_pop <- df_cw |>
   filter(election_year < 2021) |>
   group_by(county_code_21, election_year) |>
   summarise(
@@ -139,7 +205,7 @@ df_harm <- votes |>
   rename(county_code = county_code_21) |>
   mutate(county_code = pad_zero_conditional(county_code, 4)) |>
   # Bind 2021 data (that was unharmonized)
-  bind_rows(df |>
+  bind_rows(df_cw |>
               rename(county_code = ags) |>
               filter(election_year == 2021) |>
               select(-c(
@@ -173,7 +239,7 @@ df_harm <- df_harm |>
 names(df_harm)
 
 row_sums <- df_harm %>%
-  # select(-c(left_wing, left_wing_wLinke, right_wing, cdu_csu)) %>%
+  # select(-c(far_left, far_left_wLinke, far_right, cdu_csu)) %>%
   select(cdu:zentrum) %>%
   rowSums(na.rm = TRUE)
 
@@ -197,9 +263,9 @@ df_harm <- df_harm |>
   ) |>
   # Relocate columns
   relocate(turnout, .before = cdu) |>
-  relocate(right_wing, .after = bsa) |>
-  relocate(left_wing, .after = right_wing) |>
-  relocate(left_wing_wLinke, .after = left_wing) |>
+  relocate(far_right, .after = bsa) |>
+  relocate(far_left, .after = far_right) |>
+  relocate(far_left_wLinke, .after = far_left) |>
   relocate(cdu_csu, .after = csu)
 
 # AfD to NA for years prior to 2013
@@ -232,6 +298,7 @@ write_rds(df_harm, file = "output/federal_cty_harm.rds")
 # Inspect -----------------------------------------------------------------
 
 df_harm <- read_rds("output/federal_cty_harm.rds")
+names(df_harm)
 
 
 insp_harm <- df_harm |>
@@ -244,7 +311,7 @@ insp_harm <- df_harm |>
   ) |>
   filter(value != 0) |>
   select(var, value) |>
-  filter(!(var %in% c("right_wing", "left_wing", "left_wing_wLinke", "cdu_csu")))
+  filter(!(var %in% c("far_right", "far_left", "far_left_wLinke", "cdu_csu")))
 
 
 inspect_unharm <- read_rds("output/federal_cty_unharm.rds") 
@@ -260,7 +327,6 @@ insp <- inspect_unharm |>
   ) |>
   filter(value != 0) |>
   select(var, value)
-
 
 
 ### END

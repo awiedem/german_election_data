@@ -2042,12 +2042,12 @@ df <- df |>
     ) %>%
   # Calculate extremist votes
   mutate(
-    right_wing = rowSums(select(., afd:dsu), na.rm = TRUE),
-    left_wing = rowSums(select(., dkp:bsa), na.rm = TRUE)
+    far_right = rowSums(select(., afd:dsu), na.rm = TRUE),
+    far_left = rowSums(select(., dkp:bsa), na.rm = TRUE)
     ) %>%
   # Left wing with votes for Linke/PDS
   mutate(
-    left_wing_wLinke = rowSums(select(., linke_pds, left_wing), na.rm = TRUE)
+    far_left_wLinke = rowSums(select(., linke_pds, far_left), na.rm = TRUE)
     )
 ### Extremist parties
 ## Right wing
@@ -2104,7 +2104,7 @@ berlin_hamburg <- df |>
   filter(state %in% c("11", "02")) |>
   group_by(election_year, state) |>
   summarise(across(
-    eligible_voters:left_wing_wLinke, sum, na.rm = TRUE
+    eligible_voters:far_left_wLinke, sum, na.rm = TRUE
   )) |>
   mutate(
     ags = case_when(
@@ -2186,7 +2186,7 @@ mailin_tab <- mailin_df |>
 
 1+3.5+3.5+3.5+3.5
 
-save_kable(mailin_tab, file = "tables/federal/n_mailin.tex", keep_tex = T)
+save_kable(mailin_tab, file = "output/tables/federal/n_mailin.tex", keep_tex = T)
 save_kable(mailin_tab, file = "~/Dropbox (Princeton)/Apps/Overleaf/ElectionPaper/tables/n_mailin.tex", keep_tex = T)
 
 # plot barplot
@@ -2203,9 +2203,9 @@ mailin_df %>%
   # increase max of y-axis to make room for text
   scale_y_continuous(limits = c(0, 750))
   
-ggsave("figures/n_mailin.pdf", width = 7, height = 3.5)
-ggsave("~/Dropbox (Princeton)/Apps/Overleaf/ElectionPaper/figures/n_mailin.pdf", width = 7, height = 3.5)
+ggsave("output/figures/n_mailin.pdf", width = 7, height = 3.5)
 
+move_plots_to_overleaf("code")
 
 # Inspect -----------------------------------------------------------------
 

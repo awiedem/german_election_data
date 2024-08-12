@@ -9,7 +9,7 @@ if (Sys.info()['user'] == 'hanno') {
 }
 
 
-plots <- dir('output/figures', full.names = T, recursive = T) %>% 
+plots <- dir('output/', full.names = T, recursive = T) %>% 
   .[str_detect(., 'pdf|jpeg|tex|png')]
 
 file.copy(

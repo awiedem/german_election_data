@@ -202,11 +202,11 @@ df <- comb2 |>
   ungroup() %>%
   # Calculate extremist votes
   mutate(
-    right_wing = rowSums(select(., afd:dsu), na.rm = TRUE),
-    left_wing = rowSums(select(., dkp:bwk), na.rm = TRUE)
+    far_right = rowSums(select(., afd:dsu), na.rm = TRUE),
+    far_left = rowSums(select(., dkp:bwk), na.rm = TRUE)
   ) %>%
   # Left wing with votes for Linke/PDS
-  mutate(left_wing_wLinke = rowSums(select(., linke_pds, left_wing), na.rm = TRUE))
+  mutate(far_left_wLinke = rowSums(select(., linke_pds, far_left), na.rm = TRUE))
 ### Extremist parties
 ## Right wing
 # npd, fap (freiheitliche deutsche arbeiterpartei), rep (die republikaner),
@@ -285,5 +285,19 @@ df <- df |>
 
 write_rds(df, "output/federal_cty_unharm.rds")
 fwrite(df, "output/federal_cty_unharm.csv")
+
+
+# Inspect -----------------------------------------------------------------
+
+df <- read_rds("output/federal_cty_unharm.rds")
+
+names(df)
+
+# when did party v have non NA?
+df |>
+  filter(!is.na(V)) |>
+  select(year) |>
+  distinct() |>
+  print(n = Inf)
 
 ### END

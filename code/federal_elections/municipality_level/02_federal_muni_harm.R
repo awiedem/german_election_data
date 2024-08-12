@@ -86,6 +86,9 @@ cw_not_merged <- cw |>
 
 # Dealing with unsuccessful mergers ---------------------------------------
 
+
+
+
 # define cases where we want to use year - 1
 ags_year_cw <- not_merged_naive %>%
   filter(
@@ -99,16 +102,17 @@ ags_year_cw <- not_merged_naive %>%
   ) %>%
   pull(id)
 
-# apply the two rules
+# apply the rules
 df <- df |>
   mutate(
     id = paste0(ags, "_", election_year),
+    # 1. AGS where we have to change the ags for the respective year but where the year does not change
     ags = case_when(
       id == "16063057_1994" ~ "16063094", # Moorgrund
       TRUE ~ ags
     ),
     year_cw = case_when(
-      # 0. # have to adjust some who only exist in 1990
+      # 2. Define year for the ones who only exist in 1990 (so that they don't get changes by the next rule)
       id == "15144280_1990" ~ 1990, 
       id == "15228170_1990" ~ 1990, 
       id == "15228220_1990" ~ 1990, 
@@ -119,9 +123,9 @@ df <- df |>
       id == "15336290_1990" ~ 1990, 
       id == "15336660_1990" ~ 1990, 
       id == "16022540_1990" ~ 1990, 
-      # 1. if in 1990, try 1991 as merge year
+      # 3. if in 1990, try 1991 as merge year
       id %in% not_merged_naive[not_merged_naive$election_year == 1990, ]$id ~ 1991,
-      # 2. remaining cases
+      # 4. change year for remaining cases
       id == "15085255_2013" ~ 2010,
       id == "14082220_1994" ~ 1993, # Krumbach (but also have to change ags)
       id == "14085170_1994" ~ 1993, # Naunhof (but also have to change ags)
@@ -131,11 +135,11 @@ df <- df |>
       id == "16069022_1994" ~ 1993, # Heßberg (but also have to change ags)
       id == "16073098_1994" ~ 1993, # Weißen (but also have to change ags)
       id == "12071180_1998" ~ 1996, # Horno (but also have to change ags)
-      # 3. if not in 1990, try year - 1
+      # 5. if not in 1990, try year - 1
       id %in% not_merged_naive[not_merged_naive$election_year > 1990, ]$id ~ election_year - 1,
       TRUE ~ election_year
     ),
-    # wrong third digit: checked with election results Leitband 
+    # 6. wrong third digit: checked with election results Leitband 
     # and manually matched ags names btw. election results & crosswalk files
     ags = case_when(
       id == "15144280_1990" ~ "15044280", # REINHARZ 
@@ -200,6 +204,8 @@ df_cw <- df_cw |>
   mutate(
     flag_unsuccessful_naive_merge = ifelse(id %in% not_merged_naive$id, 1, 0)
   )
+
+table(df_cw$flag_unsuccessful_naive_merge, useNA = "ifany")
 
 glimpse(df_cw)
 
@@ -304,7 +310,7 @@ df_harm <- votes |>
   rename(ags = ags_21) |>
   mutate(ags = pad_zero_conditional(ags, 7)) |>
   # Bind 2021 data (that was unharmonized)
-  bind_rows(df |>
+  bind_rows(df_cw |>
               filter(election_year == 2021) |>
               select(-c(
                 state, state_name, election_year,
@@ -332,6 +338,8 @@ df_harm <- df_harm |>
 # Calculate vote share & turnout ------------------------------------------
 
 ## First: row sum of votes for all parties
+
+names(df_harm)
 
 row_sums <- df_harm %>%
     select(-c(left_wing, left_wing_wLinke, right_wing, cdu_csu)) %>%
@@ -391,7 +399,7 @@ df_harm %>%
   theme(axis.text.x = element_text(size = 9),
         axis.text.y = element_text(size = 9))
 
-ggsave("figures/total_votes_incongruence_hist.pdf", width = 7, height = 4)
+ggsave("output/figures/total_votes_incongruence_hist.pdf", width = 7, height = 4)
 
 move_plots_to_overleaf("code")
 
