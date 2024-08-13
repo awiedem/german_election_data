@@ -251,13 +251,13 @@ votes <- df_cw |>
         unique_mailin = max(unique_mailin),
         unique_multi_mailin = max(unique_multi_mailin),
         across(
-            eligible_voters:left_wing_wLinke,
+            eligible_voters:far_left_wLinke,
             ~ sum(.x * pop_cw, na.rm = TRUE)
         )
     ) |>
     # Round
     mutate(across(
-        eligible_voters:left_wing_wLinke,
+        eligible_voters:far_left_wLinke,
         ~ round(.x, digits = 0)
     )) |>
     ungroup()
@@ -342,7 +342,7 @@ df_harm <- df_harm |>
 names(df_harm)
 
 row_sums <- df_harm %>%
-    select(-c(left_wing, left_wing_wLinke, right_wing, cdu_csu)) %>%
+    select(-c(far_left, far_left_wLinke, far_right, cdu_csu)) %>%
     select(cdu:zentrum) %>%
     rowSums(na.rm = TRUE)
 
@@ -457,17 +457,18 @@ inspect |>
 # calculate vote share & turnout
 df_harm <- df_harm |>
   mutate(
-    across(cdu:left_wing_wLinke, ~ .x / total_votes),
+    across(cdu:far_left_wLinke, ~ .x / total_votes),
     # turnout = (valid + invalid) / eligible_voters
     turnout = number_voters / eligible_voters
   ) |>
   # Relocate columns
   relocate(turnout, .before = cdu) |>
-  relocate(right_wing, .after = bsa) |>
-  relocate(left_wing, .after = right_wing) |>
-  relocate(left_wing_wLinke, .after = left_wing) |>
+  relocate(far_right, .after = bsa) |>
+  relocate(far_left, .after = far_right) |>
+  relocate(far_left_wLinke, .after = far_left) |>
   relocate(county, .after = state) |>
-  select(-c(ags_name, ags_name_21, emp_cw, employees))
+  relocate(flag_unsuccessful_naive_merge, .after = population) |>
+  select(-c(ags_name, ags_name_21, emp_cw, employees, year_cw, id))
 
 # AfD to NA for years prior to 2013
 
@@ -475,6 +476,9 @@ df_harm <- df_harm %>%
     mutate(
         afd = ifelse(election_year < 2013, NA, afd)
     )
+
+
+
 
 ## Save this now:
 
