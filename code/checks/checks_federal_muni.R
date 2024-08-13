@@ -9,13 +9,13 @@ conflicts_prefer(dplyr::lag)
 
 # Federal ---------------------------------------------------------------------
 
-df <- read_csv("data/federal_elections/municipality_level/processed_data/btw_1980_2021_harm21.csv")
+df <- read_rds("output/federal_muni_harm.rds")
 
 glimpse(df)
 
 parties <- df %>%
     dplyr::select(cdu_csu:zentrum) %>%
-    dplyr::select(-left_wing, -left_wing_wLinke, -right_wing) %>%
+    dplyr::select(-far_left, -far_left_wLinke, -far_right) %>%
     colnames()
 
 # Checks

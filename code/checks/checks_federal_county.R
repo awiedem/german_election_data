@@ -9,12 +9,12 @@ conflicts_prefer(dplyr::lag)
 
 # Federal ---------------------------------------------------------------------
 
-df <- read_csv("data/federal_elections/county_level/processed_data/btw_1990_2021_harm21.csv")
+df <- read_rds("output/federal_cty_harm.rds")
 glimpse(df)
 
 parties <- df %>%
     dplyr::select(cdu_csu:zentrum) %>%
-    dplyr::select(-left_wing, -left_wing_wLinke, -right_wing) %>%
+    dplyr::select(-far_left, -far_left_wLinke, -far_right) %>%
     colnames()
 
 # Checks
@@ -73,8 +73,6 @@ df$diff_votes_pct %>%
         na.rm = T
     )
 
-# There is one place - check
-
 df_check <- df %>%
     group_by(county_code) %>%
     filter(any(diff_votes_pct > 1)) %>%
@@ -104,18 +102,6 @@ ggplot(df, aes(x = 100 * abs(diff_ev_pct))) +
 
 df$diff_ev_pct %>%
     quantile(c(0.01, 0.5, 0.99, 0.999, 0.9999), na.rm = T)
-
-# There is one place - check
-
-df_check <- df %>%
-    group_by(county_code) %>%
-    filter(any(diff_ev_pct > 1)) %>%
-    dplyr::select(county_code, election_year, eligible_voters, diff_ev_pct)
-
-df_check %>%
-    head(10)
-
-# Berlin
 
 # Large changes in % party vote shares between elections?
 
@@ -172,7 +158,7 @@ party_quantiles
 # Linke:
 df_check_large_changes <- df %>%
     group_by(county_code) %>%
-    filter(any(linke_pds_diff_pct > 2)) %>%
+    filter(any(linke_pds_diff_pct > 10)) %>%
     dplyr::select(county_code, election_year, linke_pds, linke_pds_diff_pct)
 
 df_check_large_changes %>%

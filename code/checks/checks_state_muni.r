@@ -9,7 +9,7 @@ conflicts_prefer(dplyr::lag)
 
 # Federal ---------------------------------------------------------------------
 
-df <- read_rds("data/state_elections/Elections_Clean.RDS")
+df <- read_rds("output/state_harm.rds")
 
 glimpse(df)
 
@@ -32,119 +32,30 @@ cat(
 )
 
 df_check <- df %>%
-    filter(s_votes < 1) %>%
-    dplyr::select(ags, year)
+    filter(s_votes < 100) %>%
+    dplyr::select(ags, year, all_of(parties))
 
 df_check$year %>% table()
-
 
 # Likely 2021, here party vote shares also do not sum to one
 # Election year is completely missing
 
-# 2. All party vote shares are between 0 and 1
+# 2. All party vote shares are between 0 and 100
 
 s_votes <- df %>%
     dplyr::select(all_of(parties)) %>%
-    apply(1, function(x) all(x >= 0 & x <= 1, na.rm = T)) %>%
+    apply(1, function(x) all(x >= 0 & x <= 100, na.rm = T)) %>%
     sum(na.rm = T)
 
 cat(
-    "Share rows with party vote shares between 0 and 1: ",
+    "Share rows with party vote shares between 0 and 100: ",
     (s_votes / nrow(df)), "\n"
 )
 
-# 3. Large changes in number of votes?
-
-glimpse(df)
-
-df <- df %>%
-    arrange(ags, year) %>%
-    group_by(ags) %>%
-    mutate(
-        lag_v = lag(valid_votes),
-        diff_votes_pct = (valid_votes - lag_v) / lag_v
-    ) %>%
-    ungroup()
-
-df %>%
-    dplyr::select(
-        ags, year,
-        valid_votes, diff_votes_pct
-    ) %>%
-    head(9)
-
-ggplot(df, aes(x = 100 * abs(diff_votes_pct))) +
-    geom_histogram() +
-    scale_x_log10()
-
-df$diff_votes_pct %>%
-    quantile(c(0.01, 0.5, 0.99, 0.999, 0.9999),
-        na.rm = T
-    )
-
-# There is one place - check
-
-df_check <- df %>%
-    group_by(ags) %>%
-    filter(any(diff_votes_pct > 2)) %>%
-    dplyr::select(ags, year, valid_votes, diff_votes_pct)
-df_check %>%
-    print(n = 50)
-
-df_check %>%
-    pull(ags) %>%
-    unique() %>%
-    dput()
-
-# Same w/ declines
-
-df_check <- df %>%
-    group_by(ags) %>%
-    filter(any(diff_votes_pct < -0.5)) %>%
-    dplyr::select(ags, year, valid_votes, diff_votes_pct)
-df_check %>%
-    print(n = 50)
-
-df_check %>%
-    pull(ags) %>%
-    unique() %>%
-    dput()
-
-# 4. Large changes in eligible_voters?
-
-df <- df %>%
-    arrange(ags, year) %>%
-    group_by(ags) %>%
-    mutate(
-        lag_ev = lag(eligible_voters),
-        diff_ev_pct = (eligible_voters - lag_ev) / lag_ev
-    ) %>%
-    ungroup()
-
-df %>%
-    dplyr::select(ags, year, eligible_voters, diff_ev_pct) %>%
-    head(9)
-
-ggplot(df, aes(x = 100 * abs(diff_ev_pct))) +
-    geom_histogram() +
-    scale_x_log10()
-
-df$diff_ev_pct %>%
-    quantile(c(0.01, 0.5, 0.99, 0.999, 0.9999), na.rm = T)
-
-# Check
-
-df_check <- df %>%
-    group_by(ags) %>%
-    filter(any(diff_ev_pct < -0.5)) %>%
-    dplyr::select(ags, year, eligible_voters, diff_ev_pct)
-
-df_check %>%
-    head(10)
-
+parties
 # Large changes in % party vote shares between elections?
 
-parties_main <- c("cdu_csu", "spd", "fdp", "grüne", "linke_pds", "afd")
+parties_main <- c("cdu_csu", "spd", "fdp", "greens", "left", "afd")
 
 # Calculate the lagged vote shares and their percentage changes
 df <- df %>%
@@ -197,13 +108,13 @@ party_quantiles
 # Linke:
 df_check_large_changes <- df %>%
     group_by(ags) %>%
-    filter(any(linke_pds_diff_pct > 2)) %>%
-    dplyr::select(ags, year, linke_pds, linke_pds_diff_pct)
+    filter(any(left_diff_pct > 2)) %>%
+    dplyr::select(ags, year, left, left_diff_pct)
 
 df_check_large_changes %>%
     head(10)
 
-# AfD:.names
+# AfD:
 
 df_check_large_changes <- df %>%
     group_by(ags) %>%
