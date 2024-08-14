@@ -1,7 +1,7 @@
 ### Harmonize municipal electoral results to 2021 borders
 # Vincent Heddesheimer
 # First: Aug 08, 2024
-# Last: Aug 08, 2024
+# Last: Aug 14, 2024
 
 rm(list = ls())
 
@@ -39,24 +39,38 @@ dupl <-df |>
   filter(n > 1) |>
   print(n=Inf) |>
   mutate(id = paste0(ags,"_",election_year))
+# no: none
 
-inspect <- df |>
-  mutate(id = paste0(ags,"_",election_year)) |>
-  filter(id %in% dupl$id) |>
-  arrange(ags, election_year)
-
-fwrite(inspect, "data/municipal_elections/processed_data/duplicates.csv")
+# inspect <- df |>
+#   mutate(id = paste0(ags,"_",election_year)) |>
+#   filter(id %in% dupl$id) |>
+#   arrange(ags, election_year)
+# 
+# fwrite(inspect, "data/municipal_elections/processed_data/duplicates.csv")
 
 
 # Merge w/ cw -------------------------------------------------------------
 
 # bind with crosswalks
-df_cw <- df |>
+df_naive_merge <- df |>
   left_join_check_obs(cw, by = c("ags", "election_year" = "year")) |>
   arrange(ags, election_year)
 # number of obs increases: but this is wanted, as we want to harmonize the data
 
-glimpse(df_cw)
+# is there any ags that did not get merged to ags_21?
+not_merged_naive <- df_naive_merge %>%
+  filter(election_year < 2021) %>%
+  filter(is.na(ags_21)) %>%
+  select(ags, election_year) %>%
+  distinct() %>%
+  mutate(id = paste0(ags, "_", election_year))
+not_merged_naive
+# If we do not follow the steps below, there are >1,485 cases.
+# We found these by the below code.
+
+fwrite(not_merged_naive, "data/municipal_elections/processed_data/unsuccessful_mergers.csv")
+
+glimpse(df_cw)8
 
 
 # Harmonize ---------------------------------------------------------------
