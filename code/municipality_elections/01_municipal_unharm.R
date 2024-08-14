@@ -455,9 +455,10 @@ bayern_kommunalwahlen <- bayern_kommunalwahlen %>%
   )
   
 
-# Filter out Gemeindefreie Gebiete
+# Filter out Gemeindefreie Gebiete and Landkreise
 bayern_kommunalwahlen <- bayern_kommunalwahlen %>%
-  filter(!Gebietsname == "Gemeindefreie Gebiete")
+  filter(!Gebietsname == "Gemeindefreie Gebiete",
+         !grepl("(Lkr)", Gebietsname))
 
 
 # ----
@@ -3703,7 +3704,7 @@ sachsen_anhalt_2007_kommunalwahlen_data_sub[ , IDBA := ""]
 
 # Renaming existing variables ----
 sachsen_anhalt_2007_kommunalwahlen_data_sub$AGS_8dig <- sachsen_anhalt_2007_kommunalwahlen_data_sub$AGS
-sachsen_anhalt_2007_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_2007_kommunalwahlen_data_sub$Name
+sachsen_anhalt_2007_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_2007_kommunalwahlen_data_sub$NAME
 sachsen_anhalt_2007_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_anhalt_2007_kommunalwahlen_data_sub$A
 sachsen_anhalt_2007_kommunalwahlen_data_sub$Wähler <- sachsen_anhalt_2007_kommunalwahlen_data_sub$B
 sachsen_anhalt_2007_kommunalwahlen_data_sub$GültigeStimmen <- sachsen_anhalt_2007_kommunalwahlen_data_sub$D
@@ -3756,6 +3757,8 @@ sachsen_anhalt_2007_kommunalwahlen_data_sub <-
 
 # Calculating turnout ----
 sachsen_anhalt_2007_kommunalwahlen_data_sub$Turnout <- sachsen_anhalt_2007_kommunalwahlen_data_sub$Wähler / sachsen_anhalt_2007_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
+
+table(sachsen_anhalt_2007_kommunalwahlen_data_sub$Gebietsname)
 
 ###### Sachsen-Anhalt 2009 Kommunalwahlen ----
 #### Load election data ----
@@ -3835,6 +3838,38 @@ sachsen_anhalt_2009_kommunalwahlen_data_sub <-
 
 # Calculating turnout ----
 sachsen_anhalt_2009_kommunalwahlen_data_sub$Turnout <- sachsen_anhalt_2009_kommunalwahlen_data_sub$Wähler / sachsen_anhalt_2009_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
+
+# Remove Ortsteile ----
+
+sachsen_anhalt_2009_kommunalwahlen_data_sub <- sachsen_anhalt_2009_kommunalwahlen_data_sub %>%
+  filter(
+    !AGS_8dig %in% c("15081010",
+                     "15081015",
+                     "15081025",
+                     "15081055",
+                     "15081115",
+                     "15081140",
+                     "15081155",
+                     "15081275",
+                     "15081420",
+                     "15081465",
+                     "15081495",
+                     "15081530",
+                     "15081580",
+                     "15090030",
+                     "15090035",
+                     "15090130",
+                     '15090140',
+                     '15090155',
+                     '15090175',
+                     '15090315',
+                     '15090335',
+                     '15090380',
+                     '15090440',
+                     '15090450',
+                     '15090455',
+                     '15090590'))
+  
 
 ###### Sachsen-Anhalt 2014 Kommunalwahlen ----
 #### Load election data ----
@@ -4008,6 +4043,10 @@ sachsen_anhalt_kommunalwahlen$Turnout <-  str_replace_all(sachsen_anhalt_kommuna
 
 # Replace - with NA
 sachsen_anhalt_kommunalwahlen[sachsen_anhalt_kommunalwahlen == "-"] <- NA
+
+# Exclude Hochsauerlandkreis
+sachsen_anhalt_kommunalwahlen <- sachsen_anhalt_kommunalwahlen %>%
+  filter(!Gebietsname == "Hochsauerlandkreis")
 
 # Save
 #write_csv(sachsen_anhalt_kommunalwahlen, here::here("output/sachsen_anhalt_kommunalwahlen.csv"))
@@ -5137,6 +5176,10 @@ mecklenburg_vorpommern_2019_kommunalwahlen_data_sub <-
 # Calculating turnout ----
 mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$Turnout <- mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$Wähler / mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
 
+# Remove Mecklenburgische ----
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub <- mecklenburg_vorpommern_2019_kommunalwahlen_data_sub %>%
+  filter(!AGS_8dig == "13071000",
+         !AGS_8dig == "13076000")
 
 
 ####### Merge files and save overall output for Mecklenburg-Vorpommern ----
@@ -8291,16 +8334,18 @@ rlp_kommunalwahlen <- rlp_kommunalwahlen %>%
   filter(nchar(AGS_8dig)==10) %>%
   mutate(AGS_8dig = paste0(substr(AGS_8dig,1,5), substr(AGS_8dig,8,10)))
 
-# Save
-#write_csv(rlp_kommunalwahlen, "processed_data/rlp_kommunalwahlen.csv")
-
-
 # Remove LK and VG ----
 rlp_kommunalwahlen <- rlp_kommunalwahlen %>%
   filter(
     !grepl(", LK", Gebietsname),
     !grepl(", VG", Gebietsname),
-    !grepl(", Landkreis", Gebietsname))
+    !grepl(", Landkreis", Gebietsname),
+    !AGS_8dig %in% c("07141000", "07143000", "07232000", "07333000", "07338000"))
+
+
+# Save
+#write_csv(rlp_kommunalwahlen, "processed_data/rlp_kommunalwahlen.csv")
+
 
 ######### Schleswig-Holstein ----
 ###### SH 2018 Gemeinderatswahlen ----
