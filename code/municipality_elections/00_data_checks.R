@@ -40,3 +40,7 @@ test <- sachsen_kommunalwahlen %>%
   filter(n_unique > 1)
 
 
+table(grepl("\\.", kommunalwahlen_merge$ags))
+
+test <- kommunalwahlen_merge %>%
+  

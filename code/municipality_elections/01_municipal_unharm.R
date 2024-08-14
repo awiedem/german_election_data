@@ -23,10 +23,6 @@ setwd(here::here("data/municipal_elections"))
 #   setwd("/Users/flosic/Dropbox/RA_work/Data collection/Germany_Kommunalwahlen")
 # }
 
-# ----
-# ----
-
-# ----
 ########## DATA PROCESSING ----
 ######### BAYERN ----
 #### Load election data ----
@@ -3528,22 +3524,6 @@ sachsen_anhalt_1999_kommunalwahlen_data_sub <- sachsen_anhalt_1999_kommunalwahle
 
 names(sachsen_anhalt_1999_kommunalwahlen_data_sub)
 
-# Sum by 2014 AGS ----
-sachsen_anhalt_1999_kommunalwahlen_data_sub <- sachsen_anhalt_1999_kommunalwahlen_data_sub %>%
-  group_by(AGS2014, NAME2014) %>%
-  summarize(
-    A = sum(A, na.rm=T),
-    B = sum(B, na.rm=T),
-    `F` = sum(`F`, na.rm=T),
-    F02 = sum(F02, na.rm=T),
-    F01 = sum(F01, na.rm=T),
-    F03 = sum(F03, na.rm=T),
-    F06 = sum(F06, na.rm=T),
-    F05 = sum(F05, na.rm=T)) %>%
-  ungroup()
-
-sachsen_anhalt_1999_kommunalwahlen_data_sub <- as.data.table(sachsen_anhalt_1999_kommunalwahlen_data_sub)
-
 # Creating non-existing variables ----
 sachsen_anhalt_1999_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
 sachsen_anhalt_1999_kommunalwahlen_data_sub[ , Bundesland := "Sachsen-Anhalt"]
@@ -3554,8 +3534,8 @@ sachsen_anhalt_1999_kommunalwahlen_data_sub[ , IDIRB := ""]
 sachsen_anhalt_1999_kommunalwahlen_data_sub[ , IDBA := ""]
 
 # Renaming existing variables ----
-sachsen_anhalt_1999_kommunalwahlen_data_sub$AGS_8dig <- sachsen_anhalt_1999_kommunalwahlen_data_sub$AGS2014
-sachsen_anhalt_1999_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_1999_kommunalwahlen_data_sub$NAME2014
+sachsen_anhalt_1999_kommunalwahlen_data_sub$AGS_8dig <- sachsen_anhalt_1999_kommunalwahlen_data_sub$AGS
+sachsen_anhalt_1999_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_1999_kommunalwahlen_data_sub$NAME
 sachsen_anhalt_1999_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_anhalt_1999_kommunalwahlen_data_sub$A
 sachsen_anhalt_1999_kommunalwahlen_data_sub$Wähler <- sachsen_anhalt_1999_kommunalwahlen_data_sub$B
 sachsen_anhalt_1999_kommunalwahlen_data_sub$GültigeStimmen <- sachsen_anhalt_1999_kommunalwahlen_data_sub$`F`
@@ -3613,6 +3593,8 @@ sachsen_anhalt_1999_kommunalwahlen_data_sub$Turnout <- sachsen_anhalt_1999_kommu
 sachsen_anhalt_1999_kommunalwahlen_data_sub <- sachsen_anhalt_1999_kommunalwahlen_data_sub %>%
   filter(nchar(AGS_8dig)==8)
 
+sachsen_anhalt_1999_kommunalwahlen_data_sub
+
 ###### Sachsen-Anhalt 2004 Kommunalwahlen ----
 #### Load election data ----
 
@@ -3627,22 +3609,6 @@ sachsen_anhalt_2004_kommunalwahlen_data_sub <- sachsen_anhalt_2004_kommunalwahle
 
 names(sachsen_anhalt_2004_kommunalwahlen_data_sub)
 
-# Sum by 2014 AGS ----
-sachsen_anhalt_2004_kommunalwahlen_data_sub <- sachsen_anhalt_2004_kommunalwahlen_data_sub %>%
-  group_by(AGS2014, NAME2014) %>%
-  summarize(
-    A = sum(A, na.rm=T),
-    B = sum(B, na.rm=T),
-    D = sum(D, na.rm=T),
-    D01 = sum(D01, na.rm=T),
-    D03 = sum(D03, na.rm=T),
-    D02 = sum(D02, na.rm=T),
-    D05 = sum(D05, na.rm=T),
-    D04 = sum(D04, na.rm=T)) %>%
-  ungroup()
-
-sachsen_anhalt_2004_kommunalwahlen_data_sub <- as.data.table(sachsen_anhalt_2004_kommunalwahlen_data_sub)
-
 # Creating non-existing variables ----
 sachsen_anhalt_2004_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
 sachsen_anhalt_2004_kommunalwahlen_data_sub[ , Bundesland := "Sachsen-Anhalt"]
@@ -3653,8 +3619,8 @@ sachsen_anhalt_2004_kommunalwahlen_data_sub[ , IDIRB := ""]
 sachsen_anhalt_2004_kommunalwahlen_data_sub[ , IDBA := ""]
 
 # Renaming existing variables ----
-sachsen_anhalt_2004_kommunalwahlen_data_sub$AGS_8dig <- sachsen_anhalt_2004_kommunalwahlen_data_sub$AGS2014
-sachsen_anhalt_2004_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_2004_kommunalwahlen_data_sub$NAME2014
+sachsen_anhalt_2004_kommunalwahlen_data_sub$AGS_8dig <- sachsen_anhalt_2004_kommunalwahlen_data_sub$AGS
+sachsen_anhalt_2004_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_2004_kommunalwahlen_data_sub$NAME
 sachsen_anhalt_2004_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_anhalt_2004_kommunalwahlen_data_sub$A
 sachsen_anhalt_2004_kommunalwahlen_data_sub$Wähler <- sachsen_anhalt_2004_kommunalwahlen_data_sub$B
 sachsen_anhalt_2004_kommunalwahlen_data_sub$GültigeStimmen <- sachsen_anhalt_2004_kommunalwahlen_data_sub$D
@@ -3726,22 +3692,6 @@ sachsen_anhalt_2007_kommunalwahlen_data_sub <- sachsen_anhalt_2007_kommunalwahle
 
 names(sachsen_anhalt_2007_kommunalwahlen_data_sub)
 
-# Sum by 2014 AGS ----
-sachsen_anhalt_2007_kommunalwahlen_data_sub <- sachsen_anhalt_2007_kommunalwahlen_data_sub %>%
-  group_by(AGS2014, Name2014) %>%
-  summarize(
-    A = sum(A, na.rm=T),
-    B = sum(B, na.rm=T),
-    D = sum(D, na.rm=T),
-    D01 = sum(D01, na.rm=T),
-    D03 = sum(D03, na.rm=T),
-    D02 = sum(D02, na.rm=T),
-    D06 = sum(D06, na.rm=T),
-    D04 = sum(D04, na.rm=T)) %>%
-  ungroup()
-
-sachsen_anhalt_2007_kommunalwahlen_data_sub <- as.data.table(sachsen_anhalt_2007_kommunalwahlen_data_sub)
-
 # Creating non-existing variables ----
 sachsen_anhalt_2007_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
 sachsen_anhalt_2007_kommunalwahlen_data_sub[ , Bundesland := "Sachsen-Anhalt"]
@@ -3752,8 +3702,8 @@ sachsen_anhalt_2007_kommunalwahlen_data_sub[ , IDIRB := ""]
 sachsen_anhalt_2007_kommunalwahlen_data_sub[ , IDBA := ""]
 
 # Renaming existing variables ----
-sachsen_anhalt_2007_kommunalwahlen_data_sub$AGS_8dig <- sachsen_anhalt_2007_kommunalwahlen_data_sub$AGS2014
-sachsen_anhalt_2007_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_2007_kommunalwahlen_data_sub$Name2014
+sachsen_anhalt_2007_kommunalwahlen_data_sub$AGS_8dig <- sachsen_anhalt_2007_kommunalwahlen_data_sub$AGS
+sachsen_anhalt_2007_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_2007_kommunalwahlen_data_sub$Name
 sachsen_anhalt_2007_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_anhalt_2007_kommunalwahlen_data_sub$A
 sachsen_anhalt_2007_kommunalwahlen_data_sub$Wähler <- sachsen_anhalt_2007_kommunalwahlen_data_sub$B
 sachsen_anhalt_2007_kommunalwahlen_data_sub$GültigeStimmen <- sachsen_anhalt_2007_kommunalwahlen_data_sub$D
@@ -3821,23 +3771,6 @@ sachsen_anhalt_2009_kommunalwahlen_data_sub <- sachsen_anhalt_2009_kommunalwahle
 
 names(sachsen_anhalt_2009_kommunalwahlen_data_sub)
 
-# Sum by 2014 AGS ----
-sachsen_anhalt_2009_kommunalwahlen_data_sub <- sachsen_anhalt_2009_kommunalwahlen_data_sub %>%
-  group_by(AGS2014, NAME2014) %>%
-  summarize(
-    A = sum(A, na.rm=T),
-    B = sum(B, na.rm=T),
-    D = sum(D, na.rm=T),
-    D01 = sum(D01, na.rm=T),
-    D03 = sum(D03, na.rm=T),
-    D02 = sum(D02, na.rm=T),
-    D05 = sum(D05, na.rm=T),
-    D04 = sum(D04, na.rm=T)) %>%
-  ungroup()
-
-sachsen_anhalt_2009_kommunalwahlen_data_sub <- as.data.table(sachsen_anhalt_2009_kommunalwahlen_data_sub)
-
-
 # Creating non-existing variables ----
 sachsen_anhalt_2009_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
 sachsen_anhalt_2009_kommunalwahlen_data_sub[ , Bundesland := "Sachsen-Anhalt"]
@@ -3848,8 +3781,8 @@ sachsen_anhalt_2009_kommunalwahlen_data_sub[ , IDIRB := ""]
 sachsen_anhalt_2009_kommunalwahlen_data_sub[ , IDBA := ""]
 
 # Renaming existing variables ----
-sachsen_anhalt_2009_kommunalwahlen_data_sub$AGS_8dig <- sachsen_anhalt_2009_kommunalwahlen_data_sub$AGS2014
-sachsen_anhalt_2009_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_2009_kommunalwahlen_data_sub$NAME2014
+sachsen_anhalt_2009_kommunalwahlen_data_sub$AGS_8dig <- sachsen_anhalt_2009_kommunalwahlen_data_sub$AGS
+sachsen_anhalt_2009_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_2009_kommunalwahlen_data_sub$NAME
 sachsen_anhalt_2009_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_anhalt_2009_kommunalwahlen_data_sub$A
 sachsen_anhalt_2009_kommunalwahlen_data_sub$Wähler <- sachsen_anhalt_2009_kommunalwahlen_data_sub$B
 sachsen_anhalt_2009_kommunalwahlen_data_sub$GültigeStimmen <- sachsen_anhalt_2009_kommunalwahlen_data_sub$D
@@ -8362,6 +8295,13 @@ rlp_kommunalwahlen <- rlp_kommunalwahlen %>%
 #write_csv(rlp_kommunalwahlen, "processed_data/rlp_kommunalwahlen.csv")
 
 
+# Remove LK and VG ----
+rlp_kommunalwahlen <- rlp_kommunalwahlen %>%
+  filter(
+    !grepl(", LK", Gebietsname),
+    !grepl(", VG", Gebietsname),
+    !grepl(", Landkreis", Gebietsname))
+
 ######### Schleswig-Holstein ----
 ###### SH 2018 Gemeinderatswahlen ----
 #### Load election data ----
@@ -9005,8 +8945,8 @@ kommunalwahlen_merge <- kommunalwahlen_merge |>
 
 # Save ----
 
-fwrite(kommunalwahlen_merge, file=here::here("output/municipal_unharm.csv"))
 write_rds(kommunalwahlen_merge, file=here::here("output/municipal_unharm.rds"))
+fwrite(kommunalwahlen_merge, file=here::here("output/municipal_unharm.csv"))
 
 
 # View(kommunalwahlen_merge)

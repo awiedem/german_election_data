@@ -8,7 +8,6 @@ rm(list = ls())
 # Disallow scientific notation: leads to errors when loading data
 options(scipen = 999)
 
-
 # Read crosswalk files ----------------------------------------------------
 cw <- fread("data/crosswalks/ags_crosswalks.csv") |>
   mutate(
