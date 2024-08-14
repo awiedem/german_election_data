@@ -248,6 +248,30 @@ df_harm <- df_harm |>
 glimpse(df_harm)
 table(df_harm$state, useNA = "ifany")
 
+
+# summarize eligible & valid voters
+votes <- df_cw |>
+  group_by(ags_21, election_year) |>
+  summarise(
+    across(
+      eligible_voters:valid_votes,
+      ~ sum(.x * pop_cw, na.rm = TRUE)
+    )
+  ) |>
+  # Round
+  mutate(across(
+    eligible_voters:valid_votes,
+    ~ round(.x, digits = 0)
+  )) |>
+  ungroup()
+
+# left join
+df_harm <- df_harm |>
+  left_join_check_obs(votes, by = c("ags" = "ags_21", "election_year")) |>
+  relocate(eligible_voters, .after = state_name) |>
+  relocate(valid_votes, .after = eligible_voters)
+
+
 # check where state is NA
 df_harm %>%
   filter(is.na(ags)) %>%
@@ -302,21 +326,31 @@ df_final <- df_final |>
 
 table(df_harm$election_year)
 
-# create plot_df
 plot_df <- df_final |>
   group_by(state_name, election_year) |>
   summarise(election_bin = max(election_bin, na.rm = TRUE)) |>
   ungroup()
 
+# Add a special row for Schleswig-Holstein in 2017
+plot_df <- plot_df |>
+  add_row(state_name = "Schleswig-Holstein", election_year = 2017, election_bin = 2)
+
+# Update the factor levels to include the special value
+plot_df$election_bin <- factor(plot_df$election_bin, levels = c("0", "1", "2"))
+
 plot_df |>
   ggplot(aes(x = as.factor(election_year), 
              y = factor(state_name, 
                         levels = rev(levels(factor(state_name)))), 
-             fill = as.factor(election_bin))
-         ) +
+             fill = election_bin)
+  ) +
   geom_tile(color = "white") + # Add borders to the squares
-  scale_fill_manual(values = c("1" = "darkgrey", "0" = "white"), name = "Election") +
-  labs(x = "election_year", y = "State") +
+  scale_fill_manual(
+    values = c("1" = "darkgrey", "0" = "white", "2" = "black"), 
+    name = "Election",
+    labels = c("1" = "Election Held", "2" = "Data Unavailable")
+  ) +
+  labs(x = "Year", y = "State") +
   theme_hanno() +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1), # Rotate x-axis labels for better readability

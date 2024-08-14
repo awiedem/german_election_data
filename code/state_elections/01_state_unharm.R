@@ -58,6 +58,10 @@ out <- pblapply(1:length(labs), function(i) {
   
   ## Get ID for the turnout table
   
+  # id_eligible <- d %>% dplyr::filter(str_detect(description, "Gemeinden")) %>%
+  #   dplyr::filter(str_detect(description, 'Wahlberechtigte')) %>% .[, 1] %>% unlist()%>%
+  #   as.character()
+  
   id_turnout <- d %>% dplyr::filter(str_detect(description, "Gemeinden")) %>%
     dplyr::filter(str_detect(description, 'Wahlbeteiligung')) %>% .[, 1] %>% unlist()%>%
     as.character()
@@ -73,9 +77,11 @@ out <- pblapply(1:length(labs), function(i) {
     ## Get data
     
     data <- retrieve_data(tablename=id, genesis=genesis) %>%
-      dplyr::select(GEMEIN, PART03, STAG, WAHL04_val)
+     dplyr::select(GEMEIN, PART03, STAG, WAHL04_val)
     
-    
+# in any of the datasets in the list of datasets: WAHL04_qual 
+
+
     ## Get total votes
     
     votes_tot <- data %>%
@@ -121,10 +127,10 @@ out <- pblapply(1:length(labs), function(i) {
     ## Get turnout
     cat('Getting turnout')
     turn_data <- retrieve_data(tablename=id_turnout, genesis=genesis) %>%
-      dplyr::select(GEMEIN, STAG, WAHLSR_val) %>%
+      dplyr::select(GEMEIN, STAG, WAHLSR_val, WAHL01_val, WAHL04_val) %>%
       dplyr::mutate(ags = GEMEIN, date = as.Date(STAG, format = '%d.%m.%Y')) %>%
       mutate(turnout = WAHLSR_val / 100) %>%
-      dplyr::select(ags, date, turnout) %>%
+      dplyr::select(ags, date, turnout, eligible_voters = WAHL01_val, valid_votes = WAHL04_val) %>%
       distinct(ags, date, .keep_all = T)
     
     ## Merge to the main results
@@ -199,14 +205,28 @@ state_elections <- state_elections |>
   rowwise() |>
   mutate(cdu_csu = cdu + csu) |>
   ungroup() |>
-  select(ags, election_year, state, date, turnout, 
+  select(ags, election_year, state, date, eligible_voters, valid_votes, turnout, 
          cdu, csu, spd, gruene, fdp, linke_pds, afd, other = other_party, cdu_csu)
 glimpse(state_elections)
+
+# data for Schleswig Holstein in 2017 is not complete: remove state == 01 & year == 2017
+state_elections <- state_elections |>
+  filter(!(state == '01' & election_year == 2017))
 
 
 ## Save for now
 
 fwrite(state_elections, 'output/state_unharm.csv')
 write_rds(state_elections, 'output/state_unharm.rds')
+
+
+
+# Inspect -----------------------------------------------------------------
+
+df <- read_rds('output/state_unharm.rds')
+
+# what's up with state == 01 in 2017?
+insp <- df |>
+  filter(state == '01', election_year == 2017) 
 
 ### END
