@@ -1633,7 +1633,7 @@ df17 <- df17_bezirksarten |>
   # Remove parties that got no votes
   select(where(~ any(. != 0))) |>
   # variable for whether ags had unique mailin
-  mutate(unique_mailin = ifelse(ags %in% ags_w_mailin13, 1, 0))
+  mutate(unique_mailin = ifelse(ags %in% ags_w_mailin17, 1, 0))
 
 
 ## Mail-in voting ---------------------------------------------------------
@@ -2124,6 +2124,18 @@ df <- df |>
   bind_rows(berlin_hamburg)
 
 
+# Last transformations ----------------------------------------------------
+
+# clean names
+df <- df |>
+  rename(gruene = grüne) |>
+  janitor::clean_names() |>
+  select(-state_name) |>
+  relocate(cdu_csu, .after = zentrum)
+
+names(df)
+
+
 # Diagnosis ---------------------------------------------------------------
 
 # diagnose_web_report(df)
@@ -2223,7 +2235,7 @@ df |>
 # state 11
 df |>
   filter(state == 11) |>
-  select(ags, state, state_name, election_year, cdu, csu, cdu_csu) |>
+  select(ags, state, election_year, cdu, csu, cdu_csu) |>
   distinct(ags, election_year) |>
   arrange(election_year, ags) |>
   print(n=Inf)
@@ -2231,7 +2243,7 @@ df |>
 # how many ags from state 04? # Bremen
 df |>
   filter(state == "04") |>
-  select(ags, state, state_name, election_year, cdu, csu, cdu_csu) |>
+  select(ags, state, election_year, cdu, csu, cdu_csu) |>
   distinct(ags, election_year) |>
   arrange(ags, election_year) |>
   print(n=Inf)
@@ -2239,7 +2251,7 @@ df |>
 # now Hamburg
 df |>
   filter(state == "02") |>
-  select(ags, state, state_name, election_year, cdu, csu, cdu_csu) |>
+  select(ags, state, election_year, cdu, csu, cdu_csu) |>
   distinct(ags, election_year) |>
   arrange(ags, election_year)
 

@@ -27,8 +27,8 @@ test_login(genesis=genesis)
 
 ## Make party dict
 
-pdict <- c('afd' = 'AFD', 'greens' = 'B90-GRUENE', 'cdu_csu' = 'CDU',
-           'cdu_csu' = 'CSU', 'fdp' = 'FDP', 'left' = 'PDS', 'spd' = 'SPD',
+pdict <- c('afd' = 'AFD', 'gruene' = 'B90-GRUENE', 'cdu' = 'CDU',
+           'csu' = 'CSU', 'fdp' = 'FDP', 'linke_pds' = 'PDS', 'spd' = 'SPD',
            'other_party' = 'SONSTIGE')
 
 ## Landtagswahlen table list
@@ -68,7 +68,7 @@ out <- pblapply(1:length(labs), function(i) {
     
     ## 
     
-    cat('\nGemeiden found')
+    cat('\nGemeinden found')
     
     ## Get data
     
@@ -89,7 +89,7 @@ out <- pblapply(1:length(labs), function(i) {
     ## Get % shares
     
     data <- data %>%
-      mutate(voteshare = WAHL04_val / valid * 100) %>%
+      mutate(voteshare = WAHL04_val / valid) %>%
       dplyr::select(GEMEIN, PART03, STAG, voteshare)
     
     ## rename parties
@@ -123,7 +123,7 @@ out <- pblapply(1:length(labs), function(i) {
     turn_data <- retrieve_data(tablename=id_turnout, genesis=genesis) %>%
       dplyr::select(GEMEIN, STAG, WAHLSR_val) %>%
       dplyr::mutate(ags = GEMEIN, date = as.Date(STAG, format = '%d.%m.%Y')) %>%
-      mutate(turnout = WAHLSR_val) %>%
+      mutate(turnout = WAHLSR_val / 100) %>%
       dplyr::select(ags, date, turnout) %>%
       distinct(ags, date, .keep_all = T)
     
@@ -143,9 +143,11 @@ out_df <- out %>%
   reduce(rbind) %>%
   arrange(ags, date)
 
+glimpse(out_df)
+
 ## 
 
-parties <- colnames(out_df)[3:10]
+parties <- colnames(out_df)[3:9]
 
 ## Check for total missings
 
@@ -167,20 +169,20 @@ library(lubridate)
 ## 
 
 out_df <- out_df %>% 
-  mutate(year = lubridate::year(date),
-         land = substr(ags, 1, 2))
+  mutate(election_year = lubridate::year(date),
+         state = substr(ags, 1, 2))
 
-## Gen left right
-
-lparties <- c('spd', 'left', 'greens')
-rparties <- c('cdu_csu', 'fdp')
-
-ltot <- apply(out_df[, lparties], 1, sum, na.rm = T)
-rtot <- apply(out_df[, rparties], 1, sum, na.rm = T)
-
-out_df <- out_df %>%
-  mutate(left_total = ltot,
-         right_total = rtot)
+# ## Gen left right
+# 
+# lparties <- c('spd', 'linke_pds', 'gruene')
+# rparties <- c('cdu', 'csu', 'fdp')
+# 
+# ltot <- apply(out_df[, lparties], 1, sum, na.rm = T)
+# rtot <- apply(out_df[, rparties], 1, sum, na.rm = T)
+# 
+# out_df <- out_df %>%
+#   mutate(left_total = ltot,
+#          right_total = rtot)
 
 ##
 
@@ -188,7 +190,19 @@ state_elections <- out_df
 
 ## Distribution
 
-table(out_df$year, out_df$land)
+table(out_df$election_year, out_df$state)
+
+# some final transformations
+state_elections <- state_elections |>
+  mutate(csu = ifelse(state == '09', cdu, 0)) |>
+  # create cdu_csu variable
+  rowwise() |>
+  mutate(cdu_csu = cdu + csu) |>
+  ungroup() |>
+  select(ags, election_year, state, date, turnout, 
+         cdu, csu, spd, gruene, fdp, linke_pds, afd, other = other_party, cdu_csu)
+glimpse(state_elections)
+
 
 ## Save for now
 

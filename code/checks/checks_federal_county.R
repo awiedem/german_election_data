@@ -13,8 +13,7 @@ df <- read_rds("output/federal_cty_harm.rds")
 glimpse(df)
 
 parties <- df %>%
-    dplyr::select(cdu_csu:zentrum) %>%
-    dplyr::select(-far_left, -far_left_wLinke, -far_right) %>%
+    dplyr::select(cdu:zentrum) %>%
     colnames()
 
 # Checks
