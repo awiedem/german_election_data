@@ -70,7 +70,129 @@ not_merged_naive
 
 fwrite(not_merged_naive, "data/municipal_elections/processed_data/unsuccessful_mergers.csv")
 
-glimpse(df_cw)8
+glimpse(df_cw)
+
+
+# Dealing with unsuccessful mergers ---------------------------------------
+
+
+# 1. in 2011 for MeckPomm 
+
+# define cases where we want to use year - 1
+ags_year_cw <- not_merged_naive %>%
+  filter(
+    grepl("^14", id)            # id starts with 14
+  ) %>%
+  pull(id)
+
+# apply the rules
+df <- df |>
+  mutate(
+    id = paste0(ags, "_", election_year),
+    # 1. if ags is in ags_year_cw, use year - 1
+    year_cw = case_when(
+      # X. change year manually
+      # SA 2007
+      id == "15086270_2007" ~ 2006, # Zeppernick
+      id == "15089040_2007" ~ 2006, # Biere
+      id == "15089080_2007" ~ 2006, # Eggersdorf
+      id == "15089085_2007" ~ 2006, # Eickendorf
+      id == "15089160_2007" ~ 2006, # Großmühlingen
+      id == "15089190_2007" ~ 2006, # Kleinmühlingen
+      id == "15089335_2007" ~ 2006, # Welsleben
+      id == "15089370_2007" ~ 2006, # Zens
+      # X. use 1998 for merging for ags in MeckPomm in 1999
+      id %in% not_merged_naive[not_merged_naive$election_year == 1999 & grepl("^13", not_merged_naive$id), ]$id ~ election_year - 1,
+      id %in% not_merged_naive[not_merged_naive$election_year == 2004 & grepl("^15", not_merged_naive$id), ]$id ~ election_year - 1,
+      # X. use election_year - 1 for merging for ags in Saxony
+      id %in% not_merged_naive[grepl("^14", not_merged_naive$id), ]$id ~ election_year - 1,
+      TRUE ~ election_year
+    ),
+    # X. wrong AGS: checked with election results Leitband 
+    # and manually matched ags names btw. election results & crosswalk files
+    ags = case_when(
+      id == "01051141_2008" ~ "01051040", # Süderheistedt 
+      id == "01059186_2008" ~ "01059153", # Steinbergkirche 
+      id == "01059187_2008" ~ "01059011", # Boren
+      id == "03361013_2001" ~ "03361010", # Riede
+      id == "05313000_2009" ~ "05334002", # Aachen
+      id == "05314000_2014" ~ "05334002", # Aachen
+      id == "05314000_2020" ~ "05334002", # Aachen
+      id == "07140502_1994" ~ "07135050", # Lahr
+      id == "07140502_1999" ~ "07135050", # Lahr
+      id == "07140503_1994" ~ "07135063", # Mörsdorf
+      id == "07140503_1999" ~ "07135063", # Mörsdorf
+      id == "07140504_1994" ~ "07135094", # Zilshausen
+      id == "07140504_1999" ~ "07135094", # Zilshausen
+      id == "07232502_1994" ~ "07232021", # Brimingen
+      id == "07232502_1999" ~ "07232021", # Brimingen
+      id == "07235207_1994" ~ "07231207", # Trittenheim
+      id == "07235207_1999" ~ "07231207", # Trittenheim
+      id == "07235207_2004" ~ "07231207", # Trittenheim
+      id == "07235207_2009" ~ "07231207", # Trittenheim
+      # SA 2007
+      id == "15086270_2007" ~ "15151066", # Zeppernick
+      id == "15089040_2007" ~ "15367003", # Biere
+      id == "15089080_2007" ~ "15367007", # Eggersdorf
+      id == "15089085_2007" ~ "15362031", #	Eickendorf
+      id == "15089160_2007" ~ "15367013", # Großmühlingen
+      id == "15089190_2007" ~ "15367015", # Kleinmühlingen
+      id == "15089335_2007" ~ "15367027", # Welsleben
+      id == "15089370_2007" ~ "15367029", # Zens
+      
+      
+      TRUE ~ ags
+    )
+  )
+
+# new_cw <- data.frame(
+#   ags = c("15086270", "15089040"),
+#   ags_name = c("Zeppernick", "Biere"),
+#   year = c(2007, 2007),
+#   area_cw = c(1, 1), 	
+#   pop_cw = c(1, 1),
+#   area = c(33620000, 24656261,	),
+#   population = c(733, 2431, ),
+#   ags_21 = c("15086140", "15089042",	), 
+#   ags_name_21 = c("Möckern, Stadt", "Bördeland",)
+# )
+
+names(cw)
+
+# bind to cw
+cw <- cw |>
+  bind_rows(streitholz) |>
+  arrange(ags, year)
+
+
+# Merge crosswalks with election data -------------------------------------
+
+# Merge crosswalks
+df_cw <- df |>
+  left_join_check_obs(cw, by = c("ags", "year_cw" = "year"))
+# number of obs increases: but this is wanted, as we want to harmonize the data
+
+glimpse(df_cw)
+
+# is there any ags that did not get merged to ags_21?
+not_merged <- df_cw %>%
+  filter(election_year < 2021) %>%
+  filter(is.na(ags_21)) %>%
+  select(ags, election_year) %>%
+  distinct()
+not_merged
+# now, there is no unsuccessful merge.
+
+# Flag the cases where we had to change the ags
+df_cw <- df_cw |>
+  mutate(
+    flag_unsuccessful_naive_merge = ifelse(id %in% not_merged_naive$id, 1, 0)
+  )
+
+table(df_cw$flag_unsuccessful_naive_merge, useNA = "ifany")
+
+glimpse(df_cw)
+
 
 
 # Harmonize ---------------------------------------------------------------
