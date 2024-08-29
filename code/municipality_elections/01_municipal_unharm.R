@@ -9476,6 +9476,7 @@ kommunalwahlen_merge <- kommunalwahlen_merge |>
   rename_with(~str_replace(., "sitze_", "seats_"), starts_with("sitze_")) |>
   rename_with(~str_replace(., "gew_", "weighted_"), starts_with("gew_"))
 
+glimpse(kommunalwahlen_merge)
 
 # Save ----
 
