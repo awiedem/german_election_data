@@ -3308,6 +3308,7 @@ nrw_2020_kommunalwahlen_data_sub$AGS_8dig <- paste("5", nrw_2020_kommunalwahlen_
 #### Load election data ----
 nrw_kreisfreie_kommunalwahlen_data <- as.data.table(read_excel("raw_data/nrw/nrw_kreisfreie_staedte.xlsx", sheet="summary"))
 
+
 #### Recoding ----
 # Delete white space ----
 names(nrw_kreisfreie_kommunalwahlen_data) <-  str_replace_all(names(nrw_kreisfreie_kommunalwahlen_data), fixed(" "), "")
@@ -3392,6 +3393,13 @@ nrw_kreisfreie_kommunalwahlen_data_sub <-
 # Calculating turnout ----
 nrw_kreisfreie_kommunalwahlen_data_sub$Turnout <- as.numeric(nrw_kreisfreie_kommunalwahlen_data_sub$Wähler) / as.numeric(nrw_kreisfreie_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
 
+# Filter Hochsauerlandkreis ----
+nrw_kreisfreie_kommunalwahlen_data_sub <- nrw_kreisfreie_kommunalwahlen_data_sub %>%
+  filter(!AGS_8dig == "05958000")
+
+# Filter 1989 ----
+nrw_kreisfreie_kommunalwahlen_data_sub <- nrw_kreisfreie_kommunalwahlen_data_sub %>%
+  filter(!election_year == "1989")
 
 ####### Merge files and save overall output for NRW ----
 # Merge
@@ -3401,7 +3409,9 @@ nrw_kommunalwahlen <- rbind(nrw_1994_kommunalwahlen_data_sub,
                             nrw_2009_kommunalwahlen_data_sub,
                             nrw_2014_kommunalwahlen_data_sub,
                             nrw_2020_kommunalwahlen_data_sub,
-                            nrw_kreisfreie_kommunalwahlen_data_sub)
+                            nrw_kreisfreie_kommunalwahlen_data_sub) %>%
+  filter(!grepl("Städteregion", Gebietsname)) %>%
+  arrange(election_year, AGS_8dig)
 
 
 # Replace INF at Turnout
@@ -5595,7 +5605,11 @@ mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$Turnout <- mecklenburg_vorpo
 # Remove Mecklenburgische ----
 mecklenburg_vorpommern_2019_kommunalwahlen_data_sub <- mecklenburg_vorpommern_2019_kommunalwahlen_data_sub %>%
   filter(!AGS_8dig == "13071000",
-         !AGS_8dig == "13076000")
+         !AGS_8dig == "13076000",
+         !AGS_8dig == "13072000",
+         !AGS_8dig == "13073000",
+         !AGS_8dig == "13074000",
+         !AGS_8dig == "13075000")
 
 
 ####### Merge files and save overall output for Mecklenburg-Vorpommern ----
@@ -8589,7 +8603,7 @@ rlp_2014_gemeinderatswahlen_data_sub[ , IDIRB := ""]
 rlp_2014_gemeinderatswahlen_data_sub[ , IDBA := ""]
 
 # Renaming existing variables ----
-rlp_2014_gemeinderatswahlen_data_sub$AGS_8dig <- rlp_2014_gemeinderatswahlen_data_sub$AGS
+rlp_2014_gemeinderatswahlen_data_sub$AGS_8dig <- as.character(rlp_2014_gemeinderatswahlen_data_sub$AGS)
 rlp_2014_gemeinderatswahlen_data_sub$Gebietsname <- rlp_2014_gemeinderatswahlen_data_sub$Gemeindename
 rlp_2014_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(rlp_2014_gemeinderatswahlen_data_sub$Wahlberechtigte)
 rlp_2014_gemeinderatswahlen_data_sub$Wähler <- as.numeric(rlp_2014_gemeinderatswahlen_data_sub$Waehler)
@@ -8654,6 +8668,10 @@ rlp_2014_gemeinderatswahlen_data_sub[ AGS_8dig == "33205032" ]
 # Calculating turnout ----
 rlp_2014_gemeinderatswahlen_data_sub$Turnout <- rlp_2014_gemeinderatswahlen_data_sub$Wähler / rlp_2014_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
 
+
+# Filter Landkreise ----
+rlp_2014_gemeinderatswahlen_data_sub <- rlp_2014_gemeinderatswahlen_data_sub %>%
+  filter(!Gebietsname %in% c("Rhein-Hunsrück-Kreis", "Ahrweiler, Landkreis"))
 
 ###### RLP 2019 Gemeinderatswahlen ----
 #### Load election data ----
@@ -9350,43 +9368,43 @@ kommunalwahlen_merge <- kommunalwahlen_merge %>%
     replaced_0_with_NA_CDU = case_when(
       abs_CDU == 0 ~ 1,
       abs_CDU != 0 ~ 0,
-      TRUE ~ NA_integer_),
+      TRUE ~ 0),
     replaced_0_with_NA_SPD = case_when(
       abs_SPD == 0 ~ 1,
       abs_SPD != 0 ~ 0,
-      TRUE ~ NA_integer_),
+      TRUE ~ 0),
     replaced_0_with_NA_DIELINKE = case_when(
       abs_DIELINKE == 0 ~ 1,
       abs_DIELINKE != 0 ~ 0,
-      TRUE ~ NA_integer_),
+      TRUE ~ 0),
     replaced_0_with_NA_GRÜNE = case_when(
       abs_GRÜNE == 0 ~ 1,
       abs_GRÜNE != 0 ~ 0,
-      TRUE ~ NA_integer_),
+      TRUE ~ 0),
     replaced_0_with_NA_AfD = case_when(
       abs_AfD == 0 ~ 1,
       abs_AfD != 0 ~ 0,
-      TRUE ~ NA_integer_),
+      TRUE ~ 0),
     replaced_0_with_NA_PIRATEN = case_when(
       abs_PIRATEN == 0 ~ 1,
       abs_PIRATEN != 0 ~ 0,
-      TRUE ~ NA_integer_),
+      TRUE ~ 0),
     replaced_0_with_NA_FDP = case_when(
       abs_FDP == 0 ~ 1,
       abs_FDP != 0 ~ 0,
-      TRUE ~ NA_integer_),
+      TRUE ~ 0),
     replaced_0_with_NA_DiePARTEI = case_when(
       abs_DiePARTEI == 0 ~ 1,
       abs_DiePARTEI != 0 ~ 0,
-      TRUE ~ NA_integer_),
+      TRUE ~ 0),
     replaced_0_with_NA_FDP = case_when(
       abs_FDP == 0 ~ 1,
       abs_FDP != 0 ~ 0,
-      TRUE ~ NA_integer_),
+      TRUE ~ 0),
     replaced_0_with_NA_FREIEWÄHLER = case_when(
       abs_FREIEWÄHLER == 0 ~ 1,
       abs_FREIEWÄHLER != 0 ~ 0,
-      TRUE ~ NA_integer_))
+      TRUE ~ 0))
 
 kommunalwahlen_merge <- kommunalwahlen_merge %>%
   mutate(
@@ -9409,42 +9427,8 @@ kommunalwahlen_merge <- kommunalwahlen_merge %>%
     abs_FREIEWÄHLER = ifelse(replaced_0_with_NA_FREIEWÄHLER == 1, NA, abs_FREIEWÄHLER),
     prop_FREIEWÄHLER = ifelse(replaced_0_with_NA_FREIEWÄHLER == 1, NA, prop_FREIEWÄHLER))
 
-# SANITY CHECKS ----
 
-# test <- kommunalwahlen_merge %>%
-#   rowwise%>%
-#   mutate(
-#     abs_OTHER = (GültigeStimmen-sum(abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_DiePARTEI, abs_FREIEWÄHLER, na.rm=T)),
-#     prop_OTHER = (1-sum(prop_CDU, prop_SPD, prop_DIELINKE, prop_GRÜNE, prop_AfD, prop_PIRATEN, prop_FDP, prop_DiePARTEI, prop_FREIEWÄHLER, na.rm=T))) %>%
-#   dplyr::select(AGS_8dig:abs_FREIEWÄHLER, abs_OTHER, gew_CDU:prop_FREIEWÄHLER, prop_OTHER, Turnout) %>%
-#   rowwise() %>%
-#   mutate(
-#     prop_sum = sum(c_across(starts_with("prop_")), na.rm = TRUE),
-#     abs_sum = sum(c_across(starts_with("abs_")), na.rm = TRUE),
-#     prop_over_1 = prop_sum > 1,
-#     prop_under_0 = prop_OTHER < 0,
-#     prop_1 = prop_OTHER == 1,
-#     abs_more_than_gueltige = abs_OTHER > GültigeStimmen) %>%
-#   ungroup()
-# 
-# test_2 <-  test %>%
-#   filter(abs_OTHER > 1000000)
-# summary(test$abs_OTHER < 0)
-# 
-# summary(test$prop_OTHER)
-# 
-# test3 <- test[test$abs_OTHER < 0,]
-# 
-# table(test_2$Bundesland, test_2$election_year)
-# 
-# test4 <- test %>%
-#   filter(is.na(abs_OTHER))
-# 
-# dim(test4)
-
-
-
-# Transform some variables for congruency reasons -------------------------
+# Transform some variables for congruence reasons -------------------------
 
 kommunalwahlen_merge <- kommunalwahlen_merge |>
   rename(
