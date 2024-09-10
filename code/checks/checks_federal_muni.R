@@ -1,5 +1,7 @@
 #
 
+rm(list = ls())
+
 pacman::p_load(
     tidyverse,
     purrr
@@ -14,8 +16,7 @@ df <- read_rds("output/federal_muni_harm.rds")
 glimpse(df)
 
 parties <- df %>%
-    dplyr::select(cdu_csu:zentrum) %>%
-    dplyr::select(-far_left, -far_left_wLinke, -far_right) %>%
+    dplyr::select(cdu:zentrum) %>%
     colnames()
 
 # Checks
@@ -104,7 +105,7 @@ df_check <- df %>%
     filter(any(diff_votes_pct < -0.5)) %>%
     dplyr::select(ags, election_year, valid_votes, diff_votes_pct)
 df_check %>%
-    print(n = 50)
+    print(n = Inf)
 
 df_check %>%
     pull(ags) %>%
@@ -143,9 +144,14 @@ df_check <- df %>%
 df_check %>%
     head(10)
 
+df_check %>%
+  pull(ags) %>%
+  unique() %>%
+  dput()
+
 # Large changes in % party vote shares between elections?
 
-parties_main <- c("cdu_csu", "spd", "fdp", "grüne", "linke_pds", "afd")
+parties_main <- c("cdu_csu", "spd", "fdp", "grune", "linke_pds", "afd")
 
 # Calculate the lagged vote shares and their percentage changes
 df <- df %>%

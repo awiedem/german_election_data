@@ -1,7 +1,7 @@
-### Harmonize BTW electoral results at couty level 1953-2021
+### Harmonize BTW electoral results at county level 1990-2021
 # Vincent Heddesheimer
 # Created: June, 18, 2024
-# Last updated: 
+# Last updated: August, 13, 2024
 
 rm(list = ls())
 
@@ -263,10 +263,15 @@ df_harm <- df_harm |>
   ) |>
   # Relocate columns
   relocate(turnout, .before = cdu) |>
-  relocate(far_right, .after = bsa) |>
+  relocate(cdu_csu, .after = total_votes)  |>
+  relocate(far_right, .after = cdu_csu) |>
   relocate(far_left, .after = far_right) |>
-  relocate(far_left_wLinke, .after = far_left) |>
-  relocate(cdu_csu, .after = csu)
+  relocate(far_left_w_linke, .after = far_left) |>
+  # relocate(county, .after = state) |>
+  relocate(flag_unsuccessful_naive_merge, .after = population) |>
+  select(-c(year, state_name, year_cw, id))
+
+names(df_harm)
 
 # AfD to NA for years prior to 2013
 

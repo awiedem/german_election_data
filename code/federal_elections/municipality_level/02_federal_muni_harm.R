@@ -34,7 +34,8 @@ df <- read_rds("output/federal_muni_unharm.rds") |>
   # remove population & area that were used for weighting multi mail-in districts
   select(-c(pop, area)) |>
   # filter years before 1990: no crosswalks available
-  filter(election_year >= 1990)
+  filter(election_year >= 1990) |>
+  arrange(ags, election_year)
 
 
 # Naive merge with unharmonized election data -----------------------------------
@@ -85,9 +86,6 @@ cw_not_merged <- cw |>
 
 
 # Dealing with unsuccessful mergers ---------------------------------------
-
-
-
 
 # define cases where we want to use year - 1
 ags_year_cw <- not_merged_naive %>%
@@ -243,6 +241,8 @@ ggplot(agg_df, aes(x = election_year, y = value, color = variable)) +
 
 df_cw$election_year
 
+names(df_cw) 
+
 ## Votes: weighted sum -----------------------------------------------------
 votes <- df_cw |>
     filter(election_year < 2021) |>
@@ -251,13 +251,13 @@ votes <- df_cw |>
         unique_mailin = max(unique_mailin),
         unique_multi_mailin = max(unique_multi_mailin),
         across(
-            eligible_voters:far_left_wLinke,
+            eligible_voters:far_left_w_linke,
             ~ sum(.x * pop_cw, na.rm = TRUE)
         )
     ) |>
     # Round
     mutate(across(
-        eligible_voters:far_left_wLinke,
+        eligible_voters:far_left_w_linke,
         ~ round(.x, digits = 0)
     )) |>
     ungroup()
@@ -293,15 +293,18 @@ ags21 <- read_excel(path = "data/crosswalks/31122021_Auszug_GV.xlsx", sheet = 2)
         Gemeinde = pad_zero_conditional(Gemeinde, 1, "00"),
         Gemeinde = pad_zero_conditional(Gemeinde, 2, "0"),
         ags = paste0(Land, RB, Kreis, Gemeinde),
-        election_year = 2021
+        election_year = 2021,
+        population = as.numeric(population) / 100
     ) |>
     slice(6:16065) |>
     filter(!is.na(Gemeinde)) |>
     select(ags, election_year, area, population)
+  
 
 # Create full df ----------------------------------------------------------
 
 glimpse(votes)
+names(df_cw)
 
 # Bind back to dataframe
 df_harm <- votes |>
@@ -312,10 +315,13 @@ df_harm <- votes |>
   # Bind 2021 data (that was unharmonized)
   bind_rows(df_cw |>
               filter(election_year == 2021) |>
-              select(-c(
-                state, state_name, election_year,
-                pop_cw, area_cw, ags_21
-                ))) |>
+              # if value is NA, fill in 0
+              mutate(across(
+                cdu:far_left_w_linke,
+                ~ ifelse(is.na(.x), 0, .x)
+              ),
+              unique_multi_mailin = 0)
+            ) |>
   # Create state variable
   mutate(
     ags = pad_zero_conditional(ags, 7),
@@ -342,7 +348,7 @@ df_harm <- df_harm |>
 names(df_harm)
 
 row_sums <- df_harm %>%
-    select(-c(far_left, far_left_wLinke, far_right, cdu_csu)) %>%
+    select(-c(far_left, far_left_w_linke, far_right, cdu_csu)) %>%
     select(cdu:zentrum) %>%
     rowSums(na.rm = TRUE)
 
@@ -452,23 +458,26 @@ inspect |>
 # yes in 151 cases, but the highest difference is 3 votes
 ## We use the number of voters for calculating turnout
 
-
+names(df_harm)
 
 # calculate vote share & turnout
 df_harm <- df_harm |>
   mutate(
-    across(cdu:far_left_wLinke, ~ .x / total_votes),
+    across(cdu:far_left_w_linke, ~ .x / total_votes),
     # turnout = (valid + invalid) / eligible_voters
     turnout = number_voters / eligible_voters
   ) |>
   # Relocate columns
   relocate(turnout, .before = cdu) |>
-  relocate(far_right, .after = bsa) |>
+  relocate(cdu_csu, .after = perc_total_votes_incogruence)  |>
+  relocate(far_right, .after = cdu_csu) |>
   relocate(far_left, .after = far_right) |>
-  relocate(far_left_wLinke, .after = far_left) |>
+  relocate(far_left_w_linke, .after = far_left) |>
   relocate(county, .after = state) |>
   relocate(flag_unsuccessful_naive_merge, .after = population) |>
-  select(-c(ags_name, ags_name_21, emp_cw, employees, year_cw, id))
+  select(-c(ags_name, ags_name_21, emp_cw, employees, year_cw, id)) |>
+  # arrange
+  arrange(ags, election_year)
 
 # AfD to NA for years prior to 2013
 
@@ -477,7 +486,7 @@ df_harm <- df_harm %>%
         afd = ifelse(election_year < 2013, NA, afd)
     )
 
-
+names(df_harm)
 
 
 ## Save this now:
@@ -490,7 +499,8 @@ write_rds(df_harm, "output/federal_muni_harm.rds")
 
 # Inspect -----------------------------------------------------------------
 
-df_harm <- read_rds("output/federal_muni_harm.rds")
+df_harm <- read_rds("output/federal_muni_harm.rds") |>
+  arrange(ags, election_year)
 
 # Berlin
 inspect <- df_harm |>
@@ -498,6 +508,10 @@ inspect <- df_harm |>
 
 
 names(df_harm)
+
+# Check for missing values in election_year
+df_harm |>
+  filter(is.na(election_year))
 
 
 ### END

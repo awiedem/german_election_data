@@ -3,7 +3,7 @@
 ###################################
 
 # Florian Sichart
-# Last update: July 2024
+# Last update: August 2024
 
 ########## PREPARATION ----
 rm(list = ls())
@@ -12,29 +12,6 @@ gc()
 library(pacman)
 pacman::p_load(writexl, readr, stringr, tidyverse, grid, gridExtra, tidyverse, broom, tidyr, data.table, readxl, dplyr, stringi)
 
-# library(dplyr)
-# library(here)
-# library(foreign)
-# library(ggplot2)
-# library(reshape2)
-# library(lmtest)
-# library(sandwich)
-# library(MASS)
-# library(car)
-# library(lme4)
-# library(data.table)
-# library(gridExtra)
-# library(grid)
-# library(broom)
-# library(readxl)
-# library(viridis)
-# library(tidyverse)
-# library(stringr)
-# library(readr)
-# library(writexl)
-# library(stringi)
-# library(tidyr)
-
 # https://github.com/seligerf/Imputation-of-missing-location-information-for-worldwide-patent-data
 # https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/OTTBDX
 # https://www.nature.com/articles/s41597-019-0264-6
@@ -42,16 +19,10 @@ pacman::p_load(writexl, readr, stringr, tidyverse, grid, gridExtra, tidyverse, b
 # Set WD
 setwd(here::here("data/municipal_elections"))
 
-??as.data.table
+# if (Sys.info()['user'] == 'flosic') {
+#   setwd("/Users/flosic/Dropbox/RA_work/Data collection/Germany_Kommunalwahlen")
+# }
 
-if (Sys.info()['user'] == 'flosic') {
-  setwd("/Users/flosic/Dropbox/RA_work/Data collection/Germany_Kommunalwahlen")
-}
-
-# ----
-# ----
-
-# ----
 ########## DATA PROCESSING ----
 ######### BAYERN ----
 #### Load election data ----
@@ -62,7 +33,6 @@ bayern_kommunalwahlen_gueltige <- as.data.table(read_excel("raw_data/bayern/baye
 
 bayern_kommunalwahlen_data <- merge(bayern_kommunalwahlen_data, bayern_kommunalwahlen_waehler, by="AGS", all.x=TRUE)
 bayern_kommunalwahlen_data <- merge(bayern_kommunalwahlen_data, bayern_kommunalwahlen_gueltige, by="AGS", all.x=TRUE)
-
 
 
 ###### Bayern 1996 Gemeinderatswahlen ----
@@ -466,24 +436,30 @@ bayern_2020_kommunalwahlen_data_sub$Turnout <- as.numeric(bayern_2020_kommunalwa
 
 ####### Merge files and save overall output for Bayern ----
 # Merge
-bayern_kommunalwahlen <- rbind(bayern_1996_kommunalwahlen_data_sub,bayern_2002_kommunalwahlen_data_sub,bayern_2008_kommunalwahlen_data_sub,bayern_2014_kommunalwahlen_data_sub,bayern_2020_kommunalwahlen_data_sub)
+bayern_kommunalwahlen <- rbind(bayern_1996_kommunalwahlen_data_sub,
+                               bayern_2002_kommunalwahlen_data_sub,
+                               bayern_2008_kommunalwahlen_data_sub,
+                               bayern_2014_kommunalwahlen_data_sub,
+                               bayern_2020_kommunalwahlen_data_sub)
 
 # Replace INF at Turnout
 bayern_kommunalwahlen[bayern_kommunalwahlen == "-"] <- NA
 
 
 # Fix AGS
-bayern_kommunalwahlen[grepl("(Krfr.St)",bayern_kommunalwahlen$Gebietsname) == TRUE]$AGS_8dig <- paste(bayern_kommunalwahlen[grepl("(Krfr.St)",bayern_kommunalwahlen$Gebietsname) == TRUE]$AGS_8dig, 000, sep="")
-
-bayern_kommunalwahlen$AGS_8dig <- sprintf("%08d", as.numeric(bayern_kommunalwahlen$AGS_8dig))
-
-# Filter out Gemeindefreie Gebiete
 bayern_kommunalwahlen <- bayern_kommunalwahlen %>%
-  filter(!Gebietsname == "Gemeindefreie Gebiete")
+  filter(nchar(AGS_8dig)>3) %>%
+  mutate(
+    AGS_8dig = case_when(nchar(AGS_8dig)==5 ~ paste0(AGS_8dig, "000"),
+                         TRUE ~ AGS_8dig)
+  )
+  
 
+# Filter out Gemeindefreie Gebiete and Landkreise
+bayern_kommunalwahlen <- bayern_kommunalwahlen %>%
+  filter(!Gebietsname == "Gemeindefreie Gebiete",
+         !grepl("(Lkr)", Gebietsname))
 
-# Save
-#write_csv(bayern_kommunalwahlen, here::here("output/bayern_kommunalwahlen.csv"))
 
 # ----
 ######### THUERINGEN ----
@@ -2783,13 +2759,13 @@ berlin_2021_kommunalwahlen_data_sub_zweitstimmen$Turnout <- as.numeric(berlin_20
 ####### Merge files and save overall output for Berlin ----
 # Merge
 berlin_kommunalwahlen <- rbind(berlin_1990_kommunalwahlen_data_sub_zweitstimmen,
-                               berlin_1995_kommunalwahlen_data_sub_erststimmen, berlin_1995_kommunalwahlen_data_sub_zweitstimmen,
-                               berlin_1999_kommunalwahlen_data_sub_erststimmen, berlin_1999_kommunalwahlen_data_sub_zweitstimmen,
-                               berlin_2001_kommunalwahlen_data_sub_erststimmen, berlin_2001_kommunalwahlen_data_sub_zweitstimmen,
-                               berlin_2006_kommunalwahlen_data_sub_erststimmen, berlin_2006_kommunalwahlen_data_sub_zweitstimmen,
-                               berlin_2011_kommunalwahlen_data_sub_erststimmen, berlin_2011_kommunalwahlen_data_sub_zweitstimmen,
-                               berlin_2016_kommunalwahlen_data_sub_erststimmen, berlin_2016_kommunalwahlen_data_sub_zweitstimmen,
-                               berlin_2021_kommunalwahlen_data_sub_erststimmen, berlin_2021_kommunalwahlen_data_sub_zweitstimmen)
+                               berlin_1995_kommunalwahlen_data_sub_zweitstimmen,
+                               berlin_1999_kommunalwahlen_data_sub_zweitstimmen,
+                               berlin_2001_kommunalwahlen_data_sub_zweitstimmen,
+                               berlin_2006_kommunalwahlen_data_sub_zweitstimmen,
+                               berlin_2011_kommunalwahlen_data_sub_zweitstimmen,
+                               berlin_2016_kommunalwahlen_data_sub_zweitstimmen,
+                               berlin_2021_kommunalwahlen_data_sub_zweitstimmen)
 
 # Replace INF at Turnout
 berlin_kommunalwahlen$Turnout <-  str_replace_all(berlin_kommunalwahlen$Turnout, fixed("Inf"), NA)
@@ -2801,8 +2777,6 @@ berlin_kommunalwahlen[berlin_kommunalwahlen == "-"] <- NA
 #write_csv(berlin_kommunalwahlen, here::here("output/berlin_kommunalwahlen.csv"))
 
 
-# ----
-# ----
 ######### NRW ----
 ###### NRW 1994 Kommunalwahlen ----
 #### Load election data ----
@@ -3249,8 +3223,6 @@ nrw_2020_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/nrw/nrw
 # Merge Stimmen and Sitze
 nrw_2020_kommunalwahlen_data <- merge(nrw_2020_kommunalwahlen_data, nrw_2020_kommunalwahlen_data_sitze, by.x="Bezirksnummer", by.y="Bezirksnummer")
 
-names(nrw_2020_kommunalwahlen_data)
-
 
 #### Recoding ----
 # Delete white space ----
@@ -3332,10 +3304,114 @@ nrw_2020_kommunalwahlen_data_sub$Turnout <- as.numeric(nrw_2020_kommunalwahlen_d
 # Fix AGS ----
 nrw_2020_kommunalwahlen_data_sub$AGS_8dig <- paste("5", nrw_2020_kommunalwahlen_data_sub$AGS_8dig, sep="")
 
+###### NRW Kommunalwahlen for kreisfreie Städte ----
+#### Load election data ----
+nrw_kreisfreie_kommunalwahlen_data <- as.data.table(read_excel("raw_data/nrw/nrw_kreisfreie_staedte.xlsx", sheet="summary"))
+
+
+#### Recoding ----
+# Delete white space ----
+names(nrw_kreisfreie_kommunalwahlen_data) <-  str_replace_all(names(nrw_kreisfreie_kommunalwahlen_data), fixed(" "), "")
+
+# Create new dataframe ----
+nrw_kreisfreie_kommunalwahlen_data_sub <- nrw_kreisfreie_kommunalwahlen_data
+
+names(nrw_kreisfreie_kommunalwahlen_data_sub)
+
+# Filter Kreise and Regierungsbezirke ----
+nrw_kreisfreie_kommunalwahlen_data_sub <- nrw_kreisfreie_kommunalwahlen_data_sub %>%
+  filter(
+    nchar(ags) > 3, 
+    !grepl("Kreis", gebiet))
+
+# Fix AGS ----
+nrw_kreisfreie_kommunalwahlen_data_sub <- nrw_kreisfreie_kommunalwahlen_data_sub %>%
+  mutate(
+    ags = paste0(ags, "000"))
+
+# Creating non-existing variables ----
+nrw_kreisfreie_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
+nrw_kreisfreie_kommunalwahlen_data_sub[ , Bundesland := "NRW"]
+nrw_kreisfreie_kommunalwahlen_data_sub[ , Gebietsname := ""]
+
+nrw_kreisfreie_kommunalwahlen_data_sub[ , election_type := "Kommunalwahl"]
+nrw_kreisfreie_kommunalwahlen_data_sub[ , IDIRB := ""]
+nrw_kreisfreie_kommunalwahlen_data_sub[ , IDBA := ""]
+
+# Renaming existing variables ----
+nrw_kreisfreie_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- nrw_kreisfreie_kommunalwahlen_data_sub$Wahlberechtigte
+nrw_kreisfreie_kommunalwahlen_data_sub$Wähler <- nrw_kreisfreie_kommunalwahlen_data_sub$Wähler
+nrw_kreisfreie_kommunalwahlen_data_sub$election_year <- nrw_kreisfreie_kommunalwahlen_data_sub$year
+nrw_kreisfreie_kommunalwahlen_data_sub$AGS_8dig <- nrw_kreisfreie_kommunalwahlen_data_sub$ags
+nrw_kreisfreie_kommunalwahlen_data_sub$Gebietsname <- nrw_kreisfreie_kommunalwahlen_data_sub$gebiet
+nrw_kreisfreie_kommunalwahlen_data_sub$GültigeStimmen <- nrw_kreisfreie_kommunalwahlen_data_sub$GültigeStimmen
+
+nrw_kreisfreie_kommunalwahlen_data_sub$abs_CDU <- nrw_kreisfreie_kommunalwahlen_data_sub$CDU
+nrw_kreisfreie_kommunalwahlen_data_sub$abs_SPD <- nrw_kreisfreie_kommunalwahlen_data_sub$SPD
+nrw_kreisfreie_kommunalwahlen_data_sub$abs_DIELINKE <- nrw_kreisfreie_kommunalwahlen_data_sub$DIELINKE
+nrw_kreisfreie_kommunalwahlen_data_sub$abs_GRÜNE <- nrw_kreisfreie_kommunalwahlen_data_sub$GRÜNE
+nrw_kreisfreie_kommunalwahlen_data_sub$abs_AfD <- nrw_kreisfreie_kommunalwahlen_data_sub$AfD
+nrw_kreisfreie_kommunalwahlen_data_sub$abs_PIRATEN <- nrw_kreisfreie_kommunalwahlen_data_sub$PIRATEN
+nrw_kreisfreie_kommunalwahlen_data_sub$abs_FDP <- nrw_kreisfreie_kommunalwahlen_data_sub$FDP
+nrw_kreisfreie_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- NA
+
+nrw_kreisfreie_kommunalwahlen_data_sub$gew_CDU <- NA
+nrw_kreisfreie_kommunalwahlen_data_sub$gew_SPD <- NA
+nrw_kreisfreie_kommunalwahlen_data_sub$gew_DIELINKE <- NA
+nrw_kreisfreie_kommunalwahlen_data_sub$gew_GRÜNE <- NA
+nrw_kreisfreie_kommunalwahlen_data_sub$gew_AfD <- NA
+nrw_kreisfreie_kommunalwahlen_data_sub$gew_PIRATEN <- NA
+nrw_kreisfreie_kommunalwahlen_data_sub$gew_FDP <- NA
+nrw_kreisfreie_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
+
+nrw_kreisfreie_kommunalwahlen_data_sub$sitze_CDU <- NA
+nrw_kreisfreie_kommunalwahlen_data_sub$sitze_SPD <- NA
+nrw_kreisfreie_kommunalwahlen_data_sub$sitze_DIELINKE <- NA
+nrw_kreisfreie_kommunalwahlen_data_sub$sitze_GRÜNE <- NA
+nrw_kreisfreie_kommunalwahlen_data_sub$sitze_AfD <- NA
+nrw_kreisfreie_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
+nrw_kreisfreie_kommunalwahlen_data_sub$sitze_FDP <- NA
+nrw_kreisfreie_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
+
+# Creating new dataframe with selected vars ----
+nrw_kreisfreie_kommunalwahlen_data_sub <- nrw_kreisfreie_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                         Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                         abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER,
+                                                                         gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER,
+                                                                         sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER)]
+
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+nrw_kreisfreie_kommunalwahlen_data_sub <-
+  nrw_kreisfreie_kommunalwahlen_data_sub %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+nrw_kreisfreie_kommunalwahlen_data_sub$Turnout <- as.numeric(nrw_kreisfreie_kommunalwahlen_data_sub$Wähler) / as.numeric(nrw_kreisfreie_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
+
+# Filter Hochsauerlandkreis ----
+nrw_kreisfreie_kommunalwahlen_data_sub <- nrw_kreisfreie_kommunalwahlen_data_sub %>%
+  filter(!AGS_8dig == "05958000")
+
+# Filter 1989 ----
+nrw_kreisfreie_kommunalwahlen_data_sub <- nrw_kreisfreie_kommunalwahlen_data_sub %>%
+  filter(!election_year == "1989")
+
 ####### Merge files and save overall output for NRW ----
 # Merge
-nrw_kommunalwahlen <- rbind(nrw_1994_kommunalwahlen_data_sub,nrw_1999_kommunalwahlen_data_sub,nrw_2004_kommunalwahlen_data_sub,
-                            nrw_2009_kommunalwahlen_data_sub,nrw_2014_kommunalwahlen_data_sub,nrw_2020_kommunalwahlen_data_sub)
+nrw_kommunalwahlen <- rbind(nrw_1994_kommunalwahlen_data_sub,
+                            nrw_1999_kommunalwahlen_data_sub,
+                            nrw_2004_kommunalwahlen_data_sub,
+                            nrw_2009_kommunalwahlen_data_sub,
+                            nrw_2014_kommunalwahlen_data_sub,
+                            nrw_2020_kommunalwahlen_data_sub,
+                            nrw_kreisfreie_kommunalwahlen_data_sub) %>%
+  filter(!grepl("Städteregion", Gebietsname)) %>%
+  arrange(election_year, AGS_8dig)
 
 
 # Replace INF at Turnout
@@ -3345,12 +3421,14 @@ nrw_kommunalwahlen$Turnout <-  str_replace_all(nrw_kommunalwahlen$Turnout, fixed
 nrw_kommunalwahlen[nrw_kommunalwahlen == "-"] <- NA
 
 # Fix AGS
-nrw_kommunalwahlen$AGS_8dig <- stri_pad_left(nrw_kommunalwahlen$AGS_8dig, 8, 0)
+nrw_kommunalwahlen$AGS_8dig <- stri_pad_left(nrw_kommunalwahlen$AGS_8dig, 8, "0")
+
+# Reorder
+nrw_kommunalwahlen <- nrw_kommunalwahlen %>%
+  arrange(election_year, AGS_8dig)
 
 # Save
 #write_csv(nrw_kommunalwahlen, here::here("output/nrw_kommunalwahlen.csv"))
-
-
 
 ######### SAARLAND ----
 ###### Saarland  Kommunalwahlen ----
@@ -3436,6 +3514,8 @@ saarland_kommunalwahlen_data_sub$Turnout <- as.numeric(saarland_kommunalwahlen_d
 saarland_kommunalwahlen_data_sub <- saarland_kommunalwahlen_data_sub[
   with(saarland_kommunalwahlen_data_sub, order(election_year, AGS_8dig)),]
 
+
+
 ####### Merge files and save overall output for Saarland ----
 
 # Save
@@ -3502,6 +3582,7 @@ sachsen_anhalt_1999_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
 sachsen_anhalt_1999_kommunalwahlen_data_sub$sitze_FDP <- NA
 sachsen_anhalt_1999_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
 sachsen_anhalt_1999_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
+
 # Creating new dataframe with selected vars ----
 sachsen_anhalt_1999_kommunalwahlen_data_sub <- sachsen_anhalt_1999_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
                                                                                        Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
@@ -3521,6 +3602,11 @@ sachsen_anhalt_1999_kommunalwahlen_data_sub <-
 # Calculating turnout ----
 sachsen_anhalt_1999_kommunalwahlen_data_sub$Turnout <- sachsen_anhalt_1999_kommunalwahlen_data_sub$Wähler / sachsen_anhalt_1999_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
 
+# Filter Kreise out ----
+sachsen_anhalt_1999_kommunalwahlen_data_sub <- sachsen_anhalt_1999_kommunalwahlen_data_sub %>%
+  filter(nchar(AGS_8dig)==8)
+
+sachsen_anhalt_1999_kommunalwahlen_data_sub
 
 ###### Sachsen-Anhalt 2004 Kommunalwahlen ----
 #### Load election data ----
@@ -3601,6 +3687,9 @@ sachsen_anhalt_2004_kommunalwahlen_data_sub <-
 # Calculating turnout ----
 sachsen_anhalt_2004_kommunalwahlen_data_sub$Turnout <- sachsen_anhalt_2004_kommunalwahlen_data_sub$Wähler / sachsen_anhalt_2004_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
 
+# Filter Kreise out ----
+sachsen_anhalt_2004_kommunalwahlen_data_sub <- sachsen_anhalt_2004_kommunalwahlen_data_sub %>%
+  filter(nchar(AGS_8dig)==8)
 
 ###### Sachsen-Anhalt 2007 Kommunalwahlen ----
 #### Load election data ----
@@ -3681,6 +3770,7 @@ sachsen_anhalt_2007_kommunalwahlen_data_sub <-
 # Calculating turnout ----
 sachsen_anhalt_2007_kommunalwahlen_data_sub$Turnout <- sachsen_anhalt_2007_kommunalwahlen_data_sub$Wähler / sachsen_anhalt_2007_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
 
+table(sachsen_anhalt_2007_kommunalwahlen_data_sub$Gebietsname)
 
 ###### Sachsen-Anhalt 2009 Kommunalwahlen ----
 #### Load election data ----
@@ -3761,6 +3851,37 @@ sachsen_anhalt_2009_kommunalwahlen_data_sub <-
 # Calculating turnout ----
 sachsen_anhalt_2009_kommunalwahlen_data_sub$Turnout <- sachsen_anhalt_2009_kommunalwahlen_data_sub$Wähler / sachsen_anhalt_2009_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
 
+# Remove Ortsteile ----
+
+sachsen_anhalt_2009_kommunalwahlen_data_sub <- sachsen_anhalt_2009_kommunalwahlen_data_sub %>%
+  filter(
+    !AGS_8dig %in% c("15081010",
+                     "15081015",
+                     "15081025",
+                     "15081055",
+                     "15081115",
+                     "15081140",
+                     "15081155",
+                     "15081275",
+                     "15081420",
+                     "15081465",
+                     "15081495",
+                     "15081530",
+                     "15081580",
+                     "15090030",
+                     "15090035",
+                     "15090130",
+                     '15090140',
+                     '15090155',
+                     '15090175',
+                     '15090315',
+                     '15090335',
+                     '15090380',
+                     '15090440',
+                     '15090450',
+                     '15090455',
+                     '15090590'))
+  
 
 ###### Sachsen-Anhalt 2014 Kommunalwahlen ----
 #### Load election data ----
@@ -3841,7 +3962,6 @@ sachsen_anhalt_2014_kommunalwahlen_data_sub <-
 # Calculating turnout ----
 sachsen_anhalt_2014_kommunalwahlen_data_sub$Turnout <- sachsen_anhalt_2014_kommunalwahlen_data_sub$Wähler / sachsen_anhalt_2014_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
 
-
 ###### Sachsen-Anhalt 2019 Kommunalwahlen ----
 #### Load election data ----
 
@@ -3921,17 +4041,24 @@ sachsen_anhalt_2019_kommunalwahlen_data_sub <-
 # Calculating turnout ----
 sachsen_anhalt_2019_kommunalwahlen_data_sub$Turnout <- sachsen_anhalt_2019_kommunalwahlen_data_sub$Wähler / sachsen_anhalt_2019_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
 
-
 ####### Merge files and save overall output for Sachsen-Anhalt ----
 # Merge
-sachsen_anhalt_kommunalwahlen <- rbind(sachsen_anhalt_1999_kommunalwahlen_data_sub,sachsen_anhalt_2004_kommunalwahlen_data_sub,sachsen_anhalt_2007_kommunalwahlen_data_sub,
-                                       sachsen_anhalt_2009_kommunalwahlen_data_sub,sachsen_anhalt_2014_kommunalwahlen_data_sub,sachsen_anhalt_2019_kommunalwahlen_data_sub)
+sachsen_anhalt_kommunalwahlen <- rbind(sachsen_anhalt_1999_kommunalwahlen_data_sub,
+                                       sachsen_anhalt_2004_kommunalwahlen_data_sub,
+                                       sachsen_anhalt_2007_kommunalwahlen_data_sub,
+                                       sachsen_anhalt_2009_kommunalwahlen_data_sub,
+                                       sachsen_anhalt_2014_kommunalwahlen_data_sub,
+                                       sachsen_anhalt_2019_kommunalwahlen_data_sub)
 
 # Replace INF at Turnout
 sachsen_anhalt_kommunalwahlen$Turnout <-  str_replace_all(sachsen_anhalt_kommunalwahlen$Turnout, fixed("Inf"), NA)
 
 # Replace - with NA
 sachsen_anhalt_kommunalwahlen[sachsen_anhalt_kommunalwahlen == "-"] <- NA
+
+# Exclude Hochsauerlandkreis
+sachsen_anhalt_kommunalwahlen <- sachsen_anhalt_kommunalwahlen %>%
+  filter(!Gebietsname == "Hochsauerlandkreis")
 
 # Save
 #write_csv(sachsen_anhalt_kommunalwahlen, here::here("output/sachsen_anhalt_kommunalwahlen.csv"))
@@ -4509,16 +4636,507 @@ baden_wuerttemberg_kommunalwahlen$AGS_8dig <- paste("08",baden_wuerttemberg_komm
 ######## MECKLENBURG-VORPOMMERN
 ######### MECKLENBURG-VORPOMMERN ----
 
-###### Mecklenburg-Vorpommern 1994 Gemeinderatswahlen ----
+######## LANDTAGSWAHLEN ----
+###### Mecklenburg-Vorpommern 1994 Landtagswahlen ----
 #### Load election data ----
-mecklenburg_vorpommern_1994_kommunalwahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_1994.xls", sheet="summary"))
+mecklenburg_vorpommern_1994_landtagswahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_landtagswahlen_1994.xls", sheet="summary"))
+
+#### Delete white space ----
+names(mecklenburg_vorpommern_1994_landtagswahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_1994_landtagswahlen_data), fixed(" "), "")
+
+#### Recoding ----
+# Create new dataframe ----
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub <- mecklenburg_vorpommern_1994_landtagswahlen_data
+
+names(mecklenburg_vorpommern_1994_landtagswahlen_data_sub)
+
+# Creating non-existing variables ----
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub[ , Bundesland := "Mecklenburg-Vorpommern"]
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub[ , Gebietsname := ""]
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub[ , election_year := "1994"]
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub[ , election_type := "Landtagswahlen"]
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub[ , IDIRB := ""]
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub[ , IDBA := ""]
+
+# Renaming existing variables ----
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$AGS_8dig <- mecklenburg_vorpommern_1994_landtagswahlen_data_sub$Gemeindenummer
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$Gebietsname <- mecklenburg_vorpommern_1994_landtagswahlen_data_sub$Gemeindename
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$Wahlberechtigteinsgesamt <- mecklenburg_vorpommern_1994_landtagswahlen_data_sub$Wahlberechtigteinsgesamt
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$Wähler <- mecklenburg_vorpommern_1994_landtagswahlen_data_sub$Waehlerinsgesamt
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$GültigeStimmen <- mecklenburg_vorpommern_1994_landtagswahlen_data_sub$Stimmengültig
+
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$abs_CDU <- mecklenburg_vorpommern_1994_landtagswahlen_data_sub$CDU
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$abs_SPD <- mecklenburg_vorpommern_1994_landtagswahlen_data_sub$SPD
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$abs_DIELINKE <- mecklenburg_vorpommern_1994_landtagswahlen_data_sub$PDS
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$abs_GRÜNE <- mecklenburg_vorpommern_1994_landtagswahlen_data_sub$GRÜNE
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$abs_AfD <- NA
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$abs_PIRATEN <- NA
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$abs_FDP <- mecklenburg_vorpommern_1994_landtagswahlen_data_sub$`F.D.P.`
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$abs_DiePARTEI <- NA
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$abs_FREIEWÄHLER <- mecklenburg_vorpommern_1994_landtagswahlen_data_sub$FreieWähler
+
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$gew_CDU <- NA
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$gew_SPD <- NA
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$gew_DIELINKE <- NA
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$gew_GRÜNE <- NA
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$gew_AfD <- NA
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$gew_PIRATEN <- NA
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$gew_FDP <- NA
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$gew_DiePARTEI <- NA
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$gew_FREIEWÄHLER <- NA
+
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$sitze_CDU <- NA
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$sitze_SPD <- NA
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$sitze_DIELINKE <- NA
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$sitze_GRÜNE <- NA
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$sitze_AfD <- NA
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$sitze_PIRATEN <- NA
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$sitze_FDP <- NA
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$sitze_DiePARTEI <- NA
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+
+# Creating new dataframe with selected vars ----
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub <- mecklenburg_vorpommern_1994_landtagswahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                                               Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                                               abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_DiePARTEI, abs_FREIEWÄHLER,
+                                                                                                               gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_DiePARTEI, gew_FREIEWÄHLER,
+                                                                                                               sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_DiePARTEI, sitze_FREIEWÄHLER)]
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub <-
+  mecklenburg_vorpommern_1994_landtagswahlen_data_sub %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+mecklenburg_vorpommern_1994_landtagswahlen_data_sub$Turnout <- mecklenburg_vorpommern_1994_landtagswahlen_data_sub$Wähler / mecklenburg_vorpommern_1994_landtagswahlen_data_sub$Wahlberechtigteinsgesamt
+
+###### Mecklenburg-Vorpommern 1999 Landtagswahlen ----
+#### Load election data ----
+mecklenburg_vorpommern_1999_landtagswahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_landtagswahlen_1999.xls", sheet="summary"))
+
+#### Delete white space ----
+names(mecklenburg_vorpommern_1999_landtagswahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_1999_landtagswahlen_data), fixed(" "), "")
+
+#### Recoding ----
+# Create new dataframe ----
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub <- mecklenburg_vorpommern_1999_landtagswahlen_data
+
+names(mecklenburg_vorpommern_1999_landtagswahlen_data_sub)
+
+# Creating non-existing variables ----
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub[ , Bundesland := "Mecklenburg-Vorpommern"]
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub[ , Gebietsname := ""]
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub[ , election_year := "1999"]
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub[ , election_type := "Landtagswahlen"]
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub[ , IDIRB := ""]
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub[ , IDBA := ""]
+
+# Renaming existing variables ----
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$AGS_8dig <- mecklenburg_vorpommern_1999_landtagswahlen_data_sub$Gemeindenummer
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$Gebietsname <- mecklenburg_vorpommern_1999_landtagswahlen_data_sub$Gemeindename
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$Wahlberechtigteinsgesamt <- mecklenburg_vorpommern_1999_landtagswahlen_data_sub$Wahlberechtigteinsgesamt
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$Wähler <- mecklenburg_vorpommern_1999_landtagswahlen_data_sub$Waehlerinsgesamt
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$GültigeStimmen <- mecklenburg_vorpommern_1999_landtagswahlen_data_sub$Stimmengueltig
+
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$abs_CDU <- mecklenburg_vorpommern_1999_landtagswahlen_data_sub$CDU
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$abs_SPD <- mecklenburg_vorpommern_1999_landtagswahlen_data_sub$SPD
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$abs_DIELINKE <- mecklenburg_vorpommern_1999_landtagswahlen_data_sub$PDS
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$abs_GRÜNE <- mecklenburg_vorpommern_1999_landtagswahlen_data_sub$GRÜNE
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$abs_AfD <- NA
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$abs_PIRATEN <- NA
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$abs_FDP <- mecklenburg_vorpommern_1999_landtagswahlen_data_sub$`F.D.P.`
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$abs_DiePARTEI <- NA
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$abs_FREIEWÄHLER <- mecklenburg_vorpommern_1999_landtagswahlen_data_sub$FreieWähler
+
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$gew_CDU <- NA
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$gew_SPD <- NA
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$gew_DIELINKE <- NA
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$gew_GRÜNE <- NA
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$gew_AfD <- NA
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$gew_PIRATEN <- NA
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$gew_FDP <- NA
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$gew_DiePARTEI <- NA
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$gew_FREIEWÄHLER <- NA
+
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$sitze_CDU <- NA
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$sitze_SPD <- NA
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$sitze_DIELINKE <- NA
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$sitze_GRÜNE <- NA
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$sitze_AfD <- NA
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$sitze_PIRATEN <- NA
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$sitze_FDP <- NA
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$sitze_DiePARTEI <- NA
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+
+# Creating new dataframe with selected vars ----
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub <- mecklenburg_vorpommern_1999_landtagswahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                                               Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                                               abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_DiePARTEI, abs_FREIEWÄHLER,
+                                                                                                               gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_DiePARTEI, gew_FREIEWÄHLER,
+                                                                                                               sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_DiePARTEI, sitze_FREIEWÄHLER)]
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub <-
+  mecklenburg_vorpommern_1999_landtagswahlen_data_sub %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+mecklenburg_vorpommern_1999_landtagswahlen_data_sub$Turnout <- mecklenburg_vorpommern_1999_landtagswahlen_data_sub$Wähler / mecklenburg_vorpommern_1999_landtagswahlen_data_sub$Wahlberechtigteinsgesamt
+
+###### Mecklenburg-Vorpommern 2004 Landtagswahlen ----
+#### Load election data ----
+mecklenburg_vorpommern_2004_landtagswahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_landtagswahlen_2004.xls", sheet="summary"))
+
+#### Delete white space ----
+names(mecklenburg_vorpommern_2004_landtagswahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_2004_landtagswahlen_data), fixed(" "), "")
+
+#### Recoding ----
+# Create new dataframe ----
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub <- mecklenburg_vorpommern_2004_landtagswahlen_data
+
+names(mecklenburg_vorpommern_2004_landtagswahlen_data_sub)
+
+# Creating non-existing variables ----
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub[ , Bundesland := "Mecklenburg-Vorpommern"]
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub[ , Gebietsname := ""]
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub[ , election_year := "2004"]
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub[ , election_type := "Landtagswahlen"]
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub[ , IDIRB := ""]
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub[ , IDBA := ""]
+
+# Renaming existing variables ----
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$AGS_8dig <- mecklenburg_vorpommern_2004_landtagswahlen_data_sub$Gemeindenummer
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$Gebietsname <- mecklenburg_vorpommern_2004_landtagswahlen_data_sub$Gemeindename
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$Wahlberechtigteinsgesamt <- mecklenburg_vorpommern_2004_landtagswahlen_data_sub$Wahlberechtigteinsgesamt
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$Wähler <- mecklenburg_vorpommern_2004_landtagswahlen_data_sub$Waehlerinsgesamt
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$GültigeStimmen <- mecklenburg_vorpommern_2004_landtagswahlen_data_sub$GueltigeStimmen
+
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$abs_CDU <- mecklenburg_vorpommern_2004_landtagswahlen_data_sub$CDU
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$abs_SPD <- mecklenburg_vorpommern_2004_landtagswahlen_data_sub$SPD
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$abs_DIELINKE <- mecklenburg_vorpommern_2004_landtagswahlen_data_sub$PDS
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$abs_GRÜNE <- mecklenburg_vorpommern_2004_landtagswahlen_data_sub$GRÜNE
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$abs_AfD <- NA
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$abs_PIRATEN <- NA
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$abs_FDP <- mecklenburg_vorpommern_2004_landtagswahlen_data_sub$FDP
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$abs_DiePARTEI <- NA
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$abs_FREIEWÄHLER <- NA
+
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$gew_CDU <- NA
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$gew_SPD <- NA
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$gew_DIELINKE <- NA
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$gew_GRÜNE <- NA
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$gew_AfD <- NA
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$gew_PIRATEN <- NA
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$gew_FDP <- NA
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$gew_DiePARTEI <- NA
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$gew_FREIEWÄHLER <- NA
+
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$sitze_CDU <- NA
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$sitze_SPD <- NA
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$sitze_DIELINKE <- NA
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$sitze_GRÜNE <- NA
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$sitze_AfD <- NA
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$sitze_PIRATEN <- NA
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$sitze_FDP <- NA
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$sitze_DiePARTEI <- NA
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+
+# Creating new dataframe with selected vars ----
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub <- mecklenburg_vorpommern_2004_landtagswahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                                               Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                                               abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_DiePARTEI, abs_FREIEWÄHLER,
+                                                                                                               gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_DiePARTEI, gew_FREIEWÄHLER,
+                                                                                                               sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_DiePARTEI, sitze_FREIEWÄHLER)]
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub <-
+  mecklenburg_vorpommern_2004_landtagswahlen_data_sub %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+mecklenburg_vorpommern_2004_landtagswahlen_data_sub$Turnout <- mecklenburg_vorpommern_2004_landtagswahlen_data_sub$Wähler / mecklenburg_vorpommern_2004_landtagswahlen_data_sub$Wahlberechtigteinsgesamt
+
+###### Mecklenburg-Vorpommern 2009 Landtagswahlen ----
+#### Load election data ----
+mecklenburg_vorpommern_2009_landtagswahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_landtagswahlen_2009.xlsx", sheet="summary"))
+
+#### Delete white space ----
+names(mecklenburg_vorpommern_2009_landtagswahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_2009_landtagswahlen_data), fixed(" "), "")
+
+#### Recoding ----
+# Create new dataframe ----
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub <- mecklenburg_vorpommern_2009_landtagswahlen_data
+
+names(mecklenburg_vorpommern_2009_landtagswahlen_data_sub)
+
+# Creating non-existing variables ----
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub[ , Bundesland := "Mecklenburg-Vorpommern"]
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub[ , Gebietsname := ""]
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub[ , election_year := "2009"]
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub[ , election_type := "Landtagswahlen"]
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub[ , IDIRB := ""]
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub[ , IDBA := ""]
+
+# Renaming existing variables ----
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$AGS_8dig <- mecklenburg_vorpommern_2009_landtagswahlen_data_sub$Gemeindenummer
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$Gebietsname <- mecklenburg_vorpommern_2009_landtagswahlen_data_sub$Gemeindename
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$Wahlberechtigteinsgesamt <- mecklenburg_vorpommern_2009_landtagswahlen_data_sub$Wahlberechtigteinsgesamt
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$Wähler <- mecklenburg_vorpommern_2009_landtagswahlen_data_sub$Waehlerinsgesamt
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$GültigeStimmen <- mecklenburg_vorpommern_2009_landtagswahlen_data_sub$Stimmengueltig
+
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$abs_CDU <- mecklenburg_vorpommern_2009_landtagswahlen_data_sub$CDU
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$abs_SPD <- mecklenburg_vorpommern_2009_landtagswahlen_data_sub$SPD
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$abs_DIELINKE <- mecklenburg_vorpommern_2009_landtagswahlen_data_sub$DIELINKE
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$abs_GRÜNE <- mecklenburg_vorpommern_2009_landtagswahlen_data_sub$GRÜNE
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$abs_AfD <- NA
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$abs_PIRATEN <- NA
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$abs_FDP <- mecklenburg_vorpommern_2009_landtagswahlen_data_sub$FDP
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$abs_DiePARTEI <- NA
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$abs_FREIEWÄHLER <- NA
+
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$gew_CDU <- NA
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$gew_SPD <- NA
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$gew_DIELINKE <- NA
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$gew_GRÜNE <- NA
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$gew_AfD <- NA
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$gew_PIRATEN <- NA
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$gew_FDP <- NA
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$gew_DiePARTEI <- NA
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$gew_FREIEWÄHLER <- NA
+
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$sitze_CDU <- NA
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$sitze_SPD <- NA
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$sitze_DIELINKE <- NA
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$sitze_GRÜNE <- NA
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$sitze_AfD <- NA
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$sitze_PIRATEN <- NA
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$sitze_FDP <- NA
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$sitze_DiePARTEI <- NA
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+
+# Creating new dataframe with selected vars ----
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub <- mecklenburg_vorpommern_2009_landtagswahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                                               Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                                               abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_DiePARTEI, abs_FREIEWÄHLER,
+                                                                                                               gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_DiePARTEI, gew_FREIEWÄHLER,
+                                                                                                               sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_DiePARTEI, sitze_FREIEWÄHLER)]
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub <-
+  mecklenburg_vorpommern_2009_landtagswahlen_data_sub %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+mecklenburg_vorpommern_2009_landtagswahlen_data_sub$Turnout <- mecklenburg_vorpommern_2009_landtagswahlen_data_sub$Wähler / mecklenburg_vorpommern_2009_landtagswahlen_data_sub$Wahlberechtigteinsgesamt
+
+
+
+
+###### Mecklenburg-Vorpommern 2014 Landtagswahlen ----
+#### Load election data ----
+mecklenburg_vorpommern_2014_landtagswahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_landtagswahlen_2014.xlsx", sheet="summary"))
+
+#### Delete white space ----
+names(mecklenburg_vorpommern_2014_landtagswahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_2014_landtagswahlen_data), fixed(" "), "")
+
+#### Recoding ----
+# Summarize per Gemeinde ----
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub <- mecklenburg_vorpommern_2014_landtagswahlen_data %>%
+  group_by(Gemeindenummer, Gemeindename) %>%
+  summarize(
+    Wahlberechtigteinsgesamt = sum(Wahlberechtigteinsgesamt, na.rm=T),
+    Waehlerinsgesamt = sum(Waehlerinsgesamt, na.rm=T),
+    gueltigeStimmen = sum(gueltigeStimmen, na.rm=T),
+    CDU = sum(CDU, na.rm=T),
+    SPD = sum(SPD, na.rm=T),
+    DIELINKE = sum(DIELINKE, na.rm=T),
+    GRÜNE = sum(GRÜNE, na.rm=T),
+    NDP = sum(NDP, na.rm=T),
+    FDP = sum(FDP, na.rm=T),
+    AfD = sum(AfD, na.rm=T),
+    PIRATEN = sum(PIRATEN, na.rm=T)) %>%
+  ungroup()
+
+names(mecklenburg_vorpommern_2014_landtagswahlen_data_sub)
+
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub <- as.data.table(mecklenburg_vorpommern_2014_landtagswahlen_data_sub)
+
+# Creating non-existing variables ----
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub[ , Bundesland := "Mecklenburg-Vorpommern"]
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub[ , Gebietsname := ""]
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub[ , election_year := "2014"]
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub[ , election_type := "Landtagswahlen"]
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub[ , IDIRB := ""]
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub[ , IDBA := ""]
+
+# Renaming existing variables ----
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$AGS_8dig <- mecklenburg_vorpommern_2014_landtagswahlen_data_sub$Gemeindenummer
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$Gebietsname <- mecklenburg_vorpommern_2014_landtagswahlen_data_sub$Gemeindename
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$Wahlberechtigteinsgesamt <- mecklenburg_vorpommern_2014_landtagswahlen_data_sub$Wahlberechtigteinsgesamt
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$Wähler <- mecklenburg_vorpommern_2014_landtagswahlen_data_sub$Waehlerinsgesamt
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$GültigeStimmen <- mecklenburg_vorpommern_2014_landtagswahlen_data_sub$gueltigeStimmen
+
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$abs_CDU <- mecklenburg_vorpommern_2014_landtagswahlen_data_sub$CDU
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$abs_SPD <- mecklenburg_vorpommern_2014_landtagswahlen_data_sub$SPD
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$abs_DIELINKE <- mecklenburg_vorpommern_2014_landtagswahlen_data_sub$DIELINKE
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$abs_GRÜNE <- mecklenburg_vorpommern_2014_landtagswahlen_data_sub$GRÜNE
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$abs_AfD <- mecklenburg_vorpommern_2014_landtagswahlen_data_sub$AfD
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$abs_PIRATEN <- mecklenburg_vorpommern_2014_landtagswahlen_data_sub$PIRATEN
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$abs_FDP <- mecklenburg_vorpommern_2014_landtagswahlen_data_sub$FDP
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$abs_DiePARTEI <- NA
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$abs_FREIEWÄHLER <- NA
+
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$gew_CDU <- NA
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$gew_SPD <- NA
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$gew_DIELINKE <- NA
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$gew_GRÜNE <- NA
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$gew_AfD <- NA
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$gew_PIRATEN <- NA
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$gew_FDP <- NA
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$gew_DiePARTEI <- NA
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$gew_FREIEWÄHLER <- NA
+
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$sitze_CDU <- NA
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$sitze_SPD <- NA
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$sitze_DIELINKE <- NA
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$sitze_GRÜNE <- NA
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$sitze_AfD <- NA
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$sitze_PIRATEN <- NA
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$sitze_FDP <- NA
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$sitze_DiePARTEI <- NA
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+
+# Creating new dataframe with selected vars ----
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub <- mecklenburg_vorpommern_2014_landtagswahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                                               Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                                               abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_DiePARTEI, abs_FREIEWÄHLER,
+                                                                                                               gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_DiePARTEI, gew_FREIEWÄHLER,
+                                                                                                               sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_DiePARTEI, sitze_FREIEWÄHLER)]
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub <-
+  mecklenburg_vorpommern_2014_landtagswahlen_data_sub %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+mecklenburg_vorpommern_2014_landtagswahlen_data_sub$Turnout <- mecklenburg_vorpommern_2014_landtagswahlen_data_sub$Wähler / mecklenburg_vorpommern_2014_landtagswahlen_data_sub$Wahlberechtigteinsgesamt
+
+
+###### Mecklenburg-Vorpommern 2019 Landtagswahlen ----
+#### Load election data ----
+mecklenburg_vorpommern_2019_landtagswahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_landtagswahlen_2019.xlsx", sheet="summary"))
+
+#### Delete white space ----
+names(mecklenburg_vorpommern_2019_landtagswahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_2019_landtagswahlen_data), fixed(" "), "")
+
+#### Recoding ----
+# Summarize per Gemeinde ----
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub <- mecklenburg_vorpommern_2019_landtagswahlen_data 
+
+# Creating non-existing variables ----
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub[ , Bundesland := "Mecklenburg-Vorpommern"]
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub[ , Gebietsname := ""]
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub[ , election_year := "2019"]
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub[ , election_type := "Landtagswahlen"]
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub[ , IDIRB := ""]
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub[ , IDBA := ""]
+
+# Renaming existing variables ----
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$AGS_8dig <- mecklenburg_vorpommern_2019_landtagswahlen_data_sub$Gemeindenummer
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$Gebietsname <- mecklenburg_vorpommern_2019_landtagswahlen_data_sub$Gemeindename
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$Wahlberechtigteinsgesamt <- mecklenburg_vorpommern_2019_landtagswahlen_data_sub$Wahlberechtigte
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$Wähler <- mecklenburg_vorpommern_2019_landtagswahlen_data_sub$Wähler
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$GültigeStimmen <- mecklenburg_vorpommern_2019_landtagswahlen_data_sub$GültigeStimmen
+
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$abs_CDU <- mecklenburg_vorpommern_2019_landtagswahlen_data_sub$CDU
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$abs_SPD <- mecklenburg_vorpommern_2019_landtagswahlen_data_sub$SPD
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$abs_DIELINKE <- mecklenburg_vorpommern_2019_landtagswahlen_data_sub$DIELINKE
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$abs_GRÜNE <- mecklenburg_vorpommern_2019_landtagswahlen_data_sub$GRÜNE
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$abs_AfD <- mecklenburg_vorpommern_2019_landtagswahlen_data_sub$AfD
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$abs_PIRATEN <- mecklenburg_vorpommern_2019_landtagswahlen_data_sub$PIRATEN
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$abs_FDP <- mecklenburg_vorpommern_2019_landtagswahlen_data_sub$FDP
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$abs_DiePARTEI <- mecklenburg_vorpommern_2019_landtagswahlen_data_sub$DiePARTEI
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$abs_FREIEWÄHLER <- mecklenburg_vorpommern_2019_landtagswahlen_data_sub$FREIEWÄHLER
+
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$gew_CDU <- NA
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$gew_SPD <- NA
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$gew_DIELINKE <- NA
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$gew_GRÜNE <- NA
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$gew_AfD <- NA
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$gew_PIRATEN <- NA
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$gew_FDP <- NA
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$gew_DiePARTEI <- NA
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$gew_FREIEWÄHLER <- NA
+
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$sitze_CDU <- NA
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$sitze_SPD <- NA
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$sitze_DIELINKE <- NA
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$sitze_GRÜNE <- NA
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$sitze_AfD <- NA
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$sitze_PIRATEN <- NA
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$sitze_FDP <- NA
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$sitze_DiePARTEI <- NA
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+
+# Creating new dataframe with selected vars ----
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub <- mecklenburg_vorpommern_2019_landtagswahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                                               Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                                               abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_DiePARTEI, abs_FREIEWÄHLER,
+                                                                                                               gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_DiePARTEI, gew_FREIEWÄHLER,
+                                                                                                               sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_DiePARTEI, sitze_FREIEWÄHLER)]
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub <-
+  mecklenburg_vorpommern_2019_landtagswahlen_data_sub %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+mecklenburg_vorpommern_2019_landtagswahlen_data_sub$Turnout <- mecklenburg_vorpommern_2019_landtagswahlen_data_sub$Wähler / mecklenburg_vorpommern_2019_landtagswahlen_data_sub$Wahlberechtigteinsgesamt
+
+
+######## KOMMUNALWAHLEN ----
+###### Mecklenburg-Vorpommern 1994 kommunalwahlen ----
+#### Load election data ----
+mecklenburg_vorpommern_1994_kommunalwahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_kommunalwahlen_1994.xls", sheet="summary"))
 
 #### Delete white space ----
 names(mecklenburg_vorpommern_1994_kommunalwahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_1994_kommunalwahlen_data), fixed(" "), "")
 
 #### Recoding ----
-# Create new dataframe ----
-mecklenburg_vorpommern_1994_kommunalwahlen_data_sub <- mecklenburg_vorpommern_1994_kommunalwahlen_data
+# Create new dataframe and filter Landkreise ----
+mecklenburg_vorpommern_1994_kommunalwahlen_data_sub <- mecklenburg_vorpommern_1994_kommunalwahlen_data %>%
+  filter(
+    !grepl("Landkreis", Gemeindename))
 
 names(mecklenburg_vorpommern_1994_kommunalwahlen_data_sub)
 
@@ -4527,26 +5145,26 @@ mecklenburg_vorpommern_1994_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digit
 mecklenburg_vorpommern_1994_kommunalwahlen_data_sub[ , Bundesland := "Mecklenburg-Vorpommern"]
 mecklenburg_vorpommern_1994_kommunalwahlen_data_sub[ , Gebietsname := ""]
 mecklenburg_vorpommern_1994_kommunalwahlen_data_sub[ , election_year := "1994"]
-mecklenburg_vorpommern_1994_kommunalwahlen_data_sub[ , election_type := "Gemeinderatswahlen"]
+mecklenburg_vorpommern_1994_kommunalwahlen_data_sub[ , election_type := "Kommunalwahlen"]
 mecklenburg_vorpommern_1994_kommunalwahlen_data_sub[ , IDIRB := ""]
 mecklenburg_vorpommern_1994_kommunalwahlen_data_sub[ , IDBA := ""]
 
 # Renaming existing variables ----
 mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$AGS_8dig <- mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$Gemeindenummer
 mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$Gebietsname <- mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$Gemeindename
-mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
-mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$Wähler <- mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$Waehlerinsgesamt
-mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$GültigeStimmen <- mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$Stimmengültig
+mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
+mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$Wähler <- as.numeric(mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$Waehlerinsgesamt)
+mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$GültigeStimmen <- as.numeric(mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$Stimmengültig)
 
-mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$abs_CDU <- mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$CDU
-mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$abs_SPD <- mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$SPD
-mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$abs_DIELINKE <- mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$PDS
-mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$abs_GRÜNE <- mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$GRÜNE
+mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$abs_CDU <- as.numeric(mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$CDU)
+mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$abs_SPD <- as.numeric(mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$SPD)
+mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$PDS)
+mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$GRÜNE)
 mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$abs_AfD <- NA
 mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$abs_PIRATEN <- NA
-mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$abs_FDP <- mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$`F.D.P.`
+mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$abs_FDP <- as.numeric(mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$`F.D.P.`)
 mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$abs_DiePARTEI <- NA
-mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$FreieWähler
+mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- NA
 
 mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$gew_CDU <- NA
 mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$gew_SPD <- NA
@@ -4587,9 +5205,9 @@ mecklenburg_vorpommern_1994_kommunalwahlen_data_sub <-
 # Calculating turnout ----
 mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$Turnout <- mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$Wähler / mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
 
-###### Mecklenburg-Vorpommern 1999 Gemeinderatswahlen ----
+###### Mecklenburg-Vorpommern 1999 kommunalwahlen ----
 #### Load election data ----
-mecklenburg_vorpommern_1999_kommunalwahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_1999.xls", sheet="summary"))
+mecklenburg_vorpommern_1999_kommunalwahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_kommunalwahlen_1999.xls", sheet="summary"))
 
 #### Delete white space ----
 names(mecklenburg_vorpommern_1999_kommunalwahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_1999_kommunalwahlen_data), fixed(" "), "")
@@ -4605,7 +5223,7 @@ mecklenburg_vorpommern_1999_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digit
 mecklenburg_vorpommern_1999_kommunalwahlen_data_sub[ , Bundesland := "Mecklenburg-Vorpommern"]
 mecklenburg_vorpommern_1999_kommunalwahlen_data_sub[ , Gebietsname := ""]
 mecklenburg_vorpommern_1999_kommunalwahlen_data_sub[ , election_year := "1999"]
-mecklenburg_vorpommern_1999_kommunalwahlen_data_sub[ , election_type := "Gemeinderatswahlen"]
+mecklenburg_vorpommern_1999_kommunalwahlen_data_sub[ , election_type := "kommunalwahlen"]
 mecklenburg_vorpommern_1999_kommunalwahlen_data_sub[ , IDIRB := ""]
 mecklenburg_vorpommern_1999_kommunalwahlen_data_sub[ , IDBA := ""]
 
@@ -4624,7 +5242,7 @@ mecklenburg_vorpommern_1999_kommunalwahlen_data_sub$abs_AfD <- NA
 mecklenburg_vorpommern_1999_kommunalwahlen_data_sub$abs_PIRATEN <- NA
 mecklenburg_vorpommern_1999_kommunalwahlen_data_sub$abs_FDP <- mecklenburg_vorpommern_1999_kommunalwahlen_data_sub$`F.D.P.`
 mecklenburg_vorpommern_1999_kommunalwahlen_data_sub$abs_DiePARTEI <- NA
-mecklenburg_vorpommern_1999_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- mecklenburg_vorpommern_1999_kommunalwahlen_data_sub$FreieWähler
+mecklenburg_vorpommern_1999_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- NA
 
 mecklenburg_vorpommern_1999_kommunalwahlen_data_sub$gew_CDU <- NA
 mecklenburg_vorpommern_1999_kommunalwahlen_data_sub$gew_SPD <- NA
@@ -4665,9 +5283,9 @@ mecklenburg_vorpommern_1999_kommunalwahlen_data_sub <-
 # Calculating turnout ----
 mecklenburg_vorpommern_1999_kommunalwahlen_data_sub$Turnout <- mecklenburg_vorpommern_1999_kommunalwahlen_data_sub$Wähler / mecklenburg_vorpommern_1999_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
 
-###### Mecklenburg-Vorpommern 2004 Gemeinderatswahlen ----
+###### Mecklenburg-Vorpommern 2004 kommunalwahlen ----
 #### Load election data ----
-mecklenburg_vorpommern_2004_kommunalwahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_2004.xls", sheet="summary"))
+mecklenburg_vorpommern_2004_kommunalwahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_kommunalwahlen_2004.xls", sheet="summary"))
 
 #### Delete white space ----
 names(mecklenburg_vorpommern_2004_kommunalwahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_2004_kommunalwahlen_data), fixed(" "), "")
@@ -4683,7 +5301,7 @@ mecklenburg_vorpommern_2004_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digit
 mecklenburg_vorpommern_2004_kommunalwahlen_data_sub[ , Bundesland := "Mecklenburg-Vorpommern"]
 mecklenburg_vorpommern_2004_kommunalwahlen_data_sub[ , Gebietsname := ""]
 mecklenburg_vorpommern_2004_kommunalwahlen_data_sub[ , election_year := "2004"]
-mecklenburg_vorpommern_2004_kommunalwahlen_data_sub[ , election_type := "Gemeinderatswahlen"]
+mecklenburg_vorpommern_2004_kommunalwahlen_data_sub[ , election_type := "kommunalwahlen"]
 mecklenburg_vorpommern_2004_kommunalwahlen_data_sub[ , IDIRB := ""]
 mecklenburg_vorpommern_2004_kommunalwahlen_data_sub[ , IDBA := ""]
 
@@ -4692,7 +5310,7 @@ mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$AGS_8dig <- mecklenburg_vorp
 mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$Gebietsname <- mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$Gemeindename
 mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
 mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$Wähler <- mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$Waehlerinsgesamt
-mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$GültigeStimmen <- mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$GueltigeStimmen
+mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$GültigeStimmen <- mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$gueltigeStimmen
 
 mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$abs_CDU <- mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$CDU
 mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$abs_SPD <- mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$SPD
@@ -4702,7 +5320,7 @@ mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$abs_AfD <- NA
 mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$abs_PIRATEN <- NA
 mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$abs_FDP <- mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$FDP
 mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$abs_DiePARTEI <- NA
-mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$FreieWählergemeinschaft
+mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- NA
 
 mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$gew_CDU <- NA
 mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$gew_SPD <- NA
@@ -4743,9 +5361,9 @@ mecklenburg_vorpommern_2004_kommunalwahlen_data_sub <-
 # Calculating turnout ----
 mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$Turnout <- mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$Wähler / mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
 
-###### Mecklenburg-Vorpommern 2009 Gemeinderatswahlen ----
+###### Mecklenburg-Vorpommern 2009 Kommunalwahlen ----
 #### Load election data ----
-mecklenburg_vorpommern_2009_kommunalwahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_2009.xlsx", sheet="summary"))
+mecklenburg_vorpommern_2009_kommunalwahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_kommunalwahlen_2009.xls", sheet="summary"))
 
 #### Delete white space ----
 names(mecklenburg_vorpommern_2009_kommunalwahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_2009_kommunalwahlen_data), fixed(" "), "")
@@ -4761,7 +5379,7 @@ mecklenburg_vorpommern_2009_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digit
 mecklenburg_vorpommern_2009_kommunalwahlen_data_sub[ , Bundesland := "Mecklenburg-Vorpommern"]
 mecklenburg_vorpommern_2009_kommunalwahlen_data_sub[ , Gebietsname := ""]
 mecklenburg_vorpommern_2009_kommunalwahlen_data_sub[ , election_year := "2009"]
-mecklenburg_vorpommern_2009_kommunalwahlen_data_sub[ , election_type := "Gemeinderatswahlen"]
+mecklenburg_vorpommern_2009_kommunalwahlen_data_sub[ , election_type := "kommunalwahlen"]
 mecklenburg_vorpommern_2009_kommunalwahlen_data_sub[ , IDIRB := ""]
 mecklenburg_vorpommern_2009_kommunalwahlen_data_sub[ , IDBA := ""]
 
@@ -4770,7 +5388,7 @@ mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$AGS_8dig <- mecklenburg_vorp
 mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$Gebietsname <- mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$Gemeindename
 mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
 mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$Wähler <- mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$Waehlerinsgesamt
-mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$GültigeStimmen <- mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$Stimmengueltig
+mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$GültigeStimmen <- mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$gueltigeStimmen
 
 mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$abs_CDU <- mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$CDU
 mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$abs_SPD <- mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$SPD
@@ -4780,7 +5398,7 @@ mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$abs_AfD <- NA
 mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$abs_PIRATEN <- NA
 mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$abs_FDP <- mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$FDP
 mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$abs_DiePARTEI <- NA
-mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$FreieWähler
+mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- NA
 
 mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$gew_CDU <- NA
 mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$gew_SPD <- NA
@@ -4821,87 +5439,10 @@ mecklenburg_vorpommern_2009_kommunalwahlen_data_sub <-
 # Calculating turnout ----
 mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$Turnout <- mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$Wähler / mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
 
-###### Mecklenburg-Vorpommern 2011 Gemeinderatswahlen ----
-#### Load election data ----
-mecklenburg_vorpommern_2011_kommunalwahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_2011.xlsx", sheet="summary"))
-
-#### Delete white space ----
-names(mecklenburg_vorpommern_2011_kommunalwahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_2011_kommunalwahlen_data), fixed(" "), "")
-
-#### Recoding ----
-# Create new dataframe ----
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub <- mecklenburg_vorpommern_2011_kommunalwahlen_data
-
-names(mecklenburg_vorpommern_2011_kommunalwahlen_data_sub)
-
-# Creating non-existing variables ----
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub[ , Bundesland := "Mecklenburg-Vorpommern"]
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub[ , Gebietsname := ""]
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub[ , election_year := "2011"]
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub[ , election_type := "Gemeinderatswahlen"]
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub[ , IDIRB := ""]
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub[ , IDBA := ""]
-
-# Renaming existing variables ----
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$AGS_8dig <- mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$Gemeindenummer
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$Gebietsname <- mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$Gemeindename
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$Wähler <- mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$Waehlerinsgesamt
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$GültigeStimmen <- mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$Stimmengueltig
-
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$abs_CDU <- mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$CDU
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$abs_SPD <- mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$SPD
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$abs_DIELINKE <- mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$DIELINKE
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$abs_GRÜNE <- mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$GRÜNE
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$abs_AfD <- NA
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$abs_PIRATEN <- mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$PIRATEN
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$abs_FDP <- mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$FDP
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$abs_DiePARTEI <- mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$DiePARTEI
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$FreieWähler
-
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$gew_CDU <- NA
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$gew_SPD <- NA
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$gew_DIELINKE <- NA
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$gew_GRÜNE <- NA
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$gew_AfD <- NA
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$gew_PIRATEN <- NA
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$gew_FDP <- NA
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
-
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$sitze_CDU <- NA
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$sitze_SPD <- NA
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$sitze_DIELINKE <- NA
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$sitze_GRÜNE <- NA
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$sitze_AfD <- NA
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$sitze_FDP <- NA
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
-
-# Creating new dataframe with selected vars ----
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub <- mecklenburg_vorpommern_2011_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
-                                                                                                               Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
-                                                                                                               abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_DiePARTEI, abs_FREIEWÄHLER,
-                                                                                                               gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_DiePARTEI, gew_FREIEWÄHLER,
-                                                                                                               sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_DiePARTEI, sitze_FREIEWÄHLER)]
-
-# Calculating vote shares ----
-# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
-
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub <-
-  mecklenburg_vorpommern_2011_kommunalwahlen_data_sub %>%
-  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
-  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
-  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
-
-# Calculating turnout ----
-mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$Turnout <- mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$Wähler / mecklenburg_vorpommern_2011_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
 
 ###### Mecklenburg-Vorpommern 2014 Gemeinderatswahlen ----
 #### Load election data ----
-mecklenburg_vorpommern_2014_kommunalwahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_2014.xlsx", sheet="summary"))
+mecklenburg_vorpommern_2014_kommunalwahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_kommunalwahlen_2014.xlsx", sheet="summary"))
 
 mecklenburg_vorpommern_2014_kommunalwahlen_data[mecklenburg_vorpommern_2014_kommunalwahlen_data == "x"] <- NA
 
@@ -4982,7 +5523,7 @@ mecklenburg_vorpommern_2014_kommunalwahlen_data_sub$Turnout <- mecklenburg_vorpo
 
 ###### Mecklenburg-Vorpommern 2019 Gemeinderatswahlen ----
 #### Load election data ----
-mecklenburg_vorpommern_2019_kommunalwahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_2019.xlsx", sheet="summary"))
+mecklenburg_vorpommern_2019_kommunalwahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_kommunalwahlen_2019.xlsx", sheet="summary"))
 
 mecklenburg_vorpommern_2019_kommunalwahlen_data[mecklenburg_vorpommern_2019_kommunalwahlen_data == "x"] <- NA
 
@@ -5061,13 +5602,29 @@ mecklenburg_vorpommern_2019_kommunalwahlen_data_sub <-
 # Calculating turnout ----
 mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$Turnout <- mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$Wähler / mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
 
+# Remove Mecklenburgische ----
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub <- mecklenburg_vorpommern_2019_kommunalwahlen_data_sub %>%
+  filter(!AGS_8dig == "13071000",
+         !AGS_8dig == "13076000",
+         !AGS_8dig == "13072000",
+         !AGS_8dig == "13073000",
+         !AGS_8dig == "13074000",
+         !AGS_8dig == "13075000")
 
 
 ####### Merge files and save overall output for Mecklenburg-Vorpommern ----
 # Merge
-mecklenburg_vorpommern_kommunalwahlen <- rbind(mecklenburg_vorpommern_1994_kommunalwahlen_data_sub,mecklenburg_vorpommern_1999_kommunalwahlen_data_sub,
-                                               mecklenburg_vorpommern_2004_kommunalwahlen_data_sub,mecklenburg_vorpommern_2009_kommunalwahlen_data_sub,
-                                               mecklenburg_vorpommern_2011_kommunalwahlen_data_sub,mecklenburg_vorpommern_2014_kommunalwahlen_data_sub,
+mecklenburg_vorpommern_kommunalwahlen <- rbind(mecklenburg_vorpommern_1994_landtagswahlen_data_sub,
+                                               mecklenburg_vorpommern_1994_kommunalwahlen_data_sub,
+                                               mecklenburg_vorpommern_1999_landtagswahlen_data_sub,
+                                               mecklenburg_vorpommern_1999_kommunalwahlen_data_sub,
+                                               mecklenburg_vorpommern_2004_landtagswahlen_data_sub,
+                                               mecklenburg_vorpommern_2004_kommunalwahlen_data_sub,
+                                               mecklenburg_vorpommern_2009_landtagswahlen_data_sub,
+                                               mecklenburg_vorpommern_2009_kommunalwahlen_data_sub,
+                                               mecklenburg_vorpommern_2014_landtagswahlen_data_sub,
+                                               mecklenburg_vorpommern_2014_kommunalwahlen_data_sub,
+                                               mecklenburg_vorpommern_2019_landtagswahlen_data_sub,
                                                mecklenburg_vorpommern_2019_kommunalwahlen_data_sub)
 
 # Replace INF at Turnout
@@ -6346,8 +6903,6 @@ names(sachsen_1994_gemeinderatswahlen_data) <-  str_replace_all(names(sachsen_19
 # Create new dataframe ----
 sachsen_1994_gemeinderatswahlen_data_sub <- sachsen_1994_gemeinderatswahlen_data
 
-names(sachsen_1994_gemeinderatswahlen_data_sub)
-
 # Creating non-existing variables ----
 sachsen_1994_gemeinderatswahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
 sachsen_1994_gemeinderatswahlen_data_sub[ , Bundesland := "Sachsen"]
@@ -6413,6 +6968,9 @@ sachsen_1994_gemeinderatswahlen_data_sub <-
 # Calculating turnout ----
 sachsen_1994_gemeinderatswahlen_data_sub$Turnout <- sachsen_1994_gemeinderatswahlen_data_sub$Wähler / sachsen_1994_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
 
+# Remove !nchar(AGS)==8 ----
+sachsen_1994_gemeinderatswahlen_data_sub <- sachsen_1994_gemeinderatswahlen_data_sub %>%
+  filter(nchar(AGS_8dig)==8)
 
 ###### Sachsen 1999 Gemeinderatswahlen ----
 #### Load election data ----
@@ -6427,6 +6985,7 @@ names(sachsen_1999_gemeinderatswahlen_data) <-  str_replace_all(names(sachsen_19
 sachsen_1999_gemeinderatswahlen_data_sub <- sachsen_1999_gemeinderatswahlen_data
 
 names(sachsen_1999_gemeinderatswahlen_data_sub)
+
 
 # Creating non-existing variables ----
 sachsen_1999_gemeinderatswahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
@@ -6493,6 +7052,10 @@ sachsen_1999_gemeinderatswahlen_data_sub <-
 # Calculating turnout ----
 sachsen_1999_gemeinderatswahlen_data_sub$Turnout <- sachsen_1999_gemeinderatswahlen_data_sub$Wähler / sachsen_1999_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
 
+
+# Remove !nchar(AGS)==8 ----
+sachsen_1999_gemeinderatswahlen_data_sub <- sachsen_1999_gemeinderatswahlen_data_sub %>%
+  filter(nchar(AGS_8dig)==8)
 
 ###### Sachsen 2004 Gemeinderatswahlen ----
 #### Load election data ----
@@ -6573,6 +7136,10 @@ sachsen_2004_gemeinderatswahlen_data_sub <-
 # Calculating turnout ----
 sachsen_2004_gemeinderatswahlen_data_sub$Turnout <- sachsen_2004_gemeinderatswahlen_data_sub$Wähler / sachsen_2004_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
 
+# Remove !nchar(AGS)==8 ----
+sachsen_2004_gemeinderatswahlen_data_sub <- sachsen_2004_gemeinderatswahlen_data_sub %>%
+  filter(nchar(AGS_8dig)==8)
+
 ###### Sachsen 2009 Gemeinderatswahlen ----
 #### Load election data ----
 
@@ -6651,6 +7218,10 @@ sachsen_2009_gemeinderatswahlen_data_sub <-
 
 # Calculating turnout ----
 sachsen_2009_gemeinderatswahlen_data_sub$Turnout <- sachsen_2009_gemeinderatswahlen_data_sub$Wähler / sachsen_2009_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
+
+# Remove !nchar(AGS)==8 ----
+sachsen_2009_gemeinderatswahlen_data_sub <- sachsen_2009_gemeinderatswahlen_data_sub %>%
+  filter(nchar(AGS_8dig)==8)
 
 ###### Sachsen 2014 Gemeinderatswahlen ----
 #### Load election data ----
@@ -6731,6 +7302,10 @@ sachsen_2014_gemeinderatswahlen_data_sub <-
 # Calculating turnout ----
 sachsen_2014_gemeinderatswahlen_data_sub$Turnout <- sachsen_2014_gemeinderatswahlen_data_sub$Wähler / sachsen_2014_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
 
+# Remove !nchar(AGS)==8 ----
+sachsen_2014_gemeinderatswahlen_data_sub <- sachsen_2014_gemeinderatswahlen_data_sub %>%
+  filter(nchar(AGS_8dig)==8)
+
 ###### Sachsen 2019 Gemeinderatswahlen ----
 #### Load election data ----
 
@@ -6810,6 +7385,10 @@ sachsen_2019_gemeinderatswahlen_data_sub <-
 # Calculating turnout ----
 sachsen_2019_gemeinderatswahlen_data_sub$Turnout <- sachsen_2019_gemeinderatswahlen_data_sub$Wähler / sachsen_2019_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
 
+# Remove !nchar(AGS)==8 ----
+sachsen_2019_gemeinderatswahlen_data_sub <- sachsen_2019_gemeinderatswahlen_data_sub %>%
+  filter(nchar(AGS_8dig)==8)
+
 
 ####### Merge files and save overall output for Sachsen ----
 # Merge
@@ -6820,8 +7399,9 @@ sachsen_kommunalwahlen <- rbind(sachsen_1994_gemeinderatswahlen_data_sub, sachse
 # Replace - with NA
 sachsen_kommunalwahlen[sachsen_kommunalwahlen == "-"] <- NA
 
-# Fix AGS
+# Fix AGS ----
 sachsen_kommunalwahlen$AGS_8dig <- stri_pad_right(sachsen_kommunalwahlen$AGS_8dig, 8, 0)
+
 
 # Save
 #write_csv(sachsen_kommunalwahlen, here::here("output/sachsen_kommunalwahlen.csv"))
@@ -6841,8 +7421,6 @@ names(bremen_overall_buergerschaftswahl_data) <-  str_replace_all(names(bremen_o
 #### Recoding ----
 # Create new dataframe ----
 bremen_overall_buergerschaftswahl_data_sub <- bremen_overall_buergerschaftswahl_data
-
-names(bremen_overall_buergerschaftswahl_data_sub)
 
 # Creating non-existing variables ----
 bremen_overall_buergerschaftswahl_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
@@ -6909,6 +7487,11 @@ bremen_overall_buergerschaftswahl_data_sub <-
 # Calculating turnout ----
 bremen_overall_buergerschaftswahl_data_sub$Turnout <- bremen_overall_buergerschaftswahl_data_sub$Wähler / bremen_overall_buergerschaftswahl_data_sub$Wahlberechtigteinsgesamt
 
+# Remove Bremen Land ----
+bremen_overall_buergerschaftswahl_data_sub <- bremen_overall_buergerschaftswahl_data_sub %>%
+  filter(
+    ! Gebietsname == "Land Bremen"
+  )
 
 ####### Merge files and save overall output for Bremen ----
 # Save
@@ -7636,8 +8219,6 @@ brandenburg_kommunalwahlen %>%
   group_by(election_year) %>%
   summarize(mean = mean(prop_Gemeinsame_Wahlvorschläge, na.rm=T))
 
-# ----
-# ----
 ######### RLP ----
 ###### RLP 1994 Gemeinderatswahlen ----
 #### Load election data ----
@@ -8022,7 +8603,7 @@ rlp_2014_gemeinderatswahlen_data_sub[ , IDIRB := ""]
 rlp_2014_gemeinderatswahlen_data_sub[ , IDBA := ""]
 
 # Renaming existing variables ----
-rlp_2014_gemeinderatswahlen_data_sub$AGS_8dig <- rlp_2014_gemeinderatswahlen_data_sub$AGS
+rlp_2014_gemeinderatswahlen_data_sub$AGS_8dig <- as.character(rlp_2014_gemeinderatswahlen_data_sub$AGS)
 rlp_2014_gemeinderatswahlen_data_sub$Gebietsname <- rlp_2014_gemeinderatswahlen_data_sub$Gemeindename
 rlp_2014_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(rlp_2014_gemeinderatswahlen_data_sub$Wahlberechtigte)
 rlp_2014_gemeinderatswahlen_data_sub$Wähler <- as.numeric(rlp_2014_gemeinderatswahlen_data_sub$Waehler)
@@ -8087,6 +8668,10 @@ rlp_2014_gemeinderatswahlen_data_sub[ AGS_8dig == "33205032" ]
 # Calculating turnout ----
 rlp_2014_gemeinderatswahlen_data_sub$Turnout <- rlp_2014_gemeinderatswahlen_data_sub$Wähler / rlp_2014_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
 
+
+# Filter Landkreise ----
+rlp_2014_gemeinderatswahlen_data_sub <- rlp_2014_gemeinderatswahlen_data_sub %>%
+  filter(!Gebietsname %in% c("Rhein-Hunsrück-Kreis", "Ahrweiler, Landkreis"))
 
 ###### RLP 2019 Gemeinderatswahlen ----
 #### Load election data ----
@@ -8183,18 +8768,27 @@ rlp_kommunalwahlen <- rbind(rlp_1994_gemeinderatswahlen_data_sub, rlp_1999_gemei
 # Replace - with NA
 rlp_kommunalwahlen[rlp_kommunalwahlen == "-"] <- NA
 
-rlp_kommunalwahlen$AGS_8dig <- as.numeric(paste("7", rlp_kommunalwahlen$AGS_8dig, sep=""))
 
 # Fix AGS for RLP ----
+rlp_kommunalwahlen$AGS_8dig <- paste0("07", rlp_kommunalwahlen$AGS_8dig)
+
 rlp_kommunalwahlen <- rlp_kommunalwahlen %>%
-  mutate(AGS_8dig = paste0("0",substr(AGS_8dig,1,4), substr(AGS_8dig,7,9)))
+  filter(nchar(AGS_8dig)==10) %>%
+  mutate(AGS_8dig = paste0(substr(AGS_8dig,1,5), substr(AGS_8dig,8,10)))
+
+# Remove LK and VG ----
+rlp_kommunalwahlen <- rlp_kommunalwahlen %>%
+  filter(
+    !grepl(", LK", Gebietsname),
+    !grepl(", VG", Gebietsname),
+    !grepl(", Landkreis", Gebietsname),
+    !AGS_8dig %in% c("07141000", "07143000", "07232000", "07333000", "07338000"))
+
 
 # Save
-write_csv(rlp_kommunalwahlen, "processed_data/rlp_kommunalwahlen.csv")
+#write_csv(rlp_kommunalwahlen, "processed_data/rlp_kommunalwahlen.csv")
 
 
-# ----
-# ----
 ######### Schleswig-Holstein ----
 ###### SH 2018 Gemeinderatswahlen ----
 #### Load election data ----
@@ -8756,7 +9350,7 @@ kommunalwahlen_merge <- kommunalwahlen_merge %>%
   filter(!str_length(AGS_8dig) %in% c(10, 4, 5)) %>%
   mutate(AGS_8dig = if_else(AGS_8dig=="04", "04011000", AGS_8dig)) %>%
   filter(!is.na(AGS_8dig))
-  
+
 
 # Change FW and remainder category ----
 kommunalwahlen_merge <- kommunalwahlen_merge %>%
@@ -8768,47 +9362,73 @@ kommunalwahlen_merge <- kommunalwahlen_merge %>%
   ungroup()
 
 
-# SANITY CHECKS
-
-test <- kommunalwahlen_merge %>%
-  rowwise%>%
+# Change vote_share to NA where == 0, create indicator variables to show where this is the case ----
+kommunalwahlen_merge <- kommunalwahlen_merge %>%
   mutate(
-    abs_OTHER = (GültigeStimmen-sum(abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_DiePARTEI, abs_FREIEWÄHLER, na.rm=T)),
-    prop_OTHER = (1-sum(prop_CDU, prop_SPD, prop_DIELINKE, prop_GRÜNE, prop_AfD, prop_PIRATEN, prop_FDP, prop_DiePARTEI, prop_FREIEWÄHLER, na.rm=T))) %>%
-  dplyr::select(AGS_8dig:abs_FREIEWÄHLER, abs_OTHER, gew_CDU:prop_FREIEWÄHLER, prop_OTHER, Turnout) %>%
-  rowwise() %>%
+    replaced_0_with_NA_CDU = case_when(
+      abs_CDU == 0 ~ 1,
+      abs_CDU != 0 ~ 0,
+      TRUE ~ 0),
+    replaced_0_with_NA_SPD = case_when(
+      abs_SPD == 0 ~ 1,
+      abs_SPD != 0 ~ 0,
+      TRUE ~ 0),
+    replaced_0_with_NA_DIELINKE = case_when(
+      abs_DIELINKE == 0 ~ 1,
+      abs_DIELINKE != 0 ~ 0,
+      TRUE ~ 0),
+    replaced_0_with_NA_GRÜNE = case_when(
+      abs_GRÜNE == 0 ~ 1,
+      abs_GRÜNE != 0 ~ 0,
+      TRUE ~ 0),
+    replaced_0_with_NA_AfD = case_when(
+      abs_AfD == 0 ~ 1,
+      abs_AfD != 0 ~ 0,
+      TRUE ~ 0),
+    replaced_0_with_NA_PIRATEN = case_when(
+      abs_PIRATEN == 0 ~ 1,
+      abs_PIRATEN != 0 ~ 0,
+      TRUE ~ 0),
+    replaced_0_with_NA_FDP = case_when(
+      abs_FDP == 0 ~ 1,
+      abs_FDP != 0 ~ 0,
+      TRUE ~ 0),
+    replaced_0_with_NA_DiePARTEI = case_when(
+      abs_DiePARTEI == 0 ~ 1,
+      abs_DiePARTEI != 0 ~ 0,
+      TRUE ~ 0),
+    replaced_0_with_NA_FDP = case_when(
+      abs_FDP == 0 ~ 1,
+      abs_FDP != 0 ~ 0,
+      TRUE ~ 0),
+    replaced_0_with_NA_FREIEWÄHLER = case_when(
+      abs_FREIEWÄHLER == 0 ~ 1,
+      abs_FREIEWÄHLER != 0 ~ 0,
+      TRUE ~ 0))
+
+kommunalwahlen_merge <- kommunalwahlen_merge %>%
   mutate(
-    prop_sum = sum(c_across(starts_with("prop_")), na.rm = TRUE),
-    abs_sum = sum(c_across(starts_with("abs_")), na.rm = TRUE),
-    prop_over_1 = prop_sum > 1,
-    prop_under_0 = prop_OTHER < 0,
-    prop_1 = prop_OTHER == 1,
-    abs_more_than_gueltige = abs_OTHER > GültigeStimmen) %>%
-  ungroup()
-
-test_2 <-  test %>%
-  filter(abs_OTHER > 1000000)
-summary(test$abs_OTHER < 0)
-
-summary(test$prop_OTHER)
-
-test3 <- test[test$abs_OTHER < 0,]
-
-table(test_2$Bundesland, test_2$election_year)
-
-test4 <- test %>%
-  filter(is.na(abs_OTHER))
-
-dim(test4)
+    abs_CDU = ifelse(replaced_0_with_NA_CDU == 1, NA, abs_CDU),
+    prop_CDU = ifelse(replaced_0_with_NA_CDU == 1, NA, prop_CDU),
+    abs_SPD = ifelse(replaced_0_with_NA_SPD == 1, NA, abs_SPD),
+    prop_SPD = ifelse(replaced_0_with_NA_SPD == 1, NA, prop_SPD),
+    abs_DIELINKE = ifelse(replaced_0_with_NA_DIELINKE == 1, NA, abs_DIELINKE),
+    prop_DIELINKE = ifelse(replaced_0_with_NA_DIELINKE == 1, NA, prop_DIELINKE),
+    abs_GRÜNE = ifelse(replaced_0_with_NA_GRÜNE == 1, NA, abs_GRÜNE),
+    prop_GRÜNE = ifelse(replaced_0_with_NA_GRÜNE == 1, NA, prop_GRÜNE),
+    abs_AfD = ifelse(replaced_0_with_NA_AfD == 1, NA, abs_AfD),
+    prop_AfD = ifelse(replaced_0_with_NA_AfD == 1, NA, prop_AfD),
+    abs_PIRATEN = ifelse(replaced_0_with_NA_PIRATEN == 1, NA, abs_PIRATEN),
+    prop_PIRATEN = ifelse(replaced_0_with_NA_PIRATEN == 1, NA, prop_PIRATEN),
+    abs_FDP = ifelse(replaced_0_with_NA_FDP == 1, NA, abs_FDP),
+    prop_FDP = ifelse(replaced_0_with_NA_FDP == 1, NA, prop_FDP),
+    abs_DiePARTEI = ifelse(replaced_0_with_NA_DiePARTEI == 1, NA, abs_DiePARTEI),
+    prop_DiePARTEI = ifelse(replaced_0_with_NA_DiePARTEI == 1, NA, prop_DiePARTEI),
+    abs_FREIEWÄHLER = ifelse(replaced_0_with_NA_FREIEWÄHLER == 1, NA, abs_FREIEWÄHLER),
+    prop_FREIEWÄHLER = ifelse(replaced_0_with_NA_FREIEWÄHLER == 1, NA, prop_FREIEWÄHLER))
 
 
-
-# Transform some variables for congruency reasons -------------------------
-
-glimpse(kommunalwahlen_merge)
-
-table(kommunalwahlen_merge$IDIRB)
-table(kommunalwahlen_merge$IDBA)
+# Transform some variables for congruence reasons -------------------------
 
 kommunalwahlen_merge <- kommunalwahlen_merge |>
   rename(
@@ -8834,23 +9454,26 @@ kommunalwahlen_merge <- kommunalwahlen_merge |>
     sitze_FREIEWÄHLER = as.numeric(sitze_FREIEWÄHLER)
     )
 
+
 kommunalwahlen_merge <- kommunalwahlen_merge |>
   # change column names that start with sitze_ to seats_
   rename_with(~str_replace(., "sitze_", "seats_"), starts_with("sitze_")) |>
   rename_with(~str_replace(., "gew_", "weighted_"), starts_with("gew_"))
 
+glimpse(kommunalwahlen_merge)
 
 # Save ----
 
-fwrite(kommunalwahlen_merge, file=here::here("output/municipal_unharm.csv"))
 write_rds(kommunalwahlen_merge, file=here::here("output/municipal_unharm.rds"))
+fwrite(kommunalwahlen_merge, file=here::here("output/municipal_unharm.csv"))
+
 
 # View(kommunalwahlen_merge)
 
 
 # inspect -----------------------------------------------------------------
 
-kommunalwahlen_merge <- read_rds("output/municipal_unharm.rds")
+kommunalwahlen_merge <- read_rds(here::here("output/municipal_unharm.rds"))
 
 glimpse(kommunalwahlen_merge)
 

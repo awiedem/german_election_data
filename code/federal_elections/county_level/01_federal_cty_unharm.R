@@ -283,6 +283,12 @@ glimpse(df)
 df <- df |>
   mutate(ags = pad_zero_conditional(ags, 4))
 
+# clean names
+df <- df |>
+  janitor::clean_names()
+
+names(df)
+
 write_rds(df, "output/federal_cty_unharm.rds")
 fwrite(df, "output/federal_cty_unharm.csv")
 
@@ -292,12 +298,5 @@ fwrite(df, "output/federal_cty_unharm.csv")
 df <- read_rds("output/federal_cty_unharm.rds")
 
 names(df)
-
-# when did party v have non NA?
-df |>
-  filter(!is.na(V)) |>
-  select(year) |>
-  distinct() |>
-  print(n = Inf)
 
 ### END

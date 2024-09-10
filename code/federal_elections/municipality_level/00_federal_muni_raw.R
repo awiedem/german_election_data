@@ -1428,7 +1428,14 @@ df <- df %>%
   # Get state name
   mutate(
     state_name = state_id_to_names(state)
-  )
+  ) |>
+  rename(gruene = grüne) |>
+  janitor::clean_names() |>
+  # relocate
+  relocate(cdu_csu, .after = zentrum) |> 
+  select(-state_name)
+
+names(df)
 
 # Write unharmonized df ---------------------------------------------------
 

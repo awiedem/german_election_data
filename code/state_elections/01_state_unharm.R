@@ -27,8 +27,8 @@ test_login(genesis=genesis)
 
 ## Make party dict
 
-pdict <- c('afd' = 'AFD', 'greens' = 'B90-GRUENE', 'cdu_csu' = 'CDU',
-           'cdu_csu' = 'CSU', 'fdp' = 'FDP', 'left' = 'PDS', 'spd' = 'SPD',
+pdict <- c('afd' = 'AFD', 'gruene' = 'B90-GRUENE', 'cdu' = 'CDU',
+           'csu' = 'CSU', 'fdp' = 'FDP', 'linke_pds' = 'PDS', 'spd' = 'SPD',
            'other_party' = 'SONSTIGE')
 
 ## Landtagswahlen table list
@@ -58,6 +58,10 @@ out <- pblapply(1:length(labs), function(i) {
   
   ## Get ID for the turnout table
   
+  # id_eligible <- d %>% dplyr::filter(str_detect(description, "Gemeinden")) %>%
+  #   dplyr::filter(str_detect(description, 'Wahlberechtigte')) %>% .[, 1] %>% unlist()%>%
+  #   as.character()
+  
   id_turnout <- d %>% dplyr::filter(str_detect(description, "Gemeinden")) %>%
     dplyr::filter(str_detect(description, 'Wahlbeteiligung')) %>% .[, 1] %>% unlist()%>%
     as.character()
@@ -68,14 +72,16 @@ out <- pblapply(1:length(labs), function(i) {
     
     ## 
     
-    cat('\nGemeiden found')
+    cat('\nGemeinden found')
     
     ## Get data
     
     data <- retrieve_data(tablename=id, genesis=genesis) %>%
-      dplyr::select(GEMEIN, PART03, STAG, WAHL04_val)
+     dplyr::select(GEMEIN, PART03, STAG, WAHL04_val)
     
-    
+# in any of the datasets in the list of datasets: WAHL04_qual 
+
+
     ## Get total votes
     
     votes_tot <- data %>%
@@ -89,7 +95,7 @@ out <- pblapply(1:length(labs), function(i) {
     ## Get % shares
     
     data <- data %>%
-      mutate(voteshare = WAHL04_val / valid * 100) %>%
+      mutate(voteshare = WAHL04_val / valid) %>%
       dplyr::select(GEMEIN, PART03, STAG, voteshare)
     
     ## rename parties
@@ -121,10 +127,10 @@ out <- pblapply(1:length(labs), function(i) {
     ## Get turnout
     cat('Getting turnout')
     turn_data <- retrieve_data(tablename=id_turnout, genesis=genesis) %>%
-      dplyr::select(GEMEIN, STAG, WAHLSR_val) %>%
+      dplyr::select(GEMEIN, STAG, WAHLSR_val, WAHL01_val, WAHL04_val) %>%
       dplyr::mutate(ags = GEMEIN, date = as.Date(STAG, format = '%d.%m.%Y')) %>%
-      mutate(turnout = WAHLSR_val) %>%
-      dplyr::select(ags, date, turnout) %>%
+      mutate(turnout = WAHLSR_val / 100) %>%
+      dplyr::select(ags, date, turnout, eligible_voters = WAHL01_val, valid_votes = WAHL04_val) %>%
       distinct(ags, date, .keep_all = T)
     
     ## Merge to the main results
@@ -143,9 +149,11 @@ out_df <- out %>%
   reduce(rbind) %>%
   arrange(ags, date)
 
+glimpse(out_df)
+
 ## 
 
-parties <- colnames(out_df)[3:10]
+parties <- colnames(out_df)[3:9]
 
 ## Check for total missings
 
@@ -167,20 +175,20 @@ library(lubridate)
 ## 
 
 out_df <- out_df %>% 
-  mutate(year = lubridate::year(date),
-         land = substr(ags, 1, 2))
+  mutate(election_year = lubridate::year(date),
+         state = substr(ags, 1, 2))
 
-## Gen left right
-
-lparties <- c('spd', 'left', 'greens')
-rparties <- c('cdu_csu', 'fdp')
-
-ltot <- apply(out_df[, lparties], 1, sum, na.rm = T)
-rtot <- apply(out_df[, rparties], 1, sum, na.rm = T)
-
-out_df <- out_df %>%
-  mutate(left_total = ltot,
-         right_total = rtot)
+# ## Gen left right
+# 
+# lparties <- c('spd', 'linke_pds', 'gruene')
+# rparties <- c('cdu', 'csu', 'fdp')
+# 
+# ltot <- apply(out_df[, lparties], 1, sum, na.rm = T)
+# rtot <- apply(out_df[, rparties], 1, sum, na.rm = T)
+# 
+# out_df <- out_df %>%
+#   mutate(left_total = ltot,
+#          right_total = rtot)
 
 ##
 
@@ -188,11 +196,37 @@ state_elections <- out_df
 
 ## Distribution
 
-table(out_df$year, out_df$land)
+table(out_df$election_year, out_df$state)
+
+# some final transformations
+state_elections <- state_elections |>
+  mutate(csu = ifelse(state == '09', cdu, 0)) |>
+  # create cdu_csu variable
+  rowwise() |>
+  mutate(cdu_csu = cdu + csu) |>
+  ungroup() |>
+  select(ags, election_year, state, date, eligible_voters, valid_votes, turnout, 
+         cdu, csu, spd, gruene, fdp, linke_pds, afd, other = other_party, cdu_csu)
+glimpse(state_elections)
+
+# data for Schleswig Holstein in 2017 is not complete: remove state == 01 & year == 2017
+state_elections <- state_elections |>
+  filter(!(state == '01' & election_year == 2017))
+
 
 ## Save for now
 
 fwrite(state_elections, 'output/state_unharm.csv')
 write_rds(state_elections, 'output/state_unharm.rds')
+
+
+
+# Inspect -----------------------------------------------------------------
+
+df <- read_rds('output/state_unharm.rds')
+
+# what's up with state == 01 in 2017?
+insp <- df |>
+  filter(state == '01', election_year == 2017) 
 
 ### END

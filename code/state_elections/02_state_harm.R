@@ -1,7 +1,7 @@
 ### Harmonize state election results to 2021 borders
 # Vincent Heddesheimer
 # First: March 05, 2024
-# Last: Aug 08, 2024
+# Last: Aug 13, 2024
 
 rm(list = ls())
 
@@ -14,7 +14,7 @@ df <- read_rds("output/state_unharm.rds")
 
 glimpse(df)
 
-table(df$year)
+table(df$election_year)
 
 
 
@@ -25,14 +25,15 @@ cw <- fread("data/crosswalks/ags_crosswalks.csv") |>
   mutate(
     ags = pad_zero_conditional(ags, 7),
     ags_21 = pad_zero_conditional(ags_21, 7)
-  )
+  ) |>
+  rename(election_year = year)
 
 
 # Unsuccessful mergers ----------------------------------------------------
 
 # Merge crosswalks
 df_cw_naive <- df |>
-  left_join_check_obs(cw, by = c("ags", "year"))
+  left_join_check_obs(cw, by = c("ags", "election_year"))
 # number of obs increases: but this is wanted, as we want to harmonize the data
 
 glimpse(df_cw_naive)
@@ -40,9 +41,9 @@ glimpse(df_cw_naive)
 # is there any ags that did not get merged to ags_21?
 not_merged_naive <- df_cw_naive %>%
   filter(is.na(ags_21)) %>%
-  select(ags, year) %>%
+  select(ags, election_year) %>%
   distinct() %>%
-  mutate(id = paste0(ags, "_", year))
+  mutate(id = paste0(ags, "_", election_year))
 not_merged_naive
 # If we do not follow the steps below, there are 86 cases.
 # We found these by the below code.
@@ -50,7 +51,7 @@ not_merged_naive
 # filter out all observations for ags that were not merged
 obs_not_merged_ags <- df_cw_naive %>%
   filter(ags %in% not_merged_naive$ags) %>%
-  select(ags, ags_name, year)
+  select(ags, ags_name, election_year)
 
 # how often do these ags appear in the data?
 table(obs_not_merged_ags$ags)
@@ -65,13 +66,13 @@ cw_not_merged <- cw |>
 
 # When merging this file to state elections data, this results in some observations not being merged.
 # This is because the state election data contains some observations with wrong ags identifiers.
-# That is, some ags identifiers are not in the crosswalk files for that respective year.
+# That is, some ags identifiers are not in the crosswalk files for that respective election_year.
 # Therefore, we have to add these observations to the crosswalks.
 
 # 1. One observation that is not included in crosswalk files at all: Wasdow
 # https://www.destatis.de/DE/Themen/Laender-Regionen/Regionales/Gemeindeverzeichnis/Namens-Grenz-Aenderung/2011.xlsx?__blob=publicationFile
 wasdow <- data.frame(
-  ags = "13072115", ags_name = "Wasdow", year = 2011, 
+  ags = "13072115", ags_name = "Wasdow", election_year = 2011, 
   area_cw = 1, pop_cw = 1,
   area = 26.20, population = 3.9,
   ags_21 = "13072010", ags_name_21 = "Behren-Lübchin",
@@ -84,22 +85,22 @@ names(wasdow)
 # bind to cw
 cw <- cw |> 
   bind_rows(wasdow) |>
-  arrange(ags, year)
+  arrange(ags, election_year)
 
 glimpse(cw)
 
 # duplicates
 df %>% 
-  group_by(ags, year) %>% 
+  group_by(ags, election_year) %>% 
   filter(n() > 1) %>% 
-  arrange(ags, year)
+  arrange(ags, election_year)
 # none
 
 # For the remaining observations we do two things:
-# 2. Some ags retain the old ags one year after they already
-# have been merged. We therefore create a new crosswalk year.
+# 2. Some ags retain the old ags one election_year after they already
+# have been merged. We therefore create a new crosswalk election_year.
 
-ags_year_cw <- 
+ags_election_year_cw <- 
   c("03156001_2013",
     "03156004_2013",
     "03156005_2013",
@@ -147,25 +148,25 @@ ags_year_cw <-
 
 df <- df |>
   mutate(
-    id = paste0(ags, "_", year),
-    year_cw = case_when(
-      id %in% ags_year_cw ~ year - 1,
-      TRUE ~ year
+    id = paste0(ags, "_", election_year),
+    election_year_cw = case_when(
+      id %in% ags_election_year_cw ~ election_year - 1,
+      TRUE ~ election_year
     )
   )
 
 
 # 3. For the remaining ags we change the ags provided in the 
-# election data to the correct ags as indicated by the cw for that year.
+# election data to the correct ags as indicated by the cw for that election_year.
 df <- df |>
   mutate(
     ags = case_when(
-      ags == "07140502" & year == 2011 ~ "07135050", # Lahr
-      ags == "07140503" & year == 2011 ~ "07135063", # Mörsdorf
-      ags == "07140504" & year == 2011 ~ "07135094", # Zilshausen
-      ags == "07232502" & year == 2011 ~ "07232021", # Brimingen
-      ags == "07232502" & year == 2016 ~ "07232021", # Brimingen (2016!)
-      ags == "07235207" & year == 2011 ~ "07231207", # Trittenheim
+      ags == "07140502" & election_year == 2011 ~ "07135050", # Lahr
+      ags == "07140503" & election_year == 2011 ~ "07135063", # Mörsdorf
+      ags == "07140504" & election_year == 2011 ~ "07135094", # Zilshausen
+      ags == "07232502" & election_year == 2011 ~ "07232021", # Brimingen
+      ags == "07232502" & election_year == 2016 ~ "07232021", # Brimingen (2016!)
+      ags == "07235207" & election_year == 2011 ~ "07231207", # Trittenheim
       TRUE ~ ags
     )
   )
@@ -185,7 +186,7 @@ df <- df |>
 
 # Merge crosswalks
 df_cw <- df |>
-  left_join_check_obs(cw, by = c("ags", "year_cw" = "year"))
+  left_join_check_obs(cw, by = c("ags", "election_year_cw" = "election_year"))
 # number of obs increases: but this is wanted, as we want to harmonize the data
 
 glimpse(df_cw)
@@ -193,7 +194,7 @@ glimpse(df_cw)
 # is there any ags that did not get merged to ags_21?
 not_merged <- df_cw %>%
   filter(is.na(ags_21)) %>%
-  select(ags, year) %>%
+  select(ags, election_year) %>%
   distinct()
 not_merged
 # now, there is no unsuccessful merge.
@@ -209,14 +210,14 @@ glimpse(df_cw)
 
 # Harmonize ---------------------------------------------------------------
 
-table(df_cw$year)
+table(df_cw$election_year)
 
 # Harmonize with weighted_population average
 df_harm <- df_cw |>
   mutate(weights = pop_cw * population) |>
-  group_by(ags_21, year) |>
+  group_by(ags_21, election_year) |>
   summarise_at(
-    vars(afd:turnout), ~ weighted.mean(.x, weights, na.rm = TRUE)
+    vars(turnout:cdu_csu), ~ weighted.mean(.x, weights, na.rm = TRUE)
     ) |>
   rename(ags = ags_21) |>
   # state id (first two digits of ags)
@@ -224,17 +225,17 @@ df_harm <- df_cw |>
     state = substr(ags, 1, 2),
     state_name = state_id_to_names(state)
     ) |>
-  relocate(state, .after = year) |>
+  relocate(state, .after = election_year) |>
   relocate(state_name, .after = state) |>
   ungroup() |>
-  arrange(ags, year)
+  arrange(ags, election_year)
 
 # Add column to this indicating whether there was a flag
 df_harm <- df_harm |>
-  mutate(id = paste0(ags, "_", year)) |>
+  mutate(id = paste0(ags, "_", election_year)) |>
   left_join_check_obs(
     df_cw %>% 
-      mutate(id = paste0(ags_21, "_", year)) %>%
+      mutate(id = paste0(ags_21, "_", election_year)) %>%
       select(id, flag_unsuccessful_naive_merge) %>%
       distinct() %>%
       group_by(id) %>%
@@ -247,13 +248,38 @@ df_harm <- df_harm |>
 glimpse(df_harm)
 table(df_harm$state, useNA = "ifany")
 
+
+# summarize eligible & valid voters
+votes <- df_cw |>
+  group_by(ags_21, election_year) |>
+  summarise(
+    across(
+      eligible_voters:valid_votes,
+      ~ sum(.x * pop_cw, na.rm = TRUE)
+    )
+  ) |>
+  # Round
+  mutate(across(
+    eligible_voters:valid_votes,
+    ~ round(.x, digits = 0)
+  )) |>
+  ungroup()
+
+# left join
+df_harm <- df_harm |>
+  left_join_check_obs(votes, by = c("ags" = "ags_21", "election_year")) |>
+  relocate(eligible_voters, .after = state_name) |>
+  relocate(valid_votes, .after = eligible_voters)
+
+
 # check where state is NA
 df_harm %>%
   filter(is.na(ags)) %>%
-  select(ags, year) %>%
+  select(ags, election_year) %>%
   distinct()
 # none
 
+glimpse(df_harm)
 
 # write
 fwrite(df_harm, "output/state_harm.csv")
@@ -266,23 +292,24 @@ write_rds(df_harm, "output/state_harm.rds")
 # read
 df_harm <- read_rds("output/state_harm.rds")
 
-# for which years do we have non-NA afd values?
+# for which election_years do we have non-NA afd values?
 df_harm %>%
   filter(!is.na(afd)) %>%
-  select(year) %>%
+  select(election_year) %>%
   distinct()
 
 # Load municipality level data
 muni <- read_rds("data/municipal_covars/ags_area_pop_emp.rds") |>
   rename(ags = ags_21) |>
   mutate(ags = pad_zero_conditional(ags, 7)) |>
-  filter(year >= 2006 & year < 2020)
+  filter(year >= 2006 & year < 2020) |>
+  rename(election_year = year)
 
 # Merge
 df_final <- muni |>
-  left_join_check_obs(df_harm, by = c("ags", "year"))
+  left_join_check_obs(df_harm, by = c("ags", "election_year"))
 
-# Create variable indicating whether there was election in given year
+# Create variable indicating whether there was election in given election_year
 df_final <- df_final |>
   mutate(
     election_bin = ifelse(!is.na(turnout), 1, 0)
@@ -297,22 +324,32 @@ df_final <- df_final |>
     state_name = state_id_to_names(state)
   )
 
-table(df_harm$year)
+table(df_harm$election_year)
 
-# create plot_df
 plot_df <- df_final |>
-  group_by(state_name, year) |>
+  group_by(state_name, election_year) |>
   summarise(election_bin = max(election_bin, na.rm = TRUE)) |>
   ungroup()
 
+# Add a special row for Schleswig-Holstein in 2017
+plot_df <- plot_df |>
+  add_row(state_name = "Schleswig-Holstein", election_year = 2017, election_bin = 2)
+
+# Update the factor levels to include the special value
+plot_df$election_bin <- factor(plot_df$election_bin, levels = c("0", "1", "2"))
+
 plot_df |>
-  ggplot(aes(x = as.factor(year), 
+  ggplot(aes(x = as.factor(election_year), 
              y = factor(state_name, 
                         levels = rev(levels(factor(state_name)))), 
-             fill = as.factor(election_bin))
-         ) +
+             fill = election_bin)
+  ) +
   geom_tile(color = "white") + # Add borders to the squares
-  scale_fill_manual(values = c("1" = "darkgrey", "0" = "white"), name = "Election") +
+  scale_fill_manual(
+    values = c("1" = "darkgrey", "0" = "white", "2" = "black"), 
+    name = "Election",
+    labels = c("1" = "Election Held", "2" = "Data Unavailable")
+  ) +
   labs(x = "Year", y = "State") +
   theme_hanno() +
   theme(
