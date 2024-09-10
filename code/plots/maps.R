@@ -29,6 +29,8 @@ de_shp_muni <- read_sf("~/Documents/GitHub/german_election_data/data/shapefiles/
 
 de_shp_bula <- read_sf("~/Documents/GitHub/german_election_data/data/shapefiles/2021/vg250_ebenen_0101", layer = "VG250_LAN")
 
+de_shp_bula <- de_shp_bula[ de_shp_bula$GF == 4, ]
+
 
 ### --------
 ### Municipal election (most recent)
@@ -47,7 +49,7 @@ de_shp_muni_data <- merge(de_shp_muni, d_muni_202x, by.x="AGS", by.y="ags", all=
 ### Party vote shares
 (p_muni_SPD <- ggplot()
   + geom_sf(data = de_shp_muni_data, mapping=aes(fill=prop_SPD), colour="NA") 
-  + geom_sf(data = de_shp_bula, fill = NA, colour ="grey30", linewidth=0.2) 
+  + geom_sf(data = de_shp_bula[ de_shp_bula$GF == 4, ], fill = NA, colour ="grey30", linewidth=0.2) 
   + coord_sf()
   + theme_minimal()
   + theme(panel.grid.major = element_blank(), 
@@ -200,4 +202,8 @@ de_shp_fed_data <- merge(de_shp_muni, d_fed_2021, by.x="AGS", by.y="ags", all=T)
 pdf("~/Documents/GitHub/german_election_data/output/figures/map_elec_federal.pdf", width = 6, height = 7) 
 grid.arrange(p_fed_CDU, p_fed_SPD, p_fed_GREEN, p_fed_AfD, nrow=2)
 dev.off()
+
+
+
+
 
