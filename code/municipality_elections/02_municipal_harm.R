@@ -289,7 +289,11 @@ sums <- df_cw |>
     # 1+2+3: Weighted sum
     vars(eligible_voters:seats_FREIEWÄHLER),
     ~ sum(.x * pop_cw, na.rm = TRUE)
-  )
+  ) |>
+  rename(
+    ags = ags_21, year = election_year, ags_name = ags_name_21
+  ) |>
+  ungroup()
 
 # Weighted mean
 means <- df_cw |>
@@ -298,13 +302,88 @@ means <- df_cw |>
     # 4: Weighted mean
     vars(prop_CDU:turnout),
     ~ weighted.mean(.x, w = pop_cw, na.rm = TRUE)
-  )
-
-  |>
+  ) |>
   rename(
     ags = ags_21, year = election_year
   ) |>
   ungroup()
+
+
+## Population & area: weighted sums ----------------------------------------
+
+area_pop <- df_cw |>
+  filter(election_year < 2021) |>
+  group_by(ags_21, election_year) |>
+  summarise(
+    area = sum(area * area_cw, na.rm = TRUE),
+    population = sum(population * pop_cw, na.rm = TRUE)
+  ) |>
+  # Round
+  mutate(
+    area = round(area, digits = 2),
+    population = round(population, digits = 1)
+  ) |>
+  ungroup() |>
+  rename(ags = ags_21, year = election_year)
+
+# Get population & area for 2021
+ags21 <- read_excel(path = "data/crosswalks/31122021_Auszug_GV.xlsx", sheet = 2) |>
+  select(
+    Land = `...3`,
+    RB = `...4`,
+    Kreis = `...5`,
+    Gemeinde = `...7`,
+    area = `...9`,
+    population = `...10`
+  ) |>
+  mutate(
+    Land = pad_zero_conditional(Land, 1),
+    Kreis = pad_zero_conditional(Kreis, 1),
+    Gemeinde = pad_zero_conditional(Gemeinde, 1, "00"),
+    Gemeinde = pad_zero_conditional(Gemeinde, 2, "0"),
+    ags = as.numeric(paste0(Land, RB, Kreis, Gemeinde)),
+    year = 2021,
+    population = as.numeric(population) / 100,
+    area = as.numeric(area)
+  ) |>
+  slice(6:16065) |>
+  filter(!is.na(Gemeinde)) |>
+  select(ags, year, area, population)
+
+# Create full df ----------------------------------------------------------
+
+
+glimpse(sums)
+glimpse(means)
+glimpse(area_pop)
+glimpse(ags21)
+
+
+# Merge
+df_harm <- sums |>
+  left_join_check_obs(means, by = c("ags", "year")) |>
+  left_join_check_obs(area_pop, by = c("ags", "year")) |>
+  left_join_check_obs(ags21, by = c("ags", "year")) |>
+  # Create state variable
+  mutate(
+    ags = pad_zero_conditional(ags, 7),
+    state = str_sub(ags, end = -7),
+    county = substr(ags, 1, 5)
+  ) |>
+  relocate(state, .after = year) |>
+  relocate(county, .after = state) |>
+  mutate(
+    area = ifelse(!is.na(area.x), area.x, area.y),
+    population = ifelse(!is.na(population.x), population.x, population.y)
+  ) |>
+  select(-c(area.x, area.y, population.x, population.y))
+
+glimpse(df_harm)
+
+
+## save
+fwrite(df_harm, "output/municipal_harm.csv")
+write_rds(df_harm, "output/municipal_harm.rds")
 
 
 # Create plot -------------------------------------------------------------
@@ -312,8 +391,7 @@ means <- df_cw |>
 # Load municipality level data
 muni <- read_rds("data/municipal_covars/ags_area_pop_emp.rds") |>
   rename(ags = ags_21) |>
-  mutate(ags = pad_zero_conditional(ags, 7)) |>
-  filter(year >= 2006 & year < 2020)
+  mutate(ags = pad_zero_conditional(ags, 7))
 
 # Merge
 df_final <- muni |>
@@ -349,17 +427,21 @@ plot_df |>
              fill = as.factor(election_bin))
   ) +
   geom_tile(color = "white") + # Add borders to the squares
-  scale_fill_manual(values = c("1" = "darkgrey", "0" = "white"), name = "Election") +
+  scale_fill_manual(
+    values = c("1" = "darkgrey", "0" = "white"), 
+    name = "Election",
+    labels = c("1" = "Election Held", "2" = "Data Unavailable")
+  ) +
   labs(x = "Year", y = "State") +
   theme_hanno() +
   theme(
-    axis.text.x = element_text(angle = 45, hjust = 1), # Rotate x-axis labels for better readability
+    axis.text.x = element_text(angle = 90, vjust = 0.5), # Rotate x-axis labels for better readability
     panel.grid.major = element_blank(), 
     panel.grid.minor = element_blank(),
     legend.position = "none"
   )
 
-ggsave("output/figures/state_elections.pdf", width = 7, height = 4)
+ggsave("output/figures/muni_elections.pdf", width = 7, height = 4)
 
 move_plots_to_overleaf("code")
 
