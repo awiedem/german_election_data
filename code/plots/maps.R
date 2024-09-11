@@ -95,7 +95,6 @@ de_shp_muni_data <- merge(de_shp_muni, d_muni_202x, by.x="AGS", by.y="ags", all=
                                              label.position = "bottom", title.position = 'top', nrow=1))
 )
 
-
 (p_muni_AfD <- ggplot()
   + geom_sf(data = de_shp_muni_data, mapping=aes(fill=prop_AfD), colour="NA") 
   + geom_sf(data = de_shp_bula, fill = NA, colour ="grey30", linewidth=0.2) 
@@ -146,7 +145,6 @@ de_shp_fed_data <- merge(de_shp_muni, d_fed_2021, by.x="AGS", by.y="ags", all=T)
                                              label.position = "bottom", title.position = 'top', nrow=1))
 )
 
-
 (p_fed_CDU <- ggplot()
   + geom_sf(data = de_shp_fed_data, mapping=aes(fill=cdu_csu), colour="NA") 
   + geom_sf(data = de_shp_bula, fill = NA, colour ="grey30", linewidth=0.2) 
@@ -163,7 +161,6 @@ de_shp_fed_data <- merge(de_shp_muni, d_fed_2021, by.x="AGS", by.y="ags", all=T)
                                              label.position = "bottom", title.position = 'top', nrow=1))
 )
 
-
 (p_fed_GREEN <- ggplot()
   + geom_sf(data = de_shp_fed_data, mapping=aes(fill=gruene), colour="NA") 
   + geom_sf(data = de_shp_bula, fill = NA, colour ="grey30", linewidth=0.2) 
@@ -179,7 +176,6 @@ de_shp_fed_data <- merge(de_shp_muni, d_fed_2021, by.x="AGS", by.y="ags", all=T)
                         guide = guide_legend(keyheight = unit(2, units = "mm"), keywidth=unit(11, units = "mm"),
                                              label.position = "bottom", title.position = 'top', nrow=1))
 )
-
 
 (p_fed_AfD <- ggplot()
   + geom_sf(data = de_shp_fed_data, mapping=aes(fill=afd), colour="NA") 
