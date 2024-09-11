@@ -2124,6 +2124,13 @@ df <- df |>
   bind_rows(berlin_hamburg)
 
 
+# Calculate turnout -------------------------------------------------------
+
+df <- df |>
+  mutate(turnout = number_voters / eligible_voters) |>
+  relocate(turnout, .before = cdu)
+
+
 # Last transformations ----------------------------------------------------
 
 # clean names

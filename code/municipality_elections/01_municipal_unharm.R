@@ -9453,7 +9453,7 @@ kommunalwahlen_merge <- kommunalwahlen_merge |>
     state = Bundesland,
     ags_name = Gebietsname,
     eligible_voters = Wahlberechtigteinsgesamt,
-    total_votes = Wähler,
+    number_voters = Wähler,
     valid_votes = GültigeStimmen,
     turnout = Turnout
   ) |>
@@ -9475,15 +9475,37 @@ kommunalwahlen_merge <- kommunalwahlen_merge |>
 kommunalwahlen_merge <- kommunalwahlen_merge |>
   # change column names that start with sitze_ to seats_
   rename_with(~str_replace(., "sitze_", "seats_"), starts_with("sitze_")) |>
-  rename_with(~str_replace(., "gew_", "weighted_"), starts_with("gew_"))
+  rename_with(~str_replace(., "gew_", "weighted_"), starts_with("gew_")) |>
+  # all variable names to lower
+  rename_with(tolower, everything())
 
 glimpse(kommunalwahlen_merge)
+
+
+
+# Reduce to prop_ only ----------------------------------------------------
+
+kommunalwahlen_merge <- kommunalwahlen_merge |>
+  select(
+    ags, ags_name, state, election_year, election_type, eligible_voters, number_voters, valid_votes, turnout,
+    starts_with("prop_"), starts_with("replaced")
+  )
+
+glimpse(kommunalwahlen_merge)
+
+# change names
+kommunalwahlen_merge <- kommunalwahlen_merge |>
+  rename_with(~str_replace(., "prop_", ""), starts_with("prop_")) |>
+  rename_with(~str_replace(., "cdu", "cdu_csu")) |>
+  rename_with(~str_replace(., "diepartei", "die_partei")) |>
+  rename_with(~str_replace(., "freiewähler", "freie_wahler")) |>
+  rename_with(~str_replace(., "grüne", "gruene")) |>
+  rename_with(~str_replace(., "dielinke", "linke_pds"))
 
 # Save ----
 
 write_rds(kommunalwahlen_merge, file=here::here("output/municipal_unharm.rds"))
 fwrite(kommunalwahlen_merge, file=here::here("output/municipal_unharm.csv"))
-
 
 # View(kommunalwahlen_merge)
 

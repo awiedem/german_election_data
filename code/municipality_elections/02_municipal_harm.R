@@ -276,32 +276,42 @@ glimpse(df_cw)
 
 # Harmonize ---------------------------------------------------------------
 
-# We have four different outcomes per party that we want to harmonize:
-# 1. Absolute votes: weighted sum
-# 2. Weighted votes: weighted sum
-# 3. Absolute seats: weighted sum
-# 4. Vote share + turnout: weighted mean
-
-# Weighted sum
+# Weighted sums
 sums <- df_cw |>
   group_by(ags_21, ags_name_21, election_year) |>
   summarize_at(
     # 1+2+3: Weighted sum
-    vars(eligible_voters:seats_FREIEWÄHLER),
+    vars(eligible_voters:valid_votes),
     ~ sum(.x * pop_cw, na.rm = TRUE)
   ) |>
   rename(
     ags = ags_21, year = election_year, ags_name = ags_name_21
   ) |>
-  ungroup()
+  ungroup() |>
+  mutate(
+    turnout = number_voters / eligible_voters
+  )
 
 # Weighted mean
 means <- df_cw |>
   group_by(ags_21, election_year) |>
   summarize_at(
     # 4: Weighted mean
-    vars(prop_CDU:turnout),
+    vars(cdu_csu:other),
     ~ weighted.mean(.x, w = pop_cw, na.rm = TRUE)
+  ) |>
+  rename(
+    ags = ags_21, year = election_year
+  ) |>
+  ungroup()
+
+# flags
+flags <- df_cw |>
+  group_by(ags_21, election_year) |>
+  summarize_at(
+    # for all that start with replaced_ take maximum
+    vars(starts_with("replaced_"), flag_unsuccessful_naive_merge),
+    ~ max(.x, na.rm = TRUE)
   ) |>
   rename(
     ags = ags_21, year = election_year
@@ -355,6 +365,7 @@ ags21 <- read_excel(path = "data/crosswalks/31122021_Auszug_GV.xlsx", sheet = 2)
 
 glimpse(sums)
 glimpse(means)
+glimpse(flags)
 glimpse(area_pop)
 glimpse(ags21)
 
@@ -362,6 +373,7 @@ glimpse(ags21)
 # Merge
 df_harm <- sums |>
   left_join_check_obs(means, by = c("ags", "year")) |>
+  left_join_check_obs(flags, by = c("ags", "year")) |>
   left_join_check_obs(area_pop, by = c("ags", "year")) |>
   left_join_check_obs(ags21, by = c("ags", "year")) |>
   # Create state variable
