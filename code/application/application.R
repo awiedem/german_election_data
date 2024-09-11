@@ -235,3 +235,28 @@ models %>%
 ggsave("output/figures/application/epop_ratio_decline_binary.pdf", width = 9, height = 5)
 
 # More models --------------------------------------------------------------
+
+co_vars <- read_csv("data/county_covars/cty_area_pop_emp.csv") %>%
+    mutate(epop_ratio = employees_cty * 100 / population_cty) %>%
+    dplyr::filter(year %in% c(2007, 2009)) %>%
+    arrange(county_code_21, year) %>%
+    group_by(county_code_21) %>%
+    mutate(shock = epop_ratio[year == 2009] - epop_ratio[year == 2007]) %>%
+    ungroup() %>%
+    dplyr::filter(year == 2009) %>%
+    dplyr::select(county_code_21, shock)
+
+
+
+
+lmr_df() <- read_excel("data/application/Zuordnung-Kreise-Arbeitsmarktregionen.xls") %>%
+    dplyr::select(1, 3) %>%
+    dplyr::rename(county_code_21 = 1, lmr = 2) %>%
+    slice(-1:-6)
+
+# Merge to county df
+
+co_vars <- co_vars %>%
+    left_join_check_obs(lmr_df)
+
+glimpse(co_vars)
