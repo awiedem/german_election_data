@@ -43,6 +43,7 @@ d_muni_202x <- as.data.table(d_muni %>%
                                group_by(ags) %>%
                                slice(which.max(year)))
 
+
 de_shp_muni_data <- merge(de_shp_muni, d_muni_202x, by.x="AGS", by.y="ags", all=T)
 
 
