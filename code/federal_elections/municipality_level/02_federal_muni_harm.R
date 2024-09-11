@@ -32,7 +32,7 @@ cw_info_ever_merged_ags_21 <- cw %>%
 
 df <- read_rds("output/federal_muni_unharm.rds") |>
   # remove population & area that were used for weighting multi mail-in districts
-  select(-c(pop, area)) |>
+  dplyr::select(-c(pop, area)) |>
   # filter years before 1990: no crosswalks available
   filter(election_year >= 1990) |>
   arrange(ags, election_year)
@@ -279,7 +279,7 @@ area_pop <- df_cw |>
 
 # Get population & area for 2021
 ags21 <- read_excel(path = "data/crosswalks/31122021_Auszug_GV.xlsx", sheet = 2) |>
-    select(
+    dplyr::select(
         Land = `...3`,
         RB = `...4`,
         Kreis = `...5`,
@@ -298,7 +298,7 @@ ags21 <- read_excel(path = "data/crosswalks/31122021_Auszug_GV.xlsx", sheet = 2)
     ) |>
     slice(6:16065) |>
     filter(!is.na(Gemeinde)) |>
-    select(ags, election_year, area, population)
+  dplyr::select(ags, election_year, area, population)
   
 
 # Create full df ----------------------------------------------------------
