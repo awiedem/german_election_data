@@ -43,8 +43,12 @@ d_muni_202x <- as.data.table(d_muni %>%
                                group_by(ags) %>%
                                slice(which.max(year)))
 
-
 de_shp_muni_data <- merge(de_shp_muni, d_muni_202x, by.x="AGS", by.y="ags", all=T)
+
+
+
+
+
 
 
 ### Party vote shares
@@ -124,9 +128,20 @@ dev.off()
 ### Federal election 2021
 ### --------
 
-d_fed_2021 <- d_fed[ election_year == "2021",.(ags,cdu_csu,spd,gruene,afd)]
+d_fed_2021 <- d_fed[ election_year == "2021",.(ags,cdu_csu,spd,gruene,afd, population)]
 
 de_shp_fed_data <- merge(de_shp_muni, d_fed_2021, by.x="AGS", by.y="ags", all=T)
+
+
+
+
+# Inspect missingness -----------------------------------------------------
+
+# get all rows in d_fed_2021 with missingness
+inspect <- de_shp_fed_data |>
+  filter(is.na(cdu_csu) | is.na(spd) | is.na(gruene) | is.na(afd))
+
+
 
 ### Party vote shares
 
