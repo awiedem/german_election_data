@@ -9427,6 +9427,23 @@ kommunalwahlen_merge <- kommunalwahlen_merge %>%
     abs_FREIEWÄHLER = ifelse(replaced_0_with_NA_FREIEWÄHLER == 1, NA, abs_FREIEWÄHLER),
     prop_FREIEWÄHLER = ifelse(replaced_0_with_NA_FREIEWÄHLER == 1, NA, prop_FREIEWÄHLER))
 
+kommunalwahlen_merge <- kommunalwahlen_merge %>%
+  mutate(
+    prop_CDU = ifelse(abs_CDU == 0, NA, prop_CDU),
+    prop_SPD = ifelse(abs_SPD == 0, NA, prop_SPD),
+    prop_DIELINKE = ifelse(abs_DIELINKE == 0, NA, prop_DIELINKE),
+    prop_GRÜNE = ifelse(abs_GRÜNE == 0, NA, prop_GRÜNE),
+    prop_AfD = ifelse(abs_AfD == 0, NA, prop_AfD),
+    prop_PIRATEN = ifelse(abs_PIRATEN == 0, NA, prop_PIRATEN),
+    prop_FDP = ifelse(abs_FDP == 0, NA, prop_FDP),
+    prop_DiePARTEI = ifelse(abs_DiePARTEI == 0, NA, prop_DiePARTEI),
+    prop_FREIEWÄHLER = ifelse(abs_FREIEWÄHLER == 0, NA, prop_FREIEWÄHLER))
+
+# Fix prop_other ----
+kommunalwahlen_merge <- kommunalwahlen_merge %>%
+  mutate(
+    prop_OTHER = ifelse(prop_OTHER < 0, 0, prop_OTHER)
+  )
 
 # Transform some variables for congruence reasons -------------------------
 
@@ -9476,6 +9493,9 @@ fwrite(kommunalwahlen_merge, file=here::here("output/municipal_unharm.csv"))
 kommunalwahlen_merge <- read_rds(here::here("output/municipal_unharm.rds"))
 
 glimpse(kommunalwahlen_merge)
+
+test <- kommunalwahlen_merge %>%
+  filter(ags== "07133080", election_year=="2019")  
 
 
 ### END
