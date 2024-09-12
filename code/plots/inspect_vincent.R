@@ -132,7 +132,12 @@ d_fed_2021 <- d_fed[ election_year == "2021",.(ags,cdu_csu,spd,gruene,afd, popul
 
 de_shp_fed_data <- merge(de_shp_muni, d_fed_2021, by.x="AGS", by.y="ags", all=T)
 
+de_shp_fed_data <- de_shp_fed_data[ de_shp_fed_data$GF == 4, ]
 
+# create county variable
+de_shp_fed_data <- de_shp_fed_data |>
+  # remove last three digits of AGS
+  mutate(county = substr(AGS, 1, 5))
 
 
 # Inspect missingness -----------------------------------------------------
@@ -141,6 +146,65 @@ de_shp_fed_data <- merge(de_shp_muni, d_fed_2021, by.x="AGS", by.y="ags", all=T)
 inspect <- de_shp_fed_data |>
   filter(is.na(cdu_csu) | is.na(spd) | is.na(gruene) | is.na(afd))
 
+d_fed_2021_names <- d_fed |>
+  filter(election_year == "2021") |>
+  left_join_check_obs(
+    read_excel(path = "data/crosswalks/31122021_Auszug_GV.xlsx", sheet = 2) |>
+      dplyr::select(
+        Land = `...3`,
+        RB = `...4`,
+        Kreis = `...5`,
+        Gemeinde = `...7`,
+        ags_name = `...8`
+      ) |>
+      mutate(
+        Land = pad_zero_conditional(Land, 1),
+        Kreis = pad_zero_conditional(Kreis, 1),
+        Gemeinde = pad_zero_conditional(Gemeinde, 1, "00"),
+        Gemeinde = pad_zero_conditional(Gemeinde, 2, "0"),
+        ags = paste0(Land, RB, Kreis, Gemeinde)
+      ) |>
+      slice(6:16065) |>
+      filter(!is.na(Gemeinde)) |>
+      dplyr::select(ags, ags_name),
+    by = "ags"
+  )
+
+d_fed_2021_names_red <- d_fed_2021_names |>
+  dplyr::select(ags_name, state, cdu_csu,spd,gruene,afd, population) |>
+  # remove everything that comes after a "," in ags_name
+  mutate(ags_name = gsub(",.*", "", ags_name))
+
+inspect2 <- inspect |>
+  filter(!is.na(AGS)) |>
+  dplyr::select(-c(cdu_csu:population)) |>
+  left_join_check_obs(d_fed_2021_names_red, by = c("GEN" = "ags_name", "SN_L" = "state"))
+
+# inspect duplicates
+dupl <- inspect2 |> 
+  group_by(AGS) |>
+  mutate(n = n()) |>
+  filter(n > 1)
+
+dupl <- inspect |> 
+  group_by(AGS) |>
+  mutate(n = n()) |>
+  filter(n > 1)
+  
+                
+
+inspect2 |> 
+  filter(
+    # detect rows where "," appears in column GEN
+    grepl(",", GEN)
+    )
+
+d_fed_2021_names |> 
+  filter(
+    # detect rows where "," appears in column GEN
+    grepl(",", ags_name)
+  ) |>
+  distinct(ags_name)
 
 
 ### Party vote shares
