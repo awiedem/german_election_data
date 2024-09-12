@@ -296,8 +296,8 @@ models %>%
     theme_hanno() +
     theme(legend.position = "bottom") +
     labs(
-        x = NULL, y = "Estimate", title = "Effect of EPOP ratio change on vote shares",
-        subtitle = "Treatment: EPOP ratio change since last election (p.p.)"
+        x = "Outcome", y = "Estimate", title = "Effect of EPOP ratio change on vote shares",
+        subtitle = "Treatment: EPOP ratio change since last election (p.p.)\nSample: munis w/ >5k votes in NRW, NDS, Saarland, Hessen, S-T"
     ) +
     scale_color_brewer(palette = "Set2", name = "") +
     scale_fill_brewer(palette = "Set2", name = "") +
@@ -400,7 +400,7 @@ models %>%
     labs(
         x = NULL, y = "Estimate",
         title = "Effect of EPOP ratio decline on vote shares",
-        subtitle = "Treatment: EPOP ratio change since last election (continuous)"
+        subtitle = "Treatment: EPOP ratio change since last election (continuous)\nSample: munis w/ >5k votes in NRW, NDS, Saarland, Hessen, S-T"
     ) +
     scale_color_brewer(palette = "Set2", name = "") +
     scale_fill_brewer(palette = "Set2", name = "") +
