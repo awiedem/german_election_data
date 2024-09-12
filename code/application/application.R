@@ -203,6 +203,7 @@ s_m_harm %>%
 
 dv_list <- c("turnout", "cdu_csu", "spd")
 
+
 m1 <- feols(.[dv_list] ~ epop_ratio_change | ags + election_year,
     data = f_m_harm, cluster = ~ags
 ) %>%
