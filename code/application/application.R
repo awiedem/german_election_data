@@ -67,13 +67,6 @@ m_m_harm <- m_m_harm %>%
     mutate(epop_ratio_decline = epop_ratio_change < 0) %>%
     ungroup()
 
-s_m_harm <- s_m_harm %>%
-    arrange(ags, election_year) %>%
-    group_by(ags) %>%
-    mutate(epop_ratio_change = epop_ratio - lag(epop_ratio)) %>%
-    mutate(epop_ratio_decline = epop_ratio_change < 0) %>%
-    ungroup()
-
 # Multiply the DVs by 100
 
 f_m_harm <- f_m_harm %>%
@@ -82,127 +75,31 @@ f_m_harm <- f_m_harm %>%
 m_m_harm <- m_m_harm %>%
     mutate(across(all_of(dv_list), ~ . * 100))
 
-s_m_harm <- s_m_harm %>%
-    mutate(across(all_of(dv_list), ~ . * 100))
-
-check_party_missings <- function(d_muni, d_state, d_federal) {
-    m_muni <- d_muni %>%
-        group_by(state) %>%
-        summarise(
-            m_cdu = mean(is.na(cdu_csu), na.rm = TRUE),
-            m_spd = mean(is.na(spd), na.rm = TRUE),
-            m_turnout = mean(is.na(turnout), na.rm = TRUE)
-        )
-
-    m_state <- d_state %>%
-        group_by(state) %>%
-        summarise(
-            m_cdu = mean(is.na(cdu_csu), na.rm = TRUE),
-            m_spd = mean(is.na(spd), na.rm = TRUE),
-            m_turnout = mean(is.na(turnout), na.rm = TRUE)
-        )
-
-    m_federal <- d_federal %>%
-        group_by(state) %>%
-        summarise(
-            m_cdu = mean(is.na(cdu_csu), na.rm = TRUE),
-            m_spd = mean(is.na(spd), na.rm = TRUE),
-            m_turnout = mean(is.na(turnout), na.rm = TRUE)
-        )
-
-    # Combine
-
-    # Combine the results into a single dataframe
-    combined_results <- bind_rows(
-        m_muni %>% mutate(level = "Municipal"),
-        m_state %>% mutate(level = "State"),
-        m_federal %>% mutate(level = "Federal")
-    ) %>%
-        pivot_longer(
-            cols = starts_with("m_"),
-            names_to = "variable",
-            values_to = "missing_proportion"
-        ) %>%
-        mutate(variable = str_remove(variable, "m_"))
-
-    combined_results
-
-    # Plot by state, dodge bars, just municipal
-
-    combined_results %>%
-        filter(!is.na(state)) %>%
-        mutate(state = haschaR::state_id_to_names(state)) %>%
-        dplyr::filter(level == "Municipal") %>%
-        ggplot(aes(x = state, y = missing_proportion, fill = variable)) +
-        geom_bar(stat = "identity", position = position_dodge()) +
-        facet_wrap(~level, scales = "free") +
-        theme_hanno() +
-        theme(legend.position = "bottom") +
-        labs(x = NULL, y = "Missing proportion", title = "Missing proportions by level") +
-        coord_flip()
-}
-
-check_party_missings(m_m_harm, s_m_harm, f_m_harm)
-
-# Above 2k valid voters?
-
-check_party_missings(
-    m_m_harm %>% dplyr::filter(valid_votes > 2000),
-    s_m_harm %>% dplyr::filter(valid_votes > 2000),
-    f_m_harm %>% dplyr::filter(valid_votes > 2000)
-)
-
-# Above 5k valid voters?
-
-check_party_missings(
-    m_m_harm %>% dplyr::filter(valid_votes > 5000),
-    s_m_harm %>% dplyr::filter(valid_votes > 5000),
-    f_m_harm %>% dplyr::filter(valid_votes > 5000)
-)
-
-# Above 5k: focus on NDS (03), NRW (05), Saarland (10), Hessen (06), S-T (15)
-
-states_use <- c("03", "05", "10", "06", "15")
-
-# All data sets: 5k plus, states as listed above
-
-f_m_harm <- f_m_harm %>%
-    dplyr::filter(valid_votes > 5000) %>%
-    dplyr::filter(state %in% states_use)
+# Get munis w/ CDU and SPD never missing
 
 m_m_harm <- m_m_harm %>%
-    dplyr::filter(valid_votes > 5000) %>%
-    dplyr::filter(state %in% states_use)
+    group_by(ags) %>%
+    mutate(not_miss_cdu_csu = all(!is.na(cdu_csu))) %>%
+    mutate(not_miss_spd = all(!is.na(spd))) %>%
+    ungroup()
 
-s_m_harm <- s_m_harm %>%
-    dplyr::filter(valid_votes > 5000) %>%
-    dplyr::filter(state %in% states_use)
+# Get ags
 
-# First and last year per state in each dataset?
+ags_use <- m_m_harm %>%
+    dplyr::filter(not_miss_cdu_csu & not_miss_spd) %>%
+    distinct(ags) %>%
+    pull(ags)
 
-f_m_harm %>%
-    dplyr::filter(state %in% states_use) %>%
-    group_by(state) %>%
-    summarise(first_year = min(election_year), last_year = max(election_year))
+# Subset each dataset to just the munis
 
-# Municipal
+f_m_harm <- f_m_harm %>%
+    dplyr::filter(ags %in% ags_use)
 
-m_m_harm %>%
-    dplyr::filter(state %in% states_use) %>%
-    group_by(state) %>%
-    summarise(first_year = min(election_year), last_year = max(election_year))
-
-# State
-
-s_m_harm %>%
-    dplyr::filter(state %in% states_use) %>%
-    group_by(state) %>%
-    summarise(first_year = min(election_year), last_year = max(election_year))
-
+m_m_harm <- m_m_harm %>%
+    dplyr::filter(ags %in% ags_use)
 # Models
 
 dv_list <- c("turnout", "cdu_csu", "spd")
-
 
 m1 <- feols(.[dv_list] ~ epop_ratio_change | ags + election_year,
     data = f_m_harm, cluster = ~ags
@@ -216,12 +113,6 @@ m2 <- feols(.[dv_list] ~ epop_ratio_change | ags + election_year,
     map_dfr(tidy_feols) %>%
     mutate(model = "municipal", fe = "Election")
 
-m3 <- feols(.[dv_list] ~ epop_ratio_change | ags + election_year,
-    data = s_m_harm, cluster = ~ags
-) %>%
-    map_dfr(tidy_feols) %>%
-    mutate(model = "state", fe = "Election")
-
 m1_county <- feols(.[dv_list] ~ epop_ratio_change | ags + election_year^county,
     data = f_m_harm, cluster = ~ags
 ) %>%
@@ -233,12 +124,6 @@ m2_county <- feols(.[dv_list] ~ epop_ratio_change | ags + election_year^county,
 ) %>%
     map_dfr(tidy_feols) %>%
     mutate(model = "municipal", fe = "Election-county")
-
-m3_county <- feols(.[dv_list] ~ epop_ratio_change | ags + election_year^county,
-    data = s_m_harm, cluster = ~ags
-) %>%
-    map_dfr(tidy_feols) %>%
-    mutate(model = "state", fe = "Election-county")
 
 m1_state <- feols(.[dv_list] ~ epop_ratio_change | ags + election_year^state,
     data = f_m_harm, cluster = ~ags
@@ -252,15 +137,9 @@ m2_state <- feols(.[dv_list] ~ epop_ratio_change | ags + election_year^state,
     map_dfr(tidy_feols) %>%
     mutate(model = "municipal", fe = "Election-state")
 
-m3_state <- feols(.[dv_list] ~ epop_ratio_change | ags + election_year^state,
-    data = s_m_harm, cluster = ~ags
-) %>%
-    map_dfr(tidy_feols) %>%
-    mutate(model = "state", fe = "Election-state")
-
 # Combine all, rename the DVs
 
-models <- bind_rows(m1, m2, m3, m1_county, m2_county, m3_county, m1_state, m2_state, m3_state) %>%
+models <- bind_rows(m1, m2, m1_county, m2_county, m1_state, m2_state) %>%
     mutate(term = case_when(
         term == "epop_ratio_change" ~ "EPOP ratio change",
         TRUE ~ term
@@ -304,7 +183,9 @@ models %>%
     scale_fill_brewer(palette = "Set2", name = "") +
     coord_flip()
 
-ggsave("output/figures/application/epop_ratio_change.pdf", width = 9, height = 5)
+ggsave("output/figures/application/epop_ratio_change_sample2.pdf",
+    width = 9, height = 5
+)
 
 # Same analysis w/ EPOP ratio decline as the treatment -----------------
 
@@ -320,12 +201,6 @@ m2 <- feols(.[dv_list] ~ epop_ratio_decline | ags + election_year,
     map_dfr(tidy_feols) %>%
     mutate(model = "municipal", fe = "Election")
 
-m3 <- feols(.[dv_list] ~ epop_ratio_decline | ags + election_year,
-    data = s_m_harm, cluster = ~ags
-) %>%
-    map_dfr(tidy_feols) %>%
-    mutate(model = "state", fe = "Election")
-
 m1_county <- feols(.[dv_list] ~ epop_ratio_decline | ags + election_year^county,
     data = f_m_harm, cluster = ~ags
 ) %>%
@@ -337,13 +212,6 @@ m2_county <- feols(.[dv_list] ~ epop_ratio_decline | ags + election_year^county,
 ) %>%
     map_dfr(tidy_feols) %>%
     mutate(model = "municipal", fe = "Election-county")
-
-m3_county <- feols(.[dv_list] ~ epop_ratio_decline | ags + election_year^county,
-    data = s_m_harm, cluster = ~ags
-) %>%
-    map_dfr(tidy_feols) %>%
-    mutate(model = "state", fe = "Election-county")
-
 m1_state <- feols(.[dv_list] ~ epop_ratio_decline | ags + election_year^state,
     data = f_m_harm, cluster = ~ags
 ) %>%
@@ -356,13 +224,7 @@ m2_state <- feols(.[dv_list] ~ epop_ratio_decline | ags + election_year^state,
     map_dfr(tidy_feols) %>%
     mutate(model = "municipal", fe = "Election-state")
 
-m3_state <- feols(.[dv_list] ~ epop_ratio_decline | ags + election_year^state,
-    data = s_m_harm, cluster = ~ags
-) %>%
-    map_dfr(tidy_feols) %>%
-    mutate(model = "state", fe = "Election-state")
-
-models <- bind_rows(m1, m2, m3, m1_county, m2_county, m3_county, m1_state, m2_state, m3_state) %>%
+models <- bind_rows(m1, m2, m1_county, m2_county, m1_state, m2_state) %>%
     mutate(term = case_when(
         term == "epop_ratio_decline" ~ "EPOP ratio decline",
         TRUE ~ term
@@ -407,7 +269,7 @@ models %>%
     scale_fill_brewer(palette = "Set2", name = "") +
     coord_flip()
 
-ggsave("output/figures/application/epop_ratio_decline_binary.pdf", width = 9, height = 5)
+ggsave("output/figures/application/epop_ratio_decline_sample2.pdf", width = 9, height = 5)
 
 # More models --------------------------------------------------------------
 

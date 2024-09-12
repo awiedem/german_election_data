@@ -27,54 +27,6 @@ s_m_harm$election_year %>% min()
 m_m_harm$election_year %>% min()
 f_m_harm$election_year %>% min()
 
-# Get covars
-
-df_m <- read_rds("data/municipal_covars/ags_area_pop_emp.rds") %>%
-    mutate(epop_ratio = employees_ags * 100 / population_ags) %>%
-    dplyr::select(ags_21, year, epop_ratio) %>%
-    dplyr::rename(ags = ags_21, election_year = year) %>%
-    mutate(ags = as.numeric(ags))
-
-# Check: EPOP > 100?
-
-mean(df_m$epop_ratio > 100, na.rm = TRUE)
-
-# Merge
-
-glimpse(df_m)
-
-f_m_harm <- f_m_harm %>%
-    left_join_check_obs(df_m, by = c("ags", "election_year"))
-
-m_m_harm <- m_m_harm %>%
-    left_join_check_obs(df_m, by = c("ags", "election_year"))
-
-s_m_harm <- s_m_harm %>%
-    left_join_check_obs(df_m, by = c("ags", "election_year"))
-
-# Calculate EPOP ratio change since prev election
-
-f_m_harm <- f_m_harm %>%
-    arrange(ags, election_year) %>%
-    group_by(ags) %>%
-    mutate(epop_ratio_change = epop_ratio - lag(epop_ratio)) %>%
-    mutate(epop_ratio_decline = epop_ratio_change < 0) %>%
-    ungroup()
-
-m_m_harm <- m_m_harm %>%
-    arrange(ags, election_year) %>%
-    group_by(ags) %>%
-    mutate(epop_ratio_change = epop_ratio - lag(epop_ratio)) %>%
-    mutate(epop_ratio_decline = epop_ratio_change < 0) %>%
-    ungroup()
-
-s_m_harm <- s_m_harm %>%
-    arrange(ags, election_year) %>%
-    group_by(ags) %>%
-    mutate(epop_ratio_change = epop_ratio - lag(epop_ratio)) %>%
-    mutate(epop_ratio_decline = epop_ratio_change < 0) %>%
-    ungroup()
-
 # Multiply the DVs by 100
 
 f_m_harm <- f_m_harm %>%
@@ -86,90 +38,27 @@ m_m_harm <- m_m_harm %>%
 s_m_harm <- s_m_harm %>%
     mutate(across(all_of(dv_list), ~ . * 100))
 
-check_party_missings <- function(d_muni, d_state, d_federal) {
-    m_muni <- d_muni %>%
-        group_by(state) %>%
-        summarise(
-            m_cdu = mean(is.na(cdu_csu), na.rm = TRUE),
-            m_spd = mean(is.na(spd), na.rm = TRUE),
-            m_turnout = mean(is.na(turnout), na.rm = TRUE)
-        )
+# Muni df flag: CDU and SPD never missing (across all elections)
 
-    m_state <- d_state %>%
-        group_by(state) %>%
-        summarise(
-            m_cdu = mean(is.na(cdu_csu), na.rm = TRUE),
-            m_spd = mean(is.na(spd), na.rm = TRUE),
-            m_turnout = mean(is.na(turnout), na.rm = TRUE)
-        )
+m_m_harm <- m_m_harm %>%
+    group_by(ags) %>%
+    mutate(not_miss_cdu_csu = all(!is.na(cdu_csu))) %>%
+    mutate(not_miss_spd = all(!is.na(spd))) %>%
+    ungroup()
 
-    m_federal <- d_federal %>%
-        group_by(state) %>%
-        summarise(
-            m_cdu = mean(is.na(cdu_csu), na.rm = TRUE),
-            m_spd = mean(is.na(spd), na.rm = TRUE),
-            m_turnout = mean(is.na(turnout), na.rm = TRUE)
-        )
+# Get ags
 
-    # Combine
+ags_use <- m_m_harm %>%
+    dplyr::filter(not_miss_cdu_csu & not_miss_spd) %>%
+    distinct(ags) %>%
+    pull(ags)
 
-    # Combine the results into a single dataframe
-    combined_results <- bind_rows(
-        m_muni %>% mutate(level = "Municipal"),
-        m_state %>% mutate(level = "State"),
-        m_federal %>% mutate(level = "Federal")
-    ) %>%
-        pivot_longer(
-            cols = starts_with("m_"),
-            names_to = "variable",
-            values_to = "missing_proportion"
-        ) %>%
-        mutate(variable = str_remove(variable, "m_"))
-
-    combined_results
-
-    # Plot by state, dodge bars, just municipal
-
-    combined_results %>%
-        filter(!is.na(state)) %>%
-        mutate(state = haschaR::state_id_to_names(state)) %>%
-        dplyr::filter(level == "Municipal") %>%
-        ggplot(aes(x = state, y = missing_proportion, fill = variable)) +
-        geom_bar(stat = "identity", position = position_dodge()) +
-        facet_wrap(~level, scales = "free") +
-        theme_hanno() +
-        theme(legend.position = "bottom") +
-        labs(x = NULL, y = "Missing proportion", title = "Missing proportions by level") +
-        coord_flip()
-}
-
-check_party_missings(m_m_harm, s_m_harm, f_m_harm)
-
-# Above 2k valid voters?
-
-check_party_missings(
-    m_m_harm %>% dplyr::filter(valid_votes > 2000),
-    s_m_harm %>% dplyr::filter(valid_votes > 2000),
-    f_m_harm %>% dplyr::filter(valid_votes > 2000)
-)
-
-# Above 5k valid voters?
-
-check_party_missings(
-    m_m_harm %>% dplyr::filter(valid_votes > 5000),
-    s_m_harm %>% dplyr::filter(valid_votes > 5000),
-    f_m_harm %>% dplyr::filter(valid_votes > 5000)
-)
-
-# Above 5k: focus on NDS (03), NRW (05), Saarland (10), Hessen (06), S-T (15)
-
-states_use <- c("03", "05", "10", "06", "15")
+length(ags_use)
 
 # All data sets: 5k plus, states as listed above
 
 f_m_harm <- f_m_harm %>%
-    dplyr::filter(valid_votes > 5000) %>%
-    dplyr::filter(state %in% states_use) %>%
+    dplyr::filter(ags %in% ags_use) %>%
     mutate(decade = case_when(
         between(election_year, 1990, 1999) ~ "1990-99",
         between(election_year, 2000, 2009) ~ "2000-09",
@@ -178,8 +67,7 @@ f_m_harm <- f_m_harm %>%
     ))
 
 m_m_harm <- m_m_harm %>%
-    dplyr::filter(valid_votes > 5000) %>%
-    dplyr::filter(state %in% states_use) %>%
+    dplyr::filter(ags %in% ags_use) %>%
     mutate(decade = case_when(
         between(election_year, 1990, 1999) ~ "1990-99",
         between(election_year, 2000, 2009) ~ "2000-09",
@@ -188,8 +76,7 @@ m_m_harm <- m_m_harm %>%
     ))
 
 s_m_harm <- s_m_harm %>%
-    dplyr::filter(valid_votes > 5000) %>%
-    dplyr::filter(state %in% states_use) %>%
+    dplyr::filter(ags %in% ags_use) %>%
     mutate(decade = case_when(
         between(election_year, 1990, 1999) ~ "1990-99",
         between(election_year, 2000, 2009) ~ "2000-09",
@@ -256,10 +143,10 @@ d_agg %>%
 
 # Save
 
-ggsave("output/figures/application/descr.pdf",
+ggsave("output/figures/application/descr_sample2.pdf",
     width = 7, height = 6
 )
-ggsave("~/Library/CloudStorage/Dropbox/Apps/Overleaf/ElectionPaper/figures/descr.pdf",
+ggsave("~/Library/CloudStorage/Dropbox/Apps/Overleaf/ElectionPaper/figures/descr_sample2.pdf",
     width = 8, height = 7
 )
 
@@ -363,9 +250,9 @@ cor_df %>%
 
 # Save
 
-ggsave("output/figures/application/descr_cor.pdf",
+ggsave("output/figures/application/descr_cor_sample2.pdf",
     width = 7, height = 5
 )
-ggsave("~/Library/CloudStorage/Dropbox/Apps/Overleaf/ElectionPaper/figures/descr_cor.pdf",
+ggsave("~/Library/CloudStorage/Dropbox/Apps/Overleaf/ElectionPaper/figures/descr_cor_sample2.pdf",
     width = 6, height = 4.5
 )
