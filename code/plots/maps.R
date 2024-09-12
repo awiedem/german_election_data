@@ -128,10 +128,78 @@ d_fed_2021 <- d_fed[ election_year == "2021",.(ags,cdu_csu,spd,gruene,afd)]
 
 de_shp_fed_data <- merge(de_shp_muni, d_fed_2021, by.x="AGS", by.y="ags", all=T)
 
+de_shp_fed_data <- de_shp_fed_data[ de_shp_fed_data$GF == 4, ]
+
+
+
+# Unsuccessful mergers: try by name & state -------------------------------
+
+# get all rows in d_fed_2021 with missingness
+unsuccessful <- de_shp_fed_data |>
+  filter(is.na(cdu_csu) | is.na(spd) | is.na(gruene) | is.na(afd))
+
+# get 2021 ags_names
+d_fed_2021_names <- d_fed |>
+  filter(election_year == "2021") |>
+  left_join_check_obs(
+    read_excel(path = "data/crosswalks/31122021_Auszug_GV.xlsx", sheet = 2) |>
+      dplyr::select(
+        Land = `...3`,
+        RB = `...4`,
+        Kreis = `...5`,
+        Gemeinde = `...7`,
+        ags_name = `...8`
+      ) |>
+      mutate(
+        Land = pad_zero_conditional(Land, 1),
+        Kreis = pad_zero_conditional(Kreis, 1),
+        Gemeinde = pad_zero_conditional(Gemeinde, 1, "00"),
+        Gemeinde = pad_zero_conditional(Gemeinde, 2, "0"),
+        ags = paste0(Land, RB, Kreis, Gemeinde)
+      ) |>
+      slice(6:16065) |>
+      filter(!is.na(Gemeinde)) |>
+      dplyr::select(ags, ags_name),
+    by = "ags"
+  )
+
+# reduce the names (remove , Stadt etc.)
+d_fed_2021_names_red <- d_fed_2021_names |>
+  dplyr::select(ags_name, state, cdu_csu, spd, gruene, afd) |>
+  # remove everything that comes after a "," in ags_name
+  mutate(ags_name = gsub(",.*", "", ags_name))
+
+# merge unsuccessful with d_fed_2021_names_red
+merge_by_name <- unsuccessful |>
+  dplyr::select(-c(cdu_csu:afd)) |>
+  left_join_check_obs(d_fed_2021_names_red, by = c("GEN" = "ags_name", "SN_L" = "state"))
+
+# duplicates?
+merge_by_name |>
+  filter(duplicated(GEN))
+# some
+
+
+# Build dataframe for plots
+plot_df <- de_shp_fed_data |>
+  filter(!is.na(cdu_csu) & !is.na(spd) & !is.na(gruene) & !is.na(afd)) |>
+  bind_rows(merge_by_name) |>
+  # remove observations that are duplicates
+  group_by(AGS) |>
+  filter(row_number() == 1) |>
+  ungroup()
+
+
+# for how many obs do we not have voting data?
+inspect <- plot_df |>
+  filter(is.na(cdu_csu) & is.na(spd) & is.na(gruene) & is.na(afd))
+# 505
+
+
 ### Party vote shares
 
 (p_fed_SPD <- ggplot()
-  + geom_sf(data = de_shp_fed_data, mapping=aes(fill=spd), colour="NA") 
+  + geom_sf(data = plot_df, mapping=aes(fill=spd), colour="NA") 
   + geom_sf(data = de_shp_bula, fill = NA, colour ="grey30", linewidth=0.2) 
   + coord_sf()
   + theme_minimal()
@@ -147,7 +215,7 @@ de_shp_fed_data <- merge(de_shp_muni, d_fed_2021, by.x="AGS", by.y="ags", all=T)
 )
 
 (p_fed_CDU <- ggplot()
-  + geom_sf(data = de_shp_fed_data, mapping=aes(fill=cdu_csu), colour="NA") 
+  + geom_sf(data = plot_df, mapping=aes(fill=cdu_csu), colour="NA") 
   + geom_sf(data = de_shp_bula, fill = NA, colour ="grey30", linewidth=0.2) 
   + coord_sf()
   + theme_minimal()
@@ -163,7 +231,7 @@ de_shp_fed_data <- merge(de_shp_muni, d_fed_2021, by.x="AGS", by.y="ags", all=T)
 )
 
 (p_fed_GREEN <- ggplot()
-  + geom_sf(data = de_shp_fed_data, mapping=aes(fill=gruene), colour="NA") 
+  + geom_sf(data = plot_df, mapping=aes(fill=gruene), colour="NA") 
   + geom_sf(data = de_shp_bula, fill = NA, colour ="grey30", linewidth=0.2) 
   + coord_sf()
   + theme_minimal()
@@ -179,7 +247,7 @@ de_shp_fed_data <- merge(de_shp_muni, d_fed_2021, by.x="AGS", by.y="ags", all=T)
 )
 
 (p_fed_AfD <- ggplot()
-  + geom_sf(data = de_shp_fed_data, mapping=aes(fill=afd), colour="NA") 
+  + geom_sf(data = plot_df, mapping=aes(fill=afd), colour="NA") 
   + geom_sf(data = de_shp_bula, fill = NA, colour ="grey30", linewidth=0.2) 
   + coord_sf()
   + theme_minimal()
