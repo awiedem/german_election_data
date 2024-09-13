@@ -1,5 +1,7 @@
 #
 
+rm(list = ls())
+
 pacman::p_load(tidyverse, haschaR, fixest, broom, modelsummary)
 
 conflicts_prefer(dplyr::lag)
@@ -23,11 +25,9 @@ s_m_harm <- read_rds("output/state_harm.rds") %>%
     mutate(ags = as.numeric(ags)) %>%
     mutate(level = "state")
 
-s_m_harm$election_year %>% min()
-m_m_harm$election_year %>% min()
-f_m_harm$election_year %>% min()
-
 # Multiply the DVs by 100
+
+dv_list <- c("turnout", "cdu_csu", "spd")
 
 f_m_harm <- f_m_harm %>%
     mutate(across(all_of(dv_list), ~ . * 100))
@@ -57,32 +57,20 @@ length(ags_use)
 
 # All data sets: 5k plus, states as listed above
 
-f_m_harm <- f_m_harm %>%
-    dplyr::filter(ags %in% ags_use) %>%
-    mutate(decade = case_when(
-        between(election_year, 1990, 1999) ~ "1990-99",
-        between(election_year, 2000, 2009) ~ "2000-09",
-        between(election_year, 2010, 2030) ~ "2010+",
-        TRUE ~ NA_character_
-    ))
+add_decade_and_filter <- function(df) {
+    df %>%
+        dplyr::filter(ags %in% ags_use) %>%
+        mutate(decade = case_when(
+            between(election_year, 1990, 1999) ~ "1990-99",
+            between(election_year, 2000, 2009) ~ "2000-09",
+            between(election_year, 2010, 2030) ~ "2010+",
+            TRUE ~ NA_character_
+        ))
+}
 
-m_m_harm <- m_m_harm %>%
-    dplyr::filter(ags %in% ags_use) %>%
-    mutate(decade = case_when(
-        between(election_year, 1990, 1999) ~ "1990-99",
-        between(election_year, 2000, 2009) ~ "2000-09",
-        between(election_year, 2010, 2030) ~ "2010+",
-        TRUE ~ NA_character_
-    ))
-
-s_m_harm <- s_m_harm %>%
-    dplyr::filter(ags %in% ags_use) %>%
-    mutate(decade = case_when(
-        between(election_year, 1990, 1999) ~ "1990-99",
-        between(election_year, 2000, 2009) ~ "2000-09",
-        between(election_year, 2010, 2030) ~ "2010+",
-        TRUE ~ NA_character_
-    ))
+f_m_harm <- add_decade_and_filter(f_m_harm)
+m_m_harm <- add_decade_and_filter(m_m_harm)
+s_m_harm <- add_decade_and_filter(s_m_harm)
 
 # Check total number of votes in 2021
 
@@ -137,17 +125,18 @@ d_agg %>%
     theme_hanno() +
     theme(legend.position = "bottom") +
     labs(x = "Decade", y = "Mean vote share (%)\n(weighted by valid votes)") +
-    facet_wrap(~variable, ncol = 1, scales = "free_y") +
+    facet_wrap(~variable, ncol = 3, scales = "free_y") +
     scale_color_brewer(palette = "Set2", name = element_blank()) +
-    scale_fill_brewer(palette = "Set2", name = element_blank())
+    scale_fill_brewer(palette = "Set2", name = element_blank()) +
+    haschaR::x_axis_90deg()
 
 # Save
 
 ggsave("output/figures/application/descr_sample2.pdf",
-    width = 7, height = 6
+    width = 7, height = 4
 )
 ggsave("~/Library/CloudStorage/Dropbox/Apps/Overleaf/ElectionPaper/figures/descr_sample2.pdf",
-    width = 8, height = 7
+    width = 7, height = 4
 )
 
 # Weighted correlation by decade
