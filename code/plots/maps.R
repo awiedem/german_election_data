@@ -327,7 +327,9 @@ pdf("~/Documents/GitHub/german_election_data/output/figures/map_elec_federal.pdf
 grid.arrange(p_fed_CDU, p_fed_SPD, p_fed_GREEN, p_fed_AfD, nrow=2)
 dev.off()
 
-
+pdf("~/Documents/GitHub/german_election_data/output/figures/map_elec_federal_v2.pdf", width = 8, height = 6) 
+grid.arrange(p_fed_turnout, p_fed_CDU, p_fed_SPD, nrow=1)
+dev.off()
 
 
 
