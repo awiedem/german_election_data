@@ -439,21 +439,21 @@ plot_df <- df_final |>
   ungroup()
 
 plot_df |>
-  ggplot(aes(x = as.factor(year), 
+  ggplot(aes(x = as.numeric(year), 
              y = factor(state_name, 
                         levels = rev(levels(factor(state_name)))), 
              fill = as.factor(election_bin))
   ) +
   geom_tile(color = "white") + # Add borders to the squares
   scale_fill_manual(
-    values = c("1" = "darkgrey", "0" = "white"), 
+    values = c("1" = "grey20", "0" = "white"), 
     name = "Election",
     labels = c("1" = "Election Held", "2" = "Data Unavailable")
   ) +
   labs(x = "Year", y = "State") +
   theme_hanno() +
   theme(
-    axis.text.x = element_text(angle = 90, vjust = 0.5), # Rotate x-axis labels for better readability
+    # axis.text.x = element_text(angle = 90, vjust = 0.5), # Rotate x-axis labels for better readability
     panel.grid.major = element_blank(), 
     panel.grid.minor = element_blank(),
     legend.position = "none"

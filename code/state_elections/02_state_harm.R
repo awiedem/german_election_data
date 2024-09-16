@@ -339,21 +339,21 @@ plot_df <- plot_df |>
 plot_df$election_bin <- factor(plot_df$election_bin, levels = c("0", "1", "2"))
 
 plot_df |>
-  ggplot(aes(x = as.factor(election_year), 
+  ggplot(aes(x = as.numeric(election_year), 
              y = factor(state_name, 
                         levels = rev(levels(factor(state_name)))), 
              fill = election_bin)
   ) +
   geom_tile(color = "white") + # Add borders to the squares
   scale_fill_manual(
-    values = c("1" = "darkgrey", "0" = "white", "2" = "black"), 
+    values = c("1" = "grey20", "0" = "white", "2" = "darkgrey"), 
     name = "Election",
     labels = c("1" = "Election Held", "2" = "Data Unavailable")
   ) +
   labs(x = "Year", y = "State") +
   theme_hanno() +
   theme(
-    axis.text.x = element_text(angle = 45, hjust = 1), # Rotate x-axis labels for better readability
+    # axis.text.x = element_text(angle = 45, hjust = 1), # Rotate x-axis labels for better readability
     panel.grid.major = element_blank(), 
     panel.grid.minor = element_blank(),
     legend.position = "none"
