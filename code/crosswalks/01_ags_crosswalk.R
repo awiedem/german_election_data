@@ -85,6 +85,9 @@ cw_combined <- bind_rows(cw_combined, cw_list) |>
 fwrite(cw_combined, "data/crosswalks/ags_crosswalks.csv")
 write_rds(cw_combined, "data/crosswalks/ags_crosswalks.rds")
 
+fwrite(cw_combined, "output/ags_crosswalks.csv")
+write_rds(cw_combined, "output/ags_crosswalks.rds")
+
 # Create covariate dataframe ----------------------------------------------
 
 # filter cw_combined to only German election years since 1990
@@ -196,6 +199,8 @@ cw <- cw |>
 # write
 fwrite(cw, "data/municipal_covars/ags_area_pop_emp.csv")
 write_rds(cw, "data/municipal_covars/ags_area_pop_emp.rds")
+fwrite(cw, "output/ags_area_pop_emp.csv")
+write_rds(cw, "output/ags_area_pop_emp.rds")
 
 
 

@@ -49,7 +49,11 @@ cw_combined <- cw_combined |>
 
 
 # write crosswalk df
-fwrite(cw_combined, "data/crosswalks/county_crosswalks.csv")
+fwrite(cw_combined, "data/crosswalks/cty_crosswalks.csv")
+write_rds(cw_combined, "data/crosswalks/cty_crosswalks.rds")
+fwrite(cw_combined, "output/cty_crosswalks.csv")
+write_rds(cw_combined, "output/cty_crosswalks.rds")
+
 
 
 # Create covariate dataframe ----------------------------------------------
@@ -129,5 +133,9 @@ cw <- cw |>
 
 # write
 fwrite(cw, "data/county_covars/cty_area_pop_emp.csv")
+write_rds(cw, "data/county_covars/cty_area_pop_emp.rds")
+fwrite(cw, "output/cty_area_pop_emp.csv")
+write_rds(cw, "output/cty_area_pop_emp.rds")
+
 
 ### END
