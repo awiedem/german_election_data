@@ -467,6 +467,13 @@ df_harm <- df_harm %>%
 
 glimpse(df_harm)
 
+# Relocate
+df_harm <- df_harm |>
+  select(ags:turnout_wo_mailin, 
+         cdu:zentrum, 
+         cdu_csu:far_left_w_linke,
+         flag_naive_turnout_above_1:perc_total_votes_incogruence, 
+         area_cw:population)
 
 
 # Save --------------------------------------------------------------------

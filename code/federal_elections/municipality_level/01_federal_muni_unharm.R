@@ -1779,6 +1779,12 @@ pop17 <- read_excel("data/municipality_sizes//31122017_Auszug_GV.xlsx", sheet = 
   ) |>
   select(ags, area, pop)
 
+# duplicates
+df17 |>
+  count(ags) |>
+  filter(n>1)
+# Berlin has duplicates
+
 # Merge with BTW data
 df17 <- df17 |>
   left_join(pop17, by = "ags") |>
@@ -1797,6 +1803,8 @@ df17 <- df17 |>
          voters_weight = `Wahlberechtigte (A)` / county_bwbez_voters,
          eligible_voters_orig = `Wahlberechtigte (A)`
   )
+
+
 
 # # Inspect
 # inspect <- df17 |>
@@ -1862,9 +1870,10 @@ df17 <- df17_long |>
 # Check duplicates
 dupl <- df17 |>
   count(ags, election_year) |>
-  filter(n>1) |>
-  pull(ags)
-nrow(dupl) # 0
+  filter(n>1)
+nrow(dupl) # 14
+duplicates <- df17 |>
+  filter(ags %in% dupl$ags)
 
 ### 
 # Berlin ags have multiple multi mail-in districts causing duplicates.
@@ -1873,9 +1882,10 @@ nrow(dupl) # 0
 # Sum up
 df17 <- df17 |>
   group_by(ags) |>
-  mutate_at(vars(eligible_voters_orig:`V-Partei³`), sum, na.rm = TRUE) |>
+  mutate_at(vars(eligible_voters_orig:`V-Partei³`, county_bwbez_voters), sum, na.rm = TRUE) |>
   ungroup() |>
   distinct()
+
 
 
 # 2021 --------------------------------------------------------------------
@@ -2064,9 +2074,8 @@ df21 <- df21_long |>
 # Check duplicates
 dupl <- df21 |>
   count(ags, election_year) |>
-  filter(n>1) |>
-  pull(ags)
-length(dupl)
+  filter(n>1)
+nrow(dupl)
 ### 
 # Berlin ags have multiple multi mail-in districts causing duplicates.
 # Therefore, the code that follows is different from the code before.
@@ -2074,7 +2083,7 @@ length(dupl)
 # Sum up
 df21 <- df21 |>
   group_by(ags) |>
-  mutate_at(vars(eligible_voters_orig:Volt), sum, na.rm = TRUE) |>
+  mutate_at(vars(eligible_voters_orig:Volt, county_bwbez_voters), sum, na.rm = TRUE) |>
   ungroup() |>
   distinct()
 
@@ -2393,6 +2402,10 @@ df |>
   distinct(ags, election_year) |>
   arrange(election_year, ags) |>
   print(n=Inf)
+
+df |>
+  filter(state == 11) |>
+  select(ags, state, election_year, eligible_voters, number_voters, cdu, spd, turnout)
 
 # how many ags from state 04? # Bremen
 df |>
