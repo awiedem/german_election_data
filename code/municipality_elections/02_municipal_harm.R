@@ -405,6 +405,12 @@ muni <- read_rds("data/municipal_covars/ags_area_pop_emp.rds") |>
   rename(ags = ags_21) |>
   mutate(ags = pad_zero_conditional(ags, 7))
 
+df_harm <- read_rds("output/municipal_harm.rds")
+
+muni_21 <- df_harm |>
+  filter(year == 2021) |>
+  dplyr::select(ags, cdu_csu, gruene, spd)
+
 # Merge
 df_final <- muni |>
   left_join_check_obs(df_harm, by = c("ags", "year"))

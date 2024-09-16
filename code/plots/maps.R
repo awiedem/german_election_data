@@ -226,9 +226,15 @@ plot_df <- de_shp_fed_data |>
 
 
 # for how many obs do we not have voting data?
-inspect <- plot_df |>
+inspect_missing <- plot_df |>
   filter(is.na(cdu_csu) & is.na(spd) & is.na(gruene) & is.na(afd) & is.na(turnout))
 # 505
+
+# turnout > 1?
+inspect_turnout <- plot_df |>
+  filter(turnout > 1) |>
+  dplyr::select(AGS, GEN, turnout)
+# none
 
 
 ### Turnout

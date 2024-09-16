@@ -1,6 +1,6 @@
 ### Clean and combine BTW electoral results at municipality level 1980-2021
 # Vincent Heddesheimer, Hanno Hilbig
-# May, 23, 2024
+# X, X, 2024
 
 rm(list=ls())
 
@@ -28,10 +28,15 @@ df80 <- fread("data/federal_elections/municipality_level/raw_data/BTW80/BTW80_Zw
     Kreis = pad_zero_conditional(Kreis, 1),
     Gemeinde = pad_zero_conditional(Gemeinde, 1, "00"),
     Gemeinde = pad_zero_conditional(Gemeinde, 2, "0"),
-    ags = paste0(Land, RB, Kreis, Gemeinde)
+    ags = paste0(Land, RB, Kreis, Gemeinde),
+    eligible_voters_orig = A,
+    number_voters_orig = ifelse(BA == 5, 0, B)
     ) |>
+  mutate(A = ifelse(BA == 5, B, A)) |>
+  relocate(eligible_voters_orig, .before = A) |>
+  relocate(number_voters_orig, .before = A) |>
   group_by(ags) |>
-  summarise_at(vars(A:Sonstige), sum, na.rm = TRUE) |>
+  summarise_at(vars(eligible_voters_orig:Sonstige), sum, na.rm = TRUE) |>
   mutate(
     election_year = 1980,
     county = substr(ags, 1 , 5)) |>
@@ -68,7 +73,9 @@ df83 <- fread("data/federal_elections/municipality_level/raw_data/BTW83/BTW83_Zw
 # Summarize all variables by ags & Bezirksart
 df83_bezirksarten <- df83 |>
   group_by(ags, BZA) |>
-  summarise_at(vars(A:Übrige), sum, na.rm = TRUE)
+  summarise_at(vars(A:Übrige), sum, na.rm = TRUE) |>
+  mutate(number_voters_orig = ifelse(BZA == 5, 0, B)) |>
+  relocate(number_voters_orig, .before = B)
 
 # Get ags that have their own mailin data
 ags_w_mailin83 <- df83_bezirksarten |>
@@ -126,15 +133,24 @@ df83 <- df83 |>
   # calculate county population & area for ags with unique mailin
   group_by(county, unique_mailin) |>
   mutate(county_pop = sum(pop, na.rm = T),
-         county_area = sum(area, na.rm = T)) |>
+         county_area = sum(area, na.rm = T),
+         county_voters = sum(A, na.rm = T)
+         ) |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_pop,
-         area_weight = area / county_area)
+         area_weight = area / county_area,
+         voters_weight = A / county_voters,
+         eligible_voters_orig = A
+         ) 
 
 # mail-in counties in long format
 mailin83_long <- df83 |> 
   filter(str_ends(ags, "999")) |>
+  # add number_voters to eligible_voters
+  rowwise() |>
+  mutate(A = B) |>
+  ungroup() |>
   select(c(A:UST, county)) |>
   # pivot longer
   pivot_longer(
@@ -155,9 +171,9 @@ df83_long <- df83 |>
   left_join(mailin83_long, by = c("county", "var")) |>
   rowwise() |>
   mutate(
-    # weight multi mail-in values by population share
+    # weight multi mail-in values by eligible voters share
     # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * pop_weight), digits = 0),
+    weighted_value = round((mailin_value * voters_weight), digits = 0),
     # add to original ags value
     ags_value_v2 = ifelse(
       unique_mailin == 0,
@@ -202,7 +218,9 @@ df87 <- fread("data/federal_elections/municipality_level/raw_data/BTW87/BTW87_Zw
 # Summarize all variables by ags & Bezirksart
 df87_bezirksarten <- df87 |>
   group_by(ags, BA) |>
-  summarise_at(vars(A:Patrioten), sum, na.rm = TRUE)
+  summarise_at(vars(A:Patrioten), sum, na.rm = TRUE) |>
+  mutate(number_voters_orig = ifelse(BA == 5, 0, B)) |>
+  relocate(number_voters_orig, .before = B)
 
 # Get ags that have their own mailin data
 ags_w_mailin87 <- df87_bezirksarten |>
@@ -260,15 +278,24 @@ df87 <- df87 |>
   # calculate county population & area for ags with unique mailin
   group_by(county, unique_mailin) |>
   mutate(county_pop = sum(pop, na.rm = T),
-         county_area = sum(area, na.rm = T)) |>
+         county_area = sum(area, na.rm = T),
+         county_voters = sum(A, na.rm = T)
+         ) |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_pop,
-         area_weight = area / county_area)
+         area_weight = area / county_area,
+         voters_weight = A / county_voters,
+         eligible_voters_orig = A
+         )
 
 # mail-in counties in long format
 mailin87_long <- df87 |> 
   filter(str_ends(ags, "999")) |>
+  # add number_voters to eligible_voters
+  rowwise() |>
+  mutate(A = B) |>
+  ungroup() |>
   select(c(A:Patrioten, county)) |>
   # pivot longer
   pivot_longer(
@@ -289,9 +316,9 @@ df87_long <- df87 |>
   left_join(mailin87_long, by = c("county", "var")) |>
   rowwise() |>
   mutate(
-    # weight multi mail-in values by population share
+    # weight multi mail-in values by eligible voters share
     # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * pop_weight), digits = 0),
+    weighted_value = round((mailin_value * voters_weight), digits = 0),
     # add to original ags value
     ags_value_v2 = ifelse(
       unique_mailin == 0,
@@ -341,7 +368,9 @@ df90 <- fread("data/federal_elections/municipality_level/raw_data/BTW90/BTW90_Zw
 # Summarize all variables by ags & Bezirksart
 df90_bezirksarten <- df90 |>
   group_by(ags, Bezirksart) |>
-  summarise_at(vars(`Wahlberechtigte (A)`:VAA), sum, na.rm = TRUE)
+  summarise_at(vars(`Wahlberechtigte (A)`:VAA), sum, na.rm = TRUE)  |>
+  mutate(number_voters_orig = ifelse(Bezirksart == 5, 0, `Wähler (B)`)) |>
+  relocate(number_voters_orig, .before = `Wähler (B)`)
 
 # Get ags that have their own mailin data
 ags_w_mailin90 <- df90_bezirksarten |>
@@ -412,15 +441,24 @@ df90 <- df90 |>
   # calculate county population & area for ags with unique mailin
   group_by(county, unique_mailin) |>
   mutate(county_pop = sum(pop, na.rm = T),
-         county_area = sum(area, na.rm = T)) |>
+         county_area = sum(area, na.rm = T),
+         county_voters = sum(`Wahlberechtigte (A)`, na.rm = T)
+         ) |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_pop,
-         area_weight = area / county_area)
+         area_weight = area / county_area,
+         voters_weight = `Wahlberechtigte (A)` / county_voters,
+         eligible_voters_orig = `Wahlberechtigte (A)`
+         )
 
 # mail-in counties in long format
 mailin90_long <- df90 |> 
   filter(str_ends(ags, "999")) |>
+  # add number_voters to eligible_voters
+  rowwise() |>
+  mutate(`Wahlberechtigte (A)` = `Wähler (B)`) |>
+  ungroup() |>
   select(c(`Wahlberechtigte (A)`:VAA,county)) |>
   # pivot longer
   pivot_longer(
@@ -441,9 +479,9 @@ df90_long <- df90 |>
   left_join(mailin90_long, by = c("county", "var")) |>
   rowwise() |>
   mutate(
-    # weight multi mail-in values by population share
+    # weight multi mail-in values by eligible voters share
     # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * pop_weight), digits = 0),
+    weighted_value = round((mailin_value * voters_weight), digits = 0),
     # add to original ags value
     ags_value_v2 = ifelse(
       unique_mailin == 0,
@@ -512,7 +550,9 @@ leitband94 <- read_delim("data/federal_elections/municipality_level/raw_data/BTW
 # Summarize all variables by ags & Bezirksart
 df94_bezirksarten <- df94 |>
   group_by(ags, Bezirksart) |>
-  summarise_at(vars(A:`STATT Partei`), sum, na.rm = TRUE)
+  summarise_at(vars(A:`STATT Partei`), sum, na.rm = TRUE) |>
+  mutate(number_voters_orig = ifelse(Bezirksart == 5, 0, B)) |>
+  relocate(number_voters_orig, .before = B)
 
 # Get ags that have their own mailin data
 ags_w_mailin94 <- df94_bezirksarten |>
@@ -572,15 +612,24 @@ df94 <- df94 |>
   # calculate county population & area for ags with unique mailin
   group_by(county, unique_mailin) |>
   mutate(county_pop = sum(pop, na.rm = T),
-         county_area = sum(area, na.rm = T)) |>
+         county_area = sum(area, na.rm = T),
+         county_voters = sum(A, na.rm = T)
+         ) |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_pop,
-         area_weight = area / county_area)
+         area_weight = area / county_area,
+         voters_weight = A / county_voters,
+         eligible_voters_orig = A
+         )
 
 # mail-in counties in long format
 mailin94_long <- df94 |> 
   filter(str_ends(ags, "999")) |>
+  # add number_voters to eligible_voters
+  rowwise() |>
+  mutate(A = B) |>
+  ungroup() |>
   select(c(A:`STATT Partei`,county)) |>
   # pivot longer
   pivot_longer(
@@ -601,9 +650,9 @@ df94_long <- df94 |>
   left_join(mailin94_long, by = c("county", "var")) |>
   rowwise() |>
   mutate(
-    # weight multi mail-in values by population share
+    # weight multi mail-in values by eligible voters share
     # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * pop_weight), digits = 0),
+    weighted_value = round((mailin_value * voters_weight), digits = 0),
     # add to original ags value
     ags_value_v2 = ifelse(
       unique_mailin == 0,
@@ -659,7 +708,9 @@ leitband98 <- read_delim("data/federal_elections/municipality_level/raw_data/BTW
 # Summarize all variables by ags & Bezirksart
 df98_bezirksarten <- df98 |>
   group_by(ags, Bezirksart) |>
-  summarise_at(vars(A:PSG), sum, na.rm = TRUE)
+  summarise_at(vars(A:PSG), sum, na.rm = TRUE) |>
+  mutate(number_voters_orig = ifelse(Bezirksart == 5, 0, B)) |>
+  relocate(number_voters_orig, .before = B)
 
 # Get ags that have their own mailin data
 ags_w_mailin98 <- df98_bezirksarten |>
@@ -718,15 +769,24 @@ df98 <- df98 |>
   # calculate county population & area for ags with unique mailin
   group_by(county, unique_mailin) |>
   mutate(county_pop = sum(pop, na.rm = T),
-         county_area = sum(area, na.rm = T)) |>
+         county_area = sum(area, na.rm = T),
+         county_voters = sum(A, na.rm = T)
+         ) |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_pop,
-         area_weight = area / county_area)
+         area_weight = area / county_area,
+         voters_weight = A / county_voters,
+         eligible_voters_orig = A
+  )
 
 # mail-in counties in long format
 mailin98_long <- df98 |> 
   filter(str_ends(ags, "999")) |>
+  # add number_voters to eligible_voters
+  rowwise() |>
+  mutate(A = B) |>
+  ungroup() |>
   select(c(A:PSG,county)) |>
   # pivot longer
   pivot_longer(
@@ -747,9 +807,9 @@ df98_long <- df98 |>
   left_join(mailin98_long, by = c("county", "var")) |>
   rowwise() |>
   mutate(
-    # weight multi mail-in values by population share
+    # weight multi mail-in values by eligible voters share
     # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * pop_weight), digits = 0),
+    weighted_value = round((mailin_value * voters_weight), digits = 0),
     # add to original ags value
     ags_value_v2 = ifelse(
       unique_mailin == 0,
@@ -832,7 +892,9 @@ df02 <- fread("data/federal_elections/municipality_level/raw_data/BTW02/BTW02_Zw
 # Summarize all variables by ags & Bezirksart
 df02_vg_bezirksarten <- df02 |>
   group_by(ags, VG, BZA) |>
-  summarise_at(vars(A:Schill), sum, na.rm = TRUE)
+  summarise_at(vars(A:Schill), sum, na.rm = TRUE) |>
+  mutate(number_voters_orig = ifelse(BZA == 5, 0, B)) |>
+  relocate(number_voters_orig, .before = B)
 
 # Get ags that have their own mailin data
 ags_w_mailin02 <- df02_vg_bezirksarten |>
@@ -894,11 +956,16 @@ df02 <- df02 |>
   # calculate county-VG population & area for ags with unique mailin
   group_by(county, VG, unique_mailin) |>
   mutate(county_vg_pop = sum(pop, na.rm = T),
-         county_vg_area = sum(area, na.rm = T)) |>
+         county_vg_area = sum(area, na.rm = T),
+         county_vg_voters = sum(A, na.rm = T)
+         ) |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_vg_pop,
-         area_weight = area / county_vg_area)
+         area_weight = area / county_vg_area,
+         voters_weight = A / county_vg_voters,
+         eligible_voters_orig = A
+         )
 
 # # Inspect
 # inspect <- df02y |> 
@@ -909,6 +976,10 @@ df02 <- df02 |>
 # mail-in counties in long format
 mailin02_long <- df02 |> 
   filter(str_ends(ags, "999")) |>
+  # add number_voters to eligible_voters
+  rowwise() |>
+  mutate(A = B) |>
+  ungroup() |>
   select(c(A:Schill,county, VG)) |>
   # pivot longer
   pivot_longer(
@@ -929,9 +1000,9 @@ df02_long <- df02 |>
   left_join(mailin02_long, by = c("county", "VG", "var")) |>
   rowwise() |>
   mutate(
-    # weight multi mail-in values by population share
+    # weight multi mail-in values by eligible voters share
     # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * pop_weight), digits = 0),
+    weighted_value = round((mailin_value * voters_weight), digits = 0),
     # add to original ags value
     ags_value_v2 = ifelse(
       unique_mailin == 0,
@@ -1003,7 +1074,9 @@ df05 <- fread("data/federal_elections/municipality_level/raw_data/BTW05/BTW05_Zw
 # Summarize all variables by ags & BWBez & Bezirksart
 df05_bezirksarten <- df05 |>
   group_by(ags, BWBez, BA) |>
-  summarise_at(vars(A:`Pro DM`), sum, na.rm = TRUE)
+  summarise_at(vars(A:`Pro DM`), sum, na.rm = TRUE) |>
+  mutate(number_voters_orig = ifelse(BA == 5, 0, B)) |>
+  relocate(number_voters_orig, .before = B)
 
 # Get ags that have their own mailin data
 ags_w_mailin05 <- df05_bezirksarten |>
@@ -1069,11 +1142,16 @@ df05 <- df05 |>
   # calculate county-VG population & area for ags with unique mailin
   group_by(county, BWBez, unique_mailin) |>
   mutate(county_bwbez_pop = sum(pop, na.rm = T),
-         county_bwbez_area = sum(area, na.rm = T)) |>
+         county_bwbez_area = sum(area, na.rm = T),
+         county_bwbez_voters = sum(A, na.rm = T)
+         ) |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_bwbez_pop,
-         area_weight = area / county_bwbez_area)
+         area_weight = area / county_bwbez_area,
+         voters_weight = A / county_bwbez_voters,
+         eligible_voters_orig = A
+         )
 
 # # Inspect
 # inspect <- df05 |>
@@ -1084,6 +1162,10 @@ df05 <- df05 |>
 # mail-in counties in long format
 mailin05_long <- df05 |> 
   filter(str_ends(ags, "999")) |>
+  # add number_voters to eligible_voters
+  rowwise() |>
+  mutate(A = B) |>
+  ungroup() |>
   select(c(A:`Pro DM`,county, BWBez)) |>
   # pivot longer
   pivot_longer(
@@ -1104,9 +1186,9 @@ df05_long <- df05 |>
   left_join(mailin05_long, by = c("county", "BWBez", "var")) |>
   rowwise() |>
   mutate(
-    # weight multi mail-in values by population share
+    # weight multi mail-in values by eligible voters share
     # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * pop_weight), digits = 0),
+    weighted_value = round((mailin_value * voters_weight), digits = 0),
     # add to original ags value
     ags_value_v2 = ifelse(
       unique_mailin == 0,
@@ -1195,7 +1277,9 @@ inspect <- df09 |> select(ags, BWBez, BA)
 # Summarize all variables by ags & BWBez & Bezirksart
 df09_bezirksarten <- df09 |>
   group_by(ags, BWBez, BA) |>
-  summarize_at(vars(A:RENTNER), sum, na.rm = TRUE)
+  summarize_at(vars(A:RENTNER), sum, na.rm = TRUE) |>
+  mutate(number_voters_orig = ifelse(BA == 5, 0, B)) |>
+  relocate(number_voters_orig, .before = B)
 # |>
 #   select(-c(Wkr:Gemeinde, Wbz))
 
@@ -1267,11 +1351,16 @@ df09 <- df09 |>
   # calculate county-VG population & area for ags with unique mailin
   group_by(county, BWBez, unique_mailin) |>
   mutate(county_bwbez_pop = sum(pop, na.rm = T),
-         county_bwbez_area = sum(area, na.rm = T)) |>
+         county_bwbez_area = sum(area, na.rm = T),
+         county_bwbez_voters = sum(A, na.rm = T)
+         ) |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_bwbez_pop,
-         area_weight = area / county_bwbez_area)
+         area_weight = area / county_bwbez_area,
+         voters_weight = A / county_bwbez_voters,
+         eligible_voters_orig = A
+         )
 
 # # Inspect
 # inspect <- df09 |>
@@ -1282,6 +1371,10 @@ df09 <- df09 |>
 # mail-in counties in long format
 mailin09_long <- df09 |> 
   filter(str_ends(ags, "996|997|998|999")) |>
+  # add number_voters to eligible_voters
+  rowwise() |>
+  mutate(A = B) |>
+  ungroup() |>
   select(c(A:RENTNER, county, BWBez)) |>
   # pivot longer
   pivot_longer(
@@ -1302,9 +1395,9 @@ df09_long <- df09 |>
   left_join(mailin09_long, by = c("county", "BWBez", "var")) |>
   rowwise() |>
   mutate(
-    # weight multi mail-in values by population share
+    # weight multi mail-in values by eligible voters share
     # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * pop_weight), digits = 0),
+    weighted_value = round((mailin_value * voters_weight), digits = 0),
     # add to original ags value
     ags_value_v2 = ifelse(
       unique_mailin == 0,
@@ -1349,9 +1442,11 @@ df09 <- df09 |>
     pop = first(pop),
     county_bwbez_pop = first(county_bwbez_pop),
     county_bwbez_area = first(county_bwbez_area),
+    county_bwbez_voters = first(county_bwbez_voters),
     area_weight = first(area_weight),
     pop_weight = first(pop_weight),
-    across(A:RENTNER, ~ sum(.x, na.rm = TRUE))
+    voters_weight = first(voters_weight),
+    across(eligible_voters_orig:RENTNER, ~ sum(.x, na.rm = TRUE))
   ) |>
   mutate(unique_multi_mailin = ifelse(ags %in% dupl, 1, 0))
 # Check duplicate ags
@@ -1412,7 +1507,9 @@ inspect <- df13 |> select(ags, BWBez, BA)
 # Summarize all variables by ags & BWBez & Bezirksart
 df13_bezirksarten <- df13 |>
   group_by(ags, BWBez, BA) |>
-  summarize_at(vars(A:`Die PARTEI`), sum, na.rm = TRUE)
+  summarize_at(vars(A:`Die PARTEI`), sum, na.rm = TRUE) |>
+  mutate(number_voters_orig = ifelse(BA == 5, 0, B)) |>
+  relocate(number_voters_orig, .before = B)
 # |>
 #   select(-c(Wkr:Gemeinde, Wbz))
 
@@ -1479,11 +1576,16 @@ df13 <- df13 |>
   # calculate county-VG population & area for ags with unique mailin
   group_by(county, BWBez, unique_mailin) |>
   mutate(county_bwbez_pop = sum(pop, na.rm = T),
-         county_bwbez_area = sum(area, na.rm = T)) |>
+         county_bwbez_area = sum(area, na.rm = T),
+         county_bwbez_voters = sum(A, na.rm = T)
+         ) |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_bwbez_pop,
-         area_weight = area / county_bwbez_area)
+         area_weight = area / county_bwbez_area,
+         voters_weight = A / county_bwbez_voters,
+         eligible_voters_orig = A
+         )
 
 # # Inspect
 # inspect <- df13 |>
@@ -1494,6 +1596,10 @@ df13 <- df13 |>
 # mail-in counties in long format
 mailin13_long <- df13 |> 
   filter(str_ends(ags, "996|997|998|999")) |>
+  # add number_voters to eligible_voters
+  rowwise() |>
+  mutate(A = B) |>
+  ungroup() |>
   select(c(A:`Die PARTEI`, county, BWBez)) |>
   # pivot longer
   pivot_longer(
@@ -1514,9 +1620,9 @@ df13_long <- df13 |>
   left_join(mailin13_long, by = c("county", "BWBez", "var")) |>
   rowwise() |>
   mutate(
-    # weight multi mail-in values by population share
+    # weight multi mail-in values by eligible voters share
     # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * pop_weight), digits = 0),
+    weighted_value = round((mailin_value * voters_weight), digits = 0),
     # add to original ags value
     ags_value_v2 = ifelse(
       unique_mailin == 0,
@@ -1547,7 +1653,7 @@ dupl <- df13 |>
   count(ags, election_year) |>
   filter(n>1) |>
   pull(ags)
-length(dupl) # 0
+length(dupl) # 1
 
 # Sum up
 df13 <- df13 |>
@@ -1561,9 +1667,11 @@ df13 <- df13 |>
     pop = first(pop),
     county_bwbez_pop = first(county_bwbez_pop),
     county_bwbez_area = first(county_bwbez_area),
+    county_bwbez_voters = first(county_bwbez_voters),
     area_weight = first(area_weight),
     pop_weight = first(pop_weight),
-    across(A:`Die PARTEI`, ~ sum(.x, na.rm = TRUE))
+    voters_weight = first(voters_weight),
+    across(eligible_voters_orig:`Die PARTEI`, ~ sum(.x, na.rm = TRUE))
   ) |>
   mutate(unique_multi_mailin = ifelse(ags %in% dupl, 1, 0))
 # Check duplicate ags
@@ -1617,7 +1725,9 @@ inspect <- df17 |> select(ags, BWBez, BA)
 # Summarize all variables by ags & BWBez & Bezirksart
 df17_bezirksarten <- df17 |>
   group_by(ags, BWBez, BA) |>
-  summarise_at(vars(`Wahlberechtigte (A)`:`V-Partei³`), sum, na.rm = TRUE) 
+  summarise_at(vars(`Wahlberechtigte (A)`:`V-Partei³`), sum, na.rm = TRUE) |>
+  mutate(number_voters_orig = ifelse(BA == 5, 0, `Wähler (B)`)) |>
+  relocate(number_voters_orig, .before = `Wähler (B)`) 
 
 # Get ags that have their own mailin data
 ags_w_mailin17 <- df17_bezirksarten |>
@@ -1677,11 +1787,16 @@ df17 <- df17 |>
   # calculate county-VG population & area for ags with unique mailin
   group_by(county, BWBez, unique_mailin) |>
   mutate(county_bwbez_pop = sum(pop, na.rm = T),
-         county_bwbez_area = sum(area, na.rm = T)) |>
+         county_bwbez_area = sum(area, na.rm = T),
+         county_bwbez_voters = sum(`Wahlberechtigte (A)`, na.rm = T)
+         ) |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_bwbez_pop,
-         area_weight = area / county_bwbez_area)
+         area_weight = area / county_bwbez_area,
+         voters_weight = `Wahlberechtigte (A)` / county_bwbez_voters,
+         eligible_voters_orig = `Wahlberechtigte (A)`
+  )
 
 # # Inspect
 # inspect <- df17 |>
@@ -1692,6 +1807,10 @@ df17 <- df17 |>
 # mail-in counties in long format
 mailin17_long <- df17 |> 
   filter(str_sub(ags, -3, -3) == "9") |>
+  # add number_voters to eligible_voters
+  rowwise() |>
+  mutate(`Wahlberechtigte (A)` = `Wähler (B)`) |>
+  ungroup() |>
   select(c(`Wahlberechtigte (A)`:`V-Partei³`, county, BWBez)) |>
   # pivot longer
   pivot_longer(
@@ -1712,9 +1831,9 @@ df17_long <- df17 |>
   left_join(mailin17_long, by = c("county", "BWBez", "var")) |>
   rowwise() |>
   mutate(
-    # weight multi mail-in values by population share
+    # weight multi mail-in values by eligible voters share
     # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * pop_weight), digits = 0),
+    weighted_value = round((mailin_value * voters_weight), digits = 0),
     # add to original ags value
     ags_value_v2 = ifelse(
       unique_mailin == 0,
@@ -1754,7 +1873,7 @@ nrow(dupl) # 0
 # Sum up
 df17 <- df17 |>
   group_by(ags) |>
-  mutate_at(vars(`Wahlberechtigte (A)`:`V-Partei³`), sum, na.rm = TRUE) |>
+  mutate_at(vars(eligible_voters_orig:`V-Partei³`), sum, na.rm = TRUE) |>
   ungroup() |>
   distinct()
 
@@ -1806,7 +1925,9 @@ df21 <- fread("data/federal_elections/municipality_level/raw_data/BTW21/btw21_wb
 # Summarize all variables by ags & BWBez & Bezirksart
 df21_bezirksarten <- df21 |>
   group_by(ags, BWBez, BA) |>
-  summarise_at(vars(`Wahlberechtigte (A)`:Volt), sum, na.rm = TRUE)
+  summarise_at(vars(`Wahlberechtigte (A)`:Volt), sum, na.rm = TRUE) |>
+  mutate(number_voters_orig = ifelse(BA == 5, 0, `Wählende (B)`)) |>
+  relocate(number_voters_orig, .before = `Wählende (B)`) 
 
 # Get ags that have their own mailin data
 ags_w_mailin21 <- df21_bezirksarten |>
@@ -1862,16 +1983,22 @@ pop21 <- read_excel("data/municipality_sizes/31122021_Auszug_GV.xlsx", sheet = 2
 # Merge with BTW data
 df21 <- df21 |>
   left_join(pop21, by = "ags") |>
-  # calculate county population & area
   mutate(county = substr(ags, 1 , 5)) |>
-  # calculate county-VG population & area for ags with unique mailin
+  # calculate county-VG population & area & eligible voters
+  # for ags with unique mailin
   group_by(county, BWBez, unique_mailin) |>
   mutate(county_bwbez_pop = sum(pop, na.rm = T),
-         county_bwbez_area = sum(area, na.rm = T)) |>
+         county_bwbez_area = sum(area, na.rm = T),
+         county_bwbez_voters = sum(`Wahlberechtigte (A)`, na.rm = T)
+         ) |>
   ungroup() |>
   # calculate weights (i.e. shares)
-  mutate(pop_weight = pop / county_bwbez_pop,
-         area_weight = area / county_bwbez_area)
+  mutate(
+    pop_weight = pop / county_bwbez_pop,
+    area_weight = area / county_bwbez_area,
+    voters_weight = `Wahlberechtigte (A)` / county_bwbez_voters,
+    eligible_voters_orig = `Wahlberechtigte (A)`
+  )
 
 # # Inspect
 # inspect <- df21 |>
@@ -1882,6 +2009,10 @@ df21 <- df21 |>
 # mail-in counties in long format
 mailin21_long <- df21 |> 
   filter(str_sub(ags, -3, -3) == "9") |>
+  # add number_voters to eligible_voters
+  rowwise() |>
+  mutate(`Wahlberechtigte (A)` = `Wählende (B)`) |>
+  ungroup() |>
   select(c(`Wahlberechtigte (A)`:Volt, county, BWBez)) |>
   # pivot longer
   pivot_longer(
@@ -1902,9 +2033,9 @@ df21_long <- df21 |>
   left_join(mailin21_long, by = c("county", "BWBez", "var")) |>
   rowwise() |>
   mutate(
-    # weight multi mail-in values by population share
+    # weight multi mail-in values by eligible voters share
     # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * pop_weight), digits = 0),
+    weighted_value = round((mailin_value * voters_weight), digits = 0),
     # add to original ags value
     ags_value_v2 = ifelse(
       unique_mailin == 0,
@@ -1913,7 +2044,7 @@ df21_long <- df21 |>
     )
   )
 # Inspect
-inspect <- df21_long |> filter(county == "01053")
+inspect_dupls <- df21_long |> filter(ags == "01053010")
 # works!
 
 # Bring back to wide format
@@ -1935,8 +2066,7 @@ dupl <- df21 |>
   count(ags, election_year) |>
   filter(n>1) |>
   pull(ags)
-nrow(dupl) # 0 duplicates
-
+length(dupl)
 ### 
 # Berlin ags have multiple multi mail-in districts causing duplicates.
 # Therefore, the code that follows is different from the code before.
@@ -1944,7 +2074,7 @@ nrow(dupl) # 0 duplicates
 # Sum up
 df21 <- df21 |>
   group_by(ags) |>
-  mutate_at(vars(`Wahlberechtigte (A)`:Volt), sum, na.rm = TRUE) |>
+  mutate_at(vars(eligible_voters_orig:Volt), sum, na.rm = TRUE) |>
   ungroup() |>
   distinct()
 
@@ -2020,6 +2150,7 @@ df <- df_objects_t |>
 dupl <- df |>
   count(ags, election_year) |>
   filter(n>1)
+nrow(dupl)
 
 df <- df |>
   # Get Bundesland / state from ags
@@ -2027,10 +2158,10 @@ df <- df |>
   # Organize
   select(
     # Background
-    ags, county, election_year, state, eligible_voters, number_voters, valid_votes,
+    ags, county, election_year, state, eligible_voters_orig, eligible_voters, number_voters_orig, number_voters, valid_votes,
     voters_wo_blockingnotice, voters_blockingnotice, voters_par25_2, voters_w_ballot,
     # Mail-in voting
-    unique_mailin, unique_multi_mailin, pop, area, pop_weight, area_weight,
+    unique_mailin, unique_multi_mailin, pop, area, pop_weight, area_weight, voters_weight,
     # Main
     cdu, csu, cdu_csu, spd, grüne, fdp, linke_pds, `b90/gr`,
     # Right-wing
@@ -2104,7 +2235,7 @@ berlin_hamburg <- df |>
   filter(state %in% c("11", "02")) |>
   group_by(election_year, state) |>
   summarise(across(
-    eligible_voters:far_left_wLinke, sum, na.rm = TRUE
+    eligible_voters_orig:far_left_wLinke, sum, na.rm = TRUE
   )) |>
   mutate(
     ags = case_when(
@@ -2130,6 +2261,22 @@ df <- df |>
   mutate(turnout = number_voters / eligible_voters) |>
   relocate(turnout, .before = cdu)
 
+# check whether there are any ags with turnout > 1
+inspect <- df |>
+  filter(turnout > 1)
+nrow(inspect)
+# yes, 62
+
+# if turnout > 1, calculate turnout as number_voters_orig / eligible_voters_orig
+df <- df |>
+  mutate(
+    flag_naive_turnout_above_1 = ifelse(turnout > 1, 1, 0),
+    turnout = ifelse(turnout > 1, number_voters_orig / eligible_voters_orig, turnout),
+    turnout = ifelse(turnout > 1, 1, turnout), # one case where eligible = 14 and number = 15
+    turnout_wo_mailin = number_voters_orig / eligible_voters_orig,
+    turnout_wo_mailin = ifelse(turnout_wo_mailin > 1, 1, turnout_wo_mailin)
+    ) |>
+  relocate(turnout_wo_mailin, .after = turnout)
 
 # Last transformations ----------------------------------------------------
 

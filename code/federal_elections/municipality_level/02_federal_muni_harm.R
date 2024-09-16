@@ -251,13 +251,13 @@ votes <- df_cw |>
         unique_mailin = max(unique_mailin),
         unique_multi_mailin = max(unique_multi_mailin),
         across(
-            eligible_voters:far_left_w_linke,
+          eligible_voters_orig:far_left_w_linke,
             ~ sum(.x * pop_cw, na.rm = TRUE)
         )
     ) |>
     # Round
     mutate(across(
-        eligible_voters:far_left_w_linke,
+      eligible_voters_orig:far_left_w_linke,
         ~ round(.x, digits = 0)
     )) |>
     ungroup()
@@ -373,42 +373,6 @@ table(df_harm$total_votes_incogruence, useNA = "ifany")
 table(df_harm$flag_total_votes_incongruent, useNA = "ifany")
 mean(df_harm$flag_total_votes_incongruent)
 
-
-# points
-df_harm %>% 
-  filter(flag_total_votes_incongruent == 1) %>% 
-  ggplot(aes(x = log(total_votes), y = perc_total_votes_incogruence)) +
-  geom_point()
-
-# histogram
-df_harm %>% 
-  # filter(flag_total_votes_incongruent == 1) %>% 
-  ggplot(aes(x = total_votes_incogruence)) +
-  geom_histogram(bins = 50) +
-  # number of observations above each bar
-  geom_text(
-    aes(label = stat(count)),
-    stat = "count",
-    vjust = -0.5,
-    size = 3
-  ) +
-  theme_hanno() +
-  labs(
-    x = "Difference between own calculation of total votes\nand total votes in data",
-    y = "Count"
-  ) +
-  # increase max of y-axis to make room for text
-  scale_y_continuous(limits = c(0, 65000)) +
-  # x axis labels for all values
-  scale_x_continuous(breaks = seq(-17, 6, by = 1)) +
-  # axis labels a bit smaller
-  theme(axis.text.x = element_text(size = 9),
-        axis.text.y = element_text(size = 9))
-
-ggsave("output/figures/total_votes_incongruence_hist.pdf", width = 7, height = 4)
-
-move_plots_to_overleaf("code")
-
 df_harm |>
   filter(unique_mailin == 1 & flag_total_votes_incongruent == 1)
 # no place that has unique_mailin == 1 has this problem
@@ -464,30 +428,48 @@ names(df_harm)
 df_harm <- df_harm |>
   mutate(
     across(cdu:far_left_w_linke, ~ .x / total_votes),
-    # turnout = (valid + invalid) / eligible_voters
-    turnout = number_voters / eligible_voters
-  ) |>
+    turnout = number_voters / eligible_voters,
+    flag_naive_turnout_above_1 = ifelse(turnout > 1, 1, 0),
+    turnout = ifelse(turnout > 1, number_voters_orig / eligible_voters_orig, turnout),
+    turnout_wo_mailin = number_voters_orig / eligible_voters_orig
+    ) |>
   # Relocate columns
-  relocate(turnout, .before = cdu) |>
   relocate(cdu_csu, .after = perc_total_votes_incogruence)  |>
   relocate(far_right, .after = cdu_csu) |>
   relocate(far_left, .after = far_right) |>
   relocate(far_left_w_linke, .after = far_left) |>
   relocate(county, .after = state) |>
   relocate(flag_unsuccessful_naive_merge, .after = population) |>
+  relocate(flag_naive_turnout_above_1, .after = population) |>
   select(-c(ags_name, ags_name_21, emp_cw, employees, year_cw, id)) |>
   # arrange
   arrange(ags, election_year)
 
-# AfD to NA for years prior to 2013
 
+
+# Party votes to NA if no votes in year -----------------------------------
+
+# Identify parties that did not receive any votes in a given election year
+no_votes_parties <- df_harm %>%
+  group_by(election_year) %>%
+  summarise(across(cdu:zentrum, ~ all(. == 0), .names = "all_zero_{col}")) %>%
+  pivot_longer(cols = starts_with("all_zero_"), names_to = "party", values_to = "all_zero") %>%
+  mutate(party = sub("all_zero_", "", party)) %>%
+  select(election_year, party, all_zero)
+
+# Recode 0 vote shares to NA for parties that did not receive any votes in an election year
 df_harm <- df_harm %>%
-    mutate(
-        afd = ifelse(election_year < 2013, NA, afd)
-    )
+  pivot_longer(cols = cdu:zentrum, names_to = "party", values_to = "vote_share") %>%
+  left_join(no_votes_parties, by = c("election_year", "party")) %>%
+  mutate(vote_share = if_else(all_zero == TRUE & vote_share == 0, NA_real_, vote_share)) %>%
+  select(-all_zero) %>%
+  pivot_wider(names_from = "party", values_from = "vote_share")
 
-names(df_harm)
+glimpse(df_harm)
 
+
+
+# Save --------------------------------------------------------------------
 
 ## Save this now:
 
@@ -502,6 +484,12 @@ write_rds(df_harm, "output/federal_muni_harm.rds")
 df_harm <- read_rds("output/federal_muni_harm.rds") |>
   arrange(ags, election_year)
 
+glimpse(df_harm)
+
+# inspect 2021
+inspect <- df_harm |>
+  filter(election_year == 2021)
+
 # Berlin
 inspect <- df_harm |>
   filter(state=="11")
@@ -513,5 +501,8 @@ names(df_harm)
 df_harm |>
   filter(is.na(election_year))
 
+# check turnout > 1
+df_harm |>
+  filter(turnout > 1)
 
 ### END
