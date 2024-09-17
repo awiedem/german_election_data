@@ -279,6 +279,20 @@ df_harm %>%
   distinct()
 # none
 
+
+
+# Flag when total vote share > 1 ------------------------------------------
+
+df_harm <- df_harm %>%
+  mutate(total_vote_share = rowSums(select(., cdu:other), na.rm = TRUE),
+         total_vote_share = round(total_vote_share, 8),
+         flag_total_votes_incongruent = ifelse(total_vote_share > 1, 1, 0)
+         )
+
+table(df_harm$flag_total_votes_incongruent, useNA = "ifany")
+# 29 observations
+
+
 glimpse(df_harm)
 
 # write

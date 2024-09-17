@@ -9,7 +9,8 @@ conflicts_prefer(dplyr::lag)
 conflicts_prefer(lubridate::year)
 
 # Load data
-df <- read_rds("output/state_harm.rds")
+df <- read_rds("data/state_elections/final/state_harm.rds")
+df_raw <- read_rds("data/state_elections/final/state_unharm.rds")
 
 # Identify party columns
 parties <- df %>%
@@ -31,6 +32,17 @@ abs(1 - s_votes) %>%
 # Investigate cases where sum > 1 (excluding Bavaria)
 df_check <- df %>%
     filter(s_votes > 1, state_name != "Bavaria")
+
+df_check_ags <- df %>%
+  mutate(total_votes = rowSums(select(., cdu:other), na.rm = TRUE),
+         total_votes = round(total_votes, 8)) %>%
+  filter(total_votes > 1) 
+
+df_check_ags_raw <- df_raw %>%
+  mutate(total_votes = rowSums(select(., cdu:other), na.rm = TRUE),
+         total_votes = round(total_votes, 8)) %>%
+  filter(total_votes > 1)
+
 
 print(table(df_check$election_year))
 print(table(df_check$state_name))

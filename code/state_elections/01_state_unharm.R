@@ -191,9 +191,13 @@ state_elections <- out_df
 
 table(out_df$election_year, out_df$state)
 
-# some final transformations
+
+
+
+# some final transformations ----------------------------------------------
 state_elections <- state_elections |>
-  mutate(csu = ifelse(state == '09', cdu, 0)) |>
+  mutate(cdu = ifelse(state == '09', NA, cdu),
+         csu = ifelse(state == '09', cdu, NA)) |>
   # create cdu_csu variable
   rowwise() |>
   mutate(cdu_csu = cdu + csu) |>
@@ -205,6 +209,8 @@ glimpse(state_elections)
 # data for Schleswig Holstein in 2017 is not complete: remove state == 01 & year == 2017
 state_elections <- state_elections |>
   filter(!(state == '01' & election_year == 2017))
+
+
 
 
 ## Save for now

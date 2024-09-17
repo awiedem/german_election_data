@@ -9,7 +9,10 @@ conflicts_prefer(dplyr::lag)
 conflicts_prefer(lubridate::year)
 
 # Load data
-df <- read_rds("output/federal_muni_harm.rds")
+df <- read_rds("data/federal_elections/municipality_level/final/federal_muni_harm.rds")
+
+# Load raw data
+df_raw <- read_rds("data/federal_elections/municipality_level/final/federal_muni_raw.rds")
 
 glimpse(df)
 
@@ -89,6 +92,9 @@ df %>%
     group_by(ags) %>%
     filter(any(abs(linke_pds_ratio) >= 50) & !any(is.infinite(linke_pds_ratio))) %>%
     print(n = 100)
+## Fine: Small towns and Linke becomes suddenly more feasible (from PDA to Linke)
+
+
 
 # Check 4: Large changes in valid votes
 df <- df %>%
@@ -110,6 +116,8 @@ df_check_large_changes %>%
     filter(valid_votes > 1000) %>%
     print(n = 500)
 
+## oftentimes created by mergers; but show up like this in raw (unharmonized data)
+
 # Check 5: How many times does a municipality appear in the data?
 
 df %>%
@@ -124,3 +132,9 @@ df %>%
 
 # does each municipality appear exactly 9 times?
 # No; 10459 municipalities appear 9 times, 326 municipalities appear 8 times, 2 municipalities appear 7 times, and 1 municipality appears 6 times.
+
+df %>%
+  group_by(ags) %>%
+  summarise(n = n()) %>%
+  ungroup() %>%
+  arrange(n)

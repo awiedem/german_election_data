@@ -2342,7 +2342,7 @@ write_rds(df, file = "data/federal_elections/municipality_level/final/federal_mu
 fwrite(df, file = "data/federal_elections/municipality_level/final/federal_muni_unharm.csv")
 
 write_rds <- mailin_df |>
-  write_rds("data/federal_elections/municipality_level/final/mailin_df.rds")
+  write_rds("data/federal_elections/municipality_level/additional/mailin_df.rds")
 
 # Create latex table of mailin_df -----------------------------------------
 
