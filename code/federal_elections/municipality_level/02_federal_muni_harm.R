@@ -9,7 +9,7 @@ options(scipen = 999)
 
 
 # Read crosswalk files ----------------------------------------------------
-cw <- fread("data/crosswalks/ags_crosswalks.csv") |>
+cw <- fread("data/crosswalks/final/ags_crosswalks.csv") |>
   mutate(ags = pad_zero_conditional(ags, 7))
 
 # how many ags_21 for each year?
@@ -30,13 +30,20 @@ cw_info_ever_merged_ags_21 <- cw %>%
 
 # Read unharmonized election data -----------------------------------------
 
-df <- read_rds("output/federal_muni_unharm.rds") |>
+df <- read_rds("data/federal_elections/municipality_level/final/federal_muni_unharm.rds") |>
   # remove population & area that were used for weighting multi mail-in districts
   dplyr::select(-c(pop, area)) |>
   # filter years before 1990: no crosswalks available
   filter(election_year >= 1990) |>
   arrange(ags, election_year)
 
+# Vote shares to votes ----------------------------------------------------
+names(df)
+
+df <- df |>
+  mutate(
+    across(cdu:far_left_w_linke, ~ .x * number_voters)
+  )
 
 # Naive merge with unharmonized election data -----------------------------------
 
@@ -278,7 +285,7 @@ area_pop <- df_cw |>
     ungroup()
 
 # Get population & area for 2021
-ags21 <- read_excel(path = "data/crosswalks/31122021_Auszug_GV.xlsx", sheet = 2) |>
+ags21 <- read_excel(path = "data/crosswalks/raw/31122021_Auszug_GV.xlsx", sheet = 2) |>
     dplyr::select(
         Land = `...3`,
         RB = `...4`,
@@ -481,14 +488,14 @@ df_harm <- df_harm |>
 ## Save this now:
 
 # Write .csv file
-fwrite(df_harm, file = "output/federal_muni_harm.csv")
-write_rds(df_harm, "output/federal_muni_harm.rds")
+fwrite(df_harm, file = "data/federal_elections/municipality_level/final/federal_muni_harm.csv")
+write_rds(df_harm, "data/federal_elections/municipality_level/final/federal_muni_harm.rds")
 
 
 
 # Inspect -----------------------------------------------------------------
 
-df_harm <- read_rds("output/federal_muni_harm.rds") |>
+df_harm <- read_rds("data/federal_elections/municipality_level/final/federal_muni_harm.rds") |>
   arrange(ags, election_year)
 
 glimpse(df_harm)

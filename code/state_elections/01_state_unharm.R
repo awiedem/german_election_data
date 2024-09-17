@@ -5,15 +5,10 @@
 
 rm(list = ls())
 
-# Load
-load("data/state_elections/Elections_Clean.RData")
-
-
-library(wiesbaden)
-library(devtools)
-library(reshape2)
-library(pbapply)
+# install package if not installed
 #install_github('sumtxt/wiesbaden')
+pacman::p_load(wiesbaden, devtools, reshape2, pbapply, lubridate)
+
 
 # Plug in your credentials
 # See wiesbaden package documentation for details
@@ -170,8 +165,6 @@ out_df <- out_df %>%
 
 ## Add year / state
 
-library(lubridate)
-
 ## 
 
 out_df <- out_df %>% 
@@ -216,14 +209,14 @@ state_elections <- state_elections |>
 
 ## Save for now
 
-fwrite(state_elections, 'output/state_unharm.csv')
-write_rds(state_elections, 'output/state_unharm.rds')
+fwrite(state_elections, 'data/state_elections/final/state_unharm.csv')
+write_rds(state_elections, 'data/state_elections/final/state_unharm.rds')
 
 
 
 # Inspect -----------------------------------------------------------------
 
-df <- read_rds('output/state_unharm.rds')
+df <- read_rds('data/state_elections/final/state_unharm.rds')
 
 # what's up with state == 01 in 2017?
 insp <- df |>

@@ -45,7 +45,7 @@ process_election_data <- function(file_path) {
 }
 
 # List of file paths for federal elections from 1953 to 2021
-file_paths <- list.files("data/federal_elections/county_level/raw_data/", 
+file_paths <- list.files("data/federal_elections/county_level/raw/", 
                          pattern = "btw[0-9]+kreis.csv", full.names = TRUE)
 
 # Process all files and store results in a list
@@ -247,16 +247,11 @@ zero_elig |>
 # four counties in east germany in 1994 + 2 counties in east germany in 1998
 
 # inspect
-df94 <- fread("data/federal_elections/county_level/raw_data/btw1994kreis.csv")
+df94 <- fread("data/federal_elections/county_level/raw/btw1994kreis.csv")
 
 df94 |> filter(V2 %in% c("12999", "13999", "14999", "15999")) |>
   select(V2, V3)
 # nicht zuordenbare Briefwahl
-
-
-# Remove these from the dataset
-df <- df |>
-  filter(eligible_voters > 0)
 
 
 # Inspections -------------------------------------------------------------
@@ -275,6 +270,50 @@ df |>
   print(n = Inf)
 
 
+# Party votes to NA if no votes in year -----------------------------------
+
+# Identify parties that did not receive any votes in a given election year
+no_votes_parties <- df %>%
+  group_by(year) %>%
+  summarise(across(cdu:zentrum, ~ all(. == 0), .names = "all_zero_{col}")) %>%
+  pivot_longer(cols = starts_with("all_zero_"), names_to = "party", values_to = "all_zero") %>%
+  mutate(party = sub("all_zero_", "", party)) %>%
+  select(year, party, all_zero)
+
+# Recode 0 vote shares to NA for parties that did not receive any votes in an election year
+df <- df %>%
+  pivot_longer(cols = cdu:zentrum, names_to = "party", values_to = "vote_share") %>%
+  left_join(no_votes_parties, by = c("year", "party")) %>%
+  mutate(vote_share = if_else(all_zero == TRUE & vote_share == 0, NA_real_, vote_share)) %>%
+  select(-all_zero) %>%
+  pivot_wider(names_from = "party", values_from = "vote_share")
+
+glimpse(df)
+
+
+# Vote shares + turnout ---------------------------------------------------
+
+df <- df |>
+  mutate(
+    across(far_right:zentrum, ~ .x / number_voters),
+    turnout = number_voters / eligible_voters
+  )
+
+# turnout > 1?
+df |>
+  filter(turnout > 1)
+# undefined mail in districts from above
+
+# Relocate
+df <- df |>
+  select(ags:invalid_votes, 
+         turnout,
+         cdu:zentrum, 
+         cdu_csu, far_right:far_left_wLinke)
+
+
+
+
 # Write -------------------------------------------------------------------
 
 glimpse(df)
@@ -289,13 +328,13 @@ df <- df |>
 
 names(df)
 
-write_rds(df, "output/federal_cty_unharm.rds")
-fwrite(df, "output/federal_cty_unharm.csv")
+write_rds(df, "data/federal_elections/county_level/final/federal_cty_unharm.rds")
+fwrite(df, "data/federal_elections/county_level/final/federal_cty_unharm.csv")
 
 
 # Inspect -----------------------------------------------------------------
 
-df <- read_rds("output/federal_cty_unharm.rds")
+df <- read_rds("data/federal_elections/county_level/final/federal_cty_unharm.rds")
 
 names(df)
 

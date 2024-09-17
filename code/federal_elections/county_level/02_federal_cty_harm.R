@@ -10,7 +10,7 @@ options(scipen = 999)
 
 
 # Read crosswalk files ----------------------------------------------------
-cw <- fread("data/crosswalks/county_crosswalks.csv") |>
+cw <- fread("data/crosswalks/final/cty_crosswalks.csv") |>
   mutate(county_code = pad_zero_conditional(county_code, 4))
 
 glimpse(cw)
@@ -34,9 +34,17 @@ cw_info_ever_merged_cc_21 |>
 
 # Read unharmonized election data -----------------------------------------
 
-df <- read_rds("output/federal_cty_unharm.rds") |>
+df <- read_rds("data/federal_elections/county_level/final/federal_cty_unharm.rds") |>
   mutate(election_year = year) |>
   filter(election_year >= 1990)
+
+
+# Vote shares to votes ----------------------------------------------------
+
+df <- df |>
+  mutate(
+    across(cdu:far_left_w_linke, ~ .x * number_voters)
+  )
 
 # Naive merge with unharmonized election data -----------------------------------
 
@@ -179,7 +187,7 @@ area_pop <- df_cw |>
   ungroup()
 
 # Get population & area for 2021
-ags21 <- read_excel(path = "data/crosswalks/04_KreiseVorjahr.xlsx", sheet = 2) |>
+ags21 <- read_excel(path = "data/crosswalks/raw/04_KreiseVorjahr.xlsx", sheet = 2) |>
   select(
     ags = `Kreisfreie Städte und Landkreise nach Fläche, Bevölkerung und Bevölkerungsdichte`,
     area = `...5`,
@@ -295,14 +303,14 @@ inspect <- df_harm %>%
 ## Save this now:
 
 # Write .csv file
-fwrite(df_harm, file = "output/federal_cty_harm.csv")
-write_rds(df_harm, file = "output/federal_cty_harm.rds")
+fwrite(df_harm, file = "data/federal_elections/county_level/final/federal_cty_harm.csv")
+write_rds(df_harm, file = "data/federal_elections/county_level/final/federal_cty_harm.rds")
 
 
 
 # Inspect -----------------------------------------------------------------
 
-df_harm <- read_rds("output/federal_cty_harm.rds")
+df_harm <- read_rds("data/federal_elections/county_level/final/federal_cty_harm.rds")
 names(df_harm)
 
 
@@ -319,7 +327,7 @@ insp_harm <- df_harm |>
   filter(!(var %in% c("far_right", "far_left", "far_left_wLinke", "cdu_csu")))
 
 
-inspect_unharm <- read_rds("output/federal_cty_unharm.rds") 
+inspect_unharm <- read_rds("data/federal_elections/county_level/final/federal_cty_unharm.rds") 
 
 # inspect
 names(inspect_unharm)

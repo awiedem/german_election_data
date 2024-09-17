@@ -26,17 +26,17 @@ setwd(here::here("data/municipal_elections"))
 ########## DATA PROCESSING ----
 ######### BAYERN ----
 #### Load election data ----
-bayern_kommunalwahlen_data <- as.data.table(read_excel("raw_data/bayern/bayern_all_parties_copy.xlsx", sheet="master"))
+bayern_kommunalwahlen_data <- as.data.table(read_excel("raw/bayern/bayern_all_parties_copy.xlsx", sheet="master"))
 
-bayern_kommunalwahlen_waehler <- as.data.table(read_excel("raw_data/bayern/bayern_waehler_1996-2020.xlsx", sheet="overall"))
-bayern_kommunalwahlen_gueltige <- as.data.table(read_excel("raw_data/bayern/bayern_gueltige_1996-2020.xlsx", sheet="master"))
+bayern_kommunalwahlen_waehler <- as.data.table(read_excel("raw/bayern/bayern_waehler_1996-2020.xlsx", sheet="overall"))
+bayern_kommunalwahlen_gueltige <- as.data.table(read_excel("raw/bayern/bayern_gueltige_1996-2020.xlsx", sheet="master"))
 
 bayern_kommunalwahlen_data <- merge(bayern_kommunalwahlen_data, bayern_kommunalwahlen_waehler, by="AGS", all.x=TRUE)
 bayern_kommunalwahlen_data <- merge(bayern_kommunalwahlen_data, bayern_kommunalwahlen_gueltige, by="AGS", all.x=TRUE)
 
 
 ###### Bayern 1996 Gemeinderatswahlen ----
-bayern_kommunalwahlen_data_1996 <- data.table(read_excel("raw_data/bayern/bayern_1996new.xlsx", sheet="results"))
+bayern_kommunalwahlen_data_1996 <- data.table(read_excel("raw/bayern/bayern_1996new.xlsx", sheet="results"))
 
 
 #### Recoding ----
@@ -117,7 +117,7 @@ bayern_1996_kommunalwahlen_data_sub$Turnout <- as.numeric(bayern_1996_kommunalwa
 
 
 ###### Bayern 2002 Gemeinderatswahlen ----
-bayern_kommunalwahlen_data_2002 <- data.table(read_excel("raw_data/bayern/bayern_2002new.xlsx", sheet="results"))
+bayern_kommunalwahlen_data_2002 <- data.table(read_excel("raw/bayern/bayern_2002new.xlsx", sheet="results"))
 
 #### Recoding ----
 # Create new dataframe ----
@@ -196,7 +196,7 @@ bayern_2002_kommunalwahlen_data_sub <-
 bayern_2002_kommunalwahlen_data_sub$Turnout <- as.numeric(bayern_2002_kommunalwahlen_data_sub$Wähler) / as.numeric(bayern_2002_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
 
 ###### Bayern 2008 Gemeinderatswahlen ----
-bayern_kommunalwahlen_data_2008 <- data.table(read_excel("raw_data/bayern/bayern_2008new.xlsx", sheet="results"))
+bayern_kommunalwahlen_data_2008 <- data.table(read_excel("raw/bayern/bayern_2008new.xlsx", sheet="results"))
 
 #### Recoding ----
 # Create new dataframe ----
@@ -275,7 +275,7 @@ bayern_2008_kommunalwahlen_data_sub <-
 bayern_2008_kommunalwahlen_data_sub$Turnout <- as.numeric(bayern_2008_kommunalwahlen_data_sub$Wähler) / as.numeric(bayern_2008_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
 
 ###### Bayern 2014 Gemeinderatswahlen ----
-bayern_kommunalwahlen_data_2014 <- data.table(read_excel("raw_data/bayern/bayern_2014new.xlsx", sheet="results"))
+bayern_kommunalwahlen_data_2014 <- data.table(read_excel("raw/bayern/bayern_2014new.xlsx", sheet="results"))
 
 #### Recoding ----
 # Create new dataframe ----
@@ -354,7 +354,7 @@ bayern_2014_kommunalwahlen_data_sub <-
 bayern_2014_kommunalwahlen_data_sub$Turnout <- as.numeric(bayern_2014_kommunalwahlen_data_sub$Wähler) / as.numeric(bayern_2014_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
 
 ###### Bayern 2020 Gemeinderatswahlen ----
-bayern_kommunalwahlen_data_2020 <- data.table(read_excel("raw_data/bayern/bayern_2020new.xlsx", sheet="results"))
+bayern_kommunalwahlen_data_2020 <- data.table(read_excel("raw/bayern/bayern_2020new.xlsx", sheet="results"))
 
 #### Recoding ----
 # Create new dataframe ----
@@ -465,10 +465,10 @@ bayern_kommunalwahlen <- bayern_kommunalwahlen %>%
 ######### THUERINGEN ----
 ###### Thueringen 1994 Gemeinderatswahlen ----
 #### Load election data ----
-thueringen_1994_kommunalwahlen_data <- as.data.table(read_csv("raw_data/thueringen/thueringen_1999.csv"))
+thueringen_1994_kommunalwahlen_data <- as.data.table(read_csv("raw/thueringen/thueringen_1999.csv"))
 
-thueringen_1994_kommunalwahlen_data <- as.data.table(read_excel("raw_data/thueringen/thueringen_1994.xlsx", sheet="thueringen_1994"))
-thueringen_1994_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/thueringen/thueringen_1994_sitze.xlsx", sheet="thueringen_1994_sitze"))
+thueringen_1994_kommunalwahlen_data <- as.data.table(read_excel("raw/thueringen/thueringen_1994.xlsx", sheet="thueringen_1994"))
+thueringen_1994_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw/thueringen/thueringen_1994_sitze.xlsx", sheet="thueringen_1994_sitze"))
 names(thueringen_1994_kommunalwahlen_data_sitze) <- str_c(names(thueringen_1994_kommunalwahlen_data_sitze), "_sitze", sep="")
 
 
@@ -575,8 +575,8 @@ thueringen_1994_kommunalwahlen_data_sub$Turnout <- as.numeric(thueringen_1994_ko
 
 ###### Thueringen 1999 Gemeinderatswahlen ----
 #### Load election data ----
-thueringen_1999_kommunalwahlen_data <- as.data.table(read_excel("raw_data/thueringen/thueringen_1999.xlsx", sheet="thueringen_1999"))
-thueringen_1999_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/thueringen/thueringen_1999_sitze.xlsx", sheet="thueringen_1999_sitze"))
+thueringen_1999_kommunalwahlen_data <- as.data.table(read_excel("raw/thueringen/thueringen_1999.xlsx", sheet="thueringen_1999"))
+thueringen_1999_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw/thueringen/thueringen_1999_sitze.xlsx", sheet="thueringen_1999_sitze"))
 names(thueringen_1999_kommunalwahlen_data_sitze) <- str_c(names(thueringen_1999_kommunalwahlen_data_sitze), "_sitze", sep="")
 
 
@@ -684,8 +684,8 @@ thueringen_1999_kommunalwahlen_data_sub$Turnout <- as.numeric(thueringen_1999_ko
 ###### Thueringen 2004 Gemeinderatswahlen ----
 #### Load election data ----
 
-thueringen_2004_kommunalwahlen_data <- as.data.table(read_excel("raw_data/thueringen/thueringen_2004.xlsx", sheet="thueringen_2004"))
-thueringen_2004_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/thueringen/thueringen_2004_sitze.xlsx", sheet="thueringen_2004_sitze"))
+thueringen_2004_kommunalwahlen_data <- as.data.table(read_excel("raw/thueringen/thueringen_2004.xlsx", sheet="thueringen_2004"))
+thueringen_2004_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw/thueringen/thueringen_2004_sitze.xlsx", sheet="thueringen_2004_sitze"))
 names(thueringen_2004_kommunalwahlen_data_sitze) <- str_c(names(thueringen_2004_kommunalwahlen_data_sitze), "_sitze", sep="")
 
 
@@ -794,8 +794,8 @@ thueringen_2004_kommunalwahlen_data_sub$Turnout <- as.numeric(thueringen_2004_ko
 ###### Thueringen 2009 Gemeinderatswahlen ----
 #### Load election data ----
 
-thueringen_2009_kommunalwahlen_data <- as.data.table(read_excel("raw_data/thueringen/thueringen_2009.xlsx", sheet="thueringen_2009"))
-thueringen_2009_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/thueringen/thueringen_2009_sitze.xlsx", sheet="thueringen_2009_sitze"))
+thueringen_2009_kommunalwahlen_data <- as.data.table(read_excel("raw/thueringen/thueringen_2009.xlsx", sheet="thueringen_2009"))
+thueringen_2009_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw/thueringen/thueringen_2009_sitze.xlsx", sheet="thueringen_2009_sitze"))
 names(thueringen_2009_kommunalwahlen_data_sitze) <- str_c(names(thueringen_2009_kommunalwahlen_data_sitze), "_sitze", sep="")
 
 
@@ -904,8 +904,8 @@ thueringen_2009_kommunalwahlen_data_sub$Turnout <- as.numeric(thueringen_2009_ko
 ###### Thueringen 2014 Gemeinderatswahlen ----
 #### Load election data ----
 
-thueringen_2014_kommunalwahlen_data <- as.data.table(read_excel("raw_data/thueringen/thueringen_2014.xlsx", sheet="thueringen_2014"))
-thueringen_2014_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/thueringen/thueringen_2014_sitze.xlsx", sheet="thueringen_2014_sitze"))
+thueringen_2014_kommunalwahlen_data <- as.data.table(read_excel("raw/thueringen/thueringen_2014.xlsx", sheet="thueringen_2014"))
+thueringen_2014_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw/thueringen/thueringen_2014_sitze.xlsx", sheet="thueringen_2014_sitze"))
 names(thueringen_2014_kommunalwahlen_data_sitze) <- str_c(names(thueringen_2014_kommunalwahlen_data_sitze), "_sitze", sep="")
 
 
@@ -1013,8 +1013,8 @@ thueringen_2014_kommunalwahlen_data_sub$Turnout <- as.numeric(thueringen_2014_ko
 ###### Thueringen 2019 Gemeinderatswahlen ----
 #### Load election data ----
 
-thueringen_2019_kommunalwahlen_data <- as.data.table(read_excel("raw_data/thueringen/thueringen_2019.xlsx", sheet="thueringen_2019"))
-thueringen_2019_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/thueringen/thueringen_2019_sitze.xlsx", sheet="thueringen_2019_sitze"))
+thueringen_2019_kommunalwahlen_data <- as.data.table(read_excel("raw/thueringen/thueringen_2019.xlsx", sheet="thueringen_2019"))
+thueringen_2019_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw/thueringen/thueringen_2019_sitze.xlsx", sheet="thueringen_2019_sitze"))
 names(thueringen_2019_kommunalwahlen_data_sitze) <- str_c(names(thueringen_2019_kommunalwahlen_data_sitze), "_sitze", sep="")
 
 
@@ -1145,7 +1145,7 @@ thueringen_kommunalwahlen$AGS_8dig <- paste("160", thueringen_kommunalwahlen$AGS
 ######### HAMBURG ----
 ###### Hamburg 2001 Buergerschaftswahl ----
 #### Load election data ----
-hamburg_2001_buergerschaftswahl_data <- as.data.table(read_excel("raw_data/hamburg/hamburg_2001.xls", sheet="summary"))
+hamburg_2001_buergerschaftswahl_data <- as.data.table(read_excel("raw/hamburg/hamburg_2001.xls", sheet="summary"))
 
 #### Delete white space ----
 names(hamburg_2001_buergerschaftswahl_data) <-  str_replace_all(names(hamburg_2001_buergerschaftswahl_data), fixed(" "), "")
@@ -1224,7 +1224,7 @@ hamburg_2001_buergerschaftswahl_data_sub$Turnout <- hamburg_2001_buergerschaftsw
 ###### Hamburg 2004 Buergerschaftswahl ----
 #### Load election data ----
 
-hamburg_2004_buergerschaftswahl_data <- as.data.table(read_excel("raw_data/hamburg/hamburg_2004.xls", sheet="summary"))
+hamburg_2004_buergerschaftswahl_data <- as.data.table(read_excel("raw/hamburg/hamburg_2004.xls", sheet="summary"))
 
 #### Delete white space ----
 names(hamburg_2004_buergerschaftswahl_data) <-  str_replace_all(names(hamburg_2004_buergerschaftswahl_data), fixed(" "), "")
@@ -1301,7 +1301,7 @@ hamburg_2004_buergerschaftswahl_data_sub$Turnout <- hamburg_2004_buergerschaftsw
 ###### Hamburg 2008 Buergerschaftswahl ----
 #### Load election data ----
 
-hamburg_2008_buergerschaftswahl_data <- as.data.table(read_excel("raw_data/hamburg/hamburg_2008.xls", sheet="summary"))
+hamburg_2008_buergerschaftswahl_data <- as.data.table(read_excel("raw/hamburg/hamburg_2008.xls", sheet="summary"))
 
 #### Delete white space ----
 names(hamburg_2008_buergerschaftswahl_data) <-  str_replace_all(names(hamburg_2008_buergerschaftswahl_data), fixed(" "), "")
@@ -1378,7 +1378,7 @@ hamburg_2008_buergerschaftswahl_data_sub$Turnout <- hamburg_2008_buergerschaftsw
 ###### Hamburg 2011 Buergerschaftswahl ----
 #### Load election data ----
 
-hamburg_2011_buergerschaftswahl_data <- as.data.table(read_excel("raw_data/hamburg/hamburg_2011.xls", sheet="summary"))
+hamburg_2011_buergerschaftswahl_data <- as.data.table(read_excel("raw/hamburg/hamburg_2011.xls", sheet="summary"))
 
 #### Delete white space ----
 names(hamburg_2011_buergerschaftswahl_data) <-  str_replace_all(names(hamburg_2011_buergerschaftswahl_data), fixed(" "), "")
@@ -1455,7 +1455,7 @@ hamburg_2011_buergerschaftswahl_data_sub$Turnout <- hamburg_2011_buergerschaftsw
 ###### Hamburg 2015 Buergerschaftswahl ----
 #### Load election data ----
 
-hamburg_2015_buergerschaftswahl_data <- as.data.table(read_excel("raw_data/hamburg/hamburg_2015.xlsx", sheet="summary"))
+hamburg_2015_buergerschaftswahl_data <- as.data.table(read_excel("raw/hamburg/hamburg_2015.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(hamburg_2015_buergerschaftswahl_data) <-  str_replace_all(names(hamburg_2015_buergerschaftswahl_data), fixed(" "), "")
@@ -1532,7 +1532,7 @@ hamburg_2015_buergerschaftswahl_data_sub$Turnout <- hamburg_2015_buergerschaftsw
 ###### Hamburg 2020 Buergerschaftswahl ----
 #### Load election data ----
 
-hamburg_2020_buergerschaftswahl_data <- as.data.table(read_excel("raw_data/hamburg/hamburg_2020.xlsx", sheet="summary"))
+hamburg_2020_buergerschaftswahl_data <- as.data.table(read_excel("raw/hamburg/hamburg_2020.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(hamburg_2020_buergerschaftswahl_data) <-  str_replace_all(names(hamburg_2020_buergerschaftswahl_data), fixed(" "), "")
@@ -1622,7 +1622,7 @@ hamburg_kommunalwahlen[hamburg_kommunalwahlen == "-"] <- NA
 ######### BERLIN ----
 ###### Berlin 1990 Kommunalwahlen Zweitstimmen ----
 #### Load election data ----
-berlin_1990_kommunalwahlen_data <- as.data.table(read_excel("raw_data/berlin/berlin_1990.xlsx", sheet="Zweitstimme"))
+berlin_1990_kommunalwahlen_data <- as.data.table(read_excel("raw/berlin/berlin_1990.xlsx", sheet="Zweitstimme"))
 names(berlin_1990_kommunalwahlen_data)
 
 #### Recoding ----
@@ -1694,7 +1694,7 @@ berlin_1990_kommunalwahlen_data_sub_zweitstimmen$Turnout <- as.numeric(berlin_19
 
 ###### Berlin 1995 Kommunalwahlen Erststimmen ----
 #### Load election data ----
-berlin_1995_kommunalwahlen_data <- as.data.table(read_excel("raw_data/berlin/berlin_1995.xlsx", sheet="Erststimme"))
+berlin_1995_kommunalwahlen_data <- as.data.table(read_excel("raw/berlin/berlin_1995.xlsx", sheet="Erststimme"))
 names(berlin_1995_kommunalwahlen_data)
 
 
@@ -1770,7 +1770,7 @@ berlin_1995_kommunalwahlen_data_sub_erststimmen$Turnout <- as.numeric(berlin_199
 
 ###### Berlin 1995 Kommunalwahlen Zweitstimmen ----
 #### Load election data ----
-berlin_1995_kommunalwahlen_data <- as.data.table(read_excel("raw_data/berlin/berlin_1995.xlsx", sheet="Zweitstimme"))
+berlin_1995_kommunalwahlen_data <- as.data.table(read_excel("raw/berlin/berlin_1995.xlsx", sheet="Zweitstimme"))
 names(berlin_1995_kommunalwahlen_data)
 
 
@@ -1846,7 +1846,7 @@ berlin_1995_kommunalwahlen_data_sub_zweitstimmen$Turnout <- as.numeric(berlin_19
 
 ###### Berlin 1999 Kommunalwahlen Erststimmen ----
 #### Load election data ----
-berlin_1999_kommunalwahlen_data <- as.data.table(read_excel("raw_data/berlin/berlin_1999.xlsx", sheet="Erststimme"))
+berlin_1999_kommunalwahlen_data <- as.data.table(read_excel("raw/berlin/berlin_1999.xlsx", sheet="Erststimme"))
 names(berlin_1999_kommunalwahlen_data)
 
 
@@ -1922,7 +1922,7 @@ berlin_1999_kommunalwahlen_data_sub_erststimmen$Turnout <- as.numeric(berlin_199
 
 ###### Berlin 1999 Kommunalwahlen Zweitstimmen ----
 #### Load election data ----
-berlin_1999_kommunalwahlen_data <- as.data.table(read_excel("raw_data/berlin/berlin_1999.xlsx", sheet="Zweitstimme"))
+berlin_1999_kommunalwahlen_data <- as.data.table(read_excel("raw/berlin/berlin_1999.xlsx", sheet="Zweitstimme"))
 names(berlin_1999_kommunalwahlen_data)
 
 
@@ -1998,7 +1998,7 @@ berlin_1999_kommunalwahlen_data_sub_zweitstimmen$Turnout <- as.numeric(berlin_19
 
 ###### Berlin 2001 Kommunalwahlen Erststimmen ----
 #### Load election data ----
-berlin_2001_kommunalwahlen_data <- as.data.table(read_excel("raw_data/berlin/berlin_2001.xlsx", sheet="Erststimme"))
+berlin_2001_kommunalwahlen_data <- as.data.table(read_excel("raw/berlin/berlin_2001.xlsx", sheet="Erststimme"))
 names(berlin_2001_kommunalwahlen_data)
 
 
@@ -2074,7 +2074,7 @@ berlin_2001_kommunalwahlen_data_sub_erststimmen$Turnout <- as.numeric(berlin_200
 
 ###### Berlin 2001 Kommunalwahlen Zweitstimmen ----
 #### Load election data ----
-berlin_2001_kommunalwahlen_data <- as.data.table(read_excel("raw_data/berlin/berlin_2001.xlsx", sheet="Zweitstimme"))
+berlin_2001_kommunalwahlen_data <- as.data.table(read_excel("raw/berlin/berlin_2001.xlsx", sheet="Zweitstimme"))
 names(berlin_2001_kommunalwahlen_data)
 
 
@@ -2150,7 +2150,7 @@ berlin_2001_kommunalwahlen_data_sub_zweitstimmen$Turnout <- as.numeric(berlin_20
 
 ###### Berlin 2006 Kommunalwahlen Erststimmen ----
 #### Load election data ----
-berlin_2006_kommunalwahlen_data <- as.data.table(read_excel("raw_data/berlin/berlin_2006.xlsx", sheet="Erststimme"))
+berlin_2006_kommunalwahlen_data <- as.data.table(read_excel("raw/berlin/berlin_2006.xlsx", sheet="Erststimme"))
 names(berlin_2006_kommunalwahlen_data)
 
 
@@ -2226,7 +2226,7 @@ berlin_2006_kommunalwahlen_data_sub_erststimmen$Turnout <- as.numeric(berlin_200
 
 ###### Berlin 2006 Kommunalwahlen Zweitstimmen ----
 #### Load election data ----
-berlin_2006_kommunalwahlen_data <- as.data.table(read_excel("raw_data/berlin/berlin_2006.xlsx", sheet="Zweitstimme"))
+berlin_2006_kommunalwahlen_data <- as.data.table(read_excel("raw/berlin/berlin_2006.xlsx", sheet="Zweitstimme"))
 names(berlin_2006_kommunalwahlen_data)
 
 
@@ -2302,7 +2302,7 @@ berlin_2006_kommunalwahlen_data_sub_zweitstimmen$Turnout <- as.numeric(berlin_20
 
 ###### Berlin 2011 Kommunalwahlen Erststimmen ----
 #### Load election data ----
-berlin_2011_kommunalwahlen_data <- as.data.table(read_excel("raw_data/berlin/berlin_2011.xlsx", sheet="Erststimme"))
+berlin_2011_kommunalwahlen_data <- as.data.table(read_excel("raw/berlin/berlin_2011.xlsx", sheet="Erststimme"))
 names(berlin_2011_kommunalwahlen_data)
 
 
@@ -2378,7 +2378,7 @@ berlin_2011_kommunalwahlen_data_sub_erststimmen$Turnout <- as.numeric(berlin_201
 
 ###### Berlin 2011 Kommunalwahlen Zweitstimmen ----
 #### Load election data ----
-berlin_2011_kommunalwahlen_data <- as.data.table(read_excel("raw_data/berlin/berlin_2011.xlsx", sheet="Zweitstimme"))
+berlin_2011_kommunalwahlen_data <- as.data.table(read_excel("raw/berlin/berlin_2011.xlsx", sheet="Zweitstimme"))
 names(berlin_2011_kommunalwahlen_data)
 
 
@@ -2454,7 +2454,7 @@ berlin_2011_kommunalwahlen_data_sub_zweitstimmen$Turnout <- as.numeric(berlin_20
 
 ###### Berlin 2016 Kommunalwahlen Erststimmen ----
 #### Load election data ----
-berlin_2016_kommunalwahlen_data <- as.data.table(read_excel("raw_data/berlin/berlin_2016.xlsx", sheet="Erststimme"))
+berlin_2016_kommunalwahlen_data <- as.data.table(read_excel("raw/berlin/berlin_2016.xlsx", sheet="Erststimme"))
 names(berlin_2016_kommunalwahlen_data)
 
 
@@ -2530,7 +2530,7 @@ berlin_2016_kommunalwahlen_data_sub_erststimmen$Turnout <- as.numeric(berlin_201
 
 ###### Berlin 2016 Kommunalwahlen Zweitstimmen ----
 #### Load election data ----
-berlin_2016_kommunalwahlen_data <- as.data.table(read_excel("raw_data/berlin/berlin_2016.xlsx", sheet="Zweitstimme"))
+berlin_2016_kommunalwahlen_data <- as.data.table(read_excel("raw/berlin/berlin_2016.xlsx", sheet="Zweitstimme"))
 names(berlin_2016_kommunalwahlen_data)
 
 
@@ -2606,7 +2606,7 @@ berlin_2016_kommunalwahlen_data_sub_zweitstimmen$Turnout <- as.numeric(berlin_20
 
 ###### Berlin 2021 Kommunalwahlen Erststimmen ----
 #### Load election data ----
-berlin_2021_kommunalwahlen_data <- as.data.table(read_excel("raw_data/berlin/berlin_2021.xlsx", sheet="AGH_W1"))
+berlin_2021_kommunalwahlen_data <- as.data.table(read_excel("raw/berlin/berlin_2021.xlsx", sheet="AGH_W1"))
 names(berlin_2021_kommunalwahlen_data)
 
 
@@ -2682,7 +2682,7 @@ berlin_2021_kommunalwahlen_data_sub_erststimmen$Turnout <- as.numeric(berlin_202
 
 ###### Berlin 2021 Kommunalwahlen Zweitstimmen ----
 #### Load election data ----
-berlin_2021_kommunalwahlen_data <- as.data.table(read_excel("raw_data/berlin/berlin_2021.xlsx", sheet="AGH_W2"))
+berlin_2021_kommunalwahlen_data <- as.data.table(read_excel("raw/berlin/berlin_2021.xlsx", sheet="AGH_W2"))
 names(berlin_2021_kommunalwahlen_data)
 
 
@@ -2780,8 +2780,8 @@ berlin_kommunalwahlen[berlin_kommunalwahlen == "-"] <- NA
 ######### NRW ----
 ###### NRW 1994 Kommunalwahlen ----
 #### Load election data ----
-nrw_1994_kommunalwahlen_data <- as.data.table(read_excel("raw_data/nrw/nrw_1994.xlsx", sheet="summary"))
-nrw_1994_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/nrw/nrw_1994_sitze.xlsx", sheet="summary"))
+nrw_1994_kommunalwahlen_data <- as.data.table(read_excel("raw/nrw/nrw_1994.xlsx", sheet="summary"))
+nrw_1994_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw/nrw/nrw_1994_sitze.xlsx", sheet="summary"))
 
 # Merge Stimmen and Sitze
 nrw_1994_kommunalwahlen_data <- merge(nrw_1994_kommunalwahlen_data, nrw_1994_kommunalwahlen_data_sitze, by.x="Bezirksnummer", by.y="Bezirksnummer")
@@ -2867,8 +2867,8 @@ nrw_1994_kommunalwahlen_data_sub$Turnout <- as.numeric(nrw_1994_kommunalwahlen_d
 
 ###### NRW 1999 Kommunalwahlen ----
 #### Load election data ----
-nrw_1999_kommunalwahlen_data <- as.data.table(read_excel("raw_data/nrw/nrw_1999.xlsx", sheet="summary"))
-nrw_1999_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/nrw/nrw_1999_sitze.xlsx", sheet="summary"))
+nrw_1999_kommunalwahlen_data <- as.data.table(read_excel("raw/nrw/nrw_1999.xlsx", sheet="summary"))
+nrw_1999_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw/nrw/nrw_1999_sitze.xlsx", sheet="summary"))
 
 # Merge Stimmen and Sitze
 nrw_1999_kommunalwahlen_data <- merge(nrw_1999_kommunalwahlen_data, nrw_1999_kommunalwahlen_data_sitze, by.x="Bezirksnummer", by.y="Bezirksnummer")
@@ -2954,8 +2954,8 @@ nrw_1999_kommunalwahlen_data_sub$Turnout <- as.numeric(nrw_1999_kommunalwahlen_d
 
 ###### NRW 2004 Kommunalwahlen ----
 #### Load election data ----
-nrw_2004_kommunalwahlen_data <- as.data.table(read_excel("raw_data/nrw/nrw_2004.xlsx", sheet="summary"))
-nrw_2004_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/nrw/nrw_2004_sitze.xlsx", sheet="summary"))
+nrw_2004_kommunalwahlen_data <- as.data.table(read_excel("raw/nrw/nrw_2004.xlsx", sheet="summary"))
+nrw_2004_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw/nrw/nrw_2004_sitze.xlsx", sheet="summary"))
 
 # Merge Stimmen and Sitze
 nrw_2004_kommunalwahlen_data <- merge(nrw_2004_kommunalwahlen_data, nrw_2004_kommunalwahlen_data_sitze, by.x="Bezirksnummer", by.y="Bezirksnummer")
@@ -3041,9 +3041,9 @@ nrw_2004_kommunalwahlen_data_sub$Turnout <- as.numeric(nrw_2004_kommunalwahlen_d
 
 ###### NRW 2009 Kommunalwahlen ----
 #### Load election data ----
-nrw_2009_kommunalwahlen_data <- as.data.table(read_excel("raw_data/nrw/nrw_2009.xlsx", sheet="summary"))
+nrw_2009_kommunalwahlen_data <- as.data.table(read_excel("raw/nrw/nrw_2009.xlsx", sheet="summary"))
 nrw_2009_kommunalwahlen_data$Bezirksnummer <- as.numeric(nrw_2009_kommunalwahlen_data$Bezirksnummer)
-nrw_2009_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/nrw/nrw_2009_sitze.xlsx", sheet="summary"))
+nrw_2009_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw/nrw/nrw_2009_sitze.xlsx", sheet="summary"))
 
 # Merge Stimmen and Sitze
 nrw_2009_kommunalwahlen_data <- merge(nrw_2009_kommunalwahlen_data, nrw_2009_kommunalwahlen_data_sitze, by.x="Bezirksnummer", by.y="Bezirksnummer")
@@ -3128,9 +3128,9 @@ nrw_2009_kommunalwahlen_data_sub$Turnout <- as.numeric(nrw_2009_kommunalwahlen_d
 
 ###### NRW 2014 Kommunalwahlen ----
 #### Load election data ----
-nrw_2014_kommunalwahlen_data <- as.data.table(read_excel("raw_data/nrw/nrw_2014.xlsx", sheet="summary"))
+nrw_2014_kommunalwahlen_data <- as.data.table(read_excel("raw/nrw/nrw_2014.xlsx", sheet="summary"))
 nrw_2014_kommunalwahlen_data$Bezirksnummer <- as.numeric(nrw_2014_kommunalwahlen_data$Bezirksnummer)
-nrw_2014_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/nrw/nrw_2014_sitze.xlsx", sheet="summary"))
+nrw_2014_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw/nrw/nrw_2014_sitze.xlsx", sheet="summary"))
 
 # Merge Stimmen and Sitze
 nrw_2014_kommunalwahlen_data <- merge(nrw_2014_kommunalwahlen_data, nrw_2014_kommunalwahlen_data_sitze, by.x="Bezirksnummer", by.y="Bezirksnummer")
@@ -3216,9 +3216,9 @@ nrw_2014_kommunalwahlen_data_sub$Turnout <- as.numeric(nrw_2014_kommunalwahlen_d
 
 ###### NRW 2020 Kommunalwahlen ----
 #### Load election data ----
-nrw_2020_kommunalwahlen_data <- as.data.table(read_excel("raw_data/nrw/nrw_2020.xlsx", sheet="summary"))
+nrw_2020_kommunalwahlen_data <- as.data.table(read_excel("raw/nrw/nrw_2020.xlsx", sheet="summary"))
 nrw_2020_kommunalwahlen_data$Bezirksnummer <- as.numeric(nrw_2020_kommunalwahlen_data$Bezirksnummer)
-nrw_2020_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw_data/nrw/nrw_2020_sitze.xlsx", sheet="summary"))
+nrw_2020_kommunalwahlen_data_sitze <- as.data.table(read_excel("raw/nrw/nrw_2020_sitze.xlsx", sheet="summary"))
 
 # Merge Stimmen and Sitze
 nrw_2020_kommunalwahlen_data <- merge(nrw_2020_kommunalwahlen_data, nrw_2020_kommunalwahlen_data_sitze, by.x="Bezirksnummer", by.y="Bezirksnummer")
@@ -3306,7 +3306,7 @@ nrw_2020_kommunalwahlen_data_sub$AGS_8dig <- paste("5", nrw_2020_kommunalwahlen_
 
 ###### NRW Kommunalwahlen for kreisfreie Städte ----
 #### Load election data ----
-nrw_kreisfreie_kommunalwahlen_data <- as.data.table(read_excel("raw_data/nrw/nrw_kreisfreie_staedte.xlsx", sheet="summary"))
+nrw_kreisfreie_kommunalwahlen_data <- as.data.table(read_excel("raw/nrw/nrw_kreisfreie_staedte.xlsx", sheet="summary"))
 
 
 #### Recoding ----
@@ -3433,7 +3433,7 @@ nrw_kommunalwahlen <- nrw_kommunalwahlen %>%
 ######### SAARLAND ----
 ###### Saarland  Kommunalwahlen ----
 #### Load election data ----
-saarland_kommunalwahlen_data <- as.data.table(read_excel("raw_data/saarland/saarland_grw.xlsx", sheet="summary"))
+saarland_kommunalwahlen_data <- as.data.table(read_excel("raw/saarland/saarland_grw.xlsx", sheet="summary"))
 
 names(saarland_kommunalwahlen_data)
 
@@ -3526,7 +3526,7 @@ saarland_kommunalwahlen_data_sub <- saarland_kommunalwahlen_data_sub[
 ###### Sachsen-Anhalt 1999 Kommunalwahlen ----
 #### Load election data ----
 
-sachsen_anhalt_1999_kommunalwahlen_data <- as.data.table(read_csv2("raw_data/sachsen_anhalt/sachsen-anhalt_1999.csv"))
+sachsen_anhalt_1999_kommunalwahlen_data <- as.data.table(read_csv2("raw/sachsen_anhalt/sachsen-anhalt_1999.csv"))
 
 #### Delete white space ----
 names(sachsen_anhalt_1999_kommunalwahlen_data) <-  str_replace_all(names(sachsen_anhalt_1999_kommunalwahlen_data), fixed(" "), "")
@@ -3611,7 +3611,7 @@ sachsen_anhalt_1999_kommunalwahlen_data_sub
 ###### Sachsen-Anhalt 2004 Kommunalwahlen ----
 #### Load election data ----
 
-sachsen_anhalt_2004_kommunalwahlen_data <- as.data.table(read_csv2("raw_data/sachsen_anhalt/sachsen-anhalt_2004.csv"))
+sachsen_anhalt_2004_kommunalwahlen_data <- as.data.table(read_csv2("raw/sachsen_anhalt/sachsen-anhalt_2004.csv"))
 
 #### Delete white space ----
 names(sachsen_anhalt_2004_kommunalwahlen_data) <-  str_replace_all(names(sachsen_anhalt_2004_kommunalwahlen_data), fixed(" "), "")
@@ -3694,7 +3694,7 @@ sachsen_anhalt_2004_kommunalwahlen_data_sub <- sachsen_anhalt_2004_kommunalwahle
 ###### Sachsen-Anhalt 2007 Kommunalwahlen ----
 #### Load election data ----
 
-sachsen_anhalt_2007_kommunalwahlen_data <- as.data.table(read_csv2("raw_data/sachsen_anhalt/sachsen-anhalt_2007.csv"))
+sachsen_anhalt_2007_kommunalwahlen_data <- as.data.table(read_csv2("raw/sachsen_anhalt/sachsen-anhalt_2007.csv"))
 
 #### Delete white space ----
 names(sachsen_anhalt_2007_kommunalwahlen_data) <-  str_replace_all(names(sachsen_anhalt_2007_kommunalwahlen_data), fixed(" "), "")
@@ -3775,7 +3775,7 @@ table(sachsen_anhalt_2007_kommunalwahlen_data_sub$Gebietsname)
 ###### Sachsen-Anhalt 2009 Kommunalwahlen ----
 #### Load election data ----
 
-sachsen_anhalt_2009_kommunalwahlen_data <- as.data.table(read_csv2("raw_data/sachsen_anhalt/sachsen-anhalt_2009.csv"))
+sachsen_anhalt_2009_kommunalwahlen_data <- as.data.table(read_csv2("raw/sachsen_anhalt/sachsen-anhalt_2009.csv"))
 
 #### Delete white space ----
 names(sachsen_anhalt_2009_kommunalwahlen_data) <-  str_replace_all(names(sachsen_anhalt_2009_kommunalwahlen_data), fixed(" "), "")
@@ -3886,7 +3886,7 @@ sachsen_anhalt_2009_kommunalwahlen_data_sub <- sachsen_anhalt_2009_kommunalwahle
 ###### Sachsen-Anhalt 2014 Kommunalwahlen ----
 #### Load election data ----
 
-sachsen_anhalt_2014_kommunalwahlen_data <- as.data.table(read_csv2("raw_data/sachsen_anhalt/sachsen-anhalt_2014.csv"))
+sachsen_anhalt_2014_kommunalwahlen_data <- as.data.table(read_csv2("raw/sachsen_anhalt/sachsen-anhalt_2014.csv"))
 
 #### Delete white space ----
 names(sachsen_anhalt_2014_kommunalwahlen_data) <-  str_replace_all(names(sachsen_anhalt_2014_kommunalwahlen_data), fixed(" "), "")
@@ -3965,7 +3965,7 @@ sachsen_anhalt_2014_kommunalwahlen_data_sub$Turnout <- sachsen_anhalt_2014_kommu
 ###### Sachsen-Anhalt 2019 Kommunalwahlen ----
 #### Load election data ----
 
-sachsen_anhalt_2019_kommunalwahlen_data <- as.data.table(read_csv2("raw_data/sachsen_anhalt/sachsen-anhalt_2019.csv"))
+sachsen_anhalt_2019_kommunalwahlen_data <- as.data.table(read_csv2("raw/sachsen_anhalt/sachsen-anhalt_2019.csv"))
 
 #### Delete white space ----
 names(sachsen_anhalt_2019_kommunalwahlen_data) <-  str_replace_all(names(sachsen_anhalt_2019_kommunalwahlen_data), fixed(" "), "")
@@ -4067,7 +4067,7 @@ sachsen_anhalt_kommunalwahlen <- sachsen_anhalt_kommunalwahlen %>%
 ###### Baden-Wuerttemberg 1989 Gemeinderatswahlen ----
 #### Load election data ----
 
-baden_wuerttemberg_1989_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/baden_wuerttemberg/baden_wuerttemberg_1989.xlsx", sheet="summary"))
+baden_wuerttemberg_1989_gemeinderatswahlen_data <- as.data.table(read_excel("raw/baden_wuerttemberg/baden_wuerttemberg_1989.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(baden_wuerttemberg_1989_gemeinderatswahlen_data) <-  str_replace_all(names(baden_wuerttemberg_1989_gemeinderatswahlen_data), fixed(" "), "")
@@ -4146,7 +4146,7 @@ baden_wuerttemberg_1989_gemeinderatswahlen_data_sub$Turnout <- baden_wuerttember
 ###### Baden-Wuerttemberg 1994 Gemeinderatswahlen ----
 #### Load election data ----
 
-baden_wuerttemberg_1994_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/baden_wuerttemberg/baden_wuerttemberg_1994.xlsx", sheet="summary"))
+baden_wuerttemberg_1994_gemeinderatswahlen_data <- as.data.table(read_excel("raw/baden_wuerttemberg/baden_wuerttemberg_1994.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(baden_wuerttemberg_1994_gemeinderatswahlen_data) <-  str_replace_all(names(baden_wuerttemberg_1994_gemeinderatswahlen_data), fixed(" "), "")
@@ -4225,7 +4225,7 @@ baden_wuerttemberg_1994_gemeinderatswahlen_data_sub$Turnout <- baden_wuerttember
 ###### Baden-Wuerttemberg 1999 Gemeinderatswahlen ----
 #### Load election data ----
 
-baden_wuerttemberg_1999_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/baden_wuerttemberg/baden_wuerttemberg_1999.xlsx", sheet="summary"))
+baden_wuerttemberg_1999_gemeinderatswahlen_data <- as.data.table(read_excel("raw/baden_wuerttemberg/baden_wuerttemberg_1999.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(baden_wuerttemberg_1999_gemeinderatswahlen_data) <-  str_replace_all(names(baden_wuerttemberg_1999_gemeinderatswahlen_data), fixed(" "), "")
@@ -4304,7 +4304,7 @@ baden_wuerttemberg_1999_gemeinderatswahlen_data_sub$Turnout <- baden_wuerttember
 ###### Baden-Wuerttemberg 2004 Gemeinderatswahlen ----
 #### Load election data ----
 
-baden_wuerttemberg_2004_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/baden_wuerttemberg/baden_wuerttemberg_2004.xlsx", sheet="summary"))
+baden_wuerttemberg_2004_gemeinderatswahlen_data <- as.data.table(read_excel("raw/baden_wuerttemberg/baden_wuerttemberg_2004.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(baden_wuerttemberg_2004_gemeinderatswahlen_data) <-  str_replace_all(names(baden_wuerttemberg_2004_gemeinderatswahlen_data), fixed(" "), "")
@@ -4382,7 +4382,7 @@ baden_wuerttemberg_2004_gemeinderatswahlen_data_sub$Turnout <- baden_wuerttember
 
 ###### Baden-Wuerttemberg 2009 Gemeinderatswahlen ----
 #### Load election data ----
-baden_wuerttemberg_2009_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/baden_wuerttemberg/baden_wuerttemberg_2009.xlsx", sheet="summary"))
+baden_wuerttemberg_2009_gemeinderatswahlen_data <- as.data.table(read_excel("raw/baden_wuerttemberg/baden_wuerttemberg_2009.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(baden_wuerttemberg_2009_gemeinderatswahlen_data) <-  str_replace_all(names(baden_wuerttemberg_2009_gemeinderatswahlen_data), fixed(" "), "")
@@ -4460,7 +4460,7 @@ baden_wuerttemberg_2009_gemeinderatswahlen_data_sub$Turnout <- baden_wuerttember
 
 ###### Baden-Wuerttemberg 2014 Gemeinderatswahlen ----
 #### Load election data ----
-baden_wuerttemberg_2014_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/baden_wuerttemberg/baden_wuerttemberg_2014.xlsx", sheet="summary"))
+baden_wuerttemberg_2014_gemeinderatswahlen_data <- as.data.table(read_excel("raw/baden_wuerttemberg/baden_wuerttemberg_2014.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(baden_wuerttemberg_2014_gemeinderatswahlen_data) <-  str_replace_all(names(baden_wuerttemberg_2014_gemeinderatswahlen_data), fixed(" "), "")
@@ -4538,7 +4538,7 @@ baden_wuerttemberg_2014_gemeinderatswahlen_data_sub$Turnout <- baden_wuerttember
 
 ###### Baden-Wuerttemberg 2019 Gemeinderatswahlen ----
 #### Load election data ----
-baden_wuerttemberg_2019_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/baden_wuerttemberg/baden_wuerttemberg_2019.xlsx", sheet="summary"))
+baden_wuerttemberg_2019_gemeinderatswahlen_data <- as.data.table(read_excel("raw/baden_wuerttemberg/baden_wuerttemberg_2019.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(baden_wuerttemberg_2019_gemeinderatswahlen_data) <-  str_replace_all(names(baden_wuerttemberg_2019_gemeinderatswahlen_data), fixed(" "), "")
@@ -4639,7 +4639,7 @@ baden_wuerttemberg_kommunalwahlen$AGS_8dig <- paste("08",baden_wuerttemberg_komm
 ######## LANDTAGSWAHLEN ----
 ###### Mecklenburg-Vorpommern 1994 Landtagswahlen ----
 #### Load election data ----
-mecklenburg_vorpommern_1994_landtagswahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_landtagswahlen_1994.xls", sheet="summary"))
+mecklenburg_vorpommern_1994_landtagswahlen_data <- as.data.table(read_excel("raw/mecklenburg_vorpommern/mecklenburg_vorpommern_landtagswahlen_1994.xls", sheet="summary"))
 
 #### Delete white space ----
 names(mecklenburg_vorpommern_1994_landtagswahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_1994_landtagswahlen_data), fixed(" "), "")
@@ -4717,7 +4717,7 @@ mecklenburg_vorpommern_1994_landtagswahlen_data_sub$Turnout <- mecklenburg_vorpo
 
 ###### Mecklenburg-Vorpommern 1999 Landtagswahlen ----
 #### Load election data ----
-mecklenburg_vorpommern_1999_landtagswahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_landtagswahlen_1999.xls", sheet="summary"))
+mecklenburg_vorpommern_1999_landtagswahlen_data <- as.data.table(read_excel("raw/mecklenburg_vorpommern/mecklenburg_vorpommern_landtagswahlen_1999.xls", sheet="summary"))
 
 #### Delete white space ----
 names(mecklenburg_vorpommern_1999_landtagswahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_1999_landtagswahlen_data), fixed(" "), "")
@@ -4795,7 +4795,7 @@ mecklenburg_vorpommern_1999_landtagswahlen_data_sub$Turnout <- mecklenburg_vorpo
 
 ###### Mecklenburg-Vorpommern 2004 Landtagswahlen ----
 #### Load election data ----
-mecklenburg_vorpommern_2004_landtagswahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_landtagswahlen_2004.xls", sheet="summary"))
+mecklenburg_vorpommern_2004_landtagswahlen_data <- as.data.table(read_excel("raw/mecklenburg_vorpommern/mecklenburg_vorpommern_landtagswahlen_2004.xls", sheet="summary"))
 
 #### Delete white space ----
 names(mecklenburg_vorpommern_2004_landtagswahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_2004_landtagswahlen_data), fixed(" "), "")
@@ -4873,7 +4873,7 @@ mecklenburg_vorpommern_2004_landtagswahlen_data_sub$Turnout <- mecklenburg_vorpo
 
 ###### Mecklenburg-Vorpommern 2009 Landtagswahlen ----
 #### Load election data ----
-mecklenburg_vorpommern_2009_landtagswahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_landtagswahlen_2009.xlsx", sheet="summary"))
+mecklenburg_vorpommern_2009_landtagswahlen_data <- as.data.table(read_excel("raw/mecklenburg_vorpommern/mecklenburg_vorpommern_landtagswahlen_2009.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(mecklenburg_vorpommern_2009_landtagswahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_2009_landtagswahlen_data), fixed(" "), "")
@@ -4954,7 +4954,7 @@ mecklenburg_vorpommern_2009_landtagswahlen_data_sub$Turnout <- mecklenburg_vorpo
 
 ###### Mecklenburg-Vorpommern 2014 Landtagswahlen ----
 #### Load election data ----
-mecklenburg_vorpommern_2014_landtagswahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_landtagswahlen_2014.xlsx", sheet="summary"))
+mecklenburg_vorpommern_2014_landtagswahlen_data <- as.data.table(read_excel("raw/mecklenburg_vorpommern/mecklenburg_vorpommern_landtagswahlen_2014.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(mecklenburg_vorpommern_2014_landtagswahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_2014_landtagswahlen_data), fixed(" "), "")
@@ -5049,7 +5049,7 @@ mecklenburg_vorpommern_2014_landtagswahlen_data_sub$Turnout <- mecklenburg_vorpo
 
 ###### Mecklenburg-Vorpommern 2019 Landtagswahlen ----
 #### Load election data ----
-mecklenburg_vorpommern_2019_landtagswahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_landtagswahlen_2019.xlsx", sheet="summary"))
+mecklenburg_vorpommern_2019_landtagswahlen_data <- as.data.table(read_excel("raw/mecklenburg_vorpommern/mecklenburg_vorpommern_landtagswahlen_2019.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(mecklenburg_vorpommern_2019_landtagswahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_2019_landtagswahlen_data), fixed(" "), "")
@@ -5127,7 +5127,7 @@ mecklenburg_vorpommern_2019_landtagswahlen_data_sub$Turnout <- mecklenburg_vorpo
 ######## KOMMUNALWAHLEN ----
 ###### Mecklenburg-Vorpommern 1994 kommunalwahlen ----
 #### Load election data ----
-mecklenburg_vorpommern_1994_kommunalwahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_kommunalwahlen_1994.xls", sheet="summary"))
+mecklenburg_vorpommern_1994_kommunalwahlen_data <- as.data.table(read_excel("raw/mecklenburg_vorpommern/mecklenburg_vorpommern_kommunalwahlen_1994.xls", sheet="summary"))
 
 #### Delete white space ----
 names(mecklenburg_vorpommern_1994_kommunalwahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_1994_kommunalwahlen_data), fixed(" "), "")
@@ -5207,7 +5207,7 @@ mecklenburg_vorpommern_1994_kommunalwahlen_data_sub$Turnout <- mecklenburg_vorpo
 
 ###### Mecklenburg-Vorpommern 1999 kommunalwahlen ----
 #### Load election data ----
-mecklenburg_vorpommern_1999_kommunalwahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_kommunalwahlen_1999.xls", sheet="summary"))
+mecklenburg_vorpommern_1999_kommunalwahlen_data <- as.data.table(read_excel("raw/mecklenburg_vorpommern/mecklenburg_vorpommern_kommunalwahlen_1999.xls", sheet="summary"))
 
 #### Delete white space ----
 names(mecklenburg_vorpommern_1999_kommunalwahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_1999_kommunalwahlen_data), fixed(" "), "")
@@ -5285,7 +5285,7 @@ mecklenburg_vorpommern_1999_kommunalwahlen_data_sub$Turnout <- mecklenburg_vorpo
 
 ###### Mecklenburg-Vorpommern 2004 kommunalwahlen ----
 #### Load election data ----
-mecklenburg_vorpommern_2004_kommunalwahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_kommunalwahlen_2004.xls", sheet="summary"))
+mecklenburg_vorpommern_2004_kommunalwahlen_data <- as.data.table(read_excel("raw/mecklenburg_vorpommern/mecklenburg_vorpommern_kommunalwahlen_2004.xls", sheet="summary"))
 
 #### Delete white space ----
 names(mecklenburg_vorpommern_2004_kommunalwahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_2004_kommunalwahlen_data), fixed(" "), "")
@@ -5363,7 +5363,7 @@ mecklenburg_vorpommern_2004_kommunalwahlen_data_sub$Turnout <- mecklenburg_vorpo
 
 ###### Mecklenburg-Vorpommern 2009 Kommunalwahlen ----
 #### Load election data ----
-mecklenburg_vorpommern_2009_kommunalwahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_kommunalwahlen_2009.xls", sheet="summary"))
+mecklenburg_vorpommern_2009_kommunalwahlen_data <- as.data.table(read_excel("raw/mecklenburg_vorpommern/mecklenburg_vorpommern_kommunalwahlen_2009.xls", sheet="summary"))
 
 #### Delete white space ----
 names(mecklenburg_vorpommern_2009_kommunalwahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_2009_kommunalwahlen_data), fixed(" "), "")
@@ -5442,7 +5442,7 @@ mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$Turnout <- mecklenburg_vorpo
 
 ###### Mecklenburg-Vorpommern 2014 Gemeinderatswahlen ----
 #### Load election data ----
-mecklenburg_vorpommern_2014_kommunalwahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_kommunalwahlen_2014.xlsx", sheet="summary"))
+mecklenburg_vorpommern_2014_kommunalwahlen_data <- as.data.table(read_excel("raw/mecklenburg_vorpommern/mecklenburg_vorpommern_kommunalwahlen_2014.xlsx", sheet="summary"))
 
 mecklenburg_vorpommern_2014_kommunalwahlen_data[mecklenburg_vorpommern_2014_kommunalwahlen_data == "x"] <- NA
 
@@ -5523,7 +5523,7 @@ mecklenburg_vorpommern_2014_kommunalwahlen_data_sub$Turnout <- mecklenburg_vorpo
 
 ###### Mecklenburg-Vorpommern 2019 Gemeinderatswahlen ----
 #### Load election data ----
-mecklenburg_vorpommern_2019_kommunalwahlen_data <- as.data.table(read_excel("raw_data/mecklenburg_vorpommern/mecklenburg_vorpommern_kommunalwahlen_2019.xlsx", sheet="summary"))
+mecklenburg_vorpommern_2019_kommunalwahlen_data <- as.data.table(read_excel("raw/mecklenburg_vorpommern/mecklenburg_vorpommern_kommunalwahlen_2019.xlsx", sheet="summary"))
 
 mecklenburg_vorpommern_2019_kommunalwahlen_data[mecklenburg_vorpommern_2019_kommunalwahlen_data == "x"] <- NA
 
@@ -5644,7 +5644,7 @@ mecklenburg_vorpommern_kommunalwahlen$AGS_8dig <- stri_pad_left(mecklenburg_vorp
 ###### Hessen 1989 Gemeinderatswahl ----
 #### Load election data ----
 
-hessen_1989_gemeinderatswahl_data <- as.data.table(read_excel("raw_data/hessen/overview_gemeinderatswahlen.xlsx", sheet="1989"))
+hessen_1989_gemeinderatswahl_data <- as.data.table(read_excel("raw/hessen/overview_gemeinderatswahlen.xlsx", sheet="1989"))
 
 #### Delete white space ----
 names(hessen_1989_gemeinderatswahl_data) <-  str_replace_all(names(hessen_1989_gemeinderatswahl_data), fixed(" "), "")
@@ -5724,7 +5724,7 @@ hessen_1989_gemeinderatswahl_data_sub$Turnout <- hessen_1989_gemeinderatswahl_da
 ###### Hessen 1993 Gemeinderatswahl ----
 #### Load election data ----
 
-hessen_1993_gemeinderatswahl_data <- as.data.table(read_excel("raw_data/hessen/overview_gemeinderatswahlen.xlsx", sheet="1993"))
+hessen_1993_gemeinderatswahl_data <- as.data.table(read_excel("raw/hessen/overview_gemeinderatswahlen.xlsx", sheet="1993"))
 
 #### Delete white space ----
 names(hessen_1993_gemeinderatswahl_data) <-  str_replace_all(names(hessen_1993_gemeinderatswahl_data), fixed(" "), "")
@@ -5804,7 +5804,7 @@ hessen_1993_gemeinderatswahl_data_sub$Turnout <- hessen_1993_gemeinderatswahl_da
 ###### Hessen 1997 Gemeinderatswahl ----
 #### Load election data ----
 
-hessen_1997_gemeinderatswahl_data <- as.data.table(read_excel("raw_data/hessen/overview_gemeinderatswahlen.xlsx", sheet="1997"))
+hessen_1997_gemeinderatswahl_data <- as.data.table(read_excel("raw/hessen/overview_gemeinderatswahlen.xlsx", sheet="1997"))
 
 #### Delete white space ----
 names(hessen_1997_gemeinderatswahl_data) <-  str_replace_all(names(hessen_1997_gemeinderatswahl_data), fixed(" "), "")
@@ -5884,7 +5884,7 @@ hessen_1997_gemeinderatswahl_data_sub$Turnout <- hessen_1997_gemeinderatswahl_da
 ###### Hessen 2001 Gemeinderatswahl ----
 #### Load election data ----
 
-hessen_2001_gemeinderatswahl_data <- as.data.table(read_excel("raw_data/hessen/overview_gemeinderatswahlen.xlsx", sheet="2001"))
+hessen_2001_gemeinderatswahl_data <- as.data.table(read_excel("raw/hessen/overview_gemeinderatswahlen.xlsx", sheet="2001"))
 
 #### Delete white space ----
 names(hessen_2001_gemeinderatswahl_data) <-  str_replace_all(names(hessen_2001_gemeinderatswahl_data), fixed(" "), "")
@@ -5964,7 +5964,7 @@ hessen_2001_gemeinderatswahl_data_sub$Turnout <- hessen_2001_gemeinderatswahl_da
 ###### Hessen 2006 Gemeinderatswahl ----
 #### Load election data ----
 
-hessen_2006_gemeinderatswahl_data <- as.data.table(read_excel("raw_data/hessen/overview_gemeinderatswahlen.xlsx", sheet="2006"))
+hessen_2006_gemeinderatswahl_data <- as.data.table(read_excel("raw/hessen/overview_gemeinderatswahlen.xlsx", sheet="2006"))
 
 #### Delete white space ----
 names(hessen_2006_gemeinderatswahl_data) <-  str_replace_all(names(hessen_2006_gemeinderatswahl_data), fixed(" "), "")
@@ -6044,7 +6044,7 @@ hessen_2006_gemeinderatswahl_data_sub$Turnout <- hessen_2006_gemeinderatswahl_da
 ###### Hessen 2006 Gemeinderatswahl ----
 #### Load election data ----
 
-hessen_2006_gemeinderatswahl_data <- as.data.table(read_excel("raw_data/hessen/overview_gemeinderatswahlen.xlsx", sheet="2006"))
+hessen_2006_gemeinderatswahl_data <- as.data.table(read_excel("raw/hessen/overview_gemeinderatswahlen.xlsx", sheet="2006"))
 
 #### Delete white space ----
 names(hessen_2006_gemeinderatswahl_data) <-  str_replace_all(names(hessen_2006_gemeinderatswahl_data), fixed(" "), "")
@@ -6124,7 +6124,7 @@ hessen_2006_gemeinderatswahl_data_sub$Turnout <- hessen_2006_gemeinderatswahl_da
 ###### Hessen 2011 Gemeinderatswahl ----
 #### Load election data ----
 
-hessen_2011_gemeinderatswahl_data <- as.data.table(read_excel("raw_data/hessen/overview_gemeinderatswahlen.xlsx", sheet="2011"))
+hessen_2011_gemeinderatswahl_data <- as.data.table(read_excel("raw/hessen/overview_gemeinderatswahlen.xlsx", sheet="2011"))
 
 #### Delete white space ----
 names(hessen_2011_gemeinderatswahl_data) <-  str_replace_all(names(hessen_2011_gemeinderatswahl_data), fixed(" "), "")
@@ -6204,7 +6204,7 @@ hessen_2011_gemeinderatswahl_data_sub$Turnout <- hessen_2011_gemeinderatswahl_da
 ###### Hessen 2016 Gemeinderatswahl ----
 #### Load election data ----
 
-hessen_2016_gemeinderatswahl_data <- as.data.table(read_excel("raw_data/hessen/overview_gemeinderatswahlen.xlsx", sheet="2016"))
+hessen_2016_gemeinderatswahl_data <- as.data.table(read_excel("raw/hessen/overview_gemeinderatswahlen.xlsx", sheet="2016"))
 
 #### Delete white space ----
 names(hessen_2016_gemeinderatswahl_data) <-  str_replace_all(names(hessen_2016_gemeinderatswahl_data), fixed(" "), "")
@@ -6284,7 +6284,7 @@ hessen_2016_gemeinderatswahl_data_sub$Turnout <- hessen_2016_gemeinderatswahl_da
 ###### Hessen 2021 Gemeinderatswahl ----
 #### Load election data ----
 
-hessen_2021_gemeinderatswahl_data <- as.data.table(read_excel("raw_data/hessen/overview_gemeinderatswahlen.xlsx", sheet="2021"))
+hessen_2021_gemeinderatswahl_data <- as.data.table(read_excel("raw/hessen/overview_gemeinderatswahlen.xlsx", sheet="2021"))
 
 #### Delete white space ----
 names(hessen_2021_gemeinderatswahl_data) <-  str_replace_all(names(hessen_2021_gemeinderatswahl_data), fixed(" "), "")
@@ -6381,8 +6381,8 @@ hessen_kommunalwahlen$AGS_8dig <- paste("06",hessen_kommunalwahlen$AGS_8dig, sep
 ######### NIEDERSACHSEN ----
 ###### Niedersachsen 1991 Gemeinderatswahlen ----
 #### Load election data ----
-niedersachsen_1991_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/niedersachsen/niedersachsen_gemeinderatswahlen_1991.xls", sheet="anzahl"))
-niedersachsen_1991_gemeinderatswahlen_data_sitze <- as.data.table(read_excel("raw_data/niedersachsen/niedersachsen_gemeinderatswahlen_1991.xls", sheet="sitze"))
+niedersachsen_1991_gemeinderatswahlen_data <- as.data.table(read_excel("raw/niedersachsen/niedersachsen_gemeinderatswahlen_1991.xls", sheet="anzahl"))
+niedersachsen_1991_gemeinderatswahlen_data_sitze <- as.data.table(read_excel("raw/niedersachsen/niedersachsen_gemeinderatswahlen_1991.xls", sheet="sitze"))
 
 #### Delete white space ----
 names(niedersachsen_1991_gemeinderatswahlen_data) <-  str_replace_all(names(niedersachsen_1991_gemeinderatswahlen_data), fixed(" "), "")
@@ -6461,8 +6461,8 @@ niedersachsen_1991_gemeinderatswahlen_data_sub$Turnout <- niedersachsen_1991_gem
 
 ###### Niedersachsen 1996 Gemeinderatswahlen ----
 #### Load election data ----
-niedersachsen_1996_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/niedersachsen/niedersachsen_gemeinderatswahlen_1996.xls", sheet="anzahl"))
-niedersachsen_1996_gemeinderatswahlen_data_sitze <- as.data.table(read_excel("raw_data/niedersachsen/niedersachsen_gemeinderatswahlen_1996.xls", sheet="sitze"))
+niedersachsen_1996_gemeinderatswahlen_data <- as.data.table(read_excel("raw/niedersachsen/niedersachsen_gemeinderatswahlen_1996.xls", sheet="anzahl"))
+niedersachsen_1996_gemeinderatswahlen_data_sitze <- as.data.table(read_excel("raw/niedersachsen/niedersachsen_gemeinderatswahlen_1996.xls", sheet="sitze"))
 
 #### Delete white space ----
 names(niedersachsen_1996_gemeinderatswahlen_data) <-  str_replace_all(names(niedersachsen_1996_gemeinderatswahlen_data), fixed(" "), "")
@@ -6541,8 +6541,8 @@ niedersachsen_1996_gemeinderatswahlen_data_sub$Turnout <- niedersachsen_1996_gem
 
 ###### Niedersachsen 2001 Gemeinderatswahlen ----
 #### Load election data ----
-niedersachsen_2001_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/niedersachsen/niedersachsen_gemeinderatswahlen_2001.xls", sheet="anzahl"))
-niedersachsen_2001_gemeinderatswahlen_data_sitze <- as.data.table(read_excel("raw_data/niedersachsen/niedersachsen_gemeinderatswahlen_2001.xls", sheet="sitze"))
+niedersachsen_2001_gemeinderatswahlen_data <- as.data.table(read_excel("raw/niedersachsen/niedersachsen_gemeinderatswahlen_2001.xls", sheet="anzahl"))
+niedersachsen_2001_gemeinderatswahlen_data_sitze <- as.data.table(read_excel("raw/niedersachsen/niedersachsen_gemeinderatswahlen_2001.xls", sheet="sitze"))
 
 #### Delete white space ----
 names(niedersachsen_2001_gemeinderatswahlen_data) <-  str_replace_all(names(niedersachsen_2001_gemeinderatswahlen_data), fixed(" "), "")
@@ -6621,8 +6621,8 @@ niedersachsen_2001_gemeinderatswahlen_data_sub$Turnout <- niedersachsen_2001_gem
 
 ###### Niedersachsen 2006 Gemeinderatswahlen ----
 #### Load election data ----
-niedersachsen_2006_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/niedersachsen/niedersachsen_gemeinderatswahlen_2006.xls", sheet="anzahl"))
-niedersachsen_2006_gemeinderatswahlen_data_sitze <- as.data.table(read_excel("raw_data/niedersachsen/niedersachsen_gemeinderatswahlen_2006.xls", sheet="sitze"))
+niedersachsen_2006_gemeinderatswahlen_data <- as.data.table(read_excel("raw/niedersachsen/niedersachsen_gemeinderatswahlen_2006.xls", sheet="anzahl"))
+niedersachsen_2006_gemeinderatswahlen_data_sitze <- as.data.table(read_excel("raw/niedersachsen/niedersachsen_gemeinderatswahlen_2006.xls", sheet="sitze"))
 
 #### Delete white space ----
 names(niedersachsen_2006_gemeinderatswahlen_data) <-  str_replace_all(names(niedersachsen_2006_gemeinderatswahlen_data), fixed(" "), "")
@@ -6701,8 +6701,8 @@ niedersachsen_2006_gemeinderatswahlen_data_sub$Turnout <- niedersachsen_2006_gem
 
 ###### Niedersachsen 2011 Gemeinderatswahlen ----
 #### Load election data ----
-niedersachsen_2011_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/niedersachsen/niedersachsen_gemeinderatswahlen_2011_anzahl.xlsx", sheet="summary"))
-niedersachsen_2011_gemeinderatswahlen_data_sitze <- as.data.table(read_excel("raw_data/niedersachsen/niedersachsen_gemeinderatswahlen_2011_sitze.xlsx", sheet="summary"))
+niedersachsen_2011_gemeinderatswahlen_data <- as.data.table(read_excel("raw/niedersachsen/niedersachsen_gemeinderatswahlen_2011_anzahl.xlsx", sheet="summary"))
+niedersachsen_2011_gemeinderatswahlen_data_sitze <- as.data.table(read_excel("raw/niedersachsen/niedersachsen_gemeinderatswahlen_2011_sitze.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(niedersachsen_2011_gemeinderatswahlen_data) <-  str_replace_all(names(niedersachsen_2011_gemeinderatswahlen_data), fixed(" "), "")
@@ -6781,8 +6781,8 @@ niedersachsen_2011_gemeinderatswahlen_data_sub$Turnout <- niedersachsen_2011_gem
 
 ###### Niedersachsen 2016 Gemeinderatswahlen ----
 #### Load election data ----
-niedersachsen_2016_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/niedersachsen/niedersachsen_gemeinderatswahlen_2016.xlsx", sheet="anzahl"))
-niedersachsen_2016_gemeinderatswahlen_data_sitze <- as.data.table(read_excel("raw_data/niedersachsen/niedersachsen_gemeinderatswahlen_2016.xlsx", sheet="sitze"))
+niedersachsen_2016_gemeinderatswahlen_data <- as.data.table(read_excel("raw/niedersachsen/niedersachsen_gemeinderatswahlen_2016.xlsx", sheet="anzahl"))
+niedersachsen_2016_gemeinderatswahlen_data_sitze <- as.data.table(read_excel("raw/niedersachsen/niedersachsen_gemeinderatswahlen_2016.xlsx", sheet="sitze"))
 
 niedersachsen_2016_gemeinderatswahlen_data_sitze <-
   niedersachsen_2016_gemeinderatswahlen_data_sitze %>%
@@ -6894,7 +6894,7 @@ niedersachsen_kommunalwahlen$Gebietsname <- str_replace(niedersachsen_kommunalwa
 ###### Sachsen 1994 Gemeinderatswahlen ----
 #### Load election data ----
 
-sachsen_1994_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/sachsen/sachsen_1994.xlsx", sheet="summary"))
+sachsen_1994_gemeinderatswahlen_data <- as.data.table(read_excel("raw/sachsen/sachsen_1994.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(sachsen_1994_gemeinderatswahlen_data) <-  str_replace_all(names(sachsen_1994_gemeinderatswahlen_data), fixed(" "), "")
@@ -6975,7 +6975,7 @@ sachsen_1994_gemeinderatswahlen_data_sub <- sachsen_1994_gemeinderatswahlen_data
 ###### Sachsen 1999 Gemeinderatswahlen ----
 #### Load election data ----
 
-sachsen_1999_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/sachsen/sachsen_1999.xlsx", sheet="summary"))
+sachsen_1999_gemeinderatswahlen_data <- as.data.table(read_excel("raw/sachsen/sachsen_1999.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(sachsen_1999_gemeinderatswahlen_data) <-  str_replace_all(names(sachsen_1999_gemeinderatswahlen_data), fixed(" "), "")
@@ -7060,7 +7060,7 @@ sachsen_1999_gemeinderatswahlen_data_sub <- sachsen_1999_gemeinderatswahlen_data
 ###### Sachsen 2004 Gemeinderatswahlen ----
 #### Load election data ----
 
-sachsen_2004_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/sachsen/sachsen_2004.xlsx", sheet="summary"))
+sachsen_2004_gemeinderatswahlen_data <- as.data.table(read_excel("raw/sachsen/sachsen_2004.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(sachsen_2004_gemeinderatswahlen_data) <-  str_replace_all(names(sachsen_2004_gemeinderatswahlen_data), fixed(" "), "")
@@ -7143,7 +7143,7 @@ sachsen_2004_gemeinderatswahlen_data_sub <- sachsen_2004_gemeinderatswahlen_data
 ###### Sachsen 2009 Gemeinderatswahlen ----
 #### Load election data ----
 
-sachsen_2009_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/sachsen/sachsen_2009.xlsx", sheet="summary"))
+sachsen_2009_gemeinderatswahlen_data <- as.data.table(read_excel("raw/sachsen/sachsen_2009.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(sachsen_2009_gemeinderatswahlen_data) <-  str_replace_all(names(sachsen_2009_gemeinderatswahlen_data), fixed(" "), "")
@@ -7226,7 +7226,7 @@ sachsen_2009_gemeinderatswahlen_data_sub <- sachsen_2009_gemeinderatswahlen_data
 ###### Sachsen 2014 Gemeinderatswahlen ----
 #### Load election data ----
 
-sachsen_2014_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/sachsen/sachsen_2014.xlsx", sheet="summary"))
+sachsen_2014_gemeinderatswahlen_data <- as.data.table(read_excel("raw/sachsen/sachsen_2014.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(sachsen_2014_gemeinderatswahlen_data) <-  str_replace_all(names(sachsen_2014_gemeinderatswahlen_data), fixed(" "), "")
@@ -7309,7 +7309,7 @@ sachsen_2014_gemeinderatswahlen_data_sub <- sachsen_2014_gemeinderatswahlen_data
 ###### Sachsen 2019 Gemeinderatswahlen ----
 #### Load election data ----
 
-sachsen_2019_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/sachsen/sachsen_2019.xlsx", sheet="summary"))
+sachsen_2019_gemeinderatswahlen_data <- as.data.table(read_excel("raw/sachsen/sachsen_2019.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(sachsen_2019_gemeinderatswahlen_data) <-  str_replace_all(names(sachsen_2019_gemeinderatswahlen_data), fixed(" "), "")
@@ -7413,7 +7413,7 @@ sachsen_kommunalwahlen$AGS_8dig <- stri_pad_right(sachsen_kommunalwahlen$AGS_8di
 ###### Bremen Bürgerschaftswahlen ----
 #### Load election data ----
 
-bremen_overall_buergerschaftswahl_data <- as.data.table(read_excel("raw_data/bremen/bremen_summary.xlsx", sheet="summary"))
+bremen_overall_buergerschaftswahl_data <- as.data.table(read_excel("raw/bremen/bremen_summary.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(bremen_overall_buergerschaftswahl_data) <-  str_replace_all(names(bremen_overall_buergerschaftswahl_data), fixed(" "), "")
@@ -7502,7 +7502,7 @@ bremen_overall_buergerschaftswahl_data_sub <- bremen_overall_buergerschaftswahl_
 ######### BRANDENBURG ----
 ###### Brandenburg 2003 Gemeinderatswahlen ----
 #### Load election data ----
-brandenburg_2003_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/brandenburg/brandenburg_2003.xlsx", sheet="Ergebnis"))
+brandenburg_2003_gemeinderatswahlen_data <- as.data.table(read_excel("raw/brandenburg/brandenburg_2003.xlsx", sheet="Ergebnis"))
 names(brandenburg_2003_gemeinderatswahlen_data) <-  str_replace_all(names(brandenburg_2003_gemeinderatswahlen_data), fixed(" "), "")
 
 #### Recode to split by party vote ----
@@ -7643,7 +7643,7 @@ brandenburg_2003_gemeinderatswahlen_data_recoded$Turnout <- brandenburg_2003_gem
 
 ###### Brandenburg 2008 Gemeinderatswahlen ----
 #### Load election data ----
-brandenburg_2008_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/brandenburg/brandenburg_2008.xlsx", sheet="Ergebnis"))
+brandenburg_2008_gemeinderatswahlen_data <- as.data.table(read_excel("raw/brandenburg/brandenburg_2008.xlsx", sheet="Ergebnis"))
 names(brandenburg_2008_gemeinderatswahlen_data) <-  str_replace_all(names(brandenburg_2008_gemeinderatswahlen_data), fixed(" "), "")
 
 #### Recode to split by party vote ----
@@ -7813,7 +7813,7 @@ brandenburg_2008_gemeinderatswahlen_data_recoded$Turnout <- brandenburg_2008_gem
 
 ###### Brandenburg 2014 Gemeinderatswahlen ----
 #### Load election data ----
-brandenburg_2014_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/brandenburg/brandenburg_2014.xlsx", sheet="Ergebnis"))
+brandenburg_2014_gemeinderatswahlen_data <- as.data.table(read_excel("raw/brandenburg/brandenburg_2014.xlsx", sheet="Ergebnis"))
 names(brandenburg_2014_gemeinderatswahlen_data) <-  str_replace_all(names(brandenburg_2014_gemeinderatswahlen_data), fixed(" "), "")
 
 #### Recode to split by party vote ----
@@ -8000,7 +8000,7 @@ brandenburg_2014_gemeinderatswahlen_data_recoded$Turnout <- brandenburg_2014_gem
 
 ###### Brandenburg 2019 Gemeinderatswahlen ----
 #### Load election data ----
-brandenburg_2019_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/brandenburg/brandenburg_2019.xlsx", sheet="BB_GVW2019"))
+brandenburg_2019_gemeinderatswahlen_data <- as.data.table(read_excel("raw/brandenburg/brandenburg_2019.xlsx", sheet="BB_GVW2019"))
 names(brandenburg_2019_gemeinderatswahlen_data) <-  str_replace_all(names(brandenburg_2019_gemeinderatswahlen_data), fixed(" "), "")
 
 #### Recode to split by party vote ----
@@ -8222,7 +8222,7 @@ brandenburg_kommunalwahlen %>%
 ######### RLP ----
 ###### RLP 1994 Gemeinderatswahlen ----
 #### Load election data ----
-rlp_1994_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/rlp/rlp_1994_1999.xlsx", sheet="1994"))
+rlp_1994_gemeinderatswahlen_data <- as.data.table(read_excel("raw/rlp/rlp_1994_1999.xlsx", sheet="1994"))
 
 #### Delete white space ----
 names(rlp_1994_gemeinderatswahlen_data) <-  str_replace_all(names(rlp_1994_gemeinderatswahlen_data), fixed(" "), "")
@@ -8312,7 +8312,7 @@ rlp_1994_gemeinderatswahlen_data_sub$Turnout <- rlp_1994_gemeinderatswahlen_data
 
 ###### RLP 1999 Gemeinderatswahlen ----
 #### Load election data ----
-rlp_1999_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/rlp/rlp_1994_1999.xlsx", sheet="1999"))
+rlp_1999_gemeinderatswahlen_data <- as.data.table(read_excel("raw/rlp/rlp_1994_1999.xlsx", sheet="1999"))
 
 #### Delete white space ----
 names(rlp_1999_gemeinderatswahlen_data) <-  str_replace_all(names(rlp_1999_gemeinderatswahlen_data), fixed(" "), "")
@@ -8401,7 +8401,7 @@ rlp_1999_gemeinderatswahlen_data_sub$Turnout <- rlp_1999_gemeinderatswahlen_data
 
 ###### RLP 2004 Gemeinderatswahlen ----
 #### Load election data ----
-rlp_2004_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/rlp/rlp_2004.xlsx", sheet="summary"))
+rlp_2004_gemeinderatswahlen_data <- as.data.table(read_excel("raw/rlp/rlp_2004.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(rlp_2004_gemeinderatswahlen_data) <-  str_replace_all(names(rlp_2004_gemeinderatswahlen_data), fixed(" "), "")
@@ -8494,7 +8494,7 @@ rlp_2004_gemeinderatswahlen_data_sub$Turnout <- rlp_2004_gemeinderatswahlen_data
 
 ###### RLP 2009 Gemeinderatswahlen ----
 #### Load election data ----
-rlp_2009_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/rlp/rlp_2009.xlsx", sheet="summary"))
+rlp_2009_gemeinderatswahlen_data <- as.data.table(read_excel("raw/rlp/rlp_2009.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(rlp_2009_gemeinderatswahlen_data) <-  str_replace_all(names(rlp_2009_gemeinderatswahlen_data), fixed(" "), "")
@@ -8582,7 +8582,7 @@ rlp_2009_gemeinderatswahlen_data_sub$Turnout <- rlp_2009_gemeinderatswahlen_data
 
 ###### RLP 2014 Gemeinderatswahlen ----
 #### Load election data ----
-rlp_2014_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/rlp/rlp_2014.xlsx", sheet="summary"))
+rlp_2014_gemeinderatswahlen_data <- as.data.table(read_excel("raw/rlp/rlp_2014.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(rlp_2014_gemeinderatswahlen_data) <-  str_replace_all(names(rlp_2014_gemeinderatswahlen_data), fixed(" "), "")
@@ -8675,7 +8675,7 @@ rlp_2014_gemeinderatswahlen_data_sub <- rlp_2014_gemeinderatswahlen_data_sub %>%
 
 ###### RLP 2019 Gemeinderatswahlen ----
 #### Load election data ----
-rlp_2019_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/rlp/rlp_2019.xlsx", sheet="summary"))
+rlp_2019_gemeinderatswahlen_data <- as.data.table(read_excel("raw/rlp/rlp_2019.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(rlp_2019_gemeinderatswahlen_data) <-  str_replace_all(names(rlp_2019_gemeinderatswahlen_data), fixed(" "), "")
@@ -8786,14 +8786,14 @@ rlp_kommunalwahlen <- rlp_kommunalwahlen %>%
 
 
 # Save
-#write_csv(rlp_kommunalwahlen, "processed_data/rlp_kommunalwahlen.csv")
+#write_csv(rlp_kommunalwahlen, "processed/rlp_kommunalwahlen.csv")
 
 
 ######### Schleswig-Holstein ----
 ###### SH 2018 Gemeinderatswahlen ----
 #### Load election data ----
 
-sh_2018_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/schleswig_holstein/sh_2018.xlsx", sheet="summary"))
+sh_2018_gemeinderatswahlen_data <- as.data.table(read_excel("raw/schleswig_holstein/sh_2018.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(sh_2018_gemeinderatswahlen_data) <-  str_replace_all(names(sh_2018_gemeinderatswahlen_data), fixed(" "), "")
@@ -8874,7 +8874,7 @@ sh_2018_gemeinderatswahlen_data_sub$Turnout <- sh_2018_gemeinderatswahlen_data_s
 ###### SH 2013 Gemeinderatswahlen ----
 #### Load election data ----
 
-sh_2013_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/schleswig_holstein/sh_2013.xlsx", sheet="summary"))
+sh_2013_gemeinderatswahlen_data <- as.data.table(read_excel("raw/schleswig_holstein/sh_2013.xlsx", sheet="summary"))
 
 #### Delete white space ----
 names(sh_2013_gemeinderatswahlen_data) <-  str_replace_all(names(sh_2013_gemeinderatswahlen_data), fixed(" "), "")
@@ -8972,7 +8972,7 @@ sh_2013_gemeinderatswahlen_data_sub$Turnout <- sh_2013_gemeinderatswahlen_data_s
 ###### SH 2008 Gemeinderatswahlen ----
 #### Load election data ----
 
-sh_2008_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/schleswig_holstein/sh_2008.xls", sheet="summary"))
+sh_2008_gemeinderatswahlen_data <- as.data.table(read_excel("raw/schleswig_holstein/sh_2008.xls", sheet="summary"))
 
 #### Summarize data to fix poor data structure ----
 sh_2008_gemeinderatswahlen_data_sub <-
@@ -9069,7 +9069,7 @@ sh_2008_gemeinderatswahlen_data_sub$Turnout <- sh_2008_gemeinderatswahlen_data_s
 ###### SH 2003 Gemeinderatswahlen ----
 #### Load election data ----
 
-sh_2003_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/schleswig_holstein/sh_2003.xlsx", sheet="summary"))
+sh_2003_gemeinderatswahlen_data <- as.data.table(read_excel("raw/schleswig_holstein/sh_2003.xlsx", sheet="summary"))
 sh_2003_gemeinderatswahlen_data_sub <- sh_2003_gemeinderatswahlen_data
 
 #### Recoding ----
@@ -9150,7 +9150,7 @@ sh_2003_gemeinderatswahlen_data_sub$Turnout <- sh_2003_gemeinderatswahlen_data_s
 ###### SH 1998 Gemeinderatswahlen ----
 #### Load election data ----
 
-sh_1998_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/schleswig_holstein/sh_1998.xlsx", sheet="summary"))
+sh_1998_gemeinderatswahlen_data <- as.data.table(read_excel("raw/schleswig_holstein/sh_1998.xlsx", sheet="summary"))
 sh_1998_gemeinderatswahlen_data_sub <- sh_1998_gemeinderatswahlen_data
 
 #### Recoding ----
@@ -9232,7 +9232,7 @@ sh_1998_gemeinderatswahlen_data_sub$Turnout <- sh_1998_gemeinderatswahlen_data_s
 ###### SH 1994 Gemeinderatswahlen ----
 #### Load election data ----
 
-sh_1994_gemeinderatswahlen_data <- as.data.table(read_excel("raw_data/schleswig_holstein/sh_1994.xlsx", sheet="summary"))
+sh_1994_gemeinderatswahlen_data <- as.data.table(read_excel("raw/schleswig_holstein/sh_1994.xlsx", sheet="summary"))
 sh_1994_gemeinderatswahlen_data_sub <- sh_1994_gemeinderatswahlen_data
 
 #### Recoding ----
@@ -9324,7 +9324,7 @@ sh_kommunalwahlen[sh_kommunalwahlen == "-"] <- NA
 sh_kommunalwahlen$AGS_8dig <- stri_pad_left(sh_kommunalwahlen$AGS_8dig, 8, 0)
 
 # Save
-write_csv(sh_kommunalwahlen, "processed_data/sh_kommunalwahlen.csv")
+write_csv(sh_kommunalwahlen, "processed/sh_kommunalwahlen.csv")
 
 
 # ----
@@ -9504,15 +9504,15 @@ kommunalwahlen_merge <- kommunalwahlen_merge |>
 
 # Save ----
 
-write_rds(kommunalwahlen_merge, file=here::here("output/municipal_unharm.rds"))
-fwrite(kommunalwahlen_merge, file=here::here("output/municipal_unharm.csv"))
+write_rds(kommunalwahlen_merge, file=here::here("data/municipal_elections/final/municipal_unharm.rds"))
+fwrite(kommunalwahlen_merge, file=here::here("data/municipal_elections/final/municipal_unharm.csv"))
 
 # View(kommunalwahlen_merge)
 
 
 # inspect -----------------------------------------------------------------
 
-kommunalwahlen_merge <- read_rds(here::here("output/municipal_unharm.rds"))
+kommunalwahlen_merge <- read_rds(here::here("data/municipal_elections/final/municipal_unharm.rds"))
 
 glimpse(kommunalwahlen_merge)
 

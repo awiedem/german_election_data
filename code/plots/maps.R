@@ -20,11 +20,11 @@ library(haschaR)
 ### Load data
 ### -----------
 
-d_muni <- as.data.table(readRDS("~/Documents/GitHub/german_election_data/output/municipal_harm.rds"))
+d_muni <- as.data.table(readRDS("~/Documents/GitHub/german_election_data/data/municipal_elections/final/municipal_harm.rds"))
 
-d_state <- as.data.table(readRDS("~/Documents/GitHub/german_election_data/output/state_harm.rds"))
+d_state <- as.data.table(readRDS("~/Documents/GitHub/german_election_data/data/state_elections/final/state_harm.rds"))
 
-d_fed <- as.data.table(readRDS("~/Documents/GitHub/german_election_data/output/federal_muni_harm.rds"))
+d_fed <- as.data.table(readRDS("~/Documents/GitHub/german_election_data/data/federal_elections/municipality_level/final/federal_muni_harm.rds"))
 
 
 ### Shapefiles
@@ -258,7 +258,7 @@ unsuccessful <- de_shp_fed_data |>
 d_fed_2021_names <- d_fed |>
   filter(election_year == "2021") |>
   left_join_check_obs(
-    read_excel(path = "~/Documents/GitHub/german_election_data/data/crosswalks/31122021_Auszug_GV.xlsx", sheet = 2) |>
+    read_excel(path = "~/Documents/GitHub/german_election_data/data/crosswalks/final/31122021_Auszug_GV.xlsx", sheet = 2) |>
       dplyr::select(
         Land = `...3`,
         RB = `...4`,

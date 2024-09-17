@@ -27,7 +27,7 @@ names_97to20 <- c(
 # 1990-1999 ---------------------------------------------------------------
 
 # Specify the Excel file path
-excel_file <- "data/crosswalks/gmd_auf_2021/ref-gemeinden-umrech-2021-1990-1999.xlsx"
+excel_file <- "data/crosswalks/raw/gmd_auf_2021/ref-gemeinden-umrech-2021-1990-1999.xlsx"
 
 # Read all sheets from the Excel file into a list of dataframes
 cw_list <- excel_sheets(excel_file) %>%
@@ -48,7 +48,7 @@ cw_combined <- bind_rows(cw_list)
 # 2000-2010 ---------------------------------------------------------------
 
 # Specify the Excel file path
-excel_file <- "data/crosswalks/gmd_auf_2021/ref-gemeinden-umrech-2021-2000-2010.xlsx"
+excel_file <- "data/crosswalks/raw/gmd_auf_2021/ref-gemeinden-umrech-2021-2000-2010.xlsx"
 
 # Read all sheets from the Excel file into a list of dataframes
 cw_list <- excel_sheets(excel_file) %>%
@@ -65,7 +65,7 @@ cw_combined <- bind_rows(cw_combined, cw_list)
 # 2011-2020 ---------------------------------------------------------------
 
 # Specify the Excel file path
-excel_file <- "data/crosswalks/gmd_auf_2021/ref-gemeinden-umrech-2021-2011-2020.xlsx"
+excel_file <- "data/crosswalks/raw/gmd_auf_2021/ref-gemeinden-umrech-2021-2011-2020.xlsx"
 
 # Read all sheets from the Excel file into a list of dataframes
 cw_list <- excel_sheets(excel_file) %>%
@@ -82,11 +82,8 @@ cw_combined <- bind_rows(cw_combined, cw_list) |>
   arrange(ags, year)
 
 # write crosswalk df
-fwrite(cw_combined, "data/crosswalks/ags_crosswalks.csv")
-write_rds(cw_combined, "data/crosswalks/ags_crosswalks.rds")
-
-fwrite(cw_combined, "output/ags_crosswalks.csv")
-write_rds(cw_combined, "output/ags_crosswalks.rds")
+fwrite(cw_combined, "data/crosswalks/final/ags_crosswalks.csv")
+write_rds(cw_combined, "data/crosswalks/final/ags_crosswalks.rds")
 
 # Create covariate dataframe ----------------------------------------------
 
@@ -118,7 +115,7 @@ cw |> count(year) |> print(n = 32)
 
 
 # Get population & area for 2021
-ags21 <- read_excel(path = "data/crosswalks//31122021_Auszug_GV.xlsx", sheet = 2) |>
+ags21 <- read_excel(path = "data/crosswalks/raw/31122021_Auszug_GV.xlsx", sheet = 2) |>
   select(
     Land = `...3`,
     RB = `...4`,
@@ -197,16 +194,14 @@ cw <- cw |>
   )
 
 # write
-fwrite(cw, "data/municipal_covars/ags_area_pop_emp.csv")
-write_rds(cw, "data/municipal_covars/ags_area_pop_emp.rds")
-fwrite(cw, "output/ags_area_pop_emp.csv")
-write_rds(cw, "output/ags_area_pop_emp.rds")
+fwrite(cw, "data/covars_municipality/final/ags_area_pop_emp.csv")
+write_rds(cw, "data/covars_municipality/final/ags_area_pop_emp.rds")
 
 
 
 # Create table harmonizations per year -------------------------------------------
 
-cw_combined <- read_rds("data/crosswalks/ags_crosswalks.rds")
+cw_combined <- read_rds("data/crosswalks/final/ags_crosswalks.rds")
 
 glimpse(cw_combined)
 
@@ -274,7 +269,7 @@ harm_tab <- harmonization_counts %>%
   column_spec(5, "3cm") %>%
   column_spec(6, "3cm")
 
-save_kable(harm_tab, "tables/harmonization_counts.tex", keep_tex = T)
+save_kable(harm_tab, "output/tables/harmonization_counts.tex", keep_tex = T)
 save_kable(harm_tab, file = "~/Dropbox (Princeton)/Apps/Overleaf/ElectionPaper/tables/harmonization_counts.tex", keep_tex = T)
 
 # produce plot
@@ -289,7 +284,7 @@ harmonization_counts %>%
   theme_hanno() +
   scale_y_continuous(limits = c(0, 85))
 
-ggsave("figures/mergers.pdf", width = 7, height = 3.5)
+ggsave("output/figures/mergers.pdf", width = 7, height = 3.5)
 ggsave("~/Dropbox (Princeton)/Apps/Overleaf/ElectionPaper/figures/mergers.pdf", width = 7, height = 3.5)
 
 ### END

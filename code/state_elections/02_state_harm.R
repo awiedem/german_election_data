@@ -9,7 +9,7 @@ rm(list = ls())
 options(scipen = 999)
 
 # load
-df <- read_rds("output/state_unharm.rds")
+df <- read_rds("data/state_elections/final/state_unharm.rds")
 # df <- read_rds("01_Data/13_LTW/Elections_Clean.RDS")
 
 glimpse(df)
@@ -21,7 +21,7 @@ table(df$election_year)
 # Create crosswalks -------------------------------------------------------
 
 # Load crosswalks
-cw <- fread("data/crosswalks/ags_crosswalks.csv") |>
+cw <- fread("data/crosswalks/final/ags_crosswalks.csv") |>
   mutate(
     ags = pad_zero_conditional(ags, 7),
     ags_21 = pad_zero_conditional(ags_21, 7)
@@ -282,15 +282,15 @@ df_harm %>%
 glimpse(df_harm)
 
 # write
-fwrite(df_harm, "output/state_harm.csv")
-write_rds(df_harm, "output/state_harm.rds")
+fwrite(df_harm, "data/state_elections/final/state_harm.csv")
+write_rds(df_harm, "data/state_elections/final/state_harm.rds")
 
 
 
 # Create plot -------------------------------------------------------------
 
 # read
-df_harm <- read_rds("output/state_harm.rds")
+df_harm <- read_rds("data/state_elections/final/state_harm.rds")
 
 # for which election_years do we have non-NA afd values?
 df_harm %>%
@@ -299,7 +299,7 @@ df_harm %>%
   distinct()
 
 # Load municipality level data
-muni <- read_rds("data/municipal_covars/ags_area_pop_emp.rds") |>
+muni <- read_rds("data/covars_municipality/final/ags_area_pop_emp.rds") |>
   rename(ags = ags_21) |>
   mutate(ags = pad_zero_conditional(ags, 7)) |>
   filter(year >= 2006 & year < 2020) |>
