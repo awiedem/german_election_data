@@ -19,7 +19,7 @@ d_fed <- read_rds("~/Documents/GitHub/german_election_data/data/federal_election
 ### Shapefiles
 de_shp_muni <- read_sf("~/Documents/GitHub/german_election_data/data/shapefiles/2021/vg250_ebenen_0101", layer = "VG250_GEM")
 de_shp_bula <- read_sf("~/Documents/GitHub/german_election_data/data/shapefiles/2021/vg250_ebenen_0101", layer = "VG250_LAN")
-de_shp_bula <- de_shp_bula %>% filter(GF == 4)
+de_shp_bula <- de_shp_bula %>% dplyr::filter(GF == 4)
 
 ### Create "most recent" election for each type
 
@@ -39,7 +39,7 @@ d_state_recent <- d_state %>%
 
 # Federal elections (already most recent, 2021)
 d_fed_2021 <- d_fed %>%
-  filter(election_year == 2021)
+  dplyr::dplyr::filter(election_year == 2021)
 
 
 ### --------
@@ -182,20 +182,20 @@ ggsave("output/figures/map_elec_state_SPD.png", plot = p_state_SPD, width = 4, h
 
 # Load and prepare data
 d_fed_2021 <- d_fed %>%
-  filter(election_year == "2021") %>%
+  dplyr::filter(election_year == "2021") %>%
   dplyr::select(ags, cdu_csu, spd, gruene, afd, turnout)
 
 de_shp_fed_data <- de_shp_muni %>%
   left_join_check_obs(d_fed_2021, by = c("AGS" = "ags")) %>%
-  filter(GF == 4)
+  dplyr::filter(GF == 4)
 
 # Handle unsuccessful mergers
 unsuccessful <- de_shp_fed_data %>%
-  filter(is.na(cdu_csu) | is.na(spd) | is.na(gruene) | is.na(afd))
+  dplyr::filter(is.na(cdu_csu) | is.na(spd) | is.na(gruene) | is.na(afd))
 
 # Prepare 2021 AGS names
 d_fed_2021_names <- d_fed %>%
-  filter(election_year == "2021") %>%
+  dplyr::filter(election_year == "2021") %>%
   left_join_check_obs(
     read_excel(
       path = "data/crosswalks/raw/31122021_Auszug_GV.xlsx",
@@ -216,7 +216,7 @@ d_fed_2021_names <- d_fed %>%
         ags = paste0(Land, RB, Kreis, Gemeinde)
       ) %>%
       slice(6:16065) %>%
-      filter(!is.na(Gemeinde)) %>%
+      dplyr::filter(!is.na(Gemeinde)) %>%
       dplyr::select(ags, ags_name),
     by = "ags"
   )
@@ -233,7 +233,7 @@ merge_by_name <- unsuccessful %>%
 
 # Build final dataframe for plots
 plot_df <- de_shp_fed_data %>%
-  filter(!is.na(cdu_csu) & !is.na(spd) & !is.na(gruene) & !is.na(afd)) %>%
+  dplyr::filter(!is.na(cdu_csu) & !is.na(spd) & !is.na(gruene) & !is.na(afd)) %>%
   bind_rows(merge_by_name) %>%
   group_by(AGS) %>%
   slice(1) %>%
@@ -241,12 +241,12 @@ plot_df <- de_shp_fed_data %>%
 
 # Inspect missing data
 missing_data <- plot_df %>%
-  filter(if_all(c(cdu_csu, spd, gruene, afd, turnout), is.na)) %>%
+  dplyr::filter(if_all(c(cdu_csu, spd, gruene, afd, turnout), is.na)) %>%
   nrow()
 
 # Check for turnout > 1
 turnout_over_one <- plot_df %>%
-  filter(turnout > 1) %>%
+  dplyr::filter(turnout > 1) %>%
   dplyr::select(AGS, GEN, turnout)
 
 # Print summary
