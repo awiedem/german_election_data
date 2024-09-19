@@ -76,10 +76,9 @@ plot_muni_map <- function(fill_var, legend_label, fill_palette, limits) {
       title = element_text(size = 9),
       axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(),
       axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank(),
-      legend.position = "bottom", legend.text = element_text(size = 8), legend.key.size = unit(0.5, "cm"),
-      legend.margin = margin(t = 0, r = 0, b = 0, l = 0),
+      legend.position = "bottom", legend.text = element_text(size = 14), legend.key.size = unit(0.6, "cm"),
       plot.margin = margin(t = 0, r = 0, b = 0, l = 0),
-      legend.box.margin = margin(t = -10, r = 0, b = 0, l = 0)
+      legend.box.margin = margin(t = -25, r = 0, b = 0, l = 0)
     ) +
     scale_fill_distiller(NULL,
       palette = fill_palette,
@@ -87,7 +86,7 @@ plot_muni_map <- function(fill_var, legend_label, fill_palette, limits) {
       direction = 1,
       limits = limits,
       guide = guide_legend(
-        keyheight = unit(2, units = "mm"), keywidth = unit(11, units = "mm"),
+        keyheight = unit(4, units = "mm"), keywidth = unit(18, units = "mm"),
         label.position = "bottom", title.position = "top", nrow = 1
       )
     )
@@ -141,7 +140,7 @@ plot_state_map <- function(variable, legend_label, fill_palette, limits) {
       title = element_text(size = 9),
       axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(),
       axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank(),
-      legend.position = "bottom", legend.text = element_text(size = 12), legend.key.size = unit(0.6, "cm"),
+      legend.position = "bottom", legend.text = element_text(size = 14), legend.key.size = unit(0.6, "cm"),
       plot.margin = margin(t = 0, r = 0, b = 0, l = 0),
       legend.box.margin = margin(t = -25, r = 0, b = 0, l = 0)
     ) +
@@ -156,6 +155,7 @@ plot_state_map <- function(variable, legend_label, fill_palette, limits) {
       )
     )
 }
+
 
 # Turnout
 p_state_turnout <- plot_state_map("turnout", "Turnout", "Purples", turnout_range)
@@ -266,10 +266,9 @@ plot_fed_map <- function(fill_var, legend_label, fill_palette, limits) {
       title = element_text(size = 9),
       axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(),
       axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank(),
-      legend.position = "bottom", legend.text = element_text(size = 8), legend.key.size = unit(0.5, "cm"),
-      legend.margin = margin(t = 0, r = 0, b = 0, l = 0),
+      legend.position = "bottom", legend.text = element_text(size = 14), legend.key.size = unit(0.6, "cm"),
       plot.margin = margin(t = 0, r = 0, b = 0, l = 0),
-      legend.box.margin = margin(t = -10, r = 0, b = 0, l = 0)
+      legend.box.margin = margin(t = -25, r = 0, b = 0, l = 0)
     ) +
     scale_fill_distiller(NULL,
       palette = fill_palette,
@@ -277,7 +276,7 @@ plot_fed_map <- function(fill_var, legend_label, fill_palette, limits) {
       direction = 1,
       limits = limits,
       guide = guide_legend(
-        keyheight = unit(2, units = "mm"), keywidth = unit(11, units = "mm"),
+        keyheight = unit(4, units = "mm"), keywidth = unit(18, units = "mm"),
         label.position = "bottom", title.position = "top", nrow = 1
       )
     )
