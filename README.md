@@ -65,12 +65,13 @@ The code used to generate the datasets and perform the analyses is available in 
 
 Please cite the accompanying paper when using this dataset:
 
-Heddesheimer, Vincent, Hilbig, Hilbig, Sichart, Florian, & Wiedemann, Andreas (2024). German Election Database.
+Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2024. "German Election Database".
 
 ```         
-@article{heddesheimer.2024.germanelections,
+@article{Heddesheimer2024GermanElections,
   author = {Heddesheimer Vincent, and Hanno Hilbig, and Florian Sichart and Andreas Wiedemann},
-  title = {German Elections Dataset}
+  title = {German Elections Dataset},
+  year = {2024}
 }
 ```
 
