@@ -43,7 +43,7 @@ The following datasets are included in the repository:
 | Federal Elections         | County               | 1953–2021       | No                | `federal_cty_unharm`        |
 | Federal Elections         | County               | 1990–2021       | Yes               | `federal_cty_harm`          |
 | Crosswalks                | Municipality/County  | 1990–2021       | —                 | `ags_crosswalks` / `cty_crosswalks` |
-| Shapefiles                | Municipality/County  | 2000, 2021      | —                 | —                           |
+| Shapefiles                | Municipality/County  | 2000, 2021      | —                 | `VG250_GEM` / `VG250_KRS`   | 
 | Crosswalk Covariates      | Municipality/County  | 1990–2021       | Yes               | `ags_area_pop_emp` / `cty_area_pop_emp` |
 
 
