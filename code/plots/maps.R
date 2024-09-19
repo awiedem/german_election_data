@@ -39,7 +39,7 @@ d_state_recent <- d_state %>%
 
 # Federal elections (already most recent, 2021)
 d_fed_2021 <- d_fed %>%
-  dplyr::dplyr::filter(election_year == 2021)
+  dplyr::filter(election_year == 2021)
 
 
 ### --------
