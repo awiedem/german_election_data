@@ -7,6 +7,7 @@ pacman::p_load(
   readxl, MASS, lubridate, sf, viridis, ggpubr, gridExtra, haschaR
 )
 
+
 ### -----------
 ### Load data
 ### -----------
@@ -20,22 +21,50 @@ de_shp_muni <- read_sf("~/Documents/GitHub/german_election_data/data/shapefiles/
 de_shp_bula <- read_sf("~/Documents/GitHub/german_election_data/data/shapefiles/2021/vg250_ebenen_0101", layer = "VG250_LAN")
 de_shp_bula <- de_shp_bula %>% filter(GF == 4)
 
+### Create "most recent" election for each type
+
+# Create "most recent" election datasets for each type
+
+# Municipal elections
+d_muni_recent <- d_muni %>%
+  group_by(ags) %>%
+  slice_max(year, n = 1) %>%
+  ungroup()
+
+# State elections
+d_state_recent <- d_state %>%
+  group_by(ags) %>%
+  slice_max(election_year, n = 1) %>%
+  ungroup()
+
+# Federal elections (already most recent, 2021)
+d_fed_2021 <- d_fed %>%
+  filter(election_year == 2021)
+
 
 ### --------
 ### Municipal election (most recent)
 ### --------
 
-### Select most recent election by AGS
-d_muni_202x <- d_muni %>%
-  group_by(ags) %>%
-  slice_max(year, n = 1) %>%
-  ungroup()
-
 de_shp_muni_data <- de_shp_muni %>%
-  left_join(d_muni_202x, by = c("AGS" = "ags"))
+  left_join_check_obs(d_muni_recent, by = c("AGS" = "ags"))
 
 ### Turnout and Party vote shares
-plot_muni_map <- function(fill_var, legend_label, fill_palette) {
+### Determine ranges for each party across all election types
+get_party_range <- function(party) {
+  range(c(
+    d_muni_recent[[party]],
+    d_state_recent[[party]],
+    d_fed_2021[[party]]
+  ), na.rm = TRUE)
+}
+
+cdu_range <- get_party_range("cdu_csu")
+spd_range <- get_party_range("spd")
+turnout_range <- get_party_range("turnout")
+
+### Modify plotting functions to accept custom limits
+plot_muni_map <- function(fill_var, legend_label, fill_palette, limits) {
   ggplot() +
     geom_sf(data = de_shp_muni_data, mapping = aes(fill = .data[[fill_var]]), colour = "NA") +
     geom_sf(data = de_shp_bula, fill = NA, colour = "grey60", linewidth = 0.2) +
@@ -50,12 +79,13 @@ plot_muni_map <- function(fill_var, legend_label, fill_palette) {
       legend.position = "bottom", legend.text = element_text(size = 8), legend.key.size = unit(0.5, "cm"),
       legend.margin = margin(t = 0, r = 0, b = 0, l = 0),
       plot.margin = margin(t = 0, r = 0, b = 0, l = 0),
-      legend.box.margin = margin(t = -10, r = 0, b = 0, l = 0) # Adjust this value as needed
+      legend.box.margin = margin(t = -10, r = 0, b = 0, l = 0)
     ) +
-    scale_fill_distiller(legend_label,
+    scale_fill_distiller(NULL,
       palette = fill_palette,
       na.value = "white",
       direction = 1,
+      limits = limits,
       guide = guide_legend(
         keyheight = unit(2, units = "mm"), keywidth = unit(11, units = "mm"),
         label.position = "bottom", title.position = "top", nrow = 1
@@ -64,21 +94,21 @@ plot_muni_map <- function(fill_var, legend_label, fill_palette) {
 }
 
 # Turnout
-p_muni_turnout <- plot_muni_map("turnout", "Turnout", "Purples")
+p_muni_turnout <- plot_muni_map("turnout", "Turnout", "Purples", turnout_range)
 
 # Save as PDF and PNG
 # ggsave("output/figures/map_elec_muni_turnout.pdf", plot = p_muni_turnout, width = 4, height = 6)
 ggsave("output/figures/map_elec_muni_turnout.png", plot = p_muni_turnout, width = 4, height = 6, dpi = 450)
 
 # CDU/CSU
-p_muni_CDU <- plot_muni_map("cdu_csu", "Share CDU/CSU", "Blues")
+p_muni_CDU <- plot_muni_map("cdu_csu", "Share CDU/CSU", "Blues", cdu_range)
 
 # Save as PDF and PNG
 # ggsave("output/figures/map_elec_muni_CDU.pdf", plot = p_muni_CDU, width = 4, height = 6)
 ggsave("output/figures/map_elec_muni_CDU.png", plot = p_muni_CDU, width = 4, height = 6, dpi = 450)
 
 # SPD
-p_muni_SPD <- plot_muni_map("spd", "Share SPD", "Reds")
+p_muni_SPD <- plot_muni_map("spd", "Share SPD", "Reds", spd_range)
 
 # Save as PDF and PNG
 # ggsave("output/figures/map_elec_muni_SPD.pdf", plot = p_muni_SPD, width = 4, height = 6)
@@ -95,12 +125,11 @@ d_state_recent <- d_state %>%
   slice_max(election_year, n = 1) %>%
   ungroup()
 
-
 de_shp_state_data <- de_shp_muni %>%
-  left_join(d_state_202x, by = c("AGS" = "ags"))
+  left_join_check_obs(d_state_recent, by = c("AGS" = "ags"))
 
 # Function to plot state maps
-plot_state_map <- function(variable, legend_label, fill_palette) {
+plot_state_map <- function(variable, legend_label, fill_palette, limits) {
   ggplot() +
     geom_sf(data = de_shp_state_data, mapping = aes(fill = .data[[variable]]), colour = NA) +
     geom_sf(data = de_shp_bula, fill = NA, colour = "grey30", linewidth = 0.2) +
@@ -116,10 +145,11 @@ plot_state_map <- function(variable, legend_label, fill_palette) {
       plot.margin = margin(t = 0, r = 0, b = 0, l = 0),
       legend.box.margin = margin(t = -10, r = 0, b = 0, l = 0)
     ) +
-    scale_fill_distiller(legend_label,
+    scale_fill_distiller(NULL,
       palette = fill_palette,
       na.value = "white",
       direction = 1,
+      limits = limits,
       guide = guide_legend(
         keyheight = unit(2, units = "mm"), keywidth = unit(11, units = "mm"),
         label.position = "bottom", title.position = "top", nrow = 1
@@ -128,13 +158,13 @@ plot_state_map <- function(variable, legend_label, fill_palette) {
 }
 
 # Turnout
-p_state_turnout <- plot_state_map("turnout", "Turnout", "Purples")
+p_state_turnout <- plot_state_map("turnout", "Turnout", "Purples", turnout_range)
 
 # CDU/CSU
-p_state_CDU <- plot_state_map("cdu_csu", "Share CDU/CSU", "Blues")
+p_state_CDU <- plot_state_map("cdu_csu", "Share CDU/CSU", "Blues", cdu_range)
 
 # SPD
-p_state_SPD <- plot_state_map("spd", "Share SPD", "Reds")
+p_state_SPD <- plot_state_map("spd", "Share SPD", "Reds", spd_range)
 
 # Save as PDF and PNG
 # ggsave("output/figures/map_elec_state_turnout.pdf", plot = p_state_turnout, width = 4, height = 6)
@@ -156,7 +186,7 @@ d_fed_2021 <- d_fed %>%
   dplyr::select(ags, cdu_csu, spd, gruene, afd, turnout)
 
 de_shp_fed_data <- de_shp_muni %>%
-  left_join(d_fed_2021, by = c("AGS" = "ags")) %>%
+  left_join_check_obs(d_fed_2021, by = c("AGS" = "ags")) %>%
   filter(GF == 4)
 
 # Handle unsuccessful mergers
@@ -166,7 +196,7 @@ unsuccessful <- de_shp_fed_data %>%
 # Prepare 2021 AGS names
 d_fed_2021_names <- d_fed %>%
   filter(election_year == "2021") %>%
-  left_join(
+  left_join_check_obs(
     read_excel(
       path = "data/crosswalks/raw/31122021_Auszug_GV.xlsx",
       sheet = 2
@@ -199,7 +229,7 @@ d_fed_2021_names_red <- d_fed_2021_names %>%
 # Merge unsuccessful with reduced names
 merge_by_name <- unsuccessful %>%
   dplyr::select(-c(cdu_csu:afd)) %>%
-  left_join(d_fed_2021_names_red, by = c("GEN" = "ags_name", "SN_L" = "state"))
+  left_join_check_obs(d_fed_2021_names_red, by = c("GEN" = "ags_name", "SN_L" = "state"))
 
 # Build final dataframe for plots
 plot_df <- de_shp_fed_data %>%
@@ -224,7 +254,7 @@ cat("Number of observations without voting data:", missing_data, "\n")
 cat("Number of observations with turnout > 1:", nrow(turnout_over_one), "\n")
 
 ### Function to create maps
-plot_fed_map <- function(fill_var, legend_label, fill_palette) {
+plot_fed_map <- function(fill_var, legend_label, fill_palette, limits) {
   ggplot() +
     geom_sf(data = plot_df, mapping = aes(fill = .data[[fill_var]]), colour = "NA") +
     geom_sf(data = de_shp_bula, fill = NA, colour = "grey30", linewidth = 0.2) +
@@ -241,10 +271,11 @@ plot_fed_map <- function(fill_var, legend_label, fill_palette) {
       plot.margin = margin(t = 0, r = 0, b = 0, l = 0),
       legend.box.margin = margin(t = -10, r = 0, b = 0, l = 0)
     ) +
-    scale_fill_distiller(legend_label,
+    scale_fill_distiller(NULL,
       palette = fill_palette,
       na.value = "white",
       direction = 1,
+      limits = limits,
       guide = guide_legend(
         keyheight = unit(2, units = "mm"), keywidth = unit(11, units = "mm"),
         label.position = "bottom", title.position = "top", nrow = 1
@@ -253,21 +284,21 @@ plot_fed_map <- function(fill_var, legend_label, fill_palette) {
 }
 
 ### Turnout
-p_fed_turnout <- plot_fed_map("turnout", "Turnout", "Purples")
+p_fed_turnout <- plot_fed_map("turnout", "Turnout", "Purples", turnout_range)
 
 # Save as PDF and PNG
 # ggsave("~/Documents/GitHub/german_election_data/output/figures/map_elec_fed_turnout.pdf", plot = p_fed_turnout, width = 4, height = 6)
 ggsave("~/Documents/GitHub/german_election_data/output/figures/map_elec_fed_turnout.png", plot = p_fed_turnout, width = 4, height = 6, dpi = 450)
 
 ### CDU/CSU
-p_fed_CDU <- plot_fed_map("cdu_csu", "Share CDU/CSU", "Blues")
+p_fed_CDU <- plot_fed_map("cdu_csu", "Share CDU/CSU", "Blues", cdu_range)
 
 # Save as PDF and PNG
 # ggsave("~/Documents/GitHub/german_election_data/output/figures/map_elec_fed_CDU.pdf", plot = p_fed_CDU, width = 4, height = 6)
 ggsave("~/Documents/GitHub/german_election_data/output/figures/map_elec_fed_CDU.png", plot = p_fed_CDU, width = 4, height = 6, dpi = 450)
 
 ### SPD
-p_fed_SPD <- plot_fed_map("spd", "Share SPD", "Reds")
+p_fed_SPD <- plot_fed_map("spd", "Share SPD", "Reds", spd_range)
 
 # Save as PDF and PNG
 # ggsave("~/Documents/GitHub/german_election_data/output/figures/map_elec_fed_SPD.pdf", plot = p_fed_SPD, width = 4, height = 6)
@@ -321,5 +352,3 @@ file.copy(
   recursive = FALSE,
   copy.mode = TRUE
 )
-
-cat("Plots moved successfully to Overleaf folder\n")
