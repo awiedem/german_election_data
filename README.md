@@ -2,7 +2,7 @@
 
 ## Overview
 
-The German Election Database provides a comprehensive dataset of local, state, and federal election results in Germany from 1990 onwards. This repository is intended to facilitate research on electoral behavior, representation, and political responsiveness at multiple levels of government. The dataset includes turnout and vote shares for all major parties, harmonized to account for changes in municipal boundaries and mail-in voting districts.
+The German Election Database provides a comprehensive dataset of local, state, and federal election results in Germany. This repository is intended to facilitate research on electoral behavior, representation, and political responsiveness at multiple levels of government. All datasets include turnout and vote shares for all major parties. Moreover, we provide geographically harmonized datasets that account for changes in municipal boundaries and mail-in voting districts.
 
 The Github repository is organized into three main folders:
 1. **Code**: Contains scripts for data processing, harmonization, and analysis.
