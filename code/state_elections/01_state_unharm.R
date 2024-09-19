@@ -192,15 +192,15 @@ state_elections <- out_df
 table(out_df$election_year, out_df$state)
 
 
-
+glimpse(state_elections)
 
 # some final transformations ----------------------------------------------
 state_elections <- state_elections |>
-  mutate(cdu = ifelse(state == '09', NA, cdu),
-         csu = ifelse(state == '09', cdu, NA)) |>
+  mutate(csu = ifelse(state == '09', cdu, NA),
+         cdu = ifelse(state == '09', NA, cdu)) |>
   # create cdu_csu variable
   rowwise() |>
-  mutate(cdu_csu = cdu + csu) |>
+  mutate(cdu_csu = sum(cdu, csu, na.rm = TRUE)) |>
   ungroup() |>
   select(ags, election_year, state, date, eligible_voters, valid_votes, turnout, 
          cdu, csu, spd, gruene, fdp, linke_pds, afd, other = other_party, cdu_csu)
@@ -227,5 +227,10 @@ df <- read_rds('data/state_elections/final/state_unharm.rds')
 # what's up with state == 01 in 2017?
 insp <- df |>
   filter(state == '01', election_year == 2017) 
+
+
+# whats up with BAvaria?
+insp <- df |>
+  filter(state == '09')
 
 ### END

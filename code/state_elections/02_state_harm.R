@@ -292,6 +292,13 @@ df_harm <- df_harm %>%
 table(df_harm$flag_total_votes_incongruent, useNA = "ifany")
 # 29 observations
 
+# is there any observations in which both CDU and CSU are not NA?
+df_harm %>%
+  filter(!is.na(cdu) & !is.na(csu)) %>%
+  select(ags, election_year) %>%
+  distinct()
+# no
+
 
 glimpse(df_harm)
 

@@ -498,6 +498,16 @@ write_rds(df_harm, "data/federal_elections/municipality_level/final/federal_muni
 df_harm <- read_rds("data/federal_elections/municipality_level/final/federal_muni_harm.rds") |>
   arrange(ags, election_year)
 
+## Inspect turnout ---------------------------------------------------------
+
+insp <- df_harm |> 
+  # filter(election_year == 2021) |>
+  filter(state == "07") |>
+  arrange(ags, election_year) |>
+  dplyr::select(ags, election_year, eligible_voters_orig:number_voters, turnout,turnout_wo_mailin, unique_mailin:unique_multi_mailin, )
+
+
+
 glimpse(df_harm)
 
 # inspect 2021
