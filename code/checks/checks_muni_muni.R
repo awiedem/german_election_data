@@ -9,16 +9,13 @@ conflicts_prefer(dplyr::lag)
 conflicts_prefer(lubridate::year)
 
 # Load data
-df <- read_rds("data/federal_elections/municipality_level/final/federal_muni_harm.rds")
-
-# Load raw data
-df_raw <- read_rds("data/federal_elections/municipality_level/final/federal_muni_raw.rds")
+df <- read_rds("data/municipal_elections/final/municipal_harm.rds")
 
 glimpse(df)
 
 # Identify party columns
 parties <- df %>%
-    dplyr::select(cdu:zentrum) %>%
+    dplyr::select(cdu_csu:other) %>%
     colnames()
 
 # Check 1: Sum of party vote shares
@@ -29,7 +26,7 @@ s_votes <- df %>%
 
 cat("Share of rows with sum of party vote shares not equal to 1 (in pct):", 100 * mean(s_votes != 1), "\n")
 
-# 0.001 %
+# 3%
 
 # Check 2: Party vote shares between 0 and 1
 s_votes_valid <- df %>%
@@ -40,13 +37,10 @@ s_votes_valid <- df %>%
 cat("Share of rows with all party vote shares between 0 and 1:", s_votes_valid / nrow(df), "\n")
 
 # Check 3: Large changes in party vote shares between elections
-parties_main <- c(
-    "cdu_csu", "spd", "fdp", "gruene",
-    "linke_pds", "afd", "turnout"
-)
+parties_main <- parties
 
 df <- df %>%
-    arrange(ags, election_year) %>%
+    arrange(ags, year) %>%
     group_by(ags) %>%
     mutate(across(all_of(parties_main),
         list(
@@ -87,14 +81,13 @@ print(party_quantiles)
 # Check linke_pds
 
 df %>%
-    arrange(ags, election_year) %>%
-    dplyr::select(ags, election_year, linke_pds, linke_pds_ratio, valid_votes) %>%
+    arrange(ags, year) %>%
+    dplyr::select(ags, year, linke_pds, linke_pds_ratio, valid_votes) %>%
     group_by(ags) %>%
-    filter(any(abs(linke_pds_ratio) >= 50) & !any(is.infinite(linke_pds_ratio))) %>%
+    filter(any(abs(linke_pds_ratio) >= 10) & !any(is.infinite(linke_pds_ratio))) %>%
     print(n = 100)
+
 ## Fine: Small towns and Linke becomes suddenly more feasible (from PDA to Linke)
-
-
 
 # Check 4: Large changes in valid votes
 df <- df %>%
@@ -107,14 +100,16 @@ df <- df %>%
 
 df_check_large_changes <- df %>%
     group_by(ags) %>%
-    filter(any(valid_votes_ratio > 2)) %>%
-    dplyr::select(ags, election_year, valid_votes, valid_votes_ratio)
+    filter(any(valid_votes_ratio > 5)) %>%
+    dplyr::select(ags, year, valid_votes, valid_votes_ratio)
 
 print(nrow(df_check_large_changes))
 
 df_check_large_changes %>%
     filter(valid_votes > 1000) %>%
     print(n = 500)
+
+# Prob mostly merges
 
 ## oftentimes created by mergers; but show up like this in raw (unharmonized data)
 
@@ -138,3 +133,72 @@ df %>%
     summarise(n = n()) %>%
     ungroup() %>%
     arrange(n)
+
+# Avg share other as a function of valid votes (plot)
+
+df$year %>% table()
+
+df <- df %>%
+    mutate(decade = case_when(
+        year < 2000 ~ "1990-99",
+        year < 2010 ~ "2000-09",
+        year > 2009 ~ "2010+"
+    ))
+
+df %>% glimpse()
+
+df %>%
+    filter(dplyr::between(eligible_voters, 100, 500000)) %>%
+    ggplot(
+        aes(x = eligible_voters, y = other)
+    ) +
+    stat_summary_bin(
+        fun = mean,
+        fun.data = mean_se,
+        geom = "pointrange",
+        bins = 20
+    ) +
+    stat_summary_bin(
+        fun = mean,
+        geom = "line",
+        bins = 20
+    ) +
+    scale_x_log10(
+        labels = scales::comma_format(),
+        breaks = c(100, 300, 1000, 3000, 10000, 30000, 100000, 500000)
+    ) +
+    geom_hline(yintercept = c(.25, .5, .75), linetype = "dotted") +
+    scale_y_continuous(
+        labels = scales::percent_format(accuracy = 1),
+        breaks = c(0, .25, .5, .75, 1)
+    ) +
+    labs(
+        x = "Eligible voters (log scale)",
+        y = "Average share of 'other' votes"
+    ) +
+    theme_hanno() +
+    haschaR::x_axis_90deg() +
+    facet_wrap(~decade)
+
+ggsave("output/figures/valid_votes_other_share.pdf", width = 8, height = 4)
+
+# Full paths for plots
+plot_list <- "output/figures/valid_votes_other_share.pdf"
+
+# Now move the plots to the Overleaf folder
+if (Sys.info()["user"] == "hanno") {
+    to_path <- "~/Dropbox/Apps/Overleaf/ElectionPaper/figures/"
+} else if (Sys.info()["user"] == "vincentheddesheimer") {
+    to_path <- "~/Dropbox (Princeton)/Apps/Overleaf/ElectionPaper/figures"
+} else {
+    to_path <- ""
+}
+
+# Copy plots to Overleaf folder
+file.copy(
+    from = plot_list,
+    to = to_path,
+    overwrite = TRUE,
+    recursive = FALSE,
+    copy.mode = TRUE
+)
