@@ -9,16 +9,16 @@ conflicts_prefer(dplyr::filter)
 
 # Load data
 
-f_m_harm <- read_rds("output/federal_muni_harm.rds") %>%
+f_m_harm <- read_rds("data/federal_elections/municipality_level/final/federal_muni_harm.rds") %>%
     dplyr::select(turnout, cdu_csu, spd, ags, election_year, state, county, valid_votes) %>%
     mutate(ags = as.numeric(ags)) %>%
     mutate(level = "federal")
-m_m_harm <- read_rds("output/municipal_harm.rds") %>%
+m_m_harm <- read_rds("data/municipal_elections/final/municipal_harm.rds") %>%
     dplyr::select(turnout, cdu_csu, spd, ags, year, state, county, valid_votes) %>%
     dplyr::rename(election_year = year) %>%
     mutate(ags = as.numeric(ags)) %>%
     mutate(level = "municipal")
-s_m_harm <- read_rds("output/state_harm.rds") %>%
+s_m_harm <- read_rds("data/state_elections/final/state_harm.rds") %>%
     mutate(county = substr(ags, 1, 5)) %>%
     dplyr::select(turnout, cdu_csu, spd, ags, election_year, state, county, valid_votes) %>%
     mutate(ags = as.numeric(ags)) %>%
@@ -30,13 +30,13 @@ f_m_harm$election_year %>% min()
 
 # Get covars
 
-df_m <- read_rds("data/municipal_covars/ags_area_pop_emp.rds") %>%
+df_m <- read_rds("data/covars_municipality/final/ags_area_pop_emp.rds") %>%
     mutate(epop_ratio = employees_ags * 100 / population_ags) %>%
     dplyr::select(ags_21, year, epop_ratio, population_ags) %>%
     dplyr::rename(ags = ags_21, election_year = year) %>%
     mutate(ags = as.numeric(ags))
 
-df_co_inkar <- read_csv("data/county_covars/cty_inkar_add.csv") %>%
+df_co_inkar <- read_csv("data/covars_county/cty_inkar_add.csv") %>%
     dplyr::select(1, 2, 3) %>%
     dplyr::rename(county = 1, election_year = 2, cty_unem = 3) %>%
     mutate(
@@ -128,8 +128,11 @@ add_decade_and_filter <- function(df) {
         ))
 }
 
-f_m_harm <- add_decade_and_filter(f_m_harm)
-m_m_harm <- add_decade_and_filter(m_m_harm)
+f_m_harm <- f_m_harm %>%
+    add_decade_and_filter()
+
+m_m_harm <- m_m_harm %>%
+    add_decade_and_filter()
 
 # Population to categorical - deciles of the distribution
 # Also standardize the EPOP ratio change
@@ -504,37 +507,3 @@ models %>%
     scale_color_brewer(palette = "Set2", name = "") +
     scale_fill_brewer(palette = "Set2", name = "") +
     coord_flip()
-
-
-
-
-# County level EPOP (not used right now) -----------------------------------
-
-co_vars <- read_csv("data/county_covars/cty_area_pop_emp.csv") %>%
-    mutate(epop_ratio = employees_cty * 100 / population_cty) %>%
-    dplyr::filter(year %in% c(2008, 2009)) %>%
-    arrange(county_code_21, year) %>%
-    group_by(county_code_21) %>%
-    mutate(
-        shock = epop_ratio[year == 2009] - epop_ratio[year == 2008],
-        population_cty = population_cty[year == 2008]
-    ) %>%
-    ungroup() %>%
-    dplyr::filter(year == 2009) %>%
-    dplyr::select(county_code_21, shock, population_cty)
-
-quantile(co_vars$shock, na.rm = TRUE, probs = seq(0, 1, 0.1))
-
-lmr_df <- read_excel("data/application/Zuordnung-Kreise-Arbeitsmarktregionen.xls") %>%
-    dplyr::select(1, 3) %>%
-    dplyr::rename(county_code_21 = 1, lmr = 2) %>%
-    slice(-1:-6)
-
-# Merge to county df
-
-co_vars <- co_vars %>%
-    left_join_check_obs(lmr_df) %>%
-    group_by(lmr) %>%
-    summarise(shock = -1 * weighted.mean(shock, w = population_cty, na.rm = TRUE)) %>%
-    ungroup() %>%
-    mutate(shock_binary = if_else(shock > 0, 1, 0))

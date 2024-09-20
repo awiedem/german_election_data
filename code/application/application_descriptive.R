@@ -10,16 +10,16 @@ conflicts_prefer(dplyr::between)
 
 # Load data
 
-f_m_harm <- read_rds("output/federal_muni_harm.rds") %>%
+f_m_harm <- read_rds("data/federal_elections/municipality_level/final/federal_muni_harm.rds") %>%
     dplyr::select(turnout, cdu_csu, spd, ags, election_year, state, county, valid_votes) %>%
     mutate(ags = as.numeric(ags)) %>%
     mutate(level = "federal")
-m_m_harm <- read_rds("output/municipal_harm.rds") %>%
+m_m_harm <- read_rds("data/municipal_elections/final/municipal_harm.rds") %>%
     dplyr::select(turnout, cdu_csu, spd, ags, year, state, county, valid_votes) %>%
     dplyr::rename(election_year = year) %>%
     mutate(ags = as.numeric(ags)) %>%
     mutate(level = "municipal")
-s_m_harm <- read_rds("output/state_harm.rds") %>%
+s_m_harm <- read_rds("data/state_elections/final/state_harm.rds") %>%
     mutate(county = substr(ags, 1, 5)) %>%
     dplyr::select(turnout, cdu_csu, spd, ags, election_year, state, county, valid_votes) %>%
     mutate(ags = as.numeric(ags)) %>%
