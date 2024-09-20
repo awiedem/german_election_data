@@ -154,14 +154,15 @@ df %>%
     ) +
     stat_summary_bin(
         fun = mean,
-        fun.data = mean_se,
-        geom = "pointrange",
+        geom = "line",
         bins = 20
     ) +
     stat_summary_bin(
         fun = mean,
-        geom = "line",
-        bins = 20
+        geom = "point",
+        bins = 20,
+        shape = 21,
+        fill = "white"
     ) +
     scale_x_log10(
         labels = scales::comma_format(),
