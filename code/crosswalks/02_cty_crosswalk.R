@@ -14,7 +14,7 @@ names_90to96 <- c("county_code", "county_name", "area_cw", "pop_cw", "area", "po
 names_97to20 <- c("county_code", "county_name", "area_cw", "pop_cw", "emp_cw", "area", "population", "employees", "county_code_21", "county_name_21")
 
 # Specify the Excel file path
-excel_file <- "data/crosswalks/ref-kreise-umrech-2021-1990-2020.xlsx"
+excel_file <- "data/crosswalks/raw/ref-kreise-umrech-2021-1990-2020.xlsx"
 
 # Read all sheets from the Excel file into a list of dataframes
 cw_list <- excel_sheets(excel_file) %>%
@@ -49,7 +49,9 @@ cw_combined <- cw_combined |>
 
 
 # write crosswalk df
-fwrite(cw_combined, "data/crosswalks/county_crosswalks.csv")
+fwrite(cw_combined, "data/crosswalks/final/cty_crosswalks.csv")
+write_rds(cw_combined, "data/crosswalks/final/cty_crosswalks.rds")
+
 
 
 # Create covariate dataframe ----------------------------------------------
@@ -83,7 +85,7 @@ cw |> count(year)
 
 
 # Get population & area for 2021
-cw21 <- read_excel(path = "data/crosswalks/04_KreiseVorjahr.xlsx", sheet = 2) |>
+cw21 <- read_excel(path = "data/crosswalks/raw/04_KreiseVorjahr.xlsx", sheet = 2) |>
   select(
     county_code_21 = `Kreisfreie Städte und Landkreise nach Fläche, Bevölkerung und Bevölkerungsdichte`,
     area = `...5`,
@@ -128,6 +130,8 @@ cw <- cw |>
   )
 
 # write
-fwrite(cw, "data/county_covars/cty_area_pop_emp.csv")
+fwrite(cw, "data/covars_county/final/cty_area_pop_emp.csv")
+write_rds(cw, "data/covars_county/final/cty_area_pop_emp.rds")
+
 
 ### END

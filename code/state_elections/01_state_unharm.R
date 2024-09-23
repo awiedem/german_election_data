@@ -5,15 +5,10 @@
 
 rm(list = ls())
 
-# Load
-load("data/state_elections/Elections_Clean.RData")
-
-
-library(wiesbaden)
-library(devtools)
-library(reshape2)
-library(pbapply)
+# install package if not installed
 #install_github('sumtxt/wiesbaden')
+pacman::p_load(wiesbaden, devtools, reshape2, pbapply, lubridate)
+
 
 # Plug in your credentials
 # See wiesbaden package documentation for details
@@ -170,8 +165,6 @@ out_df <- out_df %>%
 
 ## Add year / state
 
-library(lubridate)
-
 ## 
 
 out_df <- out_df %>% 
@@ -198,12 +191,16 @@ state_elections <- out_df
 
 table(out_df$election_year, out_df$state)
 
-# some final transformations
+
+glimpse(state_elections)
+
+# some final transformations ----------------------------------------------
 state_elections <- state_elections |>
-  mutate(csu = ifelse(state == '09', cdu, 0)) |>
+  mutate(csu = ifelse(state == '09', cdu, NA),
+         cdu = ifelse(state == '09', NA, cdu)) |>
   # create cdu_csu variable
   rowwise() |>
-  mutate(cdu_csu = cdu + csu) |>
+  mutate(cdu_csu = sum(cdu, csu, na.rm = TRUE)) |>
   ungroup() |>
   select(ags, election_year, state, date, eligible_voters, valid_votes, turnout, 
          cdu, csu, spd, gruene, fdp, linke_pds, afd, other = other_party, cdu_csu)
@@ -214,19 +211,26 @@ state_elections <- state_elections |>
   filter(!(state == '01' & election_year == 2017))
 
 
+
+
 ## Save for now
 
-fwrite(state_elections, 'output/state_unharm.csv')
-write_rds(state_elections, 'output/state_unharm.rds')
+fwrite(state_elections, 'data/state_elections/final/state_unharm.csv')
+write_rds(state_elections, 'data/state_elections/final/state_unharm.rds')
 
 
 
 # Inspect -----------------------------------------------------------------
 
-df <- read_rds('output/state_unharm.rds')
+df <- read_rds('data/state_elections/final/state_unharm.rds')
 
 # what's up with state == 01 in 2017?
 insp <- df |>
   filter(state == '01', election_year == 2017) 
+
+
+# whats up with BAvaria?
+insp <- df |>
+  filter(state == '09')
 
 ### END

@@ -18,7 +18,7 @@ mailin_df <- data.frame(
 
 # 1980 --------------------------------------------------------------------
 
-df80 <- fread("data/federal_elections/municipality_level/raw_data/BTW80/BTW80_Zweitstimmen_Gemeinden.txt", encoding = 'Latin-1') |>
+df80 <- fread("data/federal_elections/municipality_level/raw/BTW80/BTW80_Zweitstimmen_Gemeinden.txt", encoding = 'Latin-1') |>
   # Multiple entries for each municipality: variable BA (Bezirksart) 
   # 0 = Urnenwahlbezirk, 5 = Briefwahlberzirk, 6 = Sonderwahlbezirk, 8 = Bezirke für Wahlberechtigte ohne nähere Angaben
   ###
@@ -52,7 +52,7 @@ nrow(dupl) # 0 duplicates
 
 # 1983 --------------------------------------------------------------------
 
-df83 <- fread("data/federal_elections/municipality_level/raw_data/BTW83/BTW83_Zweitstimmen_Wahlbezirke.txt", encoding = 'Latin-1') |>
+df83 <- fread("data/federal_elections/municipality_level/raw/BTW83/BTW83_Zweitstimmen_Wahlbezirke.txt", encoding = 'Latin-1') |>
   # Multiple entries for each municipality: variable WBZ (Wahlbezirk) 
   ###
   # Create ags
@@ -106,7 +106,7 @@ mailin83 <- df83 |> filter(str_ends(ags, "999"))
 mailin_df[2,2] <- nrow(mailin83)
 
 # Load population data
-pop83 <- read_excel("data/municipality_sizes//31121983_Auszug_GV.xlsx", sheet = 2, col_types = "numeric") |>
+pop83 <- read_excel("data/covars_municipality/raw/municipality_sizes/31121983_Auszug_GV.xlsx", sheet = 2, col_types = "numeric") |>
   select(
     Land = `...2`,
     RB = `...3`,
@@ -150,7 +150,7 @@ nrow(dupl) # 0
 
 # 1987 --------------------------------------------------------------------
 
-df87 <- fread("data/federal_elections/municipality_level/raw_data/BTW87/BTW87_Zweitstimmen_Wahlbezirke.txt", encoding = 'Latin-1') |>
+df87 <- fread("data/federal_elections/municipality_level/raw/BTW87/BTW87_Zweitstimmen_Wahlbezirke.txt", encoding = 'Latin-1') |>
   # Multiple entries for each municipality: variable Wbz (Wahlbezirk) 
   # Create ags
   mutate(
@@ -195,7 +195,7 @@ mailin87 <- df87 |> filter(str_ends(ags, "999"))
 mailin_df[3,2] <- nrow(mailin87)
 
 # Load population data
-pop87 <- read_excel("data/municipality_sizes//31121987_Auszug_GV.xlsx", sheet = 2, col_types = "numeric") |>
+pop87 <- read_excel("data/covars_municipality/raw/municipality_sizes/31121987_Auszug_GV.xlsx", sheet = 2, col_types = "numeric") |>
   select(
     Land = `...2`,
     RB = `...3`,
@@ -240,7 +240,7 @@ nrow(dupl) # 0
 
 # 1990 --------------------------------------------------------------------
 
-df90 <- fread("data/federal_elections/municipality_level/raw_data/BTW90/BTW90_Zweitstimmen_Wahlbezirke.csv") |>
+df90 <- fread("data/federal_elections/municipality_level/raw/BTW90/BTW90_Zweitstimmen_Wahlbezirke.csv") |>
   # Multiple entries for each municipality: variable Wbz (Wahlbezirk) 
   ###
   # Create ags
@@ -293,7 +293,7 @@ mailin_df[4,2] <- nrow(mailin90)
 
 
 # Load population data
-pop90 <- read_excel("data/municipality_sizes//31121990_Auszug_GV.xlsx", sheet = 2, col_types = "numeric") |>
+pop90 <- read_excel("data/covars_municipality/raw/municipality_sizes/31121990_Auszug_GV.xlsx", sheet = 2, col_types = "numeric") |>
   select(
     Land = `...2`,
     RB = `...3`,
@@ -338,7 +338,7 @@ nrow(dupl) # 0
 
 # 1994 --------------------------------------------------------------------
 
-df94 <- fread("data/federal_elections/municipality_level/raw_data/BTW94/BTW94_Zweitstimmen_Wahlbezirke.txt", encoding = 'Latin-1') |>
+df94 <- fread("data/federal_elections/municipality_level/raw/BTW94/BTW94_Zweitstimmen_Wahlbezirke.txt", encoding = 'Latin-1') |>
   # Multiple entries for each municipality: variable Wbz (Wahlbezirk) 
   ###
   # Create ags
@@ -386,7 +386,7 @@ mailin_df[5,2] <- nrow(mailin94)
 
 
 # Load population data
-pop94 <- read_excel("data/municipality_sizes//31121994_Auszug_GV.xlsx", sheet = 2, col_types = "numeric") |>
+pop94 <- read_excel("data/covars_municipality/raw/municipality_sizes/31121994_Auszug_GV.xlsx", sheet = 2, col_types = "numeric") |>
   select(
     Land = `...3`,
     RB = `...4`,
@@ -430,7 +430,7 @@ nrow(dupl) # 0
 
 # 1998 --------------------------------------------------------------------
 
-df98 <- fread("data/federal_elections/municipality_level/raw_data/BTW98/BTW98_Zweitstimmen_Wahlbezirke.txt", encoding = 'Latin-1') |>
+df98 <- fread("data/federal_elections/municipality_level/raw/BTW98/BTW98_Zweitstimmen_Wahlbezirke.txt", encoding = 'Latin-1') |>
   # Multiple entries for each municipality: variable Wbz (Wahlbezirk) 
   ###
   # Create ags
@@ -478,7 +478,7 @@ mailin98 <- df98 |> filter(str_ends(ags, "999"))
 mailin_df[6,2] <- nrow(mailin98)
 
 # Load population data
-pop98 <- read_excel("data/municipality_sizes//31121998_Auszug_GV.xlsx", sheet = 2, col_types = "numeric") |>
+pop98 <- read_excel("data/covars_municipality/raw/municipality_sizes/31121998_Auszug_GV.xlsx", sheet = 2, col_types = "numeric") |>
   select(
     Land = `...3`,
     RB = `...4`,
@@ -524,7 +524,7 @@ nrow(dupl) # 0
 
 # 2002 --------------------------------------------------------------------
 
-df02 <- fread("data/federal_elections/municipality_level/raw_data/BTW02/BTW02_Zweitstimmen_Wahlbezirke.txt", encoding = 'Latin-1') |>
+df02 <- fread("data/federal_elections/municipality_level/raw/BTW02/BTW02_Zweitstimmen_Wahlbezirke.txt", encoding = 'Latin-1') |>
   # Multiple entries for each municipality: variable Wbz (Wahlbezirk) 
   ###
   # Create ags
@@ -597,7 +597,7 @@ mailin02 <- df02 |>
 mailin_df[7,2] <- nrow(mailin02)
 
 # Load population data
-pop02 <- read_excel("data/municipality_sizes//31122002_Auszug_GV.xlsx", sheet = 2, col_types = "numeric") |>
+pop02 <- read_excel("data/covars_municipality/raw/municipality_sizes/31122002_Auszug_GV.xlsx", sheet = 2, col_types = "numeric") |>
   select(
     Land = `...3`,
     RB = `...4`,
@@ -641,7 +641,7 @@ nrow(dupl) # 0
 
 # 2005 --------------------------------------------------------------------
 
-df05 <- fread("data/federal_elections/municipality_level/raw_data/BTW05/BTW05_Zweitstimmen_Wahlbezirke.txt", encoding = 'Latin-1') |>
+df05 <- fread("data/federal_elections/municipality_level/raw/BTW05/BTW05_Zweitstimmen_Wahlbezirke.txt", encoding = 'Latin-1') |>
   # Multiple entries for each municipality: variable Wbz (Wahlbezirk) 
   ###
   # Create ags
@@ -717,7 +717,7 @@ mailin05 <- df05 |>
 mailin_df[8,2] <- nrow(mailin05)
 
 # Load population data
-pop05 <- read_excel("data/municipality_sizes//31122005_Auszug_GV.xlsx", sheet = 2, col_types = "numeric") |>
+pop05 <- read_excel("data/covars_municipality/raw/municipality_sizes/31122005_Auszug_GV.xlsx", sheet = 2, col_types = "numeric") |>
   select(
     Land = `...3`,
     RB = `...4`,
@@ -764,7 +764,7 @@ nrow(dupl) # 0
 
 # 2009 --------------------------------------------------------------------
 
-df09 <- fread("data/federal_elections/municipality_level/raw_data/BTW09/BTW09_Zweitstimmen Wahlbezirke.txt", encoding = 'Latin-1') |>
+df09 <- fread("data/federal_elections/municipality_level/raw/BTW09/BTW09_Zweitstimmen Wahlbezirke.txt", encoding = 'Latin-1') |>
   # Multiple entries for each municipality: variable Wbz (Wahlbezirk) 
   ###
   # Create ags
@@ -861,7 +861,7 @@ mailin09 <- df09 |>
 mailin_df[9,2] <- nrow(mailin09)
 
 # Load population data
-pop09 <- read_excel("data/municipality_sizes//31122009_Auszug_GV.xlsx", sheet = 2, col_types = "numeric") |>
+pop09 <- read_excel("data/covars_municipality/raw/municipality_sizes/31122009_Auszug_GV.xlsx", sheet = 2, col_types = "numeric") |>
   select(
     Land = `...3`,
     RB = `...4`,
@@ -908,7 +908,7 @@ length(dupl)
 
 # 2013 --------------------------------------------------------------------
 
-df13 <- fread("data/federal_elections/municipality_level/raw_data/BTW13/BTW13_Zweitstimmen_Wahlbezirke.txt", encoding = 'Latin-1') |>
+df13 <- fread("data/federal_elections/municipality_level/raw/BTW13/BTW13_Zweitstimmen_Wahlbezirke.txt", encoding = 'Latin-1') |>
   # Multiple entries for each municipality: variable Wbz (Wahlbezirk) 
   ###
   # Create ags
@@ -997,7 +997,7 @@ mailin13 <- df13 |>
 mailin_df[10,2] <- nrow(mailin13)
 
 # Load population data
-pop13 <- read_excel("data/municipality_sizes//31122013_Auszug_GV.xlsx", sheet = 2, col_types = "numeric") |>
+pop13 <- read_excel("data/covars_municipality/raw/municipality_sizes/31122013_Auszug_GV.xlsx", sheet = 2, col_types = "numeric") |>
   select(
     Land = `...3`,
     RB = `...4`,
@@ -1046,7 +1046,7 @@ length(dupl) # 0
 
 # 2017 --------------------------------------------------------------------
 
-df17 <- fread("data/federal_elections/municipality_level/raw_data/BTW17/btw17_wbz_zweitstimmen.csv", encoding = 'Latin-1') |>
+df17 <- fread("data/federal_elections/municipality_level/raw/BTW17/btw17_wbz_zweitstimmen.csv", encoding = 'Latin-1') |>
   # Multiple entries for each municipality: variable Wbz (Wahlbezirk) 
   ###
   # Create ags
@@ -1121,7 +1121,7 @@ mailin17 <- df17 |>
 mailin_df[11,2] <- nrow(mailin17)
 
 # Load population data
-pop17 <- read_excel("data/municipality_sizes//31122017_Auszug_GV.xlsx", sheet = 2, col_types = "numeric") |>
+pop17 <- read_excel("data/covars_municipality/raw/municipality_sizes/31122017_Auszug_GV.xlsx", sheet = 2, col_types = "numeric") |>
   select(
     Land = `...3`,
     RB = `...4`,
@@ -1169,7 +1169,7 @@ nrow(dupl) # 0
 
 # 2021 --------------------------------------------------------------------
 
-df21 <- fread("data/federal_elections/municipality_level/raw_data/BTW21/btw21_wbz_ergebnisse.csv", encoding = 'UTF-8') |>
+df21 <- fread("data/federal_elections/municipality_level/raw/BTW21/btw21_wbz_ergebnisse.csv", encoding = 'UTF-8') |>
   # csv file includes erst- and zweitstimme; select only variables for zweitstimme
   select(c(1:17, 65:106)) |>
   slice(-1) |>
@@ -1248,7 +1248,7 @@ mailin21 <- df21 |>
 mailin_df[12,2] <- nrow(mailin21)
 
 # Load population data
-pop21 <- read_excel("data/municipality_sizes/31122021_Auszug_GV.xlsx", sheet = 2, col_types = "numeric") |>
+pop21 <- read_excel("data/covars_municipality/raw/municipality_sizes/31122021_Auszug_GV.xlsx", sheet = 2, col_types = "numeric") |>
   select(
     Land = `...3`,
     RB = `...4`,
@@ -1439,13 +1439,13 @@ names(df)
 
 # Write unharmonized df ---------------------------------------------------
 
-write_rds(df, file = "output/federal_muni_raw.rds")
-fwrite(df, file = "output/federal_muni_raw.csv")
+write_rds(df, file = "data/federal_elections/municipality_level/final/federal_muni_raw.rds")
+fwrite(df, file = "data/federal_elections/municipality_level/final/federal_muni_raw.csv")
 
 
 # Inspect -----------------------------------------------------------------
 
-df <- read_rds("output/federal_muni_raw.rds")
+df <- read_rds("data/federal_elections/municipality_level/final/federal_muni_raw.rds")
 
 names(df)
 

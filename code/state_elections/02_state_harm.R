@@ -9,7 +9,7 @@ rm(list = ls())
 options(scipen = 999)
 
 # load
-df <- read_rds("output/state_unharm.rds")
+df <- read_rds("data/state_elections/final/state_unharm.rds")
 # df <- read_rds("01_Data/13_LTW/Elections_Clean.RDS")
 
 glimpse(df)
@@ -21,7 +21,7 @@ table(df$election_year)
 # Create crosswalks -------------------------------------------------------
 
 # Load crosswalks
-cw <- fread("data/crosswalks/ags_crosswalks.csv") |>
+cw <- fread("data/crosswalks/final/ags_crosswalks.csv") |>
   mutate(
     ags = pad_zero_conditional(ags, 7),
     ags_21 = pad_zero_conditional(ags_21, 7)
@@ -279,18 +279,39 @@ df_harm %>%
   distinct()
 # none
 
+
+
+# Flag when total vote share > 1 ------------------------------------------
+
+df_harm <- df_harm %>%
+  mutate(total_vote_share = rowSums(select(., cdu:other), na.rm = TRUE),
+         total_vote_share = round(total_vote_share, 8),
+         flag_total_votes_incongruent = ifelse(total_vote_share > 1, 1, 0)
+         )
+
+table(df_harm$flag_total_votes_incongruent, useNA = "ifany")
+# 29 observations
+
+# is there any observations in which both CDU and CSU are not NA?
+df_harm %>%
+  filter(!is.na(cdu) & !is.na(csu)) %>%
+  select(ags, election_year) %>%
+  distinct()
+# no
+
+
 glimpse(df_harm)
 
 # write
-fwrite(df_harm, "output/state_harm.csv")
-write_rds(df_harm, "output/state_harm.rds")
+fwrite(df_harm, "data/state_elections/final/state_harm.csv")
+write_rds(df_harm, "data/state_elections/final/state_harm.rds")
 
 
 
 # Create plot -------------------------------------------------------------
 
 # read
-df_harm <- read_rds("output/state_harm.rds")
+df_harm <- read_rds("data/state_elections/final/state_harm.rds")
 
 # for which election_years do we have non-NA afd values?
 df_harm %>%
@@ -299,7 +320,7 @@ df_harm %>%
   distinct()
 
 # Load municipality level data
-muni <- read_rds("data/municipal_covars/ags_area_pop_emp.rds") |>
+muni <- read_rds("data/covars_municipality/final/ags_area_pop_emp.rds") |>
   rename(ags = ags_21) |>
   mutate(ags = pad_zero_conditional(ags, 7)) |>
   filter(year >= 2006 & year < 2020) |>
@@ -339,21 +360,21 @@ plot_df <- plot_df |>
 plot_df$election_bin <- factor(plot_df$election_bin, levels = c("0", "1", "2"))
 
 plot_df |>
-  ggplot(aes(x = as.factor(election_year), 
+  ggplot(aes(x = as.numeric(election_year), 
              y = factor(state_name, 
                         levels = rev(levels(factor(state_name)))), 
              fill = election_bin)
   ) +
   geom_tile(color = "white") + # Add borders to the squares
   scale_fill_manual(
-    values = c("1" = "darkgrey", "0" = "white", "2" = "black"), 
+    values = c("1" = "grey20", "0" = "white", "2" = "darkgrey"), 
     name = "Election",
     labels = c("1" = "Election Held", "2" = "Data Unavailable")
   ) +
   labs(x = "Year", y = "State") +
   theme_hanno() +
   theme(
-    axis.text.x = element_text(angle = 45, hjust = 1), # Rotate x-axis labels for better readability
+    # axis.text.x = element_text(angle = 45, hjust = 1), # Rotate x-axis labels for better readability
     panel.grid.major = element_blank(), 
     panel.grid.minor = element_blank(),
     legend.position = "none"

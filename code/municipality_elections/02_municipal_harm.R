@@ -9,7 +9,7 @@ rm(list = ls())
 options(scipen = 999)
 
 # Read crosswalk files ----------------------------------------------------
-cw <- fread("data/crosswalks/ags_crosswalks.csv") |>
+cw <- fread("data/crosswalks/final/ags_crosswalks.csv") |>
   mutate(
     ags = pad_zero_conditional(ags, 7),
     weights = pop_cw * population
@@ -18,7 +18,7 @@ cw <- fread("data/crosswalks/ags_crosswalks.csv") |>
 
 # Merge with unharmonized election data -----------------------------------
 
-df <- read_rds("output/municipal_unharm.rds") |>
+df <- read_rds("data/municipal_elections/final/municipal_unharm.rds") |>
   # filter years before 1990: no crosswalks available
   filter(election_year >= 1990) |>
   mutate(election_year = as.numeric(election_year))
@@ -65,10 +65,6 @@ not_merged_naive <- df_naive_merge %>%
   mutate(id = paste0(ags, "_", election_year))
 not_merged_naive
 # If we do not follow the steps below, there are 1,014 cases of unsuccessful merges.
-
-fwrite(not_merged_naive, "data/municipal_elections/processed_data/unsuccessful_mergers.csv")
-
-glimpse(df_naive_merge)
 
 
 # Dealing with unsuccessful mergers ---------------------------------------
@@ -337,7 +333,7 @@ area_pop <- df_cw |>
   rename(ags = ags_21, year = election_year)
 
 # Get population & area for 2021
-ags21 <- read_excel(path = "data/crosswalks/31122021_Auszug_GV.xlsx", sheet = 2) |>
+ags21 <- read_excel(path = "data/crosswalks/raw/31122021_Auszug_GV.xlsx", sheet = 2) |>
   select(
     Land = `...3`,
     RB = `...4`,
@@ -394,16 +390,22 @@ glimpse(df_harm)
 
 
 ## save
-fwrite(df_harm, "output/municipal_harm.csv")
-write_rds(df_harm, "output/municipal_harm.rds")
+fwrite(df_harm, "data/municipal_elections/final/municipal_harm.csv")
+write_rds(df_harm, "data/municipal_elections/final/municipal_harm.rds")
 
 
 # Create plot -------------------------------------------------------------
 
 # Load municipality level data
-muni <- read_rds("data/municipal_covars/ags_area_pop_emp.rds") |>
+muni <- read_rds("data/covars_municipality/final/ags_area_pop_emp.rds") |>
   rename(ags = ags_21) |>
   mutate(ags = pad_zero_conditional(ags, 7))
+
+df_harm <- read_rds("data/municipal_elections/final/municipal_harm.rds")
+
+muni_21 <- df_harm |>
+  filter(year == 2021) |>
+  dplyr::select(ags, cdu_csu, gruene, spd)
 
 # Merge
 df_final <- muni |>
@@ -433,21 +435,21 @@ plot_df <- df_final |>
   ungroup()
 
 plot_df |>
-  ggplot(aes(x = as.factor(year), 
+  ggplot(aes(x = as.numeric(year), 
              y = factor(state_name, 
                         levels = rev(levels(factor(state_name)))), 
              fill = as.factor(election_bin))
   ) +
   geom_tile(color = "white") + # Add borders to the squares
   scale_fill_manual(
-    values = c("1" = "darkgrey", "0" = "white"), 
+    values = c("1" = "grey20", "0" = "white"), 
     name = "Election",
     labels = c("1" = "Election Held", "2" = "Data Unavailable")
   ) +
   labs(x = "Year", y = "State") +
   theme_hanno() +
   theme(
-    axis.text.x = element_text(angle = 90, vjust = 0.5), # Rotate x-axis labels for better readability
+    # axis.text.x = element_text(angle = 90, vjust = 0.5), # Rotate x-axis labels for better readability
     panel.grid.major = element_blank(), 
     panel.grid.minor = element_blank(),
     legend.position = "none"
