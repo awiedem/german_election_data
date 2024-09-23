@@ -7500,6 +7500,209 @@ bremen_overall_buergerschaftswahl_data_sub <- bremen_overall_buergerschaftswahl_
 # ----
 # ----
 ######### BRANDENBURG ----
+###### Brandenburg 1993 Gemeinderatswahlen ----
+#### Load election data ----
+brandenburg_1993_gemeinderatswahlen_data <- as.data.table(read_excel("raw/brandenburg/brandenburg_1993.xlsx", sheet="Ergebnis"))
+
+# Transpose
+brandenburg_1993_gemeinderatswahlen_data_recoded <- as.data.frame(t(brandenburg_1993_gemeinderatswahlen_data))
+
+# Rename the columns with the first row (AGS)
+colnames(brandenburg_1993_gemeinderatswahlen_data_recoded) <- brandenburg_1993_gemeinderatswahlen_data_recoded[1, ]
+
+# Remove the first row, since it's now in the column names
+brandenburg_1993_gemeinderatswahlen_data_recoded <- brandenburg_1993_gemeinderatswahlen_data_recoded[-c(1:2), ]
+
+# Remove row names
+rownames(brandenburg_1993_gemeinderatswahlen_data_recoded) <- NULL
+
+
+#### Recoding ----
+# Fix AGS 
+brandenburg_1993_gemeinderatswahlen_data_recoded <- brandenburg_1993_gemeinderatswahlen_data_recoded %>%
+  mutate(AGS_8dig = paste0("12", str_remove_all(AGS, " ")))
+
+#test <- brandenburg_1993_gemeinderatswahlen_data_recoded[nchar(brandenburg_1993_gemeinderatswahlen_data_recoded$AGS_8dig) !=8,]
+
+# Creating non-existing variables ----
+brandenburg_1993_gemeinderatswahlen_data_recoded <- as.data.table(brandenburg_1993_gemeinderatswahlen_data_recoded)
+brandenburg_1993_gemeinderatswahlen_data_recoded[ , Bundesland := "Brandenburg"]
+brandenburg_1993_gemeinderatswahlen_data_recoded[ , election_year := "1993"]
+brandenburg_1993_gemeinderatswahlen_data_recoded[ , election_type := "Gemeinderatswahlen"]
+brandenburg_1993_gemeinderatswahlen_data_recoded[ , IDIRB := ""]
+brandenburg_1993_gemeinderatswahlen_data_recoded[ , IDBA := ""]
+
+# Renaming existing variables ----
+brandenburg_1993_gemeinderatswahlen_data_recoded$Gebietsname <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$Wahlberechtigteinsgesamt <- as.numeric(brandenburg_1993_gemeinderatswahlen_data_recoded$Wahlberechtigte)
+brandenburg_1993_gemeinderatswahlen_data_recoded$Wähler <- as.numeric(brandenburg_1993_gemeinderatswahlen_data_recoded$Wähler)
+brandenburg_1993_gemeinderatswahlen_data_recoded$GültigeStimmen <- as.numeric(brandenburg_1993_gemeinderatswahlen_data_recoded$`gültige Stimmen`)
+
+brandenburg_1993_gemeinderatswahlen_data_recoded$abs_CDU <- as.numeric(brandenburg_1993_gemeinderatswahlen_data_recoded$CDU)
+brandenburg_1993_gemeinderatswahlen_data_recoded$abs_SPD <- as.numeric(brandenburg_1993_gemeinderatswahlen_data_recoded$SPD)
+brandenburg_1993_gemeinderatswahlen_data_recoded$abs_DIELINKE <- as.numeric(brandenburg_1993_gemeinderatswahlen_data_recoded$PDS)
+brandenburg_1993_gemeinderatswahlen_data_recoded$abs_GRÜNE <- as.numeric(brandenburg_1993_gemeinderatswahlen_data_recoded$`GRÜNE/B90`)
+brandenburg_1993_gemeinderatswahlen_data_recoded$abs_AfD <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$abs_PIRATEN <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$abs_FDP <- as.numeric(brandenburg_1993_gemeinderatswahlen_data_recoded$`F.D.P.`)
+brandenburg_1993_gemeinderatswahlen_data_recoded$abs_DiePARTEI <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$abs_FREIEWÄHLER <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$abs_Gemeinsame_Wahlvorschläge <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$abs_Wählergruppen <- as.numeric(brandenburg_1993_gemeinderatswahlen_data_recoded$WG)
+
+brandenburg_1993_gemeinderatswahlen_data_recoded$gew_CDU <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$gew_SPD <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$gew_DIELINKE <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$gew_GRÜNE <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$gew_AfD <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$gew_PIRATEN <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$gew_FDP <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$gew_DiePARTEI <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$gew_FREIEWÄHLER <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$gew_Gemeinsame_Wahlvorschläge <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$gew_Wählergruppen <- NA
+
+brandenburg_1993_gemeinderatswahlen_data_recoded$sitze_CDU <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$sitze_SPD <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$sitze_DIELINKE <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$sitze_GRÜNE <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$sitze_AfD <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$sitze_PIRATEN <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$sitze_FDP <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$sitze_DiePARTEI <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$sitze_FREIEWÄHLER <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$sitze_Gemeinsame_Wahlvorschläge <- NA
+brandenburg_1993_gemeinderatswahlen_data_recoded$sitze_Wählergruppen <- NA
+
+names(brandenburg_1993_gemeinderatswahlen_data_recoded)
+
+# Creating new dataframe with selected vars ----
+brandenburg_1993_gemeinderatswahlen_data_recoded <- brandenburg_1993_gemeinderatswahlen_data_recoded[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                                         Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                                         abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER, abs_Gemeinsame_Wahlvorschläge, abs_Wählergruppen,
+                                                                                                         gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER, gew_Gemeinsame_Wahlvorschläge, gew_Wählergruppen,
+                                                                                                         sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER, sitze_Gemeinsame_Wahlvorschläge, sitze_Wählergruppen)]
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+brandenburg_1993_gemeinderatswahlen_data_recoded <-
+  brandenburg_1993_gemeinderatswahlen_data_recoded %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+brandenburg_1993_gemeinderatswahlen_data_recoded$Turnout <- brandenburg_1993_gemeinderatswahlen_data_recoded$Wähler / brandenburg_1993_gemeinderatswahlen_data_recoded$Wahlberechtigteinsgesamt
+
+
+###### Brandenburg 1998 Gemeinderatswahlen ----
+#### Load election data ----
+brandenburg_1998_gemeinderatswahlen_data <- as.data.table(read_excel("raw/brandenburg/brandenburg_1998.xlsx", sheet="Ergebnis"))
+
+# Transpose
+brandenburg_1998_gemeinderatswahlen_data_recoded <- as.data.frame(t(brandenburg_1998_gemeinderatswahlen_data))
+
+# Rename the columns with the first row (AGS)
+colnames(brandenburg_1998_gemeinderatswahlen_data_recoded) <- brandenburg_1998_gemeinderatswahlen_data_recoded[1, ]
+
+# Remove the first row, since it's now in the column names
+brandenburg_1998_gemeinderatswahlen_data_recoded <- brandenburg_1998_gemeinderatswahlen_data_recoded[-c(1), ]
+
+# Remove row names
+rownames(brandenburg_1998_gemeinderatswahlen_data_recoded) <- NULL
+
+
+#### Recoding ----
+# Fix AGS 
+brandenburg_1998_gemeinderatswahlen_data_recoded <- brandenburg_1998_gemeinderatswahlen_data_recoded %>%
+  mutate(AGS_8dig = str_remove_all(AGS, " ")) %>%
+  filter(!is.na(AGS_8dig))
+
+# Remove Wahlkreise
+brandenburg_1998_gemeinderatswahlen_data_recoded <- brandenburg_1998_gemeinderatswahlen_data_recoded %>%
+  filter(!AGS_name %in% c("Uckermark", "Barnim", "Prignitz", "Ostprignitz-Ruppin", "Oberhavel",
+                          "Havelland", "Märkisch-Oderland", "Oder-Spree", "Teltow-Fläming", 
+                          "Dahme-Spreewald", "Elbe-Elster", "Oberspreewald-Lausitz",
+                          "Spree-Neiße"))
+
+# test <- brandenburg_1998_gemeinderatswahlen_data_recoded[nchar(brandenburg_1998_gemeinderatswahlen_data_recoded$AGS_8dig) !=8,]
+# 
+# test <- brandenburg_1998_gemeinderatswahlen_data_recoded %>%
+#   filter(grepl("[^0-9]", AGS_8dig))
+
+# Creating non-existing variables ----
+brandenburg_1998_gemeinderatswahlen_data_recoded <- as.data.table(brandenburg_1998_gemeinderatswahlen_data_recoded)
+brandenburg_1998_gemeinderatswahlen_data_recoded[ , Bundesland := "Brandenburg"]
+brandenburg_1998_gemeinderatswahlen_data_recoded[ , election_year := "1998"]
+brandenburg_1998_gemeinderatswahlen_data_recoded[ , election_type := "Gemeinderatswahlen"]
+brandenburg_1998_gemeinderatswahlen_data_recoded[ , IDIRB := ""]
+brandenburg_1998_gemeinderatswahlen_data_recoded[ , IDBA := ""]
+
+# Renaming existing variables ----
+brandenburg_1998_gemeinderatswahlen_data_recoded$Gebietsname <- brandenburg_1998_gemeinderatswahlen_data_recoded$AGS_name
+brandenburg_1998_gemeinderatswahlen_data_recoded$Wahlberechtigteinsgesamt <- as.numeric(brandenburg_1998_gemeinderatswahlen_data_recoded$Wahlberechtigte)
+brandenburg_1998_gemeinderatswahlen_data_recoded$Wähler <- as.numeric(brandenburg_1998_gemeinderatswahlen_data_recoded$Wähler)
+brandenburg_1998_gemeinderatswahlen_data_recoded$GültigeStimmen <- as.numeric(brandenburg_1998_gemeinderatswahlen_data_recoded$`gültige Stimmen`)
+
+brandenburg_1998_gemeinderatswahlen_data_recoded$abs_CDU <- as.numeric(brandenburg_1998_gemeinderatswahlen_data_recoded$CDU)
+brandenburg_1998_gemeinderatswahlen_data_recoded$abs_SPD <- as.numeric(brandenburg_1998_gemeinderatswahlen_data_recoded$SPD)
+brandenburg_1998_gemeinderatswahlen_data_recoded$abs_DIELINKE <- as.numeric(brandenburg_1998_gemeinderatswahlen_data_recoded$PDS)
+brandenburg_1998_gemeinderatswahlen_data_recoded$abs_GRÜNE <- as.numeric(brandenburg_1998_gemeinderatswahlen_data_recoded$`GRÜNE/B90`)
+brandenburg_1998_gemeinderatswahlen_data_recoded$abs_AfD <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$abs_PIRATEN <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$abs_FDP <- as.numeric(brandenburg_1998_gemeinderatswahlen_data_recoded$`F.D.P.`)
+brandenburg_1998_gemeinderatswahlen_data_recoded$abs_DiePARTEI <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$abs_FREIEWÄHLER <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$abs_Gemeinsame_Wahlvorschläge <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$abs_Wählergruppen <- as.numeric(brandenburg_1998_gemeinderatswahlen_data_recoded$WG)
+
+brandenburg_1998_gemeinderatswahlen_data_recoded$gew_CDU <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$gew_SPD <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$gew_DIELINKE <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$gew_GRÜNE <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$gew_AfD <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$gew_PIRATEN <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$gew_FDP <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$gew_DiePARTEI <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$gew_FREIEWÄHLER <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$gew_Gemeinsame_Wahlvorschläge <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$gew_Wählergruppen <- NA
+
+brandenburg_1998_gemeinderatswahlen_data_recoded$sitze_CDU <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$sitze_SPD <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$sitze_DIELINKE <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$sitze_GRÜNE <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$sitze_AfD <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$sitze_PIRATEN <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$sitze_FDP <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$sitze_DiePARTEI <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$sitze_FREIEWÄHLER <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$sitze_Gemeinsame_Wahlvorschläge <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$sitze_Wählergruppen <- NA
+
+names(brandenburg_1998_gemeinderatswahlen_data_recoded)
+
+# Creating new dataframe with selected vars ----
+brandenburg_1998_gemeinderatswahlen_data_recoded <- brandenburg_1998_gemeinderatswahlen_data_recoded[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                                         Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                                         abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER, abs_Gemeinsame_Wahlvorschläge, abs_Wählergruppen,
+                                                                                                         gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER, gew_Gemeinsame_Wahlvorschläge, gew_Wählergruppen,
+                                                                                                         sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER, sitze_Gemeinsame_Wahlvorschläge, sitze_Wählergruppen)]
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+brandenburg_1998_gemeinderatswahlen_data_recoded <-
+  brandenburg_1998_gemeinderatswahlen_data_recoded %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+brandenburg_1998_gemeinderatswahlen_data_recoded$Turnout <- brandenburg_1998_gemeinderatswahlen_data_recoded$Wähler / brandenburg_1998_gemeinderatswahlen_data_recoded$Wahlberechtigteinsgesamt
+
+
 ###### Brandenburg 2003 Gemeinderatswahlen ----
 #### Load election data ----
 brandenburg_2003_gemeinderatswahlen_data <- as.data.table(read_excel("raw/brandenburg/brandenburg_2003.xlsx", sheet="Ergebnis"))
@@ -8203,7 +8406,8 @@ brandenburg_2019_gemeinderatswahlen_data_recoded$Turnout <- brandenburg_2019_gem
 
 ####### Merge files and save overall output for Brandenburg ----
 # Merge
-brandenburg_kommunalwahlen <- rbind(brandenburg_2003_gemeinderatswahlen_data_recoded,brandenburg_2008_gemeinderatswahlen_data_recoded,
+brandenburg_kommunalwahlen <- rbind(brandenburg_1993_gemeinderatswahlen_data_recoded, brandenburg_1998_gemeinderatswahlen_data_recoded,
+                                    brandenburg_2003_gemeinderatswahlen_data_recoded,brandenburg_2008_gemeinderatswahlen_data_recoded,
                                     brandenburg_2014_gemeinderatswahlen_data_recoded, brandenburg_2019_gemeinderatswahlen_data_recoded)
 
 # Replace - with NA
