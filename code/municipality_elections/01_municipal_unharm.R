@@ -7624,7 +7624,7 @@ brandenburg_1998_gemeinderatswahlen_data_recoded <- brandenburg_1998_gemeinderat
   filter(!AGS_name %in% c("Uckermark", "Barnim", "Prignitz", "Ostprignitz-Ruppin", "Oberhavel",
                           "Havelland", "Märkisch-Oderland", "Oder-Spree", "Teltow-Fläming", 
                           "Dahme-Spreewald", "Elbe-Elster", "Oberspreewald-Lausitz",
-                          "Spree-Neiße"))
+                          "Spree-Neiße", "Potsdam-Mittelmark"))
 
 # test <- brandenburg_1998_gemeinderatswahlen_data_recoded[nchar(brandenburg_1998_gemeinderatswahlen_data_recoded$AGS_8dig) !=8,]
 # 
@@ -8986,7 +8986,7 @@ rlp_kommunalwahlen <- rlp_kommunalwahlen %>%
     !grepl(", LK", Gebietsname),
     !grepl(", VG", Gebietsname),
     !grepl(", Landkreis", Gebietsname),
-    !AGS_8dig %in% c("07141000", "07143000", "07232000", "07333000", "07338000"))
+    !AGS_8dig %in% c("07141000", "07143000", "07232000", "07333000", "07338000", "07140000"))
 
 
 # Save
