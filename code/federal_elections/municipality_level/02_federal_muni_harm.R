@@ -521,6 +521,11 @@ insp <- df_harm |>
   arrange(ags, election_year) |>
   dplyr::select(ags, election_year, eligible_voters_orig:number_voters, turnout, turnout_wo_mailin, unique_mailin:unique_multi_mailin, )
 
+# count number of municipalities
+df_harm |>
+  distinct(ags) |>
+  nrow()
+
 
 
 glimpse(df_harm)
