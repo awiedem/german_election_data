@@ -1143,6 +1143,81 @@ thueringen_kommunalwahlen$AGS_8dig <- paste("160", thueringen_kommunalwahlen$AGS
 # ----
 # ----
 ######### HAMBURG ----
+###### Hamburg 1991-1997 Buergerschaftswahl ----
+#### Load election data ----
+hamburg_1991_1997_buergerschaftswahl_data <- as.data.table(read_excel("raw/hamburg/hamburg_1991_1997.xlsx", sheet="results"))
+
+#### Delete white space ----
+names(hamburg_1991_1997_buergerschaftswahl_data) <-  str_replace_all(names(hamburg_1991_1997_buergerschaftswahl_data), fixed(" "), "")
+
+#### Recoding ----
+# Create new dataframe ----
+hamburg_1991_1997_buergerschaftswahl_data_sub <- hamburg_1991_1997_buergerschaftswahl_data
+
+# Creating non-existing variables ----
+hamburg_1991_1997_buergerschaftswahl_data_sub[ , AGS_8dig := "02000000"] # 8 digits with leading zero
+hamburg_1991_1997_buergerschaftswahl_data_sub[ , Bundesland := "Hamburg"]
+hamburg_1991_1997_buergerschaftswahl_data_sub[ , Gebietsname := "Hamburg"]
+hamburg_1991_1997_buergerschaftswahl_data_sub[ , election_type := "Buergerschaftswahl (Gesamtstimmen Landesliste)"]
+hamburg_1991_1997_buergerschaftswahl_data_sub[ , IDIRB := ""]
+hamburg_1991_1997_buergerschaftswahl_data_sub[ , IDBA := ""]
+
+# Renaming existing variables ----
+hamburg_1991_1997_buergerschaftswahl_data_sub$election_year <- hamburg_1991_1997_buergerschaftswahl_data_sub$Year
+hamburg_1991_1997_buergerschaftswahl_data_sub$Wahlberechtigteinsgesamt <- hamburg_1991_1997_buergerschaftswahl_data_sub$Wahlberechtigte
+hamburg_1991_1997_buergerschaftswahl_data_sub$Wähler <- hamburg_1991_1997_buergerschaftswahl_data_sub$Waehler
+hamburg_1991_1997_buergerschaftswahl_data_sub$GültigeStimmen <- hamburg_1991_1997_buergerschaftswahl_data_sub$gueltigeStimmen
+
+hamburg_1991_1997_buergerschaftswahl_data_sub$abs_CDU <- hamburg_1991_1997_buergerschaftswahl_data_sub$CDU
+hamburg_1991_1997_buergerschaftswahl_data_sub$abs_SPD <- hamburg_1991_1997_buergerschaftswahl_data_sub$SPD
+hamburg_1991_1997_buergerschaftswahl_data_sub$abs_DIELINKE <- hamburg_1991_1997_buergerschaftswahl_data_sub$LINKE
+hamburg_1991_1997_buergerschaftswahl_data_sub$abs_GRÜNE <- hamburg_1991_1997_buergerschaftswahl_data_sub$Gruene
+hamburg_1991_1997_buergerschaftswahl_data_sub$abs_AfD <- NA
+hamburg_1991_1997_buergerschaftswahl_data_sub$abs_PIRATEN <- NA
+hamburg_1991_1997_buergerschaftswahl_data_sub$abs_FDP <- hamburg_1991_1997_buergerschaftswahl_data_sub$FDP
+hamburg_1991_1997_buergerschaftswahl_data_sub$abs_DiePARTEI <- NA
+hamburg_1991_1997_buergerschaftswahl_data_sub$abs_FREIEWÄHLER <- NA
+
+hamburg_1991_1997_buergerschaftswahl_data_sub$gew_CDU <- NA
+hamburg_1991_1997_buergerschaftswahl_data_sub$gew_SPD <- NA
+hamburg_1991_1997_buergerschaftswahl_data_sub$gew_DIELINKE <- NA
+hamburg_1991_1997_buergerschaftswahl_data_sub$gew_GRÜNE <- NA
+hamburg_1991_1997_buergerschaftswahl_data_sub$gew_AfD <- NA
+hamburg_1991_1997_buergerschaftswahl_data_sub$gew_PIRATEN <- NA
+hamburg_1991_1997_buergerschaftswahl_data_sub$gew_FDP <- NA
+hamburg_1991_1997_buergerschaftswahl_data_sub$gew_DiePARTEI <- NA
+hamburg_1991_1997_buergerschaftswahl_data_sub$gew_FREIEWÄHLER <- NA
+
+hamburg_1991_1997_buergerschaftswahl_data_sub$sitze_CDU <- NA
+hamburg_1991_1997_buergerschaftswahl_data_sub$sitze_SPD <- NA
+hamburg_1991_1997_buergerschaftswahl_data_sub$sitze_DIELINKE <- NA
+hamburg_1991_1997_buergerschaftswahl_data_sub$sitze_GRÜNE <- NA
+hamburg_1991_1997_buergerschaftswahl_data_sub$sitze_AfD <- NA
+hamburg_1991_1997_buergerschaftswahl_data_sub$sitze_PIRATEN <- NA
+hamburg_1991_1997_buergerschaftswahl_data_sub$sitze_FDP <- NA
+hamburg_1991_1997_buergerschaftswahl_data_sub$sitze_DiePARTEI <- NA
+hamburg_1991_1997_buergerschaftswahl_data_sub$sitze_FREIEWÄHLER <- NA
+
+# Creating new dataframe with selected vars ----
+hamburg_1991_1997_buergerschaftswahl_data_sub <- hamburg_1991_1997_buergerschaftswahl_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                         Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                         abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_DiePARTEI, abs_FREIEWÄHLER,
+                                                                                         gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_DiePARTEI, gew_FREIEWÄHLER,
+                                                                                         sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_DiePARTEI, sitze_FREIEWÄHLER)]
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+hamburg_1991_1997_buergerschaftswahl_data_sub <-
+  hamburg_1991_1997_buergerschaftswahl_data_sub %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+hamburg_1991_1997_buergerschaftswahl_data_sub$Turnout <- hamburg_1991_1997_buergerschaftswahl_data_sub$Wähler / hamburg_1991_1997_buergerschaftswahl_data_sub$Wahlberechtigteinsgesamt
+
+
 ###### Hamburg 2001 Buergerschaftswahl ----
 #### Load election data ----
 hamburg_2001_buergerschaftswahl_data <- as.data.table(read_excel("raw/hamburg/hamburg_2001.xls", sheet="summary"))
