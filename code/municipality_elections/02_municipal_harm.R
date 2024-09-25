@@ -18,7 +18,7 @@ cw <- fread("data/crosswalks/final/ags_crosswalks.csv") |>
 
 # Merge with unharmonized election data -----------------------------------
 
-df <- read_rds("data/municipal_elections/final/municipal_unharm.rds") |>
+df <- readr::read_rds("data/municipal_elections/final/municipal_unharm.rds") |>
   # filter years before 1990: no crosswalks available
   filter(election_year >= 1990) |>
   mutate(election_year = as.numeric(election_year))
@@ -233,6 +233,7 @@ df <- df |>
       # id %in% not_merged_naive[not_merged_naive$election_year == 1999 & grepl("^13", not_merged_naive$id), ]$id ~ election_year - 1,
       id %in% not_merged_naive[not_merged_naive$election_year == 2004 & grepl("^15", not_merged_naive$id), ]$id ~ election_year - 1,
       # X. use election_year - 1 for merging for ags in Saxony
+      id %in% not_merged_naive[grepl("^12", not_merged_naive$id), ]$id ~ election_year - 1,
       id %in% not_merged_naive[grepl("^13", not_merged_naive$id), ]$id ~ election_year - 1,
       id %in% not_merged_naive[grepl("^14", not_merged_naive$id), ]$id ~ election_year - 1,
       id %in% not_merged_naive[grepl("^16", not_merged_naive$id), ]$id ~ election_year - 1,
@@ -255,7 +256,9 @@ not_merged <- df_cw %>%
   filter(is.na(ags_21)) %>%
   select(ags, election_year, id, year_cw) %>%
   distinct()
-not_merged
+not_merged %>%
+  select(ags, election_year) %>%
+  print(n=Inf)
 # now, there is no unsuccessful merge.
 
 # Flag the cases where we had to change the ags
@@ -432,7 +435,10 @@ table(df_harm$year)
 plot_df <- df_final |>
   group_by(state_name, year) |>
   summarise(election_bin = max(election_bin, na.rm = TRUE)) |>
-  ungroup()
+  ungroup() |>
+  add_row(
+    state_name = "Bavaria", year = 1990, election_bin = 2
+    )
 
 plot_df |>
   ggplot(aes(x = as.numeric(year), 
@@ -453,7 +459,8 @@ plot_df |>
     panel.grid.major = element_blank(), 
     panel.grid.minor = element_blank(),
     legend.position = "none"
-  )
+  ) +
+  scale_x_continuous(breaks = seq(1990, 2021, 5))
 
 ggsave("output/figures/muni_elections.pdf", width = 7, height = 4)
 

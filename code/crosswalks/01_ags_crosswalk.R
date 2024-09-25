@@ -232,7 +232,7 @@ harmonization_counts <- cw_combined %>%
   group_by(year) %>%
   summarise(
     n_ags = n(),
-    n_ags_harmonized = sum(pop_cw < 1),
+    n_ags_harmonized = sum(pop_cw < 1 | ags != ags_21),
     # calculate total population & area for ags with pop_cw < 1
     total_population_harmonized = sum(population[pop_cw < 1], na.rm = TRUE),
     total_area_harmonized = sum(area[pop_cw < 1], na.rm = TRUE),
@@ -276,13 +276,13 @@ save_kable(harm_tab, file = "~/Dropbox (Princeton)/Apps/Overleaf/ElectionPaper/t
 harmonization_counts %>%
   ggplot(aes(x = year, y = n_ags_harmonized)) +
   geom_col() +
-  geom_text(aes(label = n_ags_harmonized), vjust = -0.5, size = 2.75) +
+  # geom_text(aes(label = n_ags_harmonized), vjust = -0.5, size = 2.75) +
   labs(
     x = "Year",
     y = "Number of municipalities\n affected by mergers"
   ) +
   theme_hanno() +
-  scale_y_continuous(limits = c(0, 85))
+  scale_y_continuous(limits = c(0, 8200))
 
 ggsave("output/figures/mergers.pdf", width = 7, height = 3.5)
 ggsave("~/Dropbox (Princeton)/Apps/Overleaf/ElectionPaper/figures/mergers.pdf", width = 7, height = 3.5)
