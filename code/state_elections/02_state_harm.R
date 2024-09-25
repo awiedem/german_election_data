@@ -319,6 +319,17 @@ df_harm %>%
   select(election_year) %>%
   distinct()
 
+
+# count number of municipalities
+df_harm |>
+  distinct(ags) |>
+  nrow()
+
+# count number of election years
+df_harm |>
+  distinct(election_year) |>
+  nrow()
+
 # Load municipality level data
 muni <- read_rds("data/covars_municipality/final/ags_area_pop_emp.rds") |>
   rename(ags = ags_21) |>

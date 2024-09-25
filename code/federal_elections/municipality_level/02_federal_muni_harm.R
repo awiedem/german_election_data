@@ -561,7 +561,10 @@ df_harm |>
   distinct(ags) |>
   nrow()
 
-
+# count number of election years
+df_harm |>
+  distinct(election_year) |>
+  nrow()
 
 glimpse(df_harm)
 

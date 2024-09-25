@@ -106,6 +106,8 @@ df <- df |>
       id == "07235207_2004" ~ "07231207", # Trittenheim
       id == "07235207_2009" ~ "07231207", # Trittenheim
       id == "13053108_2004" ~ "13053109", # Prebberede
+      # SA 1994
+      id == "15159029_1994" ~ "15126310", # Merzien
       # SA 2007
       id == "15086270_2007" ~ "15151066", # Zeppernick
       id == "15089040_2007" ~ "15367003", # Biere
@@ -178,6 +180,8 @@ df <- df |>
       # id == "13057045_1999" ~ 1998, # Kenz
       # id == "13057052_1999" ~ 1998, # Küstrow
       # id == "13062015_1999" ~ 1998, # Glashütte
+      # SA 1994
+      id == "15159029_1994" ~ 1993, # Merzien
       # SA 2007
       id == "15086270_2007" ~ 2006, # Zeppernick
       id == "15089040_2007" ~ 2006, # Biere
@@ -409,6 +413,18 @@ df_harm <- read_rds("data/municipal_elections/final/municipal_harm.rds")
 muni_21 <- df_harm |>
   filter(year == 2021) |>
   dplyr::select(ags, cdu_csu, gruene, spd)
+
+# count number of municipalities
+df_harm |>
+  distinct(ags) |>
+  nrow()
+
+# count number of election years
+df_harm |>
+  distinct(year) |>
+  nrow()
+
+
 
 # Merge
 df_final <- muni |>
