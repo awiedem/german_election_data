@@ -1683,7 +1683,13 @@ hamburg_2020_buergerschaftswahl_data_sub$Turnout <- hamburg_2020_buergerschaftsw
 
 ####### Merge files and save overall output for Hamburg ----
 # Merge
-hamburg_kommunalwahlen <- rbind(hamburg_2001_buergerschaftswahl_data_sub,hamburg_2004_buergerschaftswahl_data_sub,hamburg_2008_buergerschaftswahl_data_sub,hamburg_2011_buergerschaftswahl_data_sub,hamburg_2015_buergerschaftswahl_data_sub, hamburg_2020_buergerschaftswahl_data_sub)
+hamburg_kommunalwahlen <- rbind(hamburg_1991_1997_buergerschaftswahl_data_sub, 
+                                hamburg_2001_buergerschaftswahl_data_sub,
+                                hamburg_2004_buergerschaftswahl_data_sub,
+                                hamburg_2008_buergerschaftswahl_data_sub,
+                                hamburg_2011_buergerschaftswahl_data_sub,
+                                hamburg_2015_buergerschaftswahl_data_sub, 
+                                hamburg_2020_buergerschaftswahl_data_sub)
 
 # Replace INF at Turnout
 hamburg_kommunalwahlen$Turnout <-  str_replace_all(hamburg_kommunalwahlen$Turnout, fixed("Inf"), NA)

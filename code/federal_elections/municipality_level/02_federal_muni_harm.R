@@ -379,7 +379,7 @@ df_harm <- df_harm %>%
   mutate(
     total_votes = row_sums,
     flag_total_votes_incongruent = ifelse(total_votes != valid_votes, 1, 0),
-    total_votes_incogruence = total_votes - valid_votes,
+    total_votes_incogruence = round(total_votes - valid_votes),
     perc_total_votes_incogruence = total_votes_incogruence / valid_votes
   )
 
@@ -392,6 +392,41 @@ mean(df_harm$flag_total_votes_incongruent)
 df_harm |>
   dplyr::filter(unique_mailin == 1 & flag_total_votes_incongruent == 1)
 # no place that has unique_mailin == 1 has this problem
+
+
+
+### plot incongruence -------------------------------------------------------
+
+# histogram
+df_harm %>% 
+  # filter(flag_total_votes_incongruent == 1) %>% 
+  ggplot(aes(x = total_votes_incogruence)) +
+  geom_histogram(bins = 50) +
+  # number of observations above each bar
+  geom_text(
+    aes(label = stat(count)),
+    stat = "count",
+    vjust = -0.5,
+    # angle = 90,
+    size = 3
+  ) +
+  theme_hanno() +
+  labs(
+    x = "Difference between own calculation of total votes\nand total votes in data",
+    y = "Count"
+  ) +
+  # increase max of y-axis to make room for text
+  scale_y_continuous(limits = c(0, 65000)) +
+  # x axis labels for all values
+  scale_x_continuous(breaks = seq(-18, 6, by = 1)) +
+  # axis labels a bit smaller
+  theme(axis.text.x = element_text(size = 9),
+        axis.text.y = element_text(size = 9))
+
+ggsave("output/figures/total_votes_incongruence_hist.pdf", width = 7.5, height = 4)
+
+move_plots_to_overleaf("code")
+
 
 # check total_votes vs. other vote variables
 inspect <- df_harm |>
@@ -548,5 +583,7 @@ df_harm |>
 # check turnout > 1
 df_harm |>
   dplyr::filter(turnout > 1)
+
+
 
 ### END

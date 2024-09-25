@@ -435,7 +435,10 @@ table(df_harm$year)
 plot_df <- df_final |>
   group_by(state_name, year) |>
   summarise(election_bin = max(election_bin, na.rm = TRUE)) |>
-  ungroup()
+  ungroup() |>
+  add_row(
+    state_name = "Bavaria", year = 1990, election_bin = 2
+    )
 
 plot_df |>
   ggplot(aes(x = as.numeric(year), 
@@ -456,7 +459,8 @@ plot_df |>
     panel.grid.major = element_blank(), 
     panel.grid.minor = element_blank(),
     legend.position = "none"
-  )
+  ) +
+  scale_x_continuous(breaks = seq(1990, 2021, 5))
 
 ggsave("output/figures/muni_elections.pdf", width = 7, height = 4)
 
