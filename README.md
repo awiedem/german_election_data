@@ -14,7 +14,6 @@ The Github repository is organized into three main folders:
 ### 1. Municipal Elections
 - **Coverage**: Election results for all municipalities across Germany from 1990 to 2020.
 - **Content**: Turnout and vote shares for major national parties (SPD, CDU/CSU, FDP, Greens, Die Linke) and other parties such as AfD and Freie Wähler.
-- **Harmonization**: Data is harmonized to the 2021 municipal boundaries to account for boundary changes and municipal mergers over time.
 
 ### 2. State Elections
 - **Coverage**: State election results at the municipal level for the period 2006–2019.
