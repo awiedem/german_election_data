@@ -2,7 +2,7 @@
 
 rm(list = ls())
 
-pacman::p_load(tidyverse, haschaR, fixest, broom, modelsummary)
+pacman::p_load(tidyverse, haschaR, fixest, broom, modelsummary, weights)
 
 conflicts_prefer(dplyr::lag)
 conflicts_prefer(dplyr::filter)
@@ -147,7 +147,11 @@ pacman::p_load(weights)
 
 f_agg_muni <- f_m_harm %>%
     group_by(ags, decade) %>%
-    summarise(across(all_of(plist), ~ mean(.x, na.rm = TRUE)),
+    summarise(
+        across(
+            all_of(plist),
+            ~ mean(.x, na.rm = TRUE)
+        ),
         valid_votes_federal = mean(valid_votes, na.rm = TRUE),
         .groups = "drop"
     ) %>%
@@ -198,11 +202,29 @@ for (var in variables) {
             "2010+" = agg_cor_10s
         )
 
+        # Decade-specific variables
+
+        x <- agg_cor_decade[[paste0(var, "_federal")]] %>%
+            as.numeric()
+
+        y <- agg_cor_decade[[paste0(var, "_muni")]] %>%
+            as.numeric()
+
+        weight <- agg_cor_decade$valid_votes_federal %>%
+            as.numeric()
+
+        # Check for NAs
+
+        is_valid <- !is.na(x) & !is.na(y) & !is.na(weight) & !is.infinite(x) & !is.infinite(y) & !is.infinite(weight)
+        x <- x[is_valid]
+        y <- y[is_valid]
+        weight <- weight[is_valid]
+
         # Calculate weighted correlation
-        cor_result <- wtd.cor(
-            x = agg_cor_decade[[paste0(var, "_federal")]],
-            y = agg_cor_decade[[paste0(var, "_muni")]],
-            weight = agg_cor_decade$valid_votes_federal
+        cor_result <- weights::wtd.cor(
+            x = x,
+            y = y,
+            weight = weight
         ) %>%
             as_tibble() %>%
             mutate(
