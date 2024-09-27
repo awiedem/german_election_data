@@ -67,9 +67,9 @@ Please cite the accompanying paper when using this dataset:
 Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2024. "German Election Database".
 
 ```         
-@article{Heddesheimer2024GermanElections,
+@article{Heddesheimer2024GermanElection,
   author = {Heddesheimer Vincent, and Hanno Hilbig, and Florian Sichart and Andreas Wiedemann},
-  title = {German Elections Dataset},
+  title = {German Election Dataset},
   year = {2024}
 }
 ```
