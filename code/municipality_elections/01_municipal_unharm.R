@@ -40,6 +40,15 @@ bayern_kommunalwahlen_data_1990 <- data.table(read_excel("raw/bayern/bayern_1990
 bayern_waehler_data_1990 <- data.table(read_excel("raw/bayern/bayern_waehler_1990.xlsx", sheet="results")) %>%
   filter(nchar(AGS) == 8)
 
+# LK for Staedte
+bayern_kreiswahlen_data_1990 <- data.table(read_excel("raw/bayern/bayern_1990_krfr_staedte.xlsx", sheet = "results"))
+bayern_kreiswahlen_data_1990_abgegebene <- data.table(read_excel("raw/bayern/bayern_1990_staedte_abgegebene.xlsx", sheet = "results"))
+bayern_kreiswahlen_data_1990_wahlberechtigte <- data.table(read_excel("raw/bayern/bayern_1990_staedte_wahlberechtigte.xlsx", sheet = "results"))
+
+bayern_kreiswahlen_data_1990_sub <- bayern_kreiswahlen_data_1990 %>%
+  left_join(select(bayern_kreiswahlen_data_1990_abgegebene, -Name), by = join_by(ags==ags)) %>%
+  left_join(select(bayern_kreiswahlen_data_1990_wahlberechtigte, -name), by = join_by(ags==ags))
+
 #### Recoding ----
 # Create new dataframe ----
 bayern_1990_kommunalwahlen_data_sub <- NA
@@ -118,6 +127,94 @@ bayern_1990_kommunalwahlen_data_sub <-
 
 # Calculating turnout ----
 bayern_1990_kommunalwahlen_data_sub$Turnout <- as.numeric(bayern_1990_kommunalwahlen_data_sub$Wähler) / as.numeric(bayern_1990_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
+
+###### Bayern 1990 Kreiswahlen ----
+# LK for Staedte
+bayern_kreiswahlen_data_1990 <- data.table(read_excel("raw/bayern/bayern_1990_krfr_staedte.xlsx", sheet = "results"))
+bayern_kreiswahlen_data_1990_abgegebene <- data.table(read_excel("raw/bayern/bayern_1990_staedte_abgegebene.xlsx", sheet = "results"))
+bayern_kreiswahlen_data_1990_wahlberechtigte <- data.table(read_excel("raw/bayern/bayern_1990_staedte_wahlberechtigte.xlsx", sheet = "results"))
+
+bayern_1990_kreiswahlen_data_sub <- bayern_kreiswahlen_data_1990 %>%
+  left_join(select(bayern_kreiswahlen_data_1990_abgegebene, -Name), by = join_by(ags==ags)) %>%
+  left_join(select(bayern_kreiswahlen_data_1990_wahlberechtigte, -name), by = join_by(ags==ags))
+
+#### Recoding ----
+# Create new dataframe ----
+bayern_1990_kreiswahlen_data_sub <- bayern_1990_kreiswahlen_data_sub %>%
+  filter(grepl("(Krfr.St)", name) | grepl("Landeshauptstadt", name)) %>%
+  mutate(
+    ags = paste0("0", ags, "000"))
+
+# Creating non-existing variables ----
+bayern_1990_kreiswahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
+bayern_1990_kreiswahlen_data_sub[ , Bundesland := "Bayern"]
+bayern_1990_kreiswahlen_data_sub[ , Gebietsname := ""]
+bayern_1990_kreiswahlen_data_sub[ , election_year := "1990"]
+bayern_1990_kreiswahlen_data_sub[ , election_type := "Kreiswahlen"]
+bayern_1990_kreiswahlen_data_sub[ , IDIRB := ""]
+bayern_1990_kreiswahlen_data_sub[ , IDBA := ""]
+
+
+# Renaming existing variables ----
+bayern_1990_kreiswahlen_data_sub$AGS_8dig <- bayern_1990_kreiswahlen_data_sub$ags
+bayern_1990_kreiswahlen_data_sub$Gebietsname <- bayern_1990_kreiswahlen_data_sub$name
+bayern_1990_kreiswahlen_data_sub$Wahlberechtigteinsgesamt <- bayern_1990_kreiswahlen_data_sub$Wahlberechtigte
+bayern_1990_kreiswahlen_data_sub$Wähler <- bayern_1990_kreiswahlen_data_sub$Wähler
+bayern_1990_kreiswahlen_data_sub$GültigeStimmen <- bayern_1990_kreiswahlen_data_sub$gueltigeStimmen
+
+
+bayern_1990_kreiswahlen_data_sub$abs_CDU <- bayern_1990_kreiswahlen_data_sub$CSU
+bayern_1990_kreiswahlen_data_sub$abs_SPD <- bayern_1990_kreiswahlen_data_sub$SPD
+bayern_1990_kreiswahlen_data_sub$abs_DIELINKE <- bayern_1990_kreiswahlen_data_sub$LINKE
+bayern_1990_kreiswahlen_data_sub$abs_GRÜNE <- bayern_1990_kreiswahlen_data_sub$Gruene
+bayern_1990_kreiswahlen_data_sub$abs_AfD <- NA
+bayern_1990_kreiswahlen_data_sub$abs_PIRATEN <- NA
+bayern_1990_kreiswahlen_data_sub$abs_FDP <- bayern_1990_kreiswahlen_data_sub$FDP
+bayern_1990_kreiswahlen_data_sub$abs_FREIEWÄHLER <- bayern_1990_kreiswahlen_data_sub$FW
+bayern_1990_kreiswahlen_data_sub$abs_Gemeinsame_Wahlvorschläge <- bayern_1990_kreiswahlen_data_sub$`Gemeinsame Wahlvorschläge`
+bayern_1990_kreiswahlen_data_sub$abs_Wählergruppen <- bayern_1990_kreiswahlen_data_sub$Wählergruppen
+
+bayern_1990_kreiswahlen_data_sub$gew_CDU <- NA
+bayern_1990_kreiswahlen_data_sub$gew_SPD <- NA
+bayern_1990_kreiswahlen_data_sub$gew_DIELINKE <- NA
+bayern_1990_kreiswahlen_data_sub$gew_GRÜNE <- NA
+bayern_1990_kreiswahlen_data_sub$gew_AfD <- NA
+bayern_1990_kreiswahlen_data_sub$gew_PIRATEN <- NA
+bayern_1990_kreiswahlen_data_sub$gew_FDP <- NA
+bayern_1990_kreiswahlen_data_sub$gew_DiePARTEI <- NA
+bayern_1990_kreiswahlen_data_sub$gew_FREIEWÄHLER <- NA
+bayern_1990_kreiswahlen_data_sub$gew_Gemeinsame_Wahlvorschläge <- NA
+bayern_1990_kreiswahlen_data_sub$gew_Wählergruppen <- NA
+
+bayern_1990_kreiswahlen_data_sub$sitze_CDU <- NA
+bayern_1990_kreiswahlen_data_sub$sitze_SPD <- NA
+bayern_1990_kreiswahlen_data_sub$sitze_DIELINKE <- NA
+bayern_1990_kreiswahlen_data_sub$sitze_GRÜNE <- NA
+bayern_1990_kreiswahlen_data_sub$sitze_AfD <- NA
+bayern_1990_kreiswahlen_data_sub$sitze_PIRATEN <- NA
+bayern_1990_kreiswahlen_data_sub$sitze_FDP <- NA
+bayern_1990_kreiswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+bayern_1990_kreiswahlen_data_sub$sitze_Gemeinsame_Wahlvorschläge <- NA
+bayern_1990_kreiswahlen_data_sub$sitze_Wählergruppen <- NA
+
+# Creating new dataframe with selected vars ----
+bayern_1990_kreiswahlen_data_sub <- bayern_1990_kreiswahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                               Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                               abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER, abs_Gemeinsame_Wahlvorschläge, abs_Wählergruppen,
+                                                                               gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER, gew_Gemeinsame_Wahlvorschläge, gew_Wählergruppen,
+                                                                               sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER, sitze_Gemeinsame_Wahlvorschläge, sitze_Wählergruppen)]
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+bayern_1990_kreiswahlen_data_sub <-
+  bayern_1990_kreiswahlen_data_sub %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+bayern_1990_kreiswahlen_data_sub$Turnout <- as.numeric(bayern_1990_kreiswahlen_data_sub$Wähler) / as.numeric(bayern_1990_kreiswahlen_data_sub$Wahlberechtigteinsgesamt)
 
 ###### Bayern 1996 Gemeinderatswahlen ----
 bayern_kommunalwahlen_data_1996 <- data.table(read_excel("raw/bayern/bayern_1996new.xlsx", sheet="results"))
@@ -521,6 +618,7 @@ bayern_2020_kommunalwahlen_data_sub$Turnout <- as.numeric(bayern_2020_kommunalwa
 ####### Merge files and save overall output for Bayern ----
 # Merge
 bayern_kommunalwahlen <- rbind(bayern_1990_kommunalwahlen_data_sub,
+                               bayern_1990_kreiswahlen_data_sub,
                                bayern_1996_kommunalwahlen_data_sub,
                                bayern_2002_kommunalwahlen_data_sub,
                                bayern_2008_kommunalwahlen_data_sub,
@@ -544,7 +642,6 @@ bayern_kommunalwahlen <- bayern_kommunalwahlen %>%
 bayern_kommunalwahlen <- bayern_kommunalwahlen %>%
   filter(!Gebietsname == "Gemeindefreie Gebiete",
          !grepl("(Lkr)", Gebietsname))
-
 
 # ----
 ######### THUERINGEN ----
