@@ -5776,7 +5776,20 @@ mecklenburg_vorpommern_2014_kreiswahlen_data <- as.data.table(read_excel("raw/me
 names(mecklenburg_vorpommern_2014_kreiswahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_2014_kreiswahlen_data), fixed(" "), "")
 
 #### Recoding ----
-mecklenburg_vorpommern_2014_kreiswahlen_data_sub <- mecklenburg_vorpommern_2014_kreiswahlen_data
+mecklenburg_vorpommern_2014_kreiswahlen_data_sub <- mecklenburg_vorpommern_2014_kreiswahlen_data %>%
+  group_by(Gemeindenummer, Gemeindename) %>%
+  summarize(
+    Wahlberechtigteinsgesamt = sum(Wahlberechtigteinsgesamt, na.rm=T),
+    Waehlerinsgesamt = sum(Waehlerinsgesamt, na.rm=T),
+    gueltigeStimmen = sum(gueltigeStimmen, na.rm=T),
+    CDU = sum(CDU, na.rm=T),
+    SPD = sum(SPD, na.rm=T),
+    DIELINKE = sum(DIELINKE, na.rm=T),
+    GRÜNE = sum(GRÜNE, na.rm=T),
+    FDP = sum(FDP, na.rm=T)) %>%
+  ungroup()
+
+mecklenburg_vorpommern_2014_kreiswahlen_data_sub <- as.data.table(mecklenburg_vorpommern_2014_kreiswahlen_data_sub)
 
 # Creating non-existing variables ----
 mecklenburg_vorpommern_2014_kreiswahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
