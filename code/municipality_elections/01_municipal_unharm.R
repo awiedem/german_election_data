@@ -9665,6 +9665,7 @@ sh_2008_gemeinderatswahlen_data <- as.data.table(read_excel("raw/schleswig_holst
 #### Summarize data to fix poor data structure ----
 sh_2008_gemeinderatswahlen_data_sub <-
   sh_2008_gemeinderatswahlen_data %>%
+  mutate(AGS_processed = paste0("010", substr(Gemeindekennziffer, 1, 5))) %>%
   group_by(Gemeindename) %>%
   summarise(Wahlberechtigte=sum(Wahlberechtigteinsgesamt),
             Wähler=sum(Waehler),
@@ -9673,12 +9674,12 @@ sh_2008_gemeinderatswahlen_data_sub <-
             SPD=sum(SPD),
             Gruene=sum(Gruene),
             FDP=sum(FDP),
-            DIELINKE=sum(DIELINKE))
+            DIELINKE=sum(DIELINKE),
+            AGS_8dig = first(AGS_processed))
 sh_2008_gemeinderatswahlen_data_sub <- as.data.table(sh_2008_gemeinderatswahlen_data_sub)
 
 #### Recoding ----
 # Creating non-existing variables ----
-sh_2008_gemeinderatswahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
 sh_2008_gemeinderatswahlen_data_sub[ , Bundesland := "Schleswig-Holstein"]
 sh_2008_gemeinderatswahlen_data_sub[ , Gebietsname := ""]
 sh_2008_gemeinderatswahlen_data_sub[ , election_year := "2008"]
@@ -9723,16 +9724,6 @@ sh_2008_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
 sh_2008_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 sh_2008_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 sh_2008_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
-
-# Merge in AGS from 2018 data ----
-sh_AGS_key <- sh_2018_gemeinderatswahlen_data %>%
-  group_by(Gemeindename) %>%
-  summarise(AGS_merged=unique(Gemeindekennziffer))
-sh_AGS_key
-
-sh_2008_gemeinderatswahlen_data_sub <- merge(sh_2008_gemeinderatswahlen_data_sub, sh_AGS_key, by.x="Gebietsname", by.y="Gemeindename")
-
-sh_2008_gemeinderatswahlen_data_sub$AGS_8dig <- sh_2008_gemeinderatswahlen_data_sub$AGS_merged
 
 # Creating new dataframe with selected vars ----
 sh_2008_gemeinderatswahlen_data_sub <- sh_2008_gemeinderatswahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
