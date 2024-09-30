@@ -34,11 +34,6 @@ glimpse(cw)
 table(df$election_year, useNA = "ifany")
 table(is.na(df$ags_name))
 
-
-# niedersachsen
-ns_unharm <- df |>
-  filter(state == "Niedersachsen")
-
 # inspect -----------------------------------------------------------------
 
 # is there more than one election in one ags in one year?
@@ -101,6 +96,8 @@ df <- df |>
       id == "01059187_2008" ~ "01059011", # Boren
       id == "03361013_2001" ~ "03361010", # Riede
       id == "05313000_2009" ~ "05334002", # Aachen
+      id == "05313000_2014" ~ "05334002", # Aachen
+      id == "05313000_2020" ~ "05334002", # Aachen
       id == "07140502_1994" ~ "07135050", # Lahr
       id == "07140502_1999" ~ "07135050", # Lahr
       id == "07140503_1994" ~ "07135063", # Mörsdorf
@@ -530,7 +527,8 @@ inspection <- df_final |>
   filter(ags %in% ever_election$ags | population_ags > 1) |>
   mutate(state = state_id_to_names(state)) |>
   select(ags, ags_name_21, year, state, population_ags, turnout) |>
-  arrange(state, ags, year)
+  arrange(state, ags, year) |>
+  filter(state != "Saxony-Anhalt")
 
 # any duplicates?
 df_final %>%
