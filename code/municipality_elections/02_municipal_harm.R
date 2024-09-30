@@ -69,7 +69,7 @@ not_merged_naive <- df_naive_merge %>%
   distinct() %>%
   mutate(id = paste0(ags, "_", election_year))
 not_merged_naive
-# If we do not follow the steps below, there are 1,057 cases of unsuccessful merges.
+# If we do not follow the steps below, there are 1,056 cases of unsuccessful merges.
 
 
 # Dealing with unsuccessful mergers ---------------------------------------
@@ -540,6 +540,11 @@ df_final %>%
 # na_niedersachsen
 na_niedersachsen <- inspection |>
   filter(state == "Niedersachsen")
+
+# na_sh
+na_sh <- inspection |>
+  filter(state == "Schleswig-Holstein") |>
+  distinct(ags)
   
 fwrite(inspection, "data/municipal_elections/missing_ags.csv")
 
