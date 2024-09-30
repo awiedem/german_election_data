@@ -7057,7 +7057,9 @@ names(niedersachsen_2011_gemeinderatswahlen_data) <-  str_replace_all(names(nied
 
 #### Recoding ----
 # Create new dataframe ----
-niedersachsen_2011_gemeinderatswahlen_data_sub <- niedersachsen_2011_gemeinderatswahlen_data
+niedersachsen_2011_gemeinderatswahlen_data_sub <- niedersachsen_2011_gemeinderatswahlen_data %>%
+  mutate(
+    `AGS(Stadtkennziffer/Gemeindekennziffer)` = paste0("03", `AGS(Stadtkennziffer/Gemeindekennziffer)`))
 
 names(niedersachsen_2011_gemeinderatswahlen_data_sub)
 
@@ -7097,13 +7099,13 @@ niedersachsen_2011_gemeinderatswahlen_data_sub$gew_FDP <- NA
 niedersachsen_2011_gemeinderatswahlen_data_sub$gew_DiePARTEI <- NA
 niedersachsen_2011_gemeinderatswahlen_data_sub$gew_FREIEWÄHLER <- NA
 
-niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_CDU <- niedersachsen_2011_gemeinderatswahlen_data_sitze$'CDU(insgesamt)'
-niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_SPD <- niedersachsen_2011_gemeinderatswahlen_data_sitze$'SPD(insgesamt)'
-niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_DIELINKE <- niedersachsen_2011_gemeinderatswahlen_data_sitze$'DIE LINKE.(insgesamt)'
-niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_GRÜNE <- niedersachsen_2011_gemeinderatswahlen_data_sitze$'GRÜNE(insgesamt)'
+niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_CDU <- NA
+niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_SPD <- NA
+niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_DIELINKE <- NA
+niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_GRÜNE <- NA
 niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_AfD <- NA
-niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_PIRATEN <- niedersachsen_2011_gemeinderatswahlen_data_sitze$'PIRATEN Niedersachsen(insgesamt)'
-niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_FDP <- niedersachsen_2011_gemeinderatswahlen_data_sitze$'FDP(insgesamt)'
+niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
+niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
 
@@ -7138,7 +7140,9 @@ niedersachsen_2016_gemeinderatswahlen_data_sitze <-
 
 niedersachsen_2016_gemeinderatswahlen_data <-
   niedersachsen_2016_gemeinderatswahlen_data %>%
-  filter(MG %in%  niedersachsen_2016_gemeinderatswahlen_data_sitze$MG)
+  mutate(
+    EG = paste0("03", EG))
+  
 
 
 #### Delete white space ----
@@ -7186,13 +7190,13 @@ niedersachsen_2016_gemeinderatswahlen_data_sub$gew_FDP <- NA
 niedersachsen_2016_gemeinderatswahlen_data_sub$gew_DiePARTEI <- NA
 niedersachsen_2016_gemeinderatswahlen_data_sub$gew_FREIEWÄHLER <- NA
 
-niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_CDU <- niedersachsen_2016_gemeinderatswahlen_data_sitze$CDU
-niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_SPD <- niedersachsen_2016_gemeinderatswahlen_data_sitze$SPD
-niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_DIELINKE <- niedersachsen_2016_gemeinderatswahlen_data_sitze$DIELINKE
-niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_GRÜNE <- niedersachsen_2016_gemeinderatswahlen_data_sitze$Gruene
-niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_AfD <- niedersachsen_2016_gemeinderatswahlen_data_sitze$AfD
+niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_CDU <- NA
+niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_SPD <- NA
+niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_DIELINKE <- NA
+niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_GRÜNE <- NA
+niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_AfD <- NA
 niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
-niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_FDP <- niedersachsen_2016_gemeinderatswahlen_data_sitze$FDP
+niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
 
@@ -7224,8 +7228,6 @@ niedersachsen_kommunalwahlen <- rbind(niedersachsen_1991_gemeinderatswahlen_data
 # Replace - with NA
 niedersachsen_kommunalwahlen[niedersachsen_kommunalwahlen == "-"] <- NA
 
-# Fix AGS
-niedersachsen_kommunalwahlen$AGS_8dig <- paste("03", niedersachsen_kommunalwahlen$AGS_8dig, sep="")
 
 # Fix Gebietsnamen
 niedersachsen_kommunalwahlen$Gebietsname <- str_replace(niedersachsen_kommunalwahlen$Gebietsname, "MG","")
@@ -9981,13 +9983,13 @@ kommunalwahlen_merge <- rbind(baden_wuerttemberg_kommunalwahlen, bayern_kommunal
                           rlp_kommunalwahlen, saarland_kommunalwahlen_data_sub,
                           sachsen_anhalt_kommunalwahlen, sachsen_kommunalwahlen,
                           sh_kommunalwahlen, thueringen_kommunalwahlen, fill=TRUE)
-              
+
 # Fix AGS ----
 kommunalwahlen_merge <- kommunalwahlen_merge %>%
   mutate(AGS_8dig = if_else(str_length(AGS_8dig) == 7,
                             str_pad(AGS_8dig, width = 8, side = "left", pad = "0"),
                             AGS_8dig)) %>%
-  filter(!str_length(AGS_8dig) %in% c(10, 4, 5)) %>%
+  filter(!str_length(AGS_8dig) %in% c(10, 4)) %>%
   mutate(AGS_8dig = if_else(AGS_8dig=="04", "04011000", AGS_8dig)) %>%
   filter(!is.na(AGS_8dig))
 
