@@ -4400,7 +4400,7 @@ sachsen_anhalt_kommunalwahlen <- rbind(sachsen_anhalt_1994_kommunalwahlen_data_s
 # Replace INF at Turnout
 sachsen_anhalt_kommunalwahlen$Turnout <-  str_replace_all(sachsen_anhalt_kommunalwahlen$Turnout, fixed("Inf"), NA)
 
-table(sachsen_anhalt_2007_kommunalwahlen_data_sub$AGS_8dig %in% sachsen_anhalt_2009_kommunalwahlen_data_sub$AGS_8dig)
+table(sachsen_anhalt_2009_kommunalwahlen_data_sub$AGS_8dig %in% sachsen_anhalt_2007_kommunalwahlen_data_sub$AGS_8dig)
 
 # Replace - with NA
 sachsen_anhalt_kommunalwahlen[sachsen_anhalt_kommunalwahlen == "-"] <- NA
@@ -9255,16 +9255,16 @@ rlp_2019_gemeinderatswahlen_data_sub$Wähler <- as.numeric(rlp_2019_gemeinderats
 rlp_2019_gemeinderatswahlen_data_sub$GültigeStimmen <- rlp_2019_gemeinderatswahlen_data_sub$GueltigeStimmzettel
 
 rlp_2019_gemeinderatswahlen_data_sub$abs_CDU <- as.numeric(rlp_2019_gemeinderatswahlen_data_sub$CDU_gew)
-rlp_2019_gemeinderatswahlen_data_sub$abs_SPD <- as.numeric(rlp_2019_gemeinderatswahlen_data_sub$SPDgew)
-rlp_2019_gemeinderatswahlen_data_sub$abs_DIELINKE <- as.numeric(rlp_2019_gemeinderatswahlen_data_sub$DIELINKEgew)
-rlp_2019_gemeinderatswahlen_data_sub$abs_GRÜNE <- as.numeric(rlp_2019_gemeinderatswahlen_data_sub$GRUENEgew)
-rlp_2019_gemeinderatswahlen_data_sub$abs_AfD <- as.numeric(rlp_2019_gemeinderatswahlen_data_sub$AfDgew)
+rlp_2019_gemeinderatswahlen_data_sub$abs_SPD <- as.numeric(rlp_2019_gemeinderatswahlen_data_sub$SPD_gew)
+rlp_2019_gemeinderatswahlen_data_sub$abs_DIELINKE <- as.numeric(rlp_2019_gemeinderatswahlen_data_sub$DIELINKE_gew)
+rlp_2019_gemeinderatswahlen_data_sub$abs_GRÜNE <- as.numeric(rlp_2019_gemeinderatswahlen_data_sub$GRUENE_gew)
+rlp_2019_gemeinderatswahlen_data_sub$abs_AfD <- as.numeric(rlp_2019_gemeinderatswahlen_data_sub$AfD_gew)
 rlp_2019_gemeinderatswahlen_data_sub$abs_PIRATEN <- NA
-rlp_2019_gemeinderatswahlen_data_sub$abs_FDP <- as.numeric(rlp_2019_gemeinderatswahlen_data_sub$FDPgew)
-rlp_2019_gemeinderatswahlen_data_sub$abs_DiePARTEI <- as.numeric(rlp_2019_gemeinderatswahlen_data_sub$DiePARTEIgew)
-rlp_2019_gemeinderatswahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(rlp_2019_gemeinderatswahlen_data_sub$FREIEWAEHLERgew)
-rlp_2019_gemeinderatswahlen_data_sub$abs_Gemeinsame_Wahlvorschläge <- as.numeric(rlp_2019_gemeinderatswahlen_data_sub$Gemeinsame_Wahlvorschlägegew)
-rlp_2019_gemeinderatswahlen_data_sub$abs_Wählergruppen <- as.numeric(rlp_2019_gemeinderatswahlen_data_sub$Waehlergruppengew)
+rlp_2019_gemeinderatswahlen_data_sub$abs_FDP <- as.numeric(rlp_2019_gemeinderatswahlen_data_sub$FDP_gew)
+rlp_2019_gemeinderatswahlen_data_sub$abs_DiePARTEI <- as.numeric(rlp_2019_gemeinderatswahlen_data_sub$DiePARTEI_gew)
+rlp_2019_gemeinderatswahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(rlp_2019_gemeinderatswahlen_data_sub$FREIEWAEHLER_gew)
+rlp_2019_gemeinderatswahlen_data_sub$abs_Gemeinsame_Wahlvorschläge <- as.numeric(rlp_2019_gemeinderatswahlen_data_sub$Gemeinsame_Wahlvorschläge_gew)
+rlp_2019_gemeinderatswahlen_data_sub$abs_Wählergruppen <- as.numeric(rlp_2019_gemeinderatswahlen_data_sub$Waehlergruppen_gew)
 
 rlp_2019_gemeinderatswahlen_data_sub$gew_CDU <- rlp_2019_gemeinderatswahlen_data_sub$CDU_gew
 rlp_2019_gemeinderatswahlen_data_sub$gew_SPD <- rlp_2019_gemeinderatswahlen_data_sub$SPD_gew
@@ -10141,6 +10141,11 @@ kommunalwahlen_merge <- kommunalwahlen_merge |>
   rename_with(~str_replace(., "freiewähler", "freie_wahler")) |>
   rename_with(~str_replace(., "grüne", "gruene")) |>
   rename_with(~str_replace(., "dielinke", "linke_pds"))
+
+# Sort ----------------------------------------------------
+kommunalwahlen_merge <- kommunalwahlen_merge %>%
+  arrange(state, election_year, eligible_voters)
+
 
 # Save ----
 
