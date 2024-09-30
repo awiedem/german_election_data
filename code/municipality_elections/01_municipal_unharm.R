@@ -5300,6 +5300,22 @@ mecklenburg_vorpommern_2009_kommunalwahlen_data_sub <-
 mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$Turnout <- mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$Wähler / mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
 
 
+
+# Mecklenburg-Vorpommern Cities 2009 ----------------------------------------
+
+mecklenburg_vorpommern_2009_staedte <- read_excel("processed/mecklenburg_vorpommern_2009_staedte.xlsx")
+
+mecklenburg_vorpommern_2009_staedte <- mecklenburg_vorpommern_2009_staedte %>%
+  mutate(election_year = "2009", election_type = "Kommunalwahlen") %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+mecklenburg_vorpommern_2009_staedte$Turnout <- as.numeric(mecklenburg_vorpommern_2009_staedte$Wähler) / as.numeric(mecklenburg_vorpommern_2009_staedte$Wahlberechtigteinsgesamt)
+
+
+
 ###### Mecklenburg-Vorpommern 2014 Kommunalwahlen ----
 #### Load election data ----
 mecklenburg_vorpommern_2014_kommunalwahlen_data <- as.data.table(read_excel("raw/mecklenburg_vorpommern/mecklenburg_vorpommern_kommunalwahlen_2014.xlsx", sheet="summary"))
@@ -5448,7 +5464,6 @@ mecklenburg_vorpommern_2019_kommunalwahlen_data_sub <- mecklenburg_vorpommern_20
                                                                                                                abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_DiePARTEI, abs_FREIEWÄHLER,
                                                                                                                gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_DiePARTEI, gew_FREIEWÄHLER,
                                                                                                                sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_DiePARTEI, sitze_FREIEWÄHLER)]
-
 
 # Calculating vote shares ----
 # https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
@@ -5947,6 +5962,10 @@ mecklenburg_vorpommern_kommunalwahlen <- rbind(mecklenburg_vorpommern_1994_kommu
                                                mecklenburg_vorpommern_2014_kreiswahlen_data_sub,
                                                mecklenburg_vorpommern_2019_kreiswahlen_data_sub)
 
+
+mecklenburg_vorpommern_kommunalwahlen <- mecklenburg_vorpommern_kommunalwahlen |>
+  bind_rows(mecklenburg_vorpommern_2009_staedte |> mutate(AGS_8dig = as.character(AGS_8dig)))
+
 # Replace INF at Turnout
 mecklenburg_vorpommern_kommunalwahlen$Turnout <-  str_replace_all(mecklenburg_vorpommern_kommunalwahlen$Turnout, fixed("Inf"), NA)
 
@@ -5955,6 +5974,10 @@ mecklenburg_vorpommern_kommunalwahlen[mecklenburg_vorpommern_kommunalwahlen == "
 
 # Fix AGS
 mecklenburg_vorpommern_kommunalwahlen$AGS_8dig <- stri_pad_left(mecklenburg_vorpommern_kommunalwahlen$AGS_8dig, 8, 0)
+
+
+
+
 
 # Save
 #write_csv(mecklenburg_vorpommern_kommunalwahlen, here::here("output/mecklenburg_vorpommern_kommunalwahlen.csv"))
@@ -7219,11 +7242,34 @@ niedersachsen_2016_gemeinderatswahlen_data_sub <-
 # Calculating turnout ----
 niedersachsen_2016_gemeinderatswahlen_data_sub$Turnout <- as.numeric(niedersachsen_2016_gemeinderatswahlen_data_sub$Wähler) / as.numeric(niedersachsen_2016_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt)
 
+
+
+
+# Niedersachsen Cities 2011 & 2016 ----------------------------------------
+
+niedersachsen_2011_16_staedte <- read_excel("processed/niedersachsen_2011_16_staedte.xlsx")
+
+niedersachsen_2011_16_staedte <- niedersachsen_2011_16_staedte %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = ""))) %>%
+  mutate(election_year = as.character(election_year))
+
+# Calculating turnout ----
+niedersachsen_2011_16_staedte$Turnout <- as.numeric(niedersachsen_2011_16_staedte$Wähler) / as.numeric(niedersachsen_2011_16_staedte$Wahlberechtigteinsgesamt)
+
+
+
+
 ####### Merge files and save overall output for Niedersachsen ----
 # Merge
 niedersachsen_kommunalwahlen <- rbind(niedersachsen_1991_gemeinderatswahlen_data_sub, niedersachsen_1996_gemeinderatswahlen_data_sub,
                                       niedersachsen_2001_gemeinderatswahlen_data_sub, niedersachsen_2006_gemeinderatswahlen_data_sub,
-                                      niedersachsen_2011_gemeinderatswahlen_data_sub, niedersachsen_2016_gemeinderatswahlen_data_sub)
+                                      niedersachsen_2011_gemeinderatswahlen_data_sub, niedersachsen_2016_gemeinderatswahlen_data_sub
+                                      )
+
+niedersachsen_kommunalwahlen <- niedersachsen_kommunalwahlen |>
+  bind_rows(niedersachsen_2011_16_staedte)
 
 # Replace - with NA
 niedersachsen_kommunalwahlen[niedersachsen_kommunalwahlen == "-"] <- NA
@@ -10102,6 +10148,7 @@ kommunalwahlen_merge <- kommunalwahlen_merge |>
   select(-c(IDIRB,IDBA)) |>
   mutate(
     turnout = as.numeric(turnout),
+    eligible_voters = as.numeric(eligible_voters),
     sitze_CDU = as.numeric(sitze_CDU),
     sitze_SPD = as.numeric(sitze_SPD),
     sitze_GRÜNE = as.numeric(sitze_GRÜNE),

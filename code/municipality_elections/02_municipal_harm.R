@@ -14,6 +14,12 @@ cw <- fread("data/crosswalks/final/ags_crosswalks.csv") |>
     ags = pad_zero_conditional(ags, 7),
     weights = pop_cw * population
     )
+# 
+# cw <- fread("../crosswalks/final/ags_crosswalks.csv") |>
+#   mutate(
+#     ags = pad_zero_conditional(ags, 7),
+#     weights = pop_cw * population
+#   )
 
 
 # Merge with unharmonized election data -----------------------------------
@@ -28,6 +34,10 @@ glimpse(cw)
 table(df$election_year, useNA = "ifany")
 table(is.na(df$ags_name))
 
+
+# niedersachsen
+ns_unharm <- df |>
+  filter(state == "Niedersachsen")
 
 # inspect -----------------------------------------------------------------
 
@@ -64,7 +74,7 @@ not_merged_naive <- df_naive_merge %>%
   distinct() %>%
   mutate(id = paste0(ags, "_", election_year))
 not_merged_naive
-# If we do not follow the steps below, there are 1,014 cases of unsuccessful merges.
+# If we do not follow the steps below, there are 1,057 cases of unsuccessful merges.
 
 
 # Dealing with unsuccessful mergers ---------------------------------------
@@ -91,8 +101,6 @@ df <- df |>
       id == "01059187_2008" ~ "01059011", # Boren
       id == "03361013_2001" ~ "03361010", # Riede
       id == "05313000_2009" ~ "05334002", # Aachen
-      id == "05314000_2014" ~ "05334002", # Aachen
-      id == "05314000_2020" ~ "05334002", # Aachen
       id == "07140502_1994" ~ "07135050", # Lahr
       id == "07140502_1999" ~ "07135050", # Lahr
       id == "07140503_1994" ~ "07135063", # Mörsdorf
@@ -235,7 +243,7 @@ df <- df |>
       id == "16063057_1994" ~ 1994, # Moorgrund
       # X. use 1998 for merging for ags in MeckPomm in 1999
       # id %in% not_merged_naive[not_merged_naive$election_year == 1999 & grepl("^13", not_merged_naive$id), ]$id ~ election_year - 1,
-      id %in% not_merged_naive[not_merged_naive$election_year == 2004 & grepl("^15", not_merged_naive$id), ]$id ~ election_year - 1,
+      id %in% not_merged_naive[not_merged_naive$election_year %in% c(2004, 2009) & grepl("^15", not_merged_naive$id), ]$id ~ election_year - 1,
       # X. use election_year - 1 for merging for ags in Saxony
       id %in% not_merged_naive[grepl("^12", not_merged_naive$id), ]$id ~ election_year - 1,
       id %in% not_merged_naive[grepl("^13", not_merged_naive$id), ]$id ~ election_year - 1,
@@ -424,8 +432,6 @@ df_harm |>
   distinct(year) |>
   nrow()
 
-
-
 # Merge
 df_final <- muni |>
   left_join_check_obs(df_harm, by = c("ags", "year"))
@@ -483,7 +489,6 @@ move_plots_to_overleaf("code")
 
 # Check missigness --------------------------------------------------------
 
-
 # Load municipality level data
 muni <- read_rds("data/covars_municipality/final/ags_area_pop_emp.rds") |>
   rename(ags = ags_21) |>
@@ -508,6 +513,11 @@ df_final <- df_final |>
     election = ifelse(any(!is.na(turnout)), 1, 0)
   ) |>
   ungroup()
+
+# niedersachsen
+niedersachsen <- df_final |>
+  filter(state == "03") |>
+  arrange(ags, year)
   
 # Filter all ags where election == 1 but turnout is missing and that have other observations with non-missing turnout
 ever_election <- df_final |>
@@ -521,6 +531,17 @@ inspection <- df_final |>
   mutate(state = state_id_to_names(state)) |>
   select(ags, ags_name_21, year, state, population_ags, turnout) |>
   arrange(state, ags, year)
+
+# any duplicates?
+df_final %>%
+  group_by(ags, year) %>%
+  summarize(n = n()) %>%
+  filter(n > 1)
+# none
+
+# na_niedersachsen
+na_niedersachsen <- inspection |>
+  filter(state == "Niedersachsen")
   
 fwrite(inspection, "data/municipal_elections/missing_ags.csv")
 
