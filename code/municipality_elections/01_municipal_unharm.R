@@ -4199,34 +4199,34 @@ sachsen_anhalt_2009_kommunalwahlen_data_sub$Turnout <- sachsen_anhalt_2009_kommu
 
 # Remove Ortsteile ----
 
-sachsen_anhalt_2009_kommunalwahlen_data_sub <- sachsen_anhalt_2009_kommunalwahlen_data_sub %>%
-  filter(
-    !AGS_8dig %in% c("15081010",
-                     "15081015",
-                     "15081025",
-                     "15081055",
-                     "15081115",
-                     "15081140",
-                     "15081155",
-                     "15081275",
-                     "15081420",
-                     "15081465",
-                     "15081495",
-                     "15081530",
-                     "15081580",
-                     "15090030",
-                     "15090035",
-                     "15090130",
-                     '15090140',
-                     '15090155',
-                     '15090175',
-                     '15090315',
-                     '15090335',
-                     '15090380',
-                     '15090440',
-                     '15090450',
-                     '15090455',
-                     '15090590'))
+# sachsen_anhalt_2009_kommunalwahlen_data_sub <- sachsen_anhalt_2009_kommunalwahlen_data_sub %>%
+#   filter(
+#     !AGS_8dig %in% c("15081010",
+#                      "15081015",
+#                      "15081025",
+#                      "15081055",
+#                      "15081115",
+#                      "15081140",
+#                      "15081155",
+#                      "15081275",
+#                      "15081420",
+#                      "15081465",
+#                      "15081495",
+#                      "15081530",
+#                      "15081580",
+#                      "15090030",
+#                      "15090035",
+#                      "15090130",
+#                      '15090140',
+#                      '15090155',
+#                      '15090175',
+#                      '15090315',
+#                      '15090335',
+#                      '15090380',
+#                      '15090440',
+#                      '15090450',
+#                      '15090455',
+#                      '15090590'))
   
 
 ###### Sachsen-Anhalt 2014 Kommunalwahlen ----
@@ -4399,6 +4399,8 @@ sachsen_anhalt_kommunalwahlen <- rbind(sachsen_anhalt_1994_kommunalwahlen_data_s
 
 # Replace INF at Turnout
 sachsen_anhalt_kommunalwahlen$Turnout <-  str_replace_all(sachsen_anhalt_kommunalwahlen$Turnout, fixed("Inf"), NA)
+
+table(sachsen_anhalt_2007_kommunalwahlen_data_sub$AGS_8dig %in% sachsen_anhalt_2009_kommunalwahlen_data_sub$AGS_8dig)
 
 # Replace - with NA
 sachsen_anhalt_kommunalwahlen[sachsen_anhalt_kommunalwahlen == "-"] <- NA
@@ -9309,6 +9311,92 @@ rlp_2019_gemeinderatswahlen_data_sub <-
 rlp_2019_gemeinderatswahlen_data_sub$Turnout <- rlp_2019_gemeinderatswahlen_data_sub$Wähler / rlp_2019_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
 
 
+###### RLP 2009_2019_krfr_steadte Gemeinderatswahlen ----
+#### Load election data ----
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data <- as.data.table(read_excel("raw/rlp/rlp_2009_2014_2019_krfr_Staedte.xlsx", sheet="results"))
+
+#### Delete white space ----
+names(rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data) <-  str_replace_all(names(rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data), fixed(" "), "")
+
+#### Recoding ----
+# Create new dataframe ----
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub <- rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data
+
+names(rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub)
+
+# Creating non-existing variables ----
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub[ , Bundesland := "RLP"]
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub[ , Gebietsname := ""]
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub[ , election_type := "Kommunalwahlen"]
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub[ , IDIRB := ""]
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub[ , IDBA := ""]
+
+# Renaming existing variables ----
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$election_year <- rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$year
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$AGS_8dig <- rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$ags
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$Gebietsname <- rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gemeinde
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$Wahlberechtigte)
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$Wähler <- as.numeric(rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$Waehler)
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$GültigeStimmen <- rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gueltigeStimmen
+
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$abs_CDU <- as.numeric(rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$CDU)
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$abs_SPD <- as.numeric(rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$SPD)
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$abs_DIELINKE <- as.numeric(rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$Linke)
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$abs_GRÜNE <- as.numeric(rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$Gruene)
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$abs_AfD <- as.numeric(rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$AfD)
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$abs_PIRATEN <- as.numeric(rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$PIRATEN)
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$abs_FDP <- as.numeric(rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$FDP)
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$abs_DiePARTEI <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$abs_FREIEWÄHLER <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$abs_Gemeinsame_Wahlvorschläge <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$abs_Wählergruppen <- as.numeric(rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$WG)
+
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gew_CDU <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gew_SPD <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gew_DIELINKE <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gew_GRÜNE <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gew_AfD <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gew_PIRATEN <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gew_FDP <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gew_DiePARTEI <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gew_FREIEWÄHLER <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gew_Gemeinsame_Wahlvorschläge <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gew_Wählergruppen <- NA
+
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$sitze_CDU <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$sitze_SPD <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$sitze_DIELINKE <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$sitze_GRÜNE <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$sitze_AfD <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$sitze_FDP <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$sitze_Gemeinsame_Wahlvorschläge <- NA
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$sitze_Wählergruppen <- NA
+
+
+# Creating new dataframe with selected vars ----
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub <- rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                 Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                 abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER, abs_Gemeinsame_Wahlvorschläge, abs_Wählergruppen,
+                                                                                 gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER, gew_Gemeinsame_Wahlvorschläge, gew_Wählergruppen,
+                                                                                 sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER, sitze_Gemeinsame_Wahlvorschläge, sitze_Wählergruppen)]
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub <-
+  rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$Turnout <- rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$Wähler / rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
+
+
 ####### Merge files and save overall output for RLP ----
 # Merge
 rlp_kommunalwahlen <- rbind(rlp_1994_gemeinderatswahlen_data_sub, rlp_1999_gemeinderatswahlen_data_sub,
@@ -9324,7 +9412,8 @@ rlp_kommunalwahlen$AGS_8dig <- paste0("07", rlp_kommunalwahlen$AGS_8dig)
 
 rlp_kommunalwahlen <- rlp_kommunalwahlen %>%
   filter(nchar(AGS_8dig)==10) %>%
-  mutate(AGS_8dig = paste0(substr(AGS_8dig,1,5), substr(AGS_8dig,8,10)))
+  mutate(AGS_8dig = paste0(substr(AGS_8dig,1,5), substr(AGS_8dig,8,10))) %>%
+  rbind(rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub)
 
 # Remove LK and VG ----
 rlp_kommunalwahlen <- rlp_kommunalwahlen %>%
@@ -9332,7 +9421,8 @@ rlp_kommunalwahlen <- rlp_kommunalwahlen %>%
     !grepl(", LK", Gebietsname),
     !grepl(", VG", Gebietsname),
     !grepl(", Landkreis", Gebietsname),
-    !AGS_8dig %in% c("07141000", "07143000", "07232000", "07333000", "07338000", "07140000"))
+    !AGS_8dig %in% c("07141000", "07143000", "07232000", "07333000", "07338000", "07140000")) %>%
+  arrange(election_year)
 
 
 # Save
