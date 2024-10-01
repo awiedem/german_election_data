@@ -7,6 +7,10 @@ pacman::p_load(tidyverse, haschaR, fixest, broom, modelsummary)
 conflicts_prefer(dplyr::lag)
 conflicts_prefer(dplyr::filter)
 
+# Set the following to F to not save in Overleaf
+
+save_in_overleaf <- TRUE
+
 # Load data
 
 f_m_harm <- read_rds("data/federal_elections/municipality_level/final/federal_muni_harm.rds") %>%
@@ -242,6 +246,8 @@ ggsave("output/figures/application/unemp_increase_sample2.pdf",
     width = 9, height = 5
 )
 
-ggsave("~/Library/CloudStorage/Dropbox/Apps/Overleaf/ElectionPaper/figures/unemp_increase_sample2.pdf",
-    width = 7.5, height = 3.5
-)
+if (save_in_overleaf) {
+    ggsave("~/Library/CloudStorage/Dropbox/Apps/Overleaf/ElectionPaper/figures/unemp_increase_sample2.pdf",
+        width = 7.5, height = 3.5
+    )
+}

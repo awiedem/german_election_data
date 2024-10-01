@@ -8,6 +8,10 @@ conflicts_prefer(dplyr::lag)
 conflicts_prefer(dplyr::filter)
 conflicts_prefer(dplyr::between)
 
+# Set the following to F to not save in Overleaf
+
+save_in_overleaf <- TRUE
+
 # Load data
 
 f_m_harm <- read_rds("data/federal_elections/municipality_level/final/federal_muni_harm.rds") %>%
@@ -135,8 +139,10 @@ d_agg %>%
 ggsave("output/figures/application/descr_sample2.pdf",
     width = 7, height = 4
 )
-ggsave("~/Library/CloudStorage/Dropbox/Apps/Overleaf/ElectionPaper/figures/descr_sample2.pdf",
-    width = 7, height = 4
+
+if (save_in_overleaf) {
+    ggsave("~/Library/CloudStorage/Dropbox/Apps/Overleaf/ElectionPaper/figures/descr_sample2.pdf",
+        width = 7, height = 4
 )
 
 # Weighted correlation by decade
@@ -264,6 +270,8 @@ cor_df %>%
 ggsave("output/figures/application/descr_cor_sample2.pdf",
     width = 7, height = 5
 )
-ggsave("~/Library/CloudStorage/Dropbox/Apps/Overleaf/ElectionPaper/figures/descr_cor_sample2.pdf",
-    width = 6, height = 4.5
+
+if (save_in_overleaf) {
+    ggsave("~/Library/CloudStorage/Dropbox/Apps/Overleaf/ElectionPaper/figures/descr_cor_sample2.pdf",
+        width = 6, height = 4.5
 )
