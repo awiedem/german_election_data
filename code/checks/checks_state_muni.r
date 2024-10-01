@@ -12,6 +12,15 @@ conflicts_prefer(lubridate::year)
 df <- read_rds("data/state_elections/final/state_harm.rds")
 df_raw <- read_rds("data/state_elections/final/state_unharm.rds")
 
+
+# how many ags?
+df %>%
+  select(ags) %>%
+  distinct() %>%
+  nrow()
+
+nrow(df)
+
 # Identify party columns
 parties <- df %>%
     dplyr::select(cdu:other) %>%

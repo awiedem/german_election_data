@@ -1,7 +1,7 @@
 ### Download and clean state election data
 # Vincent Heddesheimer, Hanno Hilbig
 # First: March, 06, 2024
-# Last: Aug, 08, 2024
+# Last: Oct, 01, 2024
 
 rm(list = ls())
 
@@ -12,10 +12,6 @@ pacman::p_load(wiesbaden, devtools, reshape2, pbapply, lubridate)
 
 # Plug in your credentials
 # See wiesbaden package documentation for details
-genesis <- c(user="RE010680", password="BayernMuenchen1900!", db="regio")
-test_login(genesis=genesis)
-
-### Use this for final code and delete the above!!!
 # genesis <- c(user="", password="", db="regio")
 # test_login(genesis=genesis)
 

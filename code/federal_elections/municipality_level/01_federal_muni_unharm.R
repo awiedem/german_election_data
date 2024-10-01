@@ -1,6 +1,6 @@
 ### Clean and combine BTW electoral results at municipality level 1980-2021
 # Vincent Heddesheimer, Hanno Hilbig
-# X, X, 2024
+# Oct, 01, 2024
 
 rm(list=ls())
 

@@ -1,7 +1,7 @@
 ### Harmonize municipal electoral results to 2021 borders
 # Vincent Heddesheimer
 # First: Aug 08, 2024
-# Last: Aug 29, 2024
+# Last: Oct 01, 2024
 
 rm(list = ls())
 
