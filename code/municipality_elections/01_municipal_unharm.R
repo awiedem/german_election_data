@@ -19,6 +19,9 @@ pacman::p_load(writexl, readr, stringr, tidyverse, grid, gridExtra, tidyverse, b
 # Set WD
 setwd(here::here("data/municipal_elections"))
 
+options(scipen=999)
+
+
 # if (Sys.info()['user'] == 'flosic') {
 #   setwd("/Users/flosic/Dropbox/RA_work/Data collection/Germany_Kommunalwahlen")
 # }
@@ -10194,10 +10197,8 @@ fwrite(kommunalwahlen_merge, file=here::here("data/municipal_elections/final/mun
 
 # View(kommunalwahlen_merge)
 
-
+kommunalwahlen_merge <- read_rds(file=here::here("data/municipal_elections/final/municipal_unharm.rds"))
 # inspect -----------------------------------------------------------------
-
-kommunalwahlen_merge <- read_rds(here::here("data/municipal_elections/final/municipal_unharm.rds"))
 
 glimpse(kommunalwahlen_merge)
 

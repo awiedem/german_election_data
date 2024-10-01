@@ -268,10 +268,12 @@ cor_df %>%
 # Save
 
 ggsave("output/figures/application/descr_cor_sample2.pdf",
-    width = 7, height = 5
+    width = 6, height = 4.5
 )
 
-if (save_in_overleaf) {
-    ggsave("~/Library/CloudStorage/Dropbox/Apps/Overleaf/ElectionPaper/figures/descr_cor_sample2.pdf",
-        width = 6, height = 4.5
-)
+# if (save_in_overleaf) {
+#     ggsave("~/Library/CloudStorage/Dropbox/Apps/Overleaf/ElectionPaper/figures/descr_cor_sample2.pdf",
+#         width = 6, height = 4.5
+# )
+move_plots_to_overleaf("code")
+  
