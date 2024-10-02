@@ -15,15 +15,9 @@ glimpse(df)
 
 # how many ags?
 df %>%
-  select(ags) %>%
-  distinct() %>%
-  nrow()
-
-# how many election years?
-df %>%
-  select(year) %>%
-  distinct() %>%
-  nrow()
+    select(ags) %>%
+    distinct() %>%
+    nrow()
 
 nrow(df)
 
@@ -40,7 +34,25 @@ s_votes <- df %>%
 
 cat("Share of rows with sum of party vote shares not equal to 1 (in pct):", 100 * mean(s_votes != 1), "\n")
 
-# 3%
+# Check 1.1: Deviation between sum of party vote shares and 1
+df %>%
+    mutate(deviation = abs(s_votes - 1)) %>%
+    pull(deviation) %>%
+    quantile(c(0.5, 0.9, 0.95, 0.96, 0.97, 0.98, 0.99, 0.999, 0.9999))
+
+# Check 1.2: Distribution sum of party vote shares
+df %>%
+    mutate(s_votes = s_votes) %>%
+    filter(s_votes > 1) %>%
+    ggplot(aes(x = s_votes)) +
+    geom_histogram() +
+    xlab("Sum of party vote shares (should sum to 1)") +
+    ylab("Count") +
+    theme_minimal() +
+    labs(
+        title = "Distribution of Sum of Party Vote Shares",
+        subtitle = "Only for ags with sum of party vote shares > 1"
+    )
 
 # Check 2: Party vote shares between 0 and 1
 s_votes_valid <- df %>%
@@ -50,8 +62,21 @@ s_votes_valid <- df %>%
 
 cat("Share of rows with all party vote shares between 0 and 1:", s_votes_valid / nrow(df), "\n")
 
+# Check 2.1: Distribution of party vote shares for parties where the sum of party vote share is > 1
+
+# cdu_csu and fdp
+
+df %>%
+    filter(cdu_csu > 1 | fdp > 1) %>%
+    dplyr::select(ags, cdu_csu, fdp, year) %>%
+    print(n = 100)
+
+
 # Check 3: Large changes in party vote shares between elections
-parties_main <- parties
+parties_main <- c(
+    "cdu_csu", "spd", "fdp", "gruene",
+    "linke_pds", "afd", "turnout"
+)
 
 df <- df %>%
     arrange(ags, year) %>%
@@ -103,7 +128,8 @@ df %>%
 
 ## Fine: Small towns and Linke becomes suddenly more feasible (from PDA to Linke)
 
-# Check 4: Large changes in valid votes
+# Check 4: Large changes in valid votes ----------------------------
+
 df <- df %>%
     group_by(ags) %>%
     mutate(
@@ -114,7 +140,7 @@ df <- df %>%
 
 df_check_large_changes <- df %>%
     group_by(ags) %>%
-    filter(any(valid_votes_ratio > 5)) %>%
+    filter(any(valid_votes_ratio > 20)) %>%
     dplyr::select(ags, year, valid_votes, valid_votes_ratio)
 
 print(nrow(df_check_large_changes))
@@ -123,9 +149,19 @@ df_check_large_changes %>%
     filter(valid_votes > 1000) %>%
     print(n = 500)
 
-# Prob mostly merges
+# How many municipalities have a valid_votes_ratio > 20?
 
-## oftentimes created by mergers; but show up like this in raw (unharmonized data)
+df_check_large_changes %>%
+    filter(valid_votes_ratio > 30) %>%
+    distinct(ags) %>%
+    nrow()
+
+# Same but what about ratios < 0.1?
+
+df_check_large_changes %>%
+    filter(valid_votes_ratio < 0.1) %>%
+    distinct(ags) %>%
+    nrow()
 
 # Check 5: How many times does a municipality appear in the data?
 
@@ -147,73 +183,3 @@ df %>%
     summarise(n = n()) %>%
     ungroup() %>%
     arrange(n)
-
-# Avg share other as a function of valid votes (plot)
-
-df$year %>% table()
-
-df <- df %>%
-    mutate(decade = case_when(
-        year < 2000 ~ "1990-99",
-        year < 2010 ~ "2000-09",
-        year > 2009 ~ "2010+"
-    ))
-
-df %>% glimpse()
-
-df %>%
-    filter(dplyr::between(eligible_voters, 100, 500000)) %>%
-    ggplot(
-        aes(x = eligible_voters, y = other)
-    ) +
-    stat_summary_bin(
-        fun = mean,
-        geom = "line",
-        bins = 20
-    ) +
-    stat_summary_bin(
-        fun = mean,
-        geom = "point",
-        bins = 20,
-        shape = 21,
-        fill = "white"
-    ) +
-    scale_x_log10(
-        labels = scales::comma_format(),
-        breaks = c(100, 300, 1000, 3000, 10000, 30000, 100000, 500000)
-    ) +
-    geom_hline(yintercept = c(.25, .5, .75), linetype = "dotted") +
-    scale_y_continuous(
-        labels = scales::percent_format(accuracy = 1),
-        breaks = c(0, .25, .5, .75, 1)
-    ) +
-    labs(
-        x = "Eligible voters (log scale)",
-        y = "Average share of 'other' votes"
-    ) +
-    theme_hanno() +
-    haschaR::x_axis_90deg() +
-    facet_wrap(~decade)
-
-ggsave("output/figures/valid_votes_other_share.pdf", width = 8, height = 4)
-
-# Full paths for plots
-plot_list <- "output/figures/valid_votes_other_share.pdf"
-
-# Now move the plots to the Overleaf folder
-if (Sys.info()["user"] == "hanno") {
-    to_path <- "~/Dropbox/Apps/Overleaf/ElectionPaper/figures/"
-} else if (Sys.info()["user"] == "vincentheddesheimer") {
-    to_path <- "~/Dropbox (Princeton)/Apps/Overleaf/ElectionPaper/figures"
-} else {
-    to_path <- ""
-}
-
-# Copy plots to Overleaf folder
-file.copy(
-    from = plot_list,
-    to = to_path,
-    overwrite = TRUE,
-    recursive = FALSE,
-    copy.mode = TRUE
-)

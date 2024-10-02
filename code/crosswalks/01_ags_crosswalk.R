@@ -10,6 +10,8 @@ rm(list=ls())
 
 # pacman::p_load(readxl, haschaR, data.table)
 
+library(kableExtra)
+
 
 # Define column names for the years 1990 to 1999
 names_90to96 <- c(
@@ -82,7 +84,7 @@ cw_combined <- bind_rows(cw_combined, cw_list) |>
   arrange(ags, year)
 
 # write crosswalk df
-fwrite(cw_combined, "data/crosswalks/final/ags_crosswalks.csv")
+fwrite(cw_combined, file = "data/crosswalks/final/ags_crosswalks.csv")
 write_rds(cw_combined, "data/crosswalks/final/ags_crosswalks.rds")
 
 # Create covariate dataframe ----------------------------------------------
