@@ -34,6 +34,11 @@ s_votes <- df %>%
 
 cat("Share of rows with sum of party vote shares not equal to 1 (in pct):", 100 * mean(s_votes != 1), "\n")
 
+# inspect the rows for which the sum of party vote shares is not equal to 1
+inspect_rows <- df %>%
+    mutate(sum_party_votes = s_votes) %>%
+    filter(sum_party_votes != 1)
+
 # Check 1.1: Deviation between sum of party vote shares and 1
 df %>%
     mutate(deviation = abs(s_votes - 1)) %>%

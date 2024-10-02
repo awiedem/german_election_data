@@ -301,17 +301,21 @@ sums <- df_cw |>
   )
 
 # Weighted mean
-means <- df_cw |>
-  group_by(ags_21, election_year) |>
+means <- df_cw %>%
+  # replace NAs with 0
+  mutate(across(cdu_csu:other, ~ ifelse(is.na(.), 0, .))) %>%
+  group_by(ags_21, election_year) %>%
   summarize_at(
     # 4: Weighted mean
     vars(cdu_csu:other),
     ~ weighted.mean(.x, w = pop_cw, na.rm = TRUE)
-  ) |>
+  ) %>%
   rename(
     ags = ags_21, year = election_year
-  ) |>
-  ungroup()
+  ) %>%
+  ungroup() %>%
+  # replace 0 with NA for all replaced_ variables
+  mutate(across(cdu_csu:other, ~ ifelse(. == 0, NA, .)))
 
 # flags
 flags <- df_cw |>
@@ -324,7 +328,7 @@ flags <- df_cw |>
   rename(
     ags = ags_21, year = election_year
   ) |>
-  ungroup()
+  ungroup() 
 
 
 ## Population & area: weighted sums ----------------------------------------
@@ -399,6 +403,10 @@ df_harm <- sums |>
   select(-c(area.x, area.y, population.x, population.y))
 
 glimpse(df_harm)
+
+# remove ags == NA
+df_harm <- df_harm |>
+  filter(!is.na(ags))
 
 
 ## save
