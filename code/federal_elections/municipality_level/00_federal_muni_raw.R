@@ -1,7 +1,7 @@
 ### Clean and combine BTW electoral results at municipality level 1980-2021 
 # Disregard multi mail-in voting districts
 # Vincent Heddesheimer
-# August, 6, 2024
+# Oct, 01, 2024
 
 rm(list = ls())
 
@@ -776,8 +776,7 @@ df09 <- fread("data/federal_elections/municipality_level/raw/BTW09/BTW09_Zweitst
     ags = paste0(Land, RB, Kreis, Gemeinde)
   ) |>
   rename(BWBez = `BW-Bez`) |>
-  # Values are weird characters
-  mutate(across(A:RENTNER, ~ as.numeric(str_sub(.x, end = -4))))
+  mutate(across(A:RENTNER, ~ as.numeric(.x)))
 
 inspect <- df09 |> select(ags, BWBez, BA)
 
@@ -1389,7 +1388,7 @@ df <- df |>
     dkp, kpd, mlpd, sgp, kbw, v, spad, bsa,
     # Others
     `50plus`, `ab 2000`, `ad-demokraten`, adm, agfg, apd, appd, asd, aufbruch, `b*`, bfb, bge, big, bp, bündnis21, `bündnis c`, bürgerbewegung, bürgerpartei, büso, bwk, `chance 2000`, cbv, cm, deutschland, dib, diebasis, `die partei`, `die humanisten`, dm, dpd, `du.`, eap, familie, forum, frauen, `freie wähler`,fwd, gartenpartei, gesundheitsforschung, graue, hp, lfk, liebe, liga, lkr,  mg, `menschliche welt`, mündige, naturgesetz, nichtwähler, ödp, `offensive d`, `öko-union`, `partei der vernunft`, pass, patrioten, pbc, pdf, pdv, piraten, prg, `pro deutschland`,`pro dm`, rentner, rrp, schill, ssw, `statt partei`, tierschutz, `team todenhöfer`, tierschutzallianz, unabhängige, ust, vaa, violetten, volksabstimmung, volt, `v-partei³`, zentrum 
-  ) %>%
+    ) %>%
   # Calculate extremist votes
   mutate(
     far_right = rowSums(select(., afd:dsu), na.rm = TRUE),

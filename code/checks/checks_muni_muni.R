@@ -13,6 +13,20 @@ df <- read_rds("data/municipal_elections/final/municipal_harm.rds")
 
 glimpse(df)
 
+# how many ags?
+df %>%
+  select(ags) %>%
+  distinct() %>%
+  nrow()
+
+# how many election years?
+df %>%
+  select(year) %>%
+  distinct() %>%
+  nrow()
+
+nrow(df)
+
 # Identify party columns
 parties <- df %>%
     dplyr::select(cdu_csu:other) %>%

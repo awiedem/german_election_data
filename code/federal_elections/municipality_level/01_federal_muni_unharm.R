@@ -1,6 +1,6 @@
 ### Clean and combine BTW electoral results at municipality level 1980-2021
 # Vincent Heddesheimer, Hanno Hilbig
-# X, X, 2024
+# Oct, 01, 2024
 
 rm(list=ls())
 
@@ -1235,8 +1235,7 @@ df09 <- fread("data/federal_elections/municipality_level/raw/BTW09/BTW09_Zweitst
     ags = paste0(Land, RB, Kreis, Gemeinde)
   ) |>
   rename(BWBez = `BW-Bez`) |>
-  # Values are weird characters
-  mutate(across(A:RENTNER, ~ as.numeric(str_sub(.x, end = -4))))
+  mutate(across(A:RENTNER, ~ as.numeric(.x)))
 
 inspect <- df09 |> select(ags, BWBez, BA)
 
@@ -2348,7 +2347,7 @@ write_rds <- mailin_df |>
 
 pacman::p_load(kableExtra)
 
-mailin_df <- read_rds("data/federal_elections/municipality_level/final/mailin_df.rds")
+mailin_df <- read_rds("data/federal_elections/municipality_level/additional/mailin_df.rds")
 df <- read_rds("data/federal_elections/municipality_level/final/federal_muni_unharm.rds")
 
 # number of ags with unique_mailin == 0 in each election

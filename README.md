@@ -69,7 +69,7 @@ Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2024.
 ```         
 @article{Heddesheimer2024GermanElection,
   author = {Heddesheimer Vincent, and Hanno Hilbig, and Florian Sichart and Andreas Wiedemann},
-  title = {German Election Dataset},
+  title = {German Election Database},
   year = {2024}
 }
 ```

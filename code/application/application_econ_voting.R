@@ -243,11 +243,13 @@ models %>%
     coord_flip()
 
 ggsave("output/figures/application/unemp_increase_sample2.pdf",
-    width = 9, height = 5
+       width = 7.5, height = 3.5
 )
 
-if (save_in_overleaf) {
-    ggsave("~/Library/CloudStorage/Dropbox/Apps/Overleaf/ElectionPaper/figures/unemp_increase_sample2.pdf",
-        width = 7.5, height = 3.5
-    )
-}
+# if (save_in_overleaf) {
+#     ggsave("~/Library/CloudStorage/Dropbox/Apps/Overleaf/ElectionPaper/figures/unemp_increase_sample2.pdf",
+#         width = 7.5, height = 3.5
+#     )
+# }
+
+move_plots_to_overleaf("code")

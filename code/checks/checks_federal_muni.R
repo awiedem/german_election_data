@@ -16,6 +16,14 @@ df_raw <- read_rds("data/federal_elections/municipality_level/final/federal_muni
 
 glimpse(df)
 
+# how many ags?
+df %>%
+  select(ags) %>%
+  distinct() %>%
+  nrow()
+
+nrow(df)
+
 # Identify party columns
 parties <- df %>%
     dplyr::select(cdu:zentrum) %>%

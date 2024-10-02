@@ -3,7 +3,7 @@
 ###################################
 
 # Florian Sichart
-# Last update: August 2024
+# Last update: October 2024
 
 ########## PREPARATION ----
 rm(list = ls())
