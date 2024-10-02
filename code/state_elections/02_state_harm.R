@@ -389,7 +389,11 @@ plot_df |>
     panel.grid.major = element_blank(), 
     panel.grid.minor = element_blank(),
     legend.position = "none"
-  )
+  ) +
+  scale_x_continuous(
+    breaks = seq(2005, 2021, 5),
+    expand = c(0.07, 0) # Add some padding to the right
+    )  
 
 ggsave("output/figures/state_elections.pdf", width = 7, height = 4)
 
