@@ -1698,6 +1698,12 @@ df17 <- fread("data/federal_elections/municipality_level/raw/BTW17/btw17_wbz_zwe
 
 inspect <- df17 |> select(ags, BWBez, BA)
 
+names(df17)
+
+inspect <- df17 |>
+  filter(str_starts(ags, "07133") & BWBez == "08") |>
+  select(ags, BWBez, BA, `Wahlberechtigte (A)`,`Wähler mit Wahlschein (B1)`)
+
 
 # Eine Besonderheit stellen gemeinsame Briefwahlbezirke für mehrere
 # Gemeinden dar. Alle Gemeinden eines Kreises, die einen gemeinsamen 
@@ -1727,6 +1733,8 @@ df17_bezirksarten <- df17 |>
   summarise_at(vars(`Wahlberechtigte (A)`:`V-Partei³`), sum, na.rm = TRUE) |>
   mutate(number_voters_orig = ifelse(BA == 5, 0, `Wähler (B)`)) |>
   relocate(number_voters_orig, .before = `Wähler (B)`) 
+
+
 
 # Get ags that have their own mailin data
 ags_w_mailin17 <- df17_bezirksarten |>
@@ -2423,6 +2431,26 @@ df |>
   group_by(election_year) |>
   summarise(n = n())
 
+
+
+# Wahlscheine -------------------------------------------------------------
+
+glimpse(df)
+
+# what percentage of munis have more than 0 Wahlscheine?
+wahlscheine <- df |>
+  mutate(
+    briefwahlvoters = number_voters - number_voters_orig,
+    wahlscheine_womailin = voters_w_ballot - briefwahlvoters
+    ) |>
+  select(ags, election_year, number_voters, number_voters_orig, briefwahlvoters, voters_w_ballot, wahlscheine_womailin, unique_mailin) |>
+  filter(!is.na(voters_w_ballot))
+
+# how often is voters_w_ballot == wahlscheine_womailin?
+equal <- wahlscheine |>
+  filter(voters_w_ballot == wahlscheine_womailin & unique_mailin == 1)
+
+nrow(equal) / nrow(wahlscheine) * 100
 
 
 ## city states ------------------------------------------------------------------
