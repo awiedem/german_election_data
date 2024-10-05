@@ -175,8 +175,26 @@ ggplot(df_combined_wide, aes(x = diff_rel)) +
 
 # Quantiles
 
-cutoffs <- quantile(df_combined_wide$diff_rel, probs = seq(0, 1, 0.1))
+cutoffs <- quantile(df_combined_wide$diff_rel, probs = seq(0.7, 1, 0.01))
 cutoffs
 
 cutoffs_abs <- quantile(df_combined_wide$diff_abs, probs = seq(0, 1, 0.1))
 cutoffs_abs
+
+# Check distribution of observations where we have differences
+
+df_combined_wide %>%
+    filter(diff_rel > 0) %>%
+    count(party)
+
+df_combined_wide %>%
+    mutate(deviation = ifelse(diff_rel > 0, 1, 0)) %>%
+    group_by(state, election_year) %>%
+    summarise(share_of_parties_with_deviations = sum(deviation) / 6) %>%
+    mutate(state = haschaR::state_id_to_names(state)) %>%
+    print(n = 100)
+
+mean(df_combined_wide$diff_abs == 0)
+nrow(df_combined_wide)
+
+16 * 6 * 3
