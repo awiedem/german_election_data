@@ -74,6 +74,6 @@ Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2024.
 }
 ```
 
-For more information, visit the [project website](http://german-elections.com) or contact the authors.
+For more information, visit the [project website](http://www.german-elections.com/) or contact the authors.
 
 ---
