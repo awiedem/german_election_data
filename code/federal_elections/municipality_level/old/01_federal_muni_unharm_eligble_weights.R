@@ -31,7 +31,7 @@ df80 <- fread("data/federal_elections/municipality_level/raw/BTW80/BTW80_Zweitst
     ags = paste0(Land, RB, Kreis, Gemeinde),
     eligible_voters_orig = A,
     number_voters_orig = ifelse(BA == 5, 0, B)
-  ) |>
+    ) |>
   mutate(A = ifelse(BA == 5, B, A)) |>
   relocate(eligible_voters_orig, .before = A) |>
   relocate(number_voters_orig, .before = A) |>
@@ -54,7 +54,7 @@ dupl <- df80 |>
   count(ags, election_year) |>
   filter(n>1)
 nrow(dupl) # 0 duplicates
-
+  
 # 1983 --------------------------------------------------------------------
 
 df83 <- fread("data/federal_elections/municipality_level/raw/BTW83/BTW83_Zweitstimmen_Wahlbezirke.txt", encoding = 'Latin-1') |>
@@ -134,18 +134,15 @@ df83 <- df83 |>
   group_by(county, unique_mailin) |>
   mutate(county_pop = sum(pop, na.rm = T),
          county_area = sum(area, na.rm = T),
-         county_voters = sum(A, na.rm = T),
-         county_blocked = sum(A2, na.rm = T)
-  ) |>
+         county_voters = sum(A, na.rm = T)
+         ) |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_pop,
          area_weight = area / county_area,
          voters_weight = A / county_voters,
-         eligible_voters_orig = A,
-         blocked_weight = A2 / county_blocked,
-         blocked_voters_orig = A2
-  ) 
+         eligible_voters_orig = A
+         ) 
 
 # mail-in counties in long format
 mailin83_long <- df83 |> 
@@ -176,7 +173,7 @@ df83_long <- df83 |>
   mutate(
     # weight multi mail-in values by eligible voters share
     # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * blocked_weight), digits = 0),
+    weighted_value = round((mailin_value * voters_weight), digits = 0),
     # add to original ags value
     ags_value_v2 = ifelse(
       unique_mailin == 0,
@@ -282,18 +279,15 @@ df87 <- df87 |>
   group_by(county, unique_mailin) |>
   mutate(county_pop = sum(pop, na.rm = T),
          county_area = sum(area, na.rm = T),
-         county_voters = sum(A, na.rm = T),
-         county_blocked = sum(A2 + A3, na.rm = T)
-  ) |>
+         county_voters = sum(A, na.rm = T)
+         ) |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_pop,
          area_weight = area / county_area,
          voters_weight = A / county_voters,
-         eligible_voters_orig = A,
-         blocked_weight = (A2 + A3) / county_blocked,
-         blocked_voters_orig = A2 + A3
-  )
+         eligible_voters_orig = A
+         )
 
 # mail-in counties in long format
 mailin87_long <- df87 |> 
@@ -324,7 +318,7 @@ df87_long <- df87 |>
   mutate(
     # weight multi mail-in values by eligible voters share
     # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * blocked_weight), digits = 0),
+    weighted_value = round((mailin_value * voters_weight), digits = 0),
     # add to original ags value
     ags_value_v2 = ifelse(
       unique_mailin == 0,
@@ -448,18 +442,15 @@ df90 <- df90 |>
   group_by(county, unique_mailin) |>
   mutate(county_pop = sum(pop, na.rm = T),
          county_area = sum(area, na.rm = T),
-         county_voters = sum(`Wahlberechtigte (A)`, na.rm = T),
-         county_blocked = sum(`Wahlberechtigte mit Sperrvermerk (A2)` + `Wahlberechtigte nach § 25 Abs. 2 BWO (A3)`, na.rm = T)
-  ) |>
+         county_voters = sum(`Wahlberechtigte (A)`, na.rm = T)
+         ) |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_pop,
          area_weight = area / county_area,
          voters_weight = `Wahlberechtigte (A)` / county_voters,
-         eligible_voters_orig = `Wahlberechtigte (A)`,
-         blocked_weight = (`Wahlberechtigte mit Sperrvermerk (A2)` + `Wahlberechtigte nach § 25 Abs. 2 BWO (A3)`) / county_blocked,
-         blocked_voters_orig = `Wahlberechtigte mit Sperrvermerk (A2)` + `Wahlberechtigte nach § 25 Abs. 2 BWO (A3)`
-  )
+         eligible_voters_orig = `Wahlberechtigte (A)`
+         )
 
 # mail-in counties in long format
 mailin90_long <- df90 |> 
@@ -490,7 +481,7 @@ df90_long <- df90 |>
   mutate(
     # weight multi mail-in values by eligible voters share
     # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * blocked_weight), digits = 0),
+    weighted_value = round((mailin_value * voters_weight), digits = 0),
     # add to original ags value
     ags_value_v2 = ifelse(
       unique_mailin == 0,
@@ -622,18 +613,15 @@ df94 <- df94 |>
   group_by(county, unique_mailin) |>
   mutate(county_pop = sum(pop, na.rm = T),
          county_area = sum(area, na.rm = T),
-         county_voters = sum(A, na.rm = T),
-         county_blocked = sum(A2 + A3, na.rm = T)
-  ) |>
+         county_voters = sum(A, na.rm = T)
+         ) |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_pop,
          area_weight = area / county_area,
          voters_weight = A / county_voters,
-         eligible_voters_orig = A,
-         blocked_weight = (A2 + A3) / county_blocked,
-         blocked_voters_orig = A2 + A3
-  )
+         eligible_voters_orig = A
+         )
 
 # mail-in counties in long format
 mailin94_long <- df94 |> 
@@ -664,7 +652,7 @@ df94_long <- df94 |>
   mutate(
     # weight multi mail-in values by eligible voters share
     # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * blocked_weight), digits = 0),
+    weighted_value = round((mailin_value * voters_weight), digits = 0),
     # add to original ags value
     ags_value_v2 = ifelse(
       unique_mailin == 0,
@@ -782,17 +770,14 @@ df98 <- df98 |>
   group_by(county, unique_mailin) |>
   mutate(county_pop = sum(pop, na.rm = T),
          county_area = sum(area, na.rm = T),
-         county_voters = sum(A, na.rm = T),
-         county_blocked = sum(A2 + A3, na.rm = T)
-  ) |>
+         county_voters = sum(A, na.rm = T)
+         ) |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_pop,
          area_weight = area / county_area,
          voters_weight = A / county_voters,
-         eligible_voters_orig = A,
-         blocked_weight = (A2 + A3) / county_blocked,
-         blocked_voters_orig = A2 + A3
+         eligible_voters_orig = A
   )
 
 # mail-in counties in long format
@@ -824,7 +809,7 @@ df98_long <- df98 |>
   mutate(
     # weight multi mail-in values by eligible voters share
     # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * blocked_weight), digits = 0),
+    weighted_value = round((mailin_value * voters_weight), digits = 0),
     # add to original ags value
     ags_value_v2 = ifelse(
       unique_mailin == 0,
@@ -914,11 +899,7 @@ df02_vg_bezirksarten <- df02 |>
 # Get ags that have their own mailin data
 ags_w_mailin02 <- df02_vg_bezirksarten |>
   filter(BZA == 5) |>
-  # remove ags == 16073077: has both unique mail in and shared mail in
-  filter(ags != "16073077") |>
   pull(ags)
-  
-  
 
 # Summarize variables for all ags and create variable for whether ags had unique mailin
 df02 <- df02_vg_bezirksarten |>
@@ -976,24 +957,21 @@ df02 <- df02 |>
   group_by(county, VG, unique_mailin) |>
   mutate(county_vg_pop = sum(pop, na.rm = T),
          county_vg_area = sum(area, na.rm = T),
-         county_vg_voters = sum(A, na.rm = T),
-         county_vg_blocked = sum(A2 + A3, na.rm = T)
-  ) |>
+         county_vg_voters = sum(A, na.rm = T)
+         ) |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_vg_pop,
          area_weight = area / county_vg_area,
          voters_weight = A / county_vg_voters,
-         eligible_voters_orig = A,
-         blocked_weight = (A2 + A3) / county_vg_blocked,
-         blocked_voters_orig = A2 + A3
-  )
+         eligible_voters_orig = A
+         )
 
 # # Inspect
-inspect <- df02 |>
-  filter(county == "16073") |>
-  select(ags, VG, unique_mailin, A2, A3, county_vg_blocked, blocked_weight, blocked_voters_orig)
-# works!
+# inspect <- df02y |> 
+#   filter(county == "01053") |>
+#   select(ags, VG, unique_mailin, pop, county_vg_pop)
+# # works!
 
 # mail-in counties in long format
 mailin02_long <- df02 |> 
@@ -1024,7 +1002,7 @@ df02_long <- df02 |>
   mutate(
     # weight multi mail-in values by eligible voters share
     # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * blocked_weight), digits = 0),
+    weighted_value = round((mailin_value * voters_weight), digits = 0),
     # add to original ags value
     ags_value_v2 = ifelse(
       unique_mailin == 0,
@@ -1165,18 +1143,15 @@ df05 <- df05 |>
   group_by(county, BWBez, unique_mailin) |>
   mutate(county_bwbez_pop = sum(pop, na.rm = T),
          county_bwbez_area = sum(area, na.rm = T),
-         county_bwbez_voters = sum(A, na.rm = T),
-         county_bwbez_blocked = sum(A2 + A3, na.rm = T)
-  ) |>
+         county_bwbez_voters = sum(A, na.rm = T)
+         ) |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_bwbez_pop,
          area_weight = area / county_bwbez_area,
          voters_weight = A / county_bwbez_voters,
-         eligible_voters_orig = A,
-         blocked_weight = (A2 + A3) / county_bwbez_blocked,
-         blocked_voters_orig = A2 + A3
-  )
+         eligible_voters_orig = A
+         )
 
 # # Inspect
 # inspect <- df05 |>
@@ -1213,7 +1188,7 @@ df05_long <- df05 |>
   mutate(
     # weight multi mail-in values by eligible voters share
     # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * blocked_weight), digits = 0),
+    weighted_value = round((mailin_value * voters_weight), digits = 0),
     # add to original ags value
     ags_value_v2 = ifelse(
       unique_mailin == 0,
@@ -1325,7 +1300,7 @@ df09 <- df09_bezirksarten |>
   # variable for whether ags had unique mailin
   mutate(
     unique_mailin = ifelse(ags %in% ags_w_mailin09, 1, 0)
-  )
+    )
 
 # Check duplicates
 dupl <- df09 |>
@@ -1376,18 +1351,15 @@ df09 <- df09 |>
   group_by(county, BWBez, unique_mailin) |>
   mutate(county_bwbez_pop = sum(pop, na.rm = T),
          county_bwbez_area = sum(area, na.rm = T),
-         county_bwbez_voters = sum(A, na.rm = T),
-         county_bwbez_blocked = sum(A2 + A3, na.rm = T)
-  ) |>
+         county_bwbez_voters = sum(A, na.rm = T)
+         ) |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_bwbez_pop,
          area_weight = area / county_bwbez_area,
          voters_weight = A / county_bwbez_voters,
-         eligible_voters_orig = A,
-         blocked_weight = (A2 + A3) / county_bwbez_blocked,
-         blocked_voters_orig = A2 + A3
-  )
+         eligible_voters_orig = A
+         )
 
 # # Inspect
 # inspect <- df09 |>
@@ -1424,7 +1396,7 @@ df09_long <- df09 |>
   mutate(
     # weight multi mail-in values by eligible voters share
     # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * blocked_weight), digits = 0),
+    weighted_value = round((mailin_value * voters_weight), digits = 0),
     # add to original ags value
     ags_value_v2 = ifelse(
       unique_mailin == 0,
@@ -1470,11 +1442,9 @@ df09 <- df09 |>
     county_bwbez_pop = first(county_bwbez_pop),
     county_bwbez_area = first(county_bwbez_area),
     county_bwbez_voters = first(county_bwbez_voters),
-    county_bwbez_blocked = first(county_bwbez_blocked),
     area_weight = first(area_weight),
     pop_weight = first(pop_weight),
     voters_weight = first(voters_weight),
-    blocked_weight = first(blocked_weight),
     across(eligible_voters_orig:RENTNER, ~ sum(.x, na.rm = TRUE))
   ) |>
   mutate(unique_multi_mailin = ifelse(ags %in% dupl, 1, 0))
@@ -1606,18 +1576,15 @@ df13 <- df13 |>
   group_by(county, BWBez, unique_mailin) |>
   mutate(county_bwbez_pop = sum(pop, na.rm = T),
          county_bwbez_area = sum(area, na.rm = T),
-         county_bwbez_voters = sum(A, na.rm = T),
-         county_bwbez_blocked = sum(A2 + A3, na.rm = T)
-  ) |>
+         county_bwbez_voters = sum(A, na.rm = T)
+         ) |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_bwbez_pop,
          area_weight = area / county_bwbez_area,
          voters_weight = A / county_bwbez_voters,
-         eligible_voters_orig = A,
-         blocked_weight = (A2 + A3) / county_bwbez_blocked,
-         blocked_voters_orig = A2 + A3
-  )
+         eligible_voters_orig = A
+         )
 
 # # Inspect
 # inspect <- df13 |>
@@ -1654,7 +1621,7 @@ df13_long <- df13 |>
   mutate(
     # weight multi mail-in values by eligible voters share
     # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * blocked_weight), digits = 0),
+    weighted_value = round((mailin_value * voters_weight), digits = 0),
     # add to original ags value
     ags_value_v2 = ifelse(
       unique_mailin == 0,
@@ -1700,11 +1667,9 @@ df13 <- df13 |>
     county_bwbez_pop = first(county_bwbez_pop),
     county_bwbez_area = first(county_bwbez_area),
     county_bwbez_voters = first(county_bwbez_voters),
-    county_bwbez_blocked = first(county_bwbez_blocked),
     area_weight = first(area_weight),
     pop_weight = first(pop_weight),
     voters_weight = first(voters_weight),
-    blocked_weight = first(blocked_weight),
     across(eligible_voters_orig:`Die PARTEI`, ~ sum(.x, na.rm = TRUE))
   ) |>
   mutate(unique_multi_mailin = ifelse(ags %in% dupl, 1, 0))
@@ -1836,17 +1801,14 @@ df17 <- df17 |>
   group_by(county, BWBez, unique_mailin) |>
   mutate(county_bwbez_pop = sum(pop, na.rm = T),
          county_bwbez_area = sum(area, na.rm = T),
-         county_bwbez_voters = sum(`Wahlberechtigte (A)`, na.rm = T),
-         county_bwbez_blocked = sum(`Wahlberechtigte mit Sperrvermerk (A2)` + `Wahlberechtigte nach § 25 Abs. 2 BWO (A3)`, na.rm = T)
-  ) |>
+         county_bwbez_voters = sum(`Wahlberechtigte (A)`, na.rm = T)
+         ) |>
   ungroup() |>
   # calculate weights (i.e. shares)
   mutate(pop_weight = pop / county_bwbez_pop,
          area_weight = area / county_bwbez_area,
          voters_weight = `Wahlberechtigte (A)` / county_bwbez_voters,
-         eligible_voters_orig = `Wahlberechtigte (A)`,
-         blocked_weight = (`Wahlberechtigte mit Sperrvermerk (A2)` + `Wahlberechtigte nach § 25 Abs. 2 BWO (A3)`) / county_bwbez_blocked,
-         blocked_voters_orig = `Wahlberechtigte mit Sperrvermerk (A2)` + `Wahlberechtigte nach § 25 Abs. 2 BWO (A3)`
+         eligible_voters_orig = `Wahlberechtigte (A)`
   )
 
 
@@ -1886,7 +1848,7 @@ df17_long <- df17 |>
   mutate(
     # weight multi mail-in values by eligible voters share
     # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * blocked_weight), digits = 0),
+    weighted_value = round((mailin_value * voters_weight), digits = 0),
     # add to original ags value
     ags_value_v2 = ifelse(
       unique_mailin == 0,
@@ -1927,7 +1889,7 @@ duplicates <- df17 |>
 # Sum up
 df17 <- df17 |>
   group_by(ags) |>
-  mutate_at(vars(eligible_voters_orig:`V-Partei³`, county_bwbez_voters, county_bwbez_blocked), sum, na.rm = TRUE) |>
+  mutate_at(vars(eligible_voters_orig:`V-Partei³`, county_bwbez_voters), sum, na.rm = TRUE) |>
   ungroup() |>
   distinct()
 
@@ -2044,17 +2006,15 @@ df21 <- df21 |>
   group_by(county, BWBez, unique_mailin) |>
   mutate(county_bwbez_pop = sum(pop, na.rm = T),
          county_bwbez_area = sum(area, na.rm = T),
-         county_bwbez_voters = sum(`Wahlberechtigte (A)`, na.rm = T),
-         county_bwbez_blocked = sum(`Wahlberechtigte mit Sperrvermerk (A2)` + `Wahlberechtigte nach § 25 Abs. 2 BWO (A3)`, na.rm = T)
-  ) |>
+         county_bwbez_voters = sum(`Wahlberechtigte (A)`, na.rm = T)
+         ) |>
   ungroup() |>
   # calculate weights (i.e. shares)
-  mutate(pop_weight = pop / county_bwbez_pop,
-         area_weight = area / county_bwbez_area,
-         voters_weight = `Wahlberechtigte (A)` / county_bwbez_voters,
-         eligible_voters_orig = `Wahlberechtigte (A)`,
-         blocked_weight = (`Wahlberechtigte mit Sperrvermerk (A2)` + `Wahlberechtigte nach § 25 Abs. 2 BWO (A3)`) / county_bwbez_blocked,
-         blocked_voters_orig = `Wahlberechtigte mit Sperrvermerk (A2)` + `Wahlberechtigte nach § 25 Abs. 2 BWO (A3)`
+  mutate(
+    pop_weight = pop / county_bwbez_pop,
+    area_weight = area / county_bwbez_area,
+    voters_weight = `Wahlberechtigte (A)` / county_bwbez_voters,
+    eligible_voters_orig = `Wahlberechtigte (A)`
   )
 
 # # Inspect
@@ -2092,7 +2052,7 @@ df21_long <- df21 |>
   mutate(
     # weight multi mail-in values by eligible voters share
     # but only for the ones that have shared mail-in
-    weighted_value = round((mailin_value * blocked_weight), digits = 0),
+    weighted_value = round((mailin_value * voters_weight), digits = 0),
     # add to original ags value
     ags_value_v2 = ifelse(
       unique_mailin == 0,
@@ -2130,7 +2090,7 @@ nrow(dupl)
 # Sum up
 df21 <- df21 |>
   group_by(ags) |>
-  mutate_at(vars(eligible_voters_orig:Volt, county_bwbez_voters, county_bwbez_blocked), sum, na.rm = TRUE) |>
+  mutate_at(vars(eligible_voters_orig:Volt, county_bwbez_voters), sum, na.rm = TRUE) |>
   ungroup() |>
   distinct()
 
@@ -2215,9 +2175,9 @@ df <- df |>
   select(
     # Background
     ags, county, election_year, state, eligible_voters_orig, eligible_voters, number_voters_orig, number_voters, valid_votes,
-    voters_wo_blockingnotice, voters_blockingnotice, voters_par25_2, blocked_voters_orig, voters_w_ballot,
+    voters_wo_blockingnotice, voters_blockingnotice, voters_par25_2, voters_w_ballot,
     # Mail-in voting
-    unique_mailin, unique_multi_mailin, pop, area, pop_weight, area_weight, voters_weight, blocked_weight,
+    unique_mailin, unique_multi_mailin, pop, area, pop_weight, area_weight, voters_weight,
     # Main
     cdu, csu, cdu_csu, spd, grüne, fdp, linke_pds, `b90/gr`,
     # Right-wing
@@ -2226,16 +2186,16 @@ df <- df |>
     dkp, kpd, mlpd, sgp, kbw, v, spad, bsa,
     # Others
     `50plus`, `ab 2000`, `ad-demokraten`, adm, agfg, apd, appd, asd, aufbruch, `b*`, bfb, bge, big, bp, bündnis21, `bündnis c`, bürgerbewegung, bürgerpartei, büso, bwk, `chance 2000`, cbv, cm, deutschland, dib, diebasis, `die partei`, `die humanisten`, dm, dpd, `du.`, eap, familie, forum, frauen, `freie wähler`,fwd, gartenpartei, gesundheitsforschung, graue, hp, lfk, liebe, liga, lkr,  mg, `menschliche welt`, mündige, naturgesetz, nichtwähler, ödp, `offensive d`, `öko-union`, `partei der vernunft`, pass, patrioten, pbc, pdf, pdv, piraten, prg, `pro deutschland`,`pro dm`, rentner, rrp, schill, ssw, `statt partei`, tierschutz, `team todenhöfer`, tierschutzallianz, unabhängige, ust, vaa, violetten, volksabstimmung, volt, `v-partei³`, zentrum 
-  ) %>%
+    ) %>%
   # Calculate extremist votes
   mutate(
     far_right = rowSums(select(., afd:dsu), na.rm = TRUE),
     far_left = rowSums(select(., dkp:bsa), na.rm = TRUE)
-  ) %>%
+    ) %>%
   # Left wing with votes for Linke/PDS
   mutate(
     far_left_wLinke = rowSums(select(., linke_pds, far_left), na.rm = TRUE)
-  )
+    )
 ### Extremist parties
 ## Right wing
 # npd, fap (freiheitliche deutsche arbeiterpartei), rep (die republikaner),
@@ -2270,14 +2230,15 @@ df <- df %>%
 # Cases with 0 eligible voters --------------------------------------------
 
 (zero_elig <- df |> filter(eligible_voters == 0))
-
-# any columns from cdu to zentrum that are not 0?
-zero_elig |>
-  select(cdu:zentrum) |>
-  filter_all(any_vars(. != 0))
-
 # 179 ags (all in 2021) for which there are zero eligible voters registered
-# But no cases where votes are not 0
+# Our algorithm assigns some voters from multi mail-in districts
+# We want to correct for that
+
+df <- df |>
+  mutate(mutate(across(
+    number_voters:zentrum, ~ ifelse(eligible_voters == 0, 0, .)
+  )))
+
 
 
 # Deal with Berlin and Hamburg --------------------------------------------
@@ -2289,22 +2250,10 @@ zero_elig |>
 berlin_hamburg <- df |>
   filter(state %in% c("11", "02")) |>
   group_by(election_year, state) |>
+  summarise(across(
+    eligible_voters_orig:far_left_wLinke, sum, na.rm = TRUE
+  )) |>
   mutate(
-    across(
-      eligible_voters_orig:voters_w_ballot, sum, na.rm = TRUE
-    ),
-    across(
-      unique_mailin:unique_multi_mailin, max, na.rm = TRUE
-    ),
-    across(
-      pop:area, sum, na.rm = TRUE
-    ),
-    across(
-      pop_weight:blocked_weight, max, na.rm = TRUE
-    ),
-    across(
-      cdu:far_left_wLinke, sum, na.rm = TRUE
-    ),
     ags = case_when(
       state == "11" ~ "11000000",
       state == "02" ~ "02000000"
@@ -2313,17 +2262,10 @@ berlin_hamburg <- df |>
       state == "11" ~ "Berlin",
       state == "02" ~ "Hamburg"
     ),
-    state_name = state_id_to_names(state)# ,
-    # unique_mailin = ifelse(unique_mailin > 0, 1, 0)
-  )  |>
-  distinct() |>
-  # if values is -Inf, NA across all columns
-  mutate(
-    across(
-      unique_mailin:blocked_weight, ~ ifelse(. == -Inf, NA, .)
-    )
+    state_name = state_id_to_names(state),
+    unique_mailin = ifelse(unique_mailin > 0, 1, 0)
   )
-
+  
 df <- df |>
   filter(!(state %in% c("11", "02"))) |>
   bind_rows(berlin_hamburg)
@@ -2333,32 +2275,18 @@ df <- df |>
 
 glimpse(df)
 
-inspect <- df |>
-  mutate(turnout = number_voters / eligible_voters_orig) |>
-  select(ags, election_year, number_voters, eligible_voters_orig, turnout)
-# View(inspect)
-
-
 df <- df |>
   mutate(
     across(cdu:far_left_wLinke, ~ .x / number_voters),
-    turnout = number_voters / eligible_voters_orig
-  ) |>
+    turnout = number_voters / eligible_voters
+    ) |>
   relocate(turnout, .before = cdu)
 
 # check whether there are any ags with turnout > 1
 inspect <- df |>
   filter(turnout > 1)
 nrow(inspect)
-# yes, 90
-
-# number of states
-n_distinct(inspect$state)
-# 9 states
-
-# number of years
-inspect |>
-  distinct(election_year) |> arrange(desc(election_year))
+# yes, 62
 
 # if turnout > 1, calculate turnout as number_voters_orig / eligible_voters_orig
 df <- df |>
@@ -2368,7 +2296,7 @@ df <- df |>
     turnout = ifelse(turnout > 1, 1, turnout), # one case where eligible = 14 and number = 15
     turnout_wo_mailin = number_voters_orig / eligible_voters_orig,
     turnout_wo_mailin = ifelse(turnout_wo_mailin > 1, 1, turnout_wo_mailin)
-  ) |>
+    ) |>
   relocate(turnout_wo_mailin, .after = turnout)
 
 # Last transformations ----------------------------------------------------
@@ -2408,7 +2336,8 @@ df <- df |>
   select(ags:turnout_wo_mailin, 
          cdu:zentrum, 
          cdu_csu:far_left_w_linke,
-         flag_naive_turnout_above_1)
+         flag_naive_turnout_above_1, 
+         pop:voters_weight)
 
 # Diagnosis ---------------------------------------------------------------
 
@@ -2436,7 +2365,7 @@ n_joint <- df |>
     n = n_distinct(ags),
     n_ags_joint_mailin = sum(unique_mailin == 0),
     ags_share = n_ags_joint_mailin / n * 100
-  ) |>
+    ) |>
   ungroup()
 
 # create kableextra latex table w booktabs
@@ -2453,7 +2382,7 @@ mailin_tab <- mailin_df |>
     "Municipalities w/ joint mail-in districts" = n_ags_joint_mailin,
     "Total municipalities (unharmonized)" = n,
     "Share of municipalities w/ joint mail-in districts (in \\%)" = ags_share
-  ) |>
+    ) |>
   kable(
     booktabs = TRUE,
     escape = FALSE,
@@ -2488,7 +2417,7 @@ mailin_df %>%
   ) +
   # increase max of y-axis to make room for text
   scale_y_continuous(limits = c(0, 750))
-
+  
 ggsave("output/figures/n_mailin.pdf", width = 7, height = 3.5)
 
 move_plots_to_overleaf("code")
@@ -2512,13 +2441,13 @@ glimpse(df)
 wahlscheine <- df |>
   mutate(
     briefwahlvoters = number_voters - number_voters_orig,
-    blocking_womailin = voters_blockingnotice + voters_par25_2 - briefwahlvoters
-  ) |>
-  select(ags, election_year, number_voters, number_voters_orig, briefwahlvoters, voters_blockingnotice, voters_par25_2, blocked_voters_orig, blocking_womailin, voters_w_ballot, unique_mailin)
+    blocking_womailin = voters_blockingnotice - briefwahlvoters
+    ) |>
+  select(ags, election_year, number_voters, number_voters_orig, briefwahlvoters, voters_blockingnotice, blocking_womailin, unique_mailin)
 
 # how often is voters_w_ballot == wahlscheine_womailin?
 equal <- wahlscheine |>
-  filter((voters_blockingnotice + voters_par25_2 == blocking_womailin) & unique_mailin == 1)
+  filter(voters_w_ballot == wahlscheine_womailin & unique_mailin == 1)
 
 nrow(equal) / nrow(wahlscheine) * 100
 

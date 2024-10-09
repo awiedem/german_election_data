@@ -1328,27 +1328,13 @@ renames <- c(
   "voters_par25_2" = "wahlberechtigte nach § 25 abs. 2 bwo (a3)",
   "voters_w_ballot" = "b1",
   "voters_w_ballot" = "wähler mit wahlschein (b1)",
-  "voters_w_ballot" = "wählende mit wahlschein (b1)",
-  "linke_pds" = "die linke",
-  "linke_pds" = "pds",
-  "sgp" = "psg",
-  "tierschutz" = "die tierschutzpartei",
-  "tierschutz" = "tierschutzpartei", 
-  "frauen" = "die frauen",
-  "violetten" = "die violetten",
-  "nichtwähler" = "partei der nichtwähler",
-  "graue" = "die grauen",
-  "bündnis21" = "bündnis 21/rrp",
-  "mündige" = "mündige bürger",
-  "cdu_csu" = "cdu/csu"
+  "voters_w_ballot" = "wählende mit wahlschein (b1)"
 )
 
 df_objects_t <- df_objects |>
   map( ~ .x |>
          rename_with(str_to_lower) |>
          rename(any_of(renames)))
-
-
 
 
 # Create one dataframe ----------------------------------------------------
@@ -1381,13 +1367,13 @@ df <- df |>
     # Mail-in voting
     unique_mailin, joint_mailin, pop, area, pop_weight, area_weight,
     # Main
-    cdu, csu, cdu_csu, spd, grüne, fdp, linke_pds, `b90/gr`,
+    cdu, csu, cdu_csu = `cdu/csu`, spd, grüne, fdp, `die linke`, pds, `b90/gr`,
     # Right-wing
     afd, npd, rep, `die rechte`, dvu, `iii. weg`, fap, ddd, dsu,
     # Left-wing
-    dkp, kpd, mlpd, sgp, kbw, v, spad, bsa,
+    dkp, kpd, mlpd, sgp, psg, kbw, v, spad, bsa,
     # Others
-    `50plus`, `ab 2000`, `ad-demokraten`, adm, agfg, apd, appd, asd, aufbruch, `b*`, bfb, bge, big, bp, bündnis21, `bündnis c`, bürgerbewegung, bürgerpartei, büso, bwk, `chance 2000`, cbv, cm, deutschland, dib, diebasis, `die partei`, `die humanisten`, dm, dpd, `du.`, eap, familie, forum, frauen, `freie wähler`,fwd, gartenpartei, gesundheitsforschung, graue, hp, lfk, liebe, liga, lkr,  mg, `menschliche welt`, mündige, naturgesetz, nichtwähler, ödp, `offensive d`, `öko-union`, `partei der vernunft`, pass, patrioten, pbc, pdf, pdv, piraten, prg, `pro deutschland`,`pro dm`, rentner, rrp, schill, ssw, `statt partei`, tierschutz, `team todenhöfer`, tierschutzallianz, unabhängige, ust, vaa, violetten, volksabstimmung, volt, `v-partei³`, zentrum 
+    `50plus`, `ab 2000`, `ad-demokraten`, adm, agfg, apd, appd, asd, aufbruch, `b*`, bfb, bge, big, bp, bündnis21, `bündnis 21/rrp`, `bündnis c`, bürgerbewegung, bürgerpartei, büso, bwk, `chance 2000`, cbv, cm, deutschland, dib, diebasis, `die partei`, `die humanisten`, dm, dpd, `du.`, eap, familie, forum, `die frauen`, frauen, `freie wähler`,fwd, gartenpartei, gesundheitsforschung, graue, `die grauen`,hp, lfk, liebe, liga, lkr,  mg, `menschliche welt`, mündige, `mündige bürger`, naturgesetz, nichtwähler, `partei der nichtwähler`, ödp, `offensive d`, `öko-union`, `partei der vernunft`, pass, patrioten, pbc, pdf, pdv, piraten, prg, `pro deutschland`,`pro dm`, rentner, rrp, schill, ssw, `statt partei`, tierschutz, `die tierschutzpartei`, tierschutzpartei,`team todenhöfer`, tierschutzallianz, unabhängige, ust, vaa, violetten, `die violetten`, volksabstimmung, volt, `v-partei³`, zentrum 
     ) %>%
   # Calculate extremist votes
   mutate(
@@ -1396,7 +1382,7 @@ df <- df |>
   ) %>%
   # Left wing with votes for Linke/PDS
   mutate(
-    far_left_wLinke = rowSums(select(., linke_pds, far_left), na.rm = TRUE)
+    far_left_wLinke = rowSums(select(., `die linke`, pds, far_left), na.rm = TRUE)
   )
 ### Extremist parties
 ## Right wing
@@ -1415,7 +1401,8 @@ df <- df |>
 df <- df %>%
   # Harmonize Grüne: Grüne + B90/Gr ran in 1990 elections
   mutate(
-    grüne = rowSums(select(., `b90/gr`, grüne), na.rm = TRUE),
+    gruene_comb = rowSums(select(., `b90/gr`, grüne), na.rm = TRUE),
+    linke_pds_comb = rowSums(select(., `die linke`, pds), na.rm = TRUE),
     # Calculate CDU/CSU
     cdu_csu = ifelse(!is.na(cdu_csu), cdu_csu,
                      ifelse(csu > 0, csu, cdu)),
@@ -1423,12 +1410,10 @@ df <- df %>%
     cdu = ifelse(is.na(cdu) & state != "09" & !is.na(cdu_csu), cdu_csu, cdu),
     csu = ifelse(is.na(csu) & state == "09" & !is.na(cdu_csu), cdu_csu, csu)
   ) |>
-  select(-`b90/gr`) %>%
   # Get state name
   mutate(
     state_name = state_id_to_names(state)
   ) |>
-  rename(gruene = grüne) |>
   janitor::clean_names() |>
   # relocate
   relocate(cdu_csu, .after = zentrum) |> 

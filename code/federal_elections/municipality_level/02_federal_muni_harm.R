@@ -348,8 +348,6 @@ df_harm <- votes |>
 
 # Continue transformation
 df_harm <- df_harm |>
-  # Remove rows that have no voting data
-  dplyr::filter(eligible_voters != 0 & number_voters != 0) %>%
   left_join_check_obs(ags21, by = c("ags", "election_year")) |>
   mutate(
     area = ifelse(!is.na(area.x), area.x, area.y),
@@ -390,7 +388,8 @@ table(df_harm$flag_total_votes_incongruent, useNA = "ifany")
 mean(df_harm$flag_total_votes_incongruent)
 
 df_harm |>
-  dplyr::filter(unique_mailin == 1 & flag_total_votes_incongruent == 1)
+  dplyr::filter(unique_mailin == 1 & flag_total_votes_incongruent == 1) |>
+  select(ags, election_year, total_votes, valid_votes, unique_mailin, flag_total_votes_incongruent)
 # no place that has unique_mailin == 1 has this problem
 
 
@@ -474,7 +473,7 @@ inspect |>
     diff = total_votes - number_voters
   ) |>
   arrange(desc(diff))
-# yes in 151 cases, but the highest difference is 3 votes
+# yes in 138 cases, but the highest difference is 5 votes
 ## We use the number of voters for calculating turnout
 
 names(df_harm)
@@ -483,7 +482,7 @@ names(df_harm)
 df_harm <- df_harm |>
   mutate(
     across(cdu:far_left_w_linke, ~ .x / total_votes),
-    turnout = number_voters / eligible_voters,
+    turnout = number_voters / eligible_voters_orig,
     flag_naive_turnout_above_1 = ifelse(turnout > 1, 1, 0),
     turnout = ifelse(turnout > 1, number_voters_orig / eligible_voters_orig, turnout),
     turnout_wo_mailin = number_voters_orig / eligible_voters_orig
@@ -555,6 +554,10 @@ insp <- df_harm |>
   dplyr::filter(state == "07") |>
   arrange(ags, election_year) |>
   dplyr::select(ags, election_year, eligible_voters_orig:number_voters, turnout, turnout_wo_mailin, unique_mailin:unique_multi_mailin, )
+
+
+## other -------------------------------------------------------------------
+
 
 # count number of municipalities
 df_harm |>
