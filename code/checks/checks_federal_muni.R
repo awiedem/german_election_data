@@ -37,7 +37,13 @@ s_votes <- df %>%
 
 cat("Share of rows with sum of party vote shares not equal to 1 (in pct):", 100 * mean(s_votes != 1), "\n")
 
-# 0.001 %
+# 0.18 %
+
+# inspect the rows for which the sum of party vote shares is not equal to 1
+inspect_rows <- df %>%
+  mutate(sum_party_votes = s_votes) %>%
+  filter(sum_party_votes != 1)
+# These are all municipalities with 0 eligible voters in 2021.
 
 # Check 2: Party vote shares between 0 and 1
 s_votes_valid <- df %>%
@@ -136,10 +142,10 @@ df %>%
     table()
 
 # 6     7     8     9
-# 1     2   326 10459
+# 1     2   147 10638
 
 # does each municipality appear exactly 9 times?
-# No; 10459 municipalities appear 9 times, 326 municipalities appear 8 times, 2 municipalities appear 7 times, and 1 municipality appears 6 times.
+# No; 10638 municipalities appear 9 times, 147 municipalities appear 8 times, 2 municipalities appear 7 times, and 1 municipality appears 6 times.
 
 df %>%
     group_by(ags) %>%

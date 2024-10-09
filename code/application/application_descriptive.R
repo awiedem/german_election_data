@@ -140,10 +140,10 @@ ggsave("output/figures/application/descr_sample2.pdf",
     width = 7, height = 4
 )
 
-if (save_in_overleaf) {
-    ggsave("~/Library/CloudStorage/Dropbox/Apps/Overleaf/ElectionPaper/figures/descr_sample2.pdf",
-        width = 7, height = 4
-)
+# if (save_in_overleaf) {
+#     ggsave("~/Library/CloudStorage/Dropbox/Apps/Overleaf/ElectionPaper/figures/descr_sample2.pdf",
+#         width = 7, height = 4
+# )
 
 # Weighted correlation by decade
 

@@ -1440,4 +1440,16 @@ df |>
   distinct() |>
   print(n = Inf)
 
+# for which election_years did parties b90_gr, grune have non NA?
+df |>
+  filter(!is.na(b90_gr)) |>
+  distinct(election_year) |>
+  distinct()
+
+df |>
+  filter(!is.na(grune)) |>
+  distinct(election_year) |>
+  distinct() |>
+  arrange(election_year)
+
 ### END
