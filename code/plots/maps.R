@@ -254,7 +254,7 @@ cat("Number of observations without voting data:", missing_data, "\n")
 cat("Number of observations with turnout > 1:", nrow(turnout_over_one), "\n")
 
 ### Function to create maps
-plot_fed_map <- function(fill_var, legend_label, fill_palette, limits) {
+plot_fed_map <- function(fill_var, legend_label, fill_palette, limits, plot_title = NULL) {
   ggplot() +
     geom_sf(data = plot_df, mapping = aes(fill = .data[[fill_var]]), colour = "NA") +
     geom_sf(data = de_shp_bula, fill = NA, colour = "grey30", linewidth = 0.2) +
@@ -271,15 +271,17 @@ plot_fed_map <- function(fill_var, legend_label, fill_palette, limits) {
       legend.box.margin = margin(t = -25, r = 0, b = 0, l = 0)
     ) +
     scale_fill_distiller(NULL,
-      palette = fill_palette,
-      na.value = "white",
-      direction = 1,
-      limits = limits,
-      guide = guide_legend(
-        keyheight = unit(4, units = "mm"), keywidth = unit(18, units = "mm"),
-        label.position = "bottom", title.position = "top", nrow = 1
-      )
-    )
+                         palette = fill_palette,
+                         na.value = "white",
+                         direction = 1,
+                         limits = limits,
+                         guide = guide_legend(
+                           keyheight = unit(4, units = "mm"), keywidth = unit(18, units = "mm"),
+                           label.position = "bottom", title.position = "top", nrow = 1
+                         )
+    ) +
+    # Add title if provided
+    labs(title = plot_title)
 }
 
 ### Turnout
@@ -302,6 +304,21 @@ p_fed_SPD <- plot_fed_map("spd", "Share SPD", "Reds", spd_range)
 # Save as PDF and PNG
 # ggsave("~/Documents/GitHub/german_election_data/output/figures/map_elec_fed_SPD.pdf", plot = p_fed_SPD, width = 4, height = 6)
 ggsave("~/Documents/GitHub/german_election_data/output/figures/map_elec_fed_SPD.png", plot = p_fed_SPD, width = 4, height = 6, dpi = 450)
+
+
+# Combine pdf plot turnout, cdu, spd for federal elections in one plot: give combined plot title "Federal Elections 2021"
+p_fed_turnout <- plot_fed_map("turnout", "Turnout", "Purples", turnout_range, plot_title = "Turnout")
+p_fed_CDU <- plot_fed_map("cdu_csu", "Share CDU/CSU", "Blues", cdu_range, plot_title = "CDU/CSU")
+p_fed_SPD <- plot_fed_map("spd", "Share SPD", "Reds", spd_range, plot_title = "SPD")
+
+library(grid)
+p_fed_combined <- grid.arrange(p_fed_turnout, p_fed_CDU, p_fed_SPD, ncol = 3, top = textGrob("Federal Elections 2021",gp=gpar(fontsize=16)))
+
+# Save 
+ggsave("~/Documents/GitHub/german_election_data/output/figures/map_elec_fed_combined.pdf", plot = p_fed_combined, width = 12, height = 6)
+ggsave("~/Documents/GitHub/german_election_data/output/figures/map_elec_fed_combined.png", plot = p_fed_combined, width = 12, height = 6, dpi = 450)
+
+
 
 ### List of generated plots with descriptions
 
