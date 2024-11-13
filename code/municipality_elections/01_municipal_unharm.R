@@ -12,6 +12,8 @@ gc()
 library(pacman)
 pacman::p_load(writexl, readr, stringr, tidyverse, grid, gridExtra, tidyverse, broom, tidyr, data.table, readxl, dplyr, stringi)
 
+conflict_prefer_all("dplyr")
+
 # https://github.com/seligerf/Imputation-of-missing-location-information-for-worldwide-patent-data
 # https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/OTTBDX
 # https://www.nature.com/articles/s41597-019-0264-6
@@ -3792,7 +3794,7 @@ saarland_kommunalwahlen_data_sub <- saarland_kommunalwahlen_data_sub[
 ###### Sachsen-Anhalt 1994 Kommunalwahlen ----
 #### Load election data ----
 
-sachsen_anhalt_1994_kommunalwahlen_data <- as.data.table(read_csv2("raw/sachsen_anhalt/sachsen-anhalt_1994.csv"))
+sachsen_anhalt_1994_kommunalwahlen_data <- as.data.table(read_excel("raw/sachsen_anhalt/sachsen-anhalt_1994_to_2019.xlsx", sheet = "1994"))
 
 #### Delete white space ----
 names(sachsen_anhalt_1994_kommunalwahlen_data) <-  str_replace_all(names(sachsen_anhalt_1994_kommunalwahlen_data), fixed(" "), "")
@@ -3814,18 +3816,18 @@ sachsen_anhalt_1994_kommunalwahlen_data_sub[ , IDBA := ""]
 
 # Renaming existing variables ----
 sachsen_anhalt_1994_kommunalwahlen_data_sub$AGS_8dig <- sachsen_anhalt_1994_kommunalwahlen_data_sub$AGS
-sachsen_anhalt_1994_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_1994_kommunalwahlen_data_sub$NAME
-sachsen_anhalt_1994_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_anhalt_1994_kommunalwahlen_data_sub$A
-sachsen_anhalt_1994_kommunalwahlen_data_sub$Wähler <- sachsen_anhalt_1994_kommunalwahlen_data_sub$B
-sachsen_anhalt_1994_kommunalwahlen_data_sub$GültigeStimmen <- sachsen_anhalt_1994_kommunalwahlen_data_sub$`F`
+sachsen_anhalt_1994_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_1994_kommunalwahlen_data_sub$Gemeindename
+sachsen_anhalt_1994_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_anhalt_1994_kommunalwahlen_data_sub$Wahlberechtigteabsolut
+sachsen_anhalt_1994_kommunalwahlen_data_sub$Wähler <- sachsen_anhalt_1994_kommunalwahlen_data_sub$Waehler
+sachsen_anhalt_1994_kommunalwahlen_data_sub$GültigeStimmen <- sachsen_anhalt_1994_kommunalwahlen_data_sub$gueltigeStimmen
 
-sachsen_anhalt_1994_kommunalwahlen_data_sub$abs_CDU <- sachsen_anhalt_1994_kommunalwahlen_data_sub$F01
-sachsen_anhalt_1994_kommunalwahlen_data_sub$abs_SPD <- sachsen_anhalt_1994_kommunalwahlen_data_sub$F02
-sachsen_anhalt_1994_kommunalwahlen_data_sub$abs_DIELINKE <- sachsen_anhalt_1994_kommunalwahlen_data_sub$F04
-sachsen_anhalt_1994_kommunalwahlen_data_sub$abs_GRÜNE <- sachsen_anhalt_1994_kommunalwahlen_data_sub$F05
+sachsen_anhalt_1994_kommunalwahlen_data_sub$abs_CDU <- sachsen_anhalt_1994_kommunalwahlen_data_sub$CDU
+sachsen_anhalt_1994_kommunalwahlen_data_sub$abs_SPD <- sachsen_anhalt_1994_kommunalwahlen_data_sub$SPD
+sachsen_anhalt_1994_kommunalwahlen_data_sub$abs_DIELINKE <- sachsen_anhalt_1994_kommunalwahlen_data_sub$PDS
+sachsen_anhalt_1994_kommunalwahlen_data_sub$abs_GRÜNE <- sachsen_anhalt_1994_kommunalwahlen_data_sub$Gruene
 sachsen_anhalt_1994_kommunalwahlen_data_sub$abs_AfD <- NA
 sachsen_anhalt_1994_kommunalwahlen_data_sub$abs_PIRATEN <- NA
-sachsen_anhalt_1994_kommunalwahlen_data_sub$abs_FDP <- sachsen_anhalt_1994_kommunalwahlen_data_sub$F03
+sachsen_anhalt_1994_kommunalwahlen_data_sub$abs_FDP <- sachsen_anhalt_1994_kommunalwahlen_data_sub$FDP
 sachsen_anhalt_1994_kommunalwahlen_data_sub$abs_DiePARTEI <- NA
 sachsen_anhalt_1994_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- NA
 
@@ -3868,14 +3870,10 @@ sachsen_anhalt_1994_kommunalwahlen_data_sub <-
 # Calculating turnout ----
 sachsen_anhalt_1994_kommunalwahlen_data_sub$Turnout <- sachsen_anhalt_1994_kommunalwahlen_data_sub$Wähler / sachsen_anhalt_1994_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
 
-# Filter Kreise out ----
-sachsen_anhalt_1994_kommunalwahlen_data_sub <- sachsen_anhalt_1994_kommunalwahlen_data_sub %>%
-  filter(nchar(AGS_8dig)==8)
-
 ###### Sachsen-Anhalt 1999 Kommunalwahlen ----
 #### Load election data ----
 
-sachsen_anhalt_1999_kommunalwahlen_data <- as.data.table(read_csv2("raw/sachsen_anhalt/sachsen-anhalt_1999.csv"))
+sachsen_anhalt_1999_kommunalwahlen_data <- as.data.table(read_excel("raw/sachsen_anhalt/sachsen-anhalt_1994_to_2019.xlsx", sheet = "1999"))
 
 #### Delete white space ----
 names(sachsen_anhalt_1999_kommunalwahlen_data) <-  str_replace_all(names(sachsen_anhalt_1999_kommunalwahlen_data), fixed(" "), "")
@@ -3897,18 +3895,18 @@ sachsen_anhalt_1999_kommunalwahlen_data_sub[ , IDBA := ""]
 
 # Renaming existing variables ----
 sachsen_anhalt_1999_kommunalwahlen_data_sub$AGS_8dig <- sachsen_anhalt_1999_kommunalwahlen_data_sub$AGS
-sachsen_anhalt_1999_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_1999_kommunalwahlen_data_sub$NAME
-sachsen_anhalt_1999_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_anhalt_1999_kommunalwahlen_data_sub$A
-sachsen_anhalt_1999_kommunalwahlen_data_sub$Wähler <- sachsen_anhalt_1999_kommunalwahlen_data_sub$B
-sachsen_anhalt_1999_kommunalwahlen_data_sub$GültigeStimmen <- sachsen_anhalt_1999_kommunalwahlen_data_sub$`F`
+sachsen_anhalt_1999_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_1999_kommunalwahlen_data_sub$Gemeindename
+sachsen_anhalt_1999_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_anhalt_1999_kommunalwahlen_data_sub$Wahlberechtigteabsolut
+sachsen_anhalt_1999_kommunalwahlen_data_sub$Wähler <- sachsen_anhalt_1999_kommunalwahlen_data_sub$Waehler
+sachsen_anhalt_1999_kommunalwahlen_data_sub$GültigeStimmen <- sachsen_anhalt_1999_kommunalwahlen_data_sub$gueltigeStimmen
 
-sachsen_anhalt_1999_kommunalwahlen_data_sub$abs_CDU <- sachsen_anhalt_1999_kommunalwahlen_data_sub$F02
-sachsen_anhalt_1999_kommunalwahlen_data_sub$abs_SPD <- sachsen_anhalt_1999_kommunalwahlen_data_sub$F01
-sachsen_anhalt_1999_kommunalwahlen_data_sub$abs_DIELINKE <- sachsen_anhalt_1999_kommunalwahlen_data_sub$F03
-sachsen_anhalt_1999_kommunalwahlen_data_sub$abs_GRÜNE <- sachsen_anhalt_1999_kommunalwahlen_data_sub$F06
+sachsen_anhalt_1999_kommunalwahlen_data_sub$abs_CDU <- sachsen_anhalt_1999_kommunalwahlen_data_sub$CDU
+sachsen_anhalt_1999_kommunalwahlen_data_sub$abs_SPD <- sachsen_anhalt_1999_kommunalwahlen_data_sub$SPD
+sachsen_anhalt_1999_kommunalwahlen_data_sub$abs_DIELINKE <- sachsen_anhalt_1999_kommunalwahlen_data_sub$PDS
+sachsen_anhalt_1999_kommunalwahlen_data_sub$abs_GRÜNE <- sachsen_anhalt_1999_kommunalwahlen_data_sub$Gruene
 sachsen_anhalt_1999_kommunalwahlen_data_sub$abs_AfD <- NA
 sachsen_anhalt_1999_kommunalwahlen_data_sub$abs_PIRATEN <- NA
-sachsen_anhalt_1999_kommunalwahlen_data_sub$abs_FDP <- sachsen_anhalt_1999_kommunalwahlen_data_sub$F05
+sachsen_anhalt_1999_kommunalwahlen_data_sub$abs_FDP <- sachsen_anhalt_1999_kommunalwahlen_data_sub$FDP
 sachsen_anhalt_1999_kommunalwahlen_data_sub$abs_DiePARTEI <- NA
 sachsen_anhalt_1999_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- NA
 
@@ -3934,10 +3932,10 @@ sachsen_anhalt_1999_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
 
 # Creating new dataframe with selected vars ----
 sachsen_anhalt_1999_kommunalwahlen_data_sub <- sachsen_anhalt_1999_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
-                                                                                       Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
-                                                                                       abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_DiePARTEI, abs_FREIEWÄHLER,
-                                                                                       gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_DiePARTEI, gew_FREIEWÄHLER,
-                                                                                       sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_DiePARTEI, sitze_FREIEWÄHLER)]
+                                                                                               Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                               abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_DiePARTEI, abs_FREIEWÄHLER,
+                                                                                               gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_DiePARTEI, gew_FREIEWÄHLER,
+                                                                                               sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_DiePARTEI, sitze_FREIEWÄHLER)]
 
 # Calculating vote shares ----
 # https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
@@ -3951,49 +3949,44 @@ sachsen_anhalt_1999_kommunalwahlen_data_sub <-
 # Calculating turnout ----
 sachsen_anhalt_1999_kommunalwahlen_data_sub$Turnout <- sachsen_anhalt_1999_kommunalwahlen_data_sub$Wähler / sachsen_anhalt_1999_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
 
-# Filter Kreise out ----
-sachsen_anhalt_1999_kommunalwahlen_data_sub <- sachsen_anhalt_1999_kommunalwahlen_data_sub %>%
-  filter(nchar(AGS_8dig)==8)
-
-sachsen_anhalt_1999_kommunalwahlen_data_sub
-
 ###### Sachsen-Anhalt 2004 Kommunalwahlen ----
 #### Load election data ----
-
-sachsen_anhalt_2004_kommunalwahlen_data <- as.data.table(read_csv2("raw/sachsen_anhalt/sachsen-anhalt_2004.csv"))
+sachsen_anhalt_2004_kommunalwahlen_data <- as.data.table(read_excel("raw/sachsen_anhalt/sachsen-anhalt_1994_to_2019.xlsx", sheet = "2001-2004"))
 
 #### Delete white space ----
 names(sachsen_anhalt_2004_kommunalwahlen_data) <-  str_replace_all(names(sachsen_anhalt_2004_kommunalwahlen_data), fixed(" "), "")
 
 #### Recoding ----
 # Create new dataframe ----
-sachsen_anhalt_2004_kommunalwahlen_data_sub <- sachsen_anhalt_2004_kommunalwahlen_data
+sachsen_anhalt_2004_kommunalwahlen_data_sub <- sachsen_anhalt_2004_kommunalwahlen_data %>%
+  dplyr::filter(
+      Datum == as.Date("2004-06-13"))
 
 names(sachsen_anhalt_2004_kommunalwahlen_data_sub)
 
 # Creating non-existing variables ----
 sachsen_anhalt_2004_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
 sachsen_anhalt_2004_kommunalwahlen_data_sub[ , Bundesland := "Sachsen-Anhalt"]
-sachsen_anhalt_2004_kommunalwahlen_data_sub[ , Gebietsname := ""]
 sachsen_anhalt_2004_kommunalwahlen_data_sub[ , election_year := "2004"]
+sachsen_anhalt_2004_kommunalwahlen_data_sub[ , Gebietsname := ""]
 sachsen_anhalt_2004_kommunalwahlen_data_sub[ , election_type := "Kommunalwahlen"]
 sachsen_anhalt_2004_kommunalwahlen_data_sub[ , IDIRB := ""]
 sachsen_anhalt_2004_kommunalwahlen_data_sub[ , IDBA := ""]
 
 # Renaming existing variables ----
 sachsen_anhalt_2004_kommunalwahlen_data_sub$AGS_8dig <- sachsen_anhalt_2004_kommunalwahlen_data_sub$AGS
-sachsen_anhalt_2004_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_2004_kommunalwahlen_data_sub$NAME
-sachsen_anhalt_2004_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_anhalt_2004_kommunalwahlen_data_sub$A
-sachsen_anhalt_2004_kommunalwahlen_data_sub$Wähler <- sachsen_anhalt_2004_kommunalwahlen_data_sub$B
-sachsen_anhalt_2004_kommunalwahlen_data_sub$GültigeStimmen <- sachsen_anhalt_2004_kommunalwahlen_data_sub$D
+sachsen_anhalt_2004_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_2004_kommunalwahlen_data_sub$Gemeindename
+sachsen_anhalt_2004_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_anhalt_2004_kommunalwahlen_data_sub$Wahlberechtigteabsolut
+sachsen_anhalt_2004_kommunalwahlen_data_sub$Wähler <- sachsen_anhalt_2004_kommunalwahlen_data_sub$Waehler
+sachsen_anhalt_2004_kommunalwahlen_data_sub$GültigeStimmen <- sachsen_anhalt_2004_kommunalwahlen_data_sub$gueltigeStimmen
 
-sachsen_anhalt_2004_kommunalwahlen_data_sub$abs_CDU <- sachsen_anhalt_2004_kommunalwahlen_data_sub$D01
-sachsen_anhalt_2004_kommunalwahlen_data_sub$abs_SPD <- sachsen_anhalt_2004_kommunalwahlen_data_sub$D03
-sachsen_anhalt_2004_kommunalwahlen_data_sub$abs_DIELINKE <- sachsen_anhalt_2004_kommunalwahlen_data_sub$D02
-sachsen_anhalt_2004_kommunalwahlen_data_sub$abs_GRÜNE <- sachsen_anhalt_2004_kommunalwahlen_data_sub$D05
+sachsen_anhalt_2004_kommunalwahlen_data_sub$abs_CDU <- sachsen_anhalt_2004_kommunalwahlen_data_sub$CDU
+sachsen_anhalt_2004_kommunalwahlen_data_sub$abs_SPD <- sachsen_anhalt_2004_kommunalwahlen_data_sub$SPD
+sachsen_anhalt_2004_kommunalwahlen_data_sub$abs_DIELINKE <- sachsen_anhalt_2004_kommunalwahlen_data_sub$PDS
+sachsen_anhalt_2004_kommunalwahlen_data_sub$abs_GRÜNE <- sachsen_anhalt_2004_kommunalwahlen_data_sub$Gruene
 sachsen_anhalt_2004_kommunalwahlen_data_sub$abs_AfD <- NA
 sachsen_anhalt_2004_kommunalwahlen_data_sub$abs_PIRATEN <- NA
-sachsen_anhalt_2004_kommunalwahlen_data_sub$abs_FDP <- sachsen_anhalt_2004_kommunalwahlen_data_sub$D04
+sachsen_anhalt_2004_kommunalwahlen_data_sub$abs_FDP <- sachsen_anhalt_2004_kommunalwahlen_data_sub$FDP
 sachsen_anhalt_2004_kommunalwahlen_data_sub$abs_DiePARTEI <- NA
 sachsen_anhalt_2004_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- NA
 
@@ -4036,128 +4029,41 @@ sachsen_anhalt_2004_kommunalwahlen_data_sub <-
 # Calculating turnout ----
 sachsen_anhalt_2004_kommunalwahlen_data_sub$Turnout <- sachsen_anhalt_2004_kommunalwahlen_data_sub$Wähler / sachsen_anhalt_2004_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
 
-# Filter Kreise out ----
-sachsen_anhalt_2004_kommunalwahlen_data_sub <- sachsen_anhalt_2004_kommunalwahlen_data_sub %>%
-  filter(nchar(AGS_8dig)==8)
-
-###### Sachsen-Anhalt 2007 Kommunalwahlen ----
-#### Load election data ----
-
-sachsen_anhalt_2007_kommunalwahlen_data <- as.data.table(read_csv2("raw/sachsen_anhalt/sachsen-anhalt_2007.csv"))
-
-#### Delete white space ----
-names(sachsen_anhalt_2007_kommunalwahlen_data) <-  str_replace_all(names(sachsen_anhalt_2007_kommunalwahlen_data), fixed(" "), "")
-
-#### Recoding ----
-# Create new dataframe ----
-sachsen_anhalt_2007_kommunalwahlen_data_sub <- sachsen_anhalt_2007_kommunalwahlen_data
-
-names(sachsen_anhalt_2007_kommunalwahlen_data_sub)
-
-# Creating non-existing variables ----
-sachsen_anhalt_2007_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
-sachsen_anhalt_2007_kommunalwahlen_data_sub[ , Bundesland := "Sachsen-Anhalt"]
-sachsen_anhalt_2007_kommunalwahlen_data_sub[ , Gebietsname := ""]
-sachsen_anhalt_2007_kommunalwahlen_data_sub[ , election_year := "2007"]
-sachsen_anhalt_2007_kommunalwahlen_data_sub[ , election_type := "Kommunalwahlen"]
-sachsen_anhalt_2007_kommunalwahlen_data_sub[ , IDIRB := ""]
-sachsen_anhalt_2007_kommunalwahlen_data_sub[ , IDBA := ""]
-
-# Renaming existing variables ----
-sachsen_anhalt_2007_kommunalwahlen_data_sub$AGS_8dig <- sachsen_anhalt_2007_kommunalwahlen_data_sub$AGS
-sachsen_anhalt_2007_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_2007_kommunalwahlen_data_sub$NAME
-sachsen_anhalt_2007_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_anhalt_2007_kommunalwahlen_data_sub$A
-sachsen_anhalt_2007_kommunalwahlen_data_sub$Wähler <- sachsen_anhalt_2007_kommunalwahlen_data_sub$B
-sachsen_anhalt_2007_kommunalwahlen_data_sub$GültigeStimmen <- sachsen_anhalt_2007_kommunalwahlen_data_sub$D
-
-sachsen_anhalt_2007_kommunalwahlen_data_sub$abs_CDU <- sachsen_anhalt_2007_kommunalwahlen_data_sub$D01
-sachsen_anhalt_2007_kommunalwahlen_data_sub$abs_SPD <- sachsen_anhalt_2007_kommunalwahlen_data_sub$D03
-sachsen_anhalt_2007_kommunalwahlen_data_sub$abs_DIELINKE <- sachsen_anhalt_2007_kommunalwahlen_data_sub$D02
-sachsen_anhalt_2007_kommunalwahlen_data_sub$abs_GRÜNE <- sachsen_anhalt_2007_kommunalwahlen_data_sub$D06
-sachsen_anhalt_2007_kommunalwahlen_data_sub$abs_AfD <- NA
-sachsen_anhalt_2007_kommunalwahlen_data_sub$abs_PIRATEN <- NA
-sachsen_anhalt_2007_kommunalwahlen_data_sub$abs_FDP <- sachsen_anhalt_2007_kommunalwahlen_data_sub$D04
-sachsen_anhalt_2007_kommunalwahlen_data_sub$abs_DiePARTEI <- NA
-sachsen_anhalt_2007_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- NA
-
-sachsen_anhalt_2007_kommunalwahlen_data_sub$gew_CDU <- NA
-sachsen_anhalt_2007_kommunalwahlen_data_sub$gew_SPD <- NA
-sachsen_anhalt_2007_kommunalwahlen_data_sub$gew_DIELINKE <- NA
-sachsen_anhalt_2007_kommunalwahlen_data_sub$gew_GRÜNE <- NA
-sachsen_anhalt_2007_kommunalwahlen_data_sub$gew_AfD <- NA
-sachsen_anhalt_2007_kommunalwahlen_data_sub$gew_PIRATEN <- NA
-sachsen_anhalt_2007_kommunalwahlen_data_sub$gew_FDP <- NA
-sachsen_anhalt_2007_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
-sachsen_anhalt_2007_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
-
-sachsen_anhalt_2007_kommunalwahlen_data_sub$sitze_CDU <- NA
-sachsen_anhalt_2007_kommunalwahlen_data_sub$sitze_SPD <- NA
-sachsen_anhalt_2007_kommunalwahlen_data_sub$sitze_DIELINKE <- NA
-sachsen_anhalt_2007_kommunalwahlen_data_sub$sitze_GRÜNE <- NA
-sachsen_anhalt_2007_kommunalwahlen_data_sub$sitze_AfD <- NA
-sachsen_anhalt_2007_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
-sachsen_anhalt_2007_kommunalwahlen_data_sub$sitze_FDP <- NA
-sachsen_anhalt_2007_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
-sachsen_anhalt_2007_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
-
-# Creating new dataframe with selected vars ----
-sachsen_anhalt_2007_kommunalwahlen_data_sub <- sachsen_anhalt_2007_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
-                                                                                               Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
-                                                                                               abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_DiePARTEI, abs_FREIEWÄHLER,
-                                                                                               gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_DiePARTEI, gew_FREIEWÄHLER,
-                                                                                               sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_DiePARTEI, sitze_FREIEWÄHLER)]
-
-# Calculating vote shares ----
-# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
-
-sachsen_anhalt_2007_kommunalwahlen_data_sub <-
-  sachsen_anhalt_2007_kommunalwahlen_data_sub %>%
-  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
-  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
-  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
-
-# Calculating turnout ----
-sachsen_anhalt_2007_kommunalwahlen_data_sub$Turnout <- sachsen_anhalt_2007_kommunalwahlen_data_sub$Wähler / sachsen_anhalt_2007_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
-
-table(sachsen_anhalt_2007_kommunalwahlen_data_sub$Gebietsname)
-
 ###### Sachsen-Anhalt 2009 Kommunalwahlen ----
 #### Load election data ----
-
-sachsen_anhalt_2009_kommunalwahlen_data <- as.data.table(read_csv2("raw/sachsen_anhalt/sachsen-anhalt_2009.csv"))
+sachsen_anhalt_2009_kommunalwahlen_data <- as.data.table(read_excel("raw/sachsen_anhalt/sachsen-anhalt_1994_to_2019.xlsx", sheet = "2005-2010"))
 
 #### Delete white space ----
 names(sachsen_anhalt_2009_kommunalwahlen_data) <-  str_replace_all(names(sachsen_anhalt_2009_kommunalwahlen_data), fixed(" "), "")
 
 #### Recoding ----
 # Create new dataframe ----
-sachsen_anhalt_2009_kommunalwahlen_data_sub <- sachsen_anhalt_2009_kommunalwahlen_data
-
-names(sachsen_anhalt_2009_kommunalwahlen_data_sub)
+sachsen_anhalt_2009_kommunalwahlen_data_sub <- sachsen_anhalt_2009_kommunalwahlen_data %>%
+  dplyr::mutate(
+    election_year = lubridate::year(Datum))
 
 # Creating non-existing variables ----
 sachsen_anhalt_2009_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
 sachsen_anhalt_2009_kommunalwahlen_data_sub[ , Bundesland := "Sachsen-Anhalt"]
 sachsen_anhalt_2009_kommunalwahlen_data_sub[ , Gebietsname := ""]
-sachsen_anhalt_2009_kommunalwahlen_data_sub[ , election_year := "2009"]
 sachsen_anhalt_2009_kommunalwahlen_data_sub[ , election_type := "Kommunalwahlen"]
 sachsen_anhalt_2009_kommunalwahlen_data_sub[ , IDIRB := ""]
 sachsen_anhalt_2009_kommunalwahlen_data_sub[ , IDBA := ""]
 
 # Renaming existing variables ----
 sachsen_anhalt_2009_kommunalwahlen_data_sub$AGS_8dig <- sachsen_anhalt_2009_kommunalwahlen_data_sub$AGS
-sachsen_anhalt_2009_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_2009_kommunalwahlen_data_sub$NAME
-sachsen_anhalt_2009_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_anhalt_2009_kommunalwahlen_data_sub$A
-sachsen_anhalt_2009_kommunalwahlen_data_sub$Wähler <- sachsen_anhalt_2009_kommunalwahlen_data_sub$B
-sachsen_anhalt_2009_kommunalwahlen_data_sub$GültigeStimmen <- sachsen_anhalt_2009_kommunalwahlen_data_sub$D
+sachsen_anhalt_2009_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_2009_kommunalwahlen_data_sub$Gemeindename
+sachsen_anhalt_2009_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_anhalt_2009_kommunalwahlen_data_sub$Wahlberechtigteabsolut
+sachsen_anhalt_2009_kommunalwahlen_data_sub$Wähler <- sachsen_anhalt_2009_kommunalwahlen_data_sub$Waehler
+sachsen_anhalt_2009_kommunalwahlen_data_sub$GültigeStimmen <- sachsen_anhalt_2009_kommunalwahlen_data_sub$gueltigeStimmen
 
-sachsen_anhalt_2009_kommunalwahlen_data_sub$abs_CDU <- sachsen_anhalt_2009_kommunalwahlen_data_sub$D01
-sachsen_anhalt_2009_kommunalwahlen_data_sub$abs_SPD <- sachsen_anhalt_2009_kommunalwahlen_data_sub$D03
-sachsen_anhalt_2009_kommunalwahlen_data_sub$abs_DIELINKE <- sachsen_anhalt_2009_kommunalwahlen_data_sub$D02
-sachsen_anhalt_2009_kommunalwahlen_data_sub$abs_GRÜNE <- sachsen_anhalt_2009_kommunalwahlen_data_sub$D05
+sachsen_anhalt_2009_kommunalwahlen_data_sub$abs_CDU <- sachsen_anhalt_2009_kommunalwahlen_data_sub$CDU
+sachsen_anhalt_2009_kommunalwahlen_data_sub$abs_SPD <- sachsen_anhalt_2009_kommunalwahlen_data_sub$SPD
+sachsen_anhalt_2009_kommunalwahlen_data_sub$abs_DIELINKE <- sachsen_anhalt_2009_kommunalwahlen_data_sub$LINKE
+sachsen_anhalt_2009_kommunalwahlen_data_sub$abs_GRÜNE <- sachsen_anhalt_2009_kommunalwahlen_data_sub$Gruene
 sachsen_anhalt_2009_kommunalwahlen_data_sub$abs_AfD <- NA
 sachsen_anhalt_2009_kommunalwahlen_data_sub$abs_PIRATEN <- NA
-sachsen_anhalt_2009_kommunalwahlen_data_sub$abs_FDP <- sachsen_anhalt_2009_kommunalwahlen_data_sub$D04
+sachsen_anhalt_2009_kommunalwahlen_data_sub$abs_FDP <- sachsen_anhalt_2009_kommunalwahlen_data_sub$FDP
 sachsen_anhalt_2009_kommunalwahlen_data_sub$abs_DiePARTEI <- NA
 sachsen_anhalt_2009_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- NA
 
@@ -4200,51 +4106,18 @@ sachsen_anhalt_2009_kommunalwahlen_data_sub <-
 # Calculating turnout ----
 sachsen_anhalt_2009_kommunalwahlen_data_sub$Turnout <- sachsen_anhalt_2009_kommunalwahlen_data_sub$Wähler / sachsen_anhalt_2009_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
 
-# Remove Ortsteile ----
-
-# sachsen_anhalt_2009_kommunalwahlen_data_sub <- sachsen_anhalt_2009_kommunalwahlen_data_sub %>%
-#   filter(
-#     !AGS_8dig %in% c("15081010",
-#                      "15081015",
-#                      "15081025",
-#                      "15081055",
-#                      "15081115",
-#                      "15081140",
-#                      "15081155",
-#                      "15081275",
-#                      "15081420",
-#                      "15081465",
-#                      "15081495",
-#                      "15081530",
-#                      "15081580",
-#                      "15090030",
-#                      "15090035",
-#                      "15090130",
-#                      '15090140',
-#                      '15090155',
-#                      '15090175',
-#                      '15090315',
-#                      '15090335',
-#                      '15090380',
-#                      '15090440',
-#                      '15090450',
-#                      '15090455',
-#                      '15090590'))
-  
-
 ###### Sachsen-Anhalt 2014 Kommunalwahlen ----
 #### Load election data ----
-
-sachsen_anhalt_2014_kommunalwahlen_data <- as.data.table(read_csv2("raw/sachsen_anhalt/sachsen-anhalt_2014.csv"))
+sachsen_anhalt_2014_kommunalwahlen_data <- as.data.table(read_excel("raw/sachsen_anhalt/sachsen-anhalt_1994_to_2019.xlsx", sheet = "2014-2015"))
 
 #### Delete white space ----
 names(sachsen_anhalt_2014_kommunalwahlen_data) <-  str_replace_all(names(sachsen_anhalt_2014_kommunalwahlen_data), fixed(" "), "")
 
+lubridate::year(sachsen_anhalt_2014_kommunalwahlen_data$Datum)
+
 #### Recoding ----
 # Create new dataframe ----
 sachsen_anhalt_2014_kommunalwahlen_data_sub <- sachsen_anhalt_2014_kommunalwahlen_data
-
-names(sachsen_anhalt_2014_kommunalwahlen_data_sub)
 
 # Creating non-existing variables ----
 sachsen_anhalt_2014_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
@@ -4257,20 +4130,20 @@ sachsen_anhalt_2014_kommunalwahlen_data_sub[ , IDBA := ""]
 
 # Renaming existing variables ----
 sachsen_anhalt_2014_kommunalwahlen_data_sub$AGS_8dig <- sachsen_anhalt_2014_kommunalwahlen_data_sub$AGS
-sachsen_anhalt_2014_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_2014_kommunalwahlen_data_sub$NAME
-sachsen_anhalt_2014_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_anhalt_2014_kommunalwahlen_data_sub$A
-sachsen_anhalt_2014_kommunalwahlen_data_sub$Wähler <- sachsen_anhalt_2014_kommunalwahlen_data_sub$B
-sachsen_anhalt_2014_kommunalwahlen_data_sub$GültigeStimmen <- sachsen_anhalt_2014_kommunalwahlen_data_sub$D
+sachsen_anhalt_2014_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_2014_kommunalwahlen_data_sub$Gemeindename
+sachsen_anhalt_2014_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_anhalt_2014_kommunalwahlen_data_sub$Wahlberechtigteabsolut
+sachsen_anhalt_2014_kommunalwahlen_data_sub$Wähler <- sachsen_anhalt_2014_kommunalwahlen_data_sub$Waehler
+sachsen_anhalt_2014_kommunalwahlen_data_sub$GültigeStimmen <- sachsen_anhalt_2014_kommunalwahlen_data_sub$gueltigeStimmen
 
-sachsen_anhalt_2014_kommunalwahlen_data_sub$abs_CDU <- sachsen_anhalt_2014_kommunalwahlen_data_sub$D01
-sachsen_anhalt_2014_kommunalwahlen_data_sub$abs_SPD <- sachsen_anhalt_2014_kommunalwahlen_data_sub$D03
-sachsen_anhalt_2014_kommunalwahlen_data_sub$abs_DIELINKE <- sachsen_anhalt_2014_kommunalwahlen_data_sub$D02
-sachsen_anhalt_2014_kommunalwahlen_data_sub$abs_GRÜNE <- sachsen_anhalt_2014_kommunalwahlen_data_sub$D04
-sachsen_anhalt_2014_kommunalwahlen_data_sub$abs_AfD <- sachsen_anhalt_2014_kommunalwahlen_data_sub$D11
-sachsen_anhalt_2014_kommunalwahlen_data_sub$abs_PIRATEN <- sachsen_anhalt_2014_kommunalwahlen_data_sub$D15
-sachsen_anhalt_2014_kommunalwahlen_data_sub$abs_FDP <- sachsen_anhalt_2014_kommunalwahlen_data_sub$D05
-sachsen_anhalt_2014_kommunalwahlen_data_sub$abs_DiePARTEI <- sachsen_anhalt_2014_kommunalwahlen_data_sub$D14
-sachsen_anhalt_2014_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- sachsen_anhalt_2014_kommunalwahlen_data_sub$D12
+sachsen_anhalt_2014_kommunalwahlen_data_sub$abs_CDU <- as.numeric(sachsen_anhalt_2014_kommunalwahlen_data_sub$CDU)
+sachsen_anhalt_2014_kommunalwahlen_data_sub$abs_SPD <- sachsen_anhalt_2014_kommunalwahlen_data_sub$SPD
+sachsen_anhalt_2014_kommunalwahlen_data_sub$abs_DIELINKE <- sachsen_anhalt_2014_kommunalwahlen_data_sub$LINKE
+sachsen_anhalt_2014_kommunalwahlen_data_sub$abs_GRÜNE <- sachsen_anhalt_2014_kommunalwahlen_data_sub$Gruene
+sachsen_anhalt_2014_kommunalwahlen_data_sub$abs_AfD <- sachsen_anhalt_2014_kommunalwahlen_data_sub$AfD
+sachsen_anhalt_2014_kommunalwahlen_data_sub$abs_PIRATEN <- sachsen_anhalt_2014_kommunalwahlen_data_sub$Piraten
+sachsen_anhalt_2014_kommunalwahlen_data_sub$abs_FDP <- sachsen_anhalt_2014_kommunalwahlen_data_sub$FDP
+sachsen_anhalt_2014_kommunalwahlen_data_sub$abs_DiePARTEI <- sachsen_anhalt_2014_kommunalwahlen_data_sub$DiePartei
+sachsen_anhalt_2014_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- sachsen_anhalt_2014_kommunalwahlen_data_sub$FW
 
 sachsen_anhalt_2014_kommunalwahlen_data_sub$gew_CDU <- NA
 sachsen_anhalt_2014_kommunalwahlen_data_sub$gew_SPD <- NA
@@ -4313,17 +4186,16 @@ sachsen_anhalt_2014_kommunalwahlen_data_sub$Turnout <- sachsen_anhalt_2014_kommu
 
 ###### Sachsen-Anhalt 2019 Kommunalwahlen ----
 #### Load election data ----
-
-sachsen_anhalt_2019_kommunalwahlen_data <- as.data.table(read_csv2("raw/sachsen_anhalt/sachsen-anhalt_2019.csv"))
+sachsen_anhalt_2019_kommunalwahlen_data <- as.data.table(read_excel("raw/sachsen_anhalt/sachsen-anhalt_1994_to_2019.xlsx", sheet = "2019"))
 
 #### Delete white space ----
 names(sachsen_anhalt_2019_kommunalwahlen_data) <-  str_replace_all(names(sachsen_anhalt_2019_kommunalwahlen_data), fixed(" "), "")
 
+lubridate::year(sachsen_anhalt_2019_kommunalwahlen_data$Datum)
+
 #### Recoding ----
 # Create new dataframe ----
 sachsen_anhalt_2019_kommunalwahlen_data_sub <- sachsen_anhalt_2019_kommunalwahlen_data
-
-names(sachsen_anhalt_2019_kommunalwahlen_data_sub)
 
 # Creating non-existing variables ----
 sachsen_anhalt_2019_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
@@ -4336,20 +4208,20 @@ sachsen_anhalt_2019_kommunalwahlen_data_sub[ , IDBA := ""]
 
 # Renaming existing variables ----
 sachsen_anhalt_2019_kommunalwahlen_data_sub$AGS_8dig <- sachsen_anhalt_2019_kommunalwahlen_data_sub$AGS
-sachsen_anhalt_2019_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_2019_kommunalwahlen_data_sub$NAME
-sachsen_anhalt_2019_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_anhalt_2019_kommunalwahlen_data_sub$A
-sachsen_anhalt_2019_kommunalwahlen_data_sub$Wähler <- sachsen_anhalt_2019_kommunalwahlen_data_sub$B
-sachsen_anhalt_2019_kommunalwahlen_data_sub$GültigeStimmen <- sachsen_anhalt_2019_kommunalwahlen_data_sub$D
+sachsen_anhalt_2019_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_2019_kommunalwahlen_data_sub$Gemeindename
+sachsen_anhalt_2019_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_anhalt_2019_kommunalwahlen_data_sub$Wahlberechtigteabsolut
+sachsen_anhalt_2019_kommunalwahlen_data_sub$Wähler <- sachsen_anhalt_2019_kommunalwahlen_data_sub$Waehler
+sachsen_anhalt_2019_kommunalwahlen_data_sub$GültigeStimmen <- sachsen_anhalt_2019_kommunalwahlen_data_sub$gueltigeStimmen
 
-sachsen_anhalt_2019_kommunalwahlen_data_sub$abs_CDU <- sachsen_anhalt_2019_kommunalwahlen_data_sub$D01
-sachsen_anhalt_2019_kommunalwahlen_data_sub$abs_SPD <- sachsen_anhalt_2019_kommunalwahlen_data_sub$D04
-sachsen_anhalt_2019_kommunalwahlen_data_sub$abs_DIELINKE <- sachsen_anhalt_2019_kommunalwahlen_data_sub$D03
-sachsen_anhalt_2019_kommunalwahlen_data_sub$abs_GRÜNE <- sachsen_anhalt_2019_kommunalwahlen_data_sub$D05
-sachsen_anhalt_2019_kommunalwahlen_data_sub$abs_AfD <- sachsen_anhalt_2019_kommunalwahlen_data_sub$D02
+sachsen_anhalt_2019_kommunalwahlen_data_sub$abs_CDU <- as.numeric(sachsen_anhalt_2019_kommunalwahlen_data_sub$CDU)
+sachsen_anhalt_2019_kommunalwahlen_data_sub$abs_SPD <- as.numeric(sachsen_anhalt_2019_kommunalwahlen_data_sub$SPD)
+sachsen_anhalt_2019_kommunalwahlen_data_sub$abs_DIELINKE <- sachsen_anhalt_2019_kommunalwahlen_data_sub$LINKE
+sachsen_anhalt_2019_kommunalwahlen_data_sub$abs_GRÜNE <- sachsen_anhalt_2019_kommunalwahlen_data_sub$Gruene
+sachsen_anhalt_2019_kommunalwahlen_data_sub$abs_AfD <- sachsen_anhalt_2019_kommunalwahlen_data_sub$AfD
 sachsen_anhalt_2019_kommunalwahlen_data_sub$abs_PIRATEN <- NA
-sachsen_anhalt_2019_kommunalwahlen_data_sub$abs_FDP <- sachsen_anhalt_2019_kommunalwahlen_data_sub$D06
-sachsen_anhalt_2019_kommunalwahlen_data_sub$abs_DiePARTEI <- sachsen_anhalt_2019_kommunalwahlen_data_sub$D12
-sachsen_anhalt_2019_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- sachsen_anhalt_2019_kommunalwahlen_data_sub$D07
+sachsen_anhalt_2019_kommunalwahlen_data_sub$abs_FDP <- sachsen_anhalt_2019_kommunalwahlen_data_sub$FDP
+sachsen_anhalt_2019_kommunalwahlen_data_sub$abs_DiePARTEI <- sachsen_anhalt_2019_kommunalwahlen_data_sub$DiePartei
+sachsen_anhalt_2019_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- sachsen_anhalt_2019_kommunalwahlen_data_sub$FW
 
 sachsen_anhalt_2019_kommunalwahlen_data_sub$gew_CDU <- NA
 sachsen_anhalt_2019_kommunalwahlen_data_sub$gew_SPD <- NA
@@ -4395,7 +4267,6 @@ sachsen_anhalt_2019_kommunalwahlen_data_sub$Turnout <- sachsen_anhalt_2019_kommu
 sachsen_anhalt_kommunalwahlen <- rbind(sachsen_anhalt_1994_kommunalwahlen_data_sub,
                                        sachsen_anhalt_1999_kommunalwahlen_data_sub,
                                        sachsen_anhalt_2004_kommunalwahlen_data_sub,
-                                       sachsen_anhalt_2007_kommunalwahlen_data_sub,
                                        sachsen_anhalt_2009_kommunalwahlen_data_sub,
                                        sachsen_anhalt_2014_kommunalwahlen_data_sub,
                                        sachsen_anhalt_2019_kommunalwahlen_data_sub)
@@ -4403,14 +4274,8 @@ sachsen_anhalt_kommunalwahlen <- rbind(sachsen_anhalt_1994_kommunalwahlen_data_s
 # Replace INF at Turnout
 sachsen_anhalt_kommunalwahlen$Turnout <-  str_replace_all(sachsen_anhalt_kommunalwahlen$Turnout, fixed("Inf"), NA)
 
-table(sachsen_anhalt_2009_kommunalwahlen_data_sub$AGS_8dig %in% sachsen_anhalt_2007_kommunalwahlen_data_sub$AGS_8dig)
-
 # Replace - with NA
 sachsen_anhalt_kommunalwahlen[sachsen_anhalt_kommunalwahlen == "-"] <- NA
-
-# Exclude Hochsauerlandkreis
-sachsen_anhalt_kommunalwahlen <- sachsen_anhalt_kommunalwahlen %>%
-  filter(!Gebietsname == "Hochsauerlandkreis")
 
 # Save
 #write_csv(sachsen_anhalt_kommunalwahlen, here::here("output/sachsen_anhalt_kommunalwahlen.csv"))
@@ -9997,7 +9862,11 @@ sh_1994_gemeinderatswahlen_data_sub$Turnout <- sh_1994_gemeinderatswahlen_data_s
 # Merge
 sh_kommunalwahlen <- rbind(sh_1994_gemeinderatswahlen_data_sub, sh_1998_gemeinderatswahlen_data_sub,
                            sh_2003_gemeinderatswahlen_data_sub, sh_2008_gemeinderatswahlen_data_sub,
-                           sh_2013_gemeinderatswahlen_data_sub, sh_2018_gemeinderatswahlen_data_sub)
+                           sh_2013_gemeinderatswahlen_data_sub) %>%
+  filter(
+    AGS_8dig %in% c("01001000", "01002000", "01003000", "01004000"))
+
+sh_kommunalwahlen <- rbind(sh_kommunalwahlen, sh_2018_gemeinderatswahlen_data_sub)
 
 # Replace - with NA
 sh_kommunalwahlen[sh_kommunalwahlen == "-"] <- NA
@@ -10006,8 +9875,7 @@ sh_kommunalwahlen[sh_kommunalwahlen == "-"] <- NA
 sh_kommunalwahlen$AGS_8dig <- stri_pad_left(sh_kommunalwahlen$AGS_8dig, 8, 0)
 
 # Save
-write_csv(sh_kommunalwahlen, "processed/sh_kommunalwahlen.csv")
-
+#write_csv(sh_kommunalwahlen, "processed/sh_kommunalwahlen.csv")
 
 # ----
 # ----
