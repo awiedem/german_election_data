@@ -83,6 +83,22 @@ cw_combined <- bind_rows(cw_combined, cw_list) |>
   relocate(year, .after = ags_name) |>
   arrange(ags, year)
 
+glimpse(cw_combined)
+
+
+# Inspect population, areas, and employees
+cw_combined |>
+  select(ags, ags_name, year, population, area, employees) |>
+  print(n = 32)
+
+# Divide population and employees by 10
+cw_combined <- cw_combined |>
+  mutate(
+    population = population / 10,
+    employees = employees / 10
+  )
+
+
 # write crosswalk df
 fwrite(cw_combined, file = "data/crosswalks/final/ags_crosswalks.csv")
 write_rds(cw_combined, "data/crosswalks/final/ags_crosswalks.rds")
@@ -92,7 +108,7 @@ write_rds(cw_combined, "data/crosswalks/final/ags_crosswalks.rds")
 # filter cw_combined to only German election years since 1990
 cw <- cw_combined
 
-# Harmonize to county 2021
+# Harmonize to ags 2021
 cw <- cw |>
   group_by(ags_21, ags_name_21, year) |>
   summarise(
@@ -142,7 +158,7 @@ ags21 <- read_excel(path = "data/crosswalks/raw/31122021_Auszug_GV.xlsx", sheet 
   mutate(
     ags_21 = as.numeric(ags_21),
     area = as.numeric(area),
-    population = as.numeric(population) / 100
+    population = as.numeric(population) / 1000
   ) |>
   # filter NAs
   filter(!is.na(ags_21)) |>
@@ -194,6 +210,8 @@ cw <- cw |>
     employees_ags = employees,
     pop_density_ags = pop_density
   )
+
+glimpse(cw)
 
 # write
 fwrite(cw, "data/covars_municipality/final/ags_area_pop_emp.csv")
