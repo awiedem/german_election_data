@@ -99,6 +99,27 @@ cw_combined <- cw_combined |>
   )
 
 
+# check Berlin
+cw_combined |>
+  filter(ags == "11000000") |>
+  select(ags, ags_name, year, population) |>
+  print(n = 32)
+
+# reduce Berlin 1991 by 10
+cw_combined <- cw_combined |>
+  mutate(population = ifelse(ags == "11000000" & year == 1991, population / 10, population))
+
+# check states
+cw_combined |>
+  mutate(
+    ags = pad_zero_conditional(ags, 7),
+    state = substr(ags, 1, 2)
+    ) |>
+  filter(state %in% c("02", "04", "11")) |>
+  select(ags, ags_name, year, state) |>
+  distinct(ags, ags_name, year) |>
+  print(n = 200)
+
 # write crosswalk df
 fwrite(cw_combined, file = "data/crosswalks/final/ags_crosswalks.csv")
 write_rds(cw_combined, "data/crosswalks/final/ags_crosswalks.rds")
@@ -213,6 +234,24 @@ cw <- cw |>
 
 glimpse(cw)
 
+
+# check Berlin
+cw |>
+  filter(ags_21 == "11000000") |>
+  select(ags_21, ags_name_21, year, population_ags) |>
+  print(n = 200)
+
+# check states
+cw |>
+  mutate(
+    ags_21 = pad_zero_conditional(ags_21, 7),
+    state = substr(ags_21, 1, 2)
+    ) |>
+  filter(state %in% c("02", "04", "11")) |>
+  select(ags_21, ags_name_21, year, state) |>
+  print(n = 200)
+
+
 # write
 fwrite(cw, "data/covars_municipality/final/ags_area_pop_emp.csv")
 write_rds(cw, "data/covars_municipality/final/ags_area_pop_emp.rds")
@@ -248,7 +287,7 @@ merged_ags <- cw_combined %>%
 
 # Count the number of ags per year that are affected by harmonization
 harmonization_counts <- cw_combined %>%
-  mutate(population = population / 10) %>%
+  mutate(population = population) %>%
   group_by(year) %>%
   summarise(
     n_ags = n(),
