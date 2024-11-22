@@ -1,9 +1,11 @@
 ### Harmonize municipal electoral results to 2021 borders
 # Vincent Heddesheimer
 # First: Aug 08, 2024
-# Last: Oct 01, 2024
+# Last: Nov 22, 2024
 
 rm(list = ls())
+
+conflicts_prefer(dplyr::filter)
 
 # Disallow scientific notation: leads to errors when loading data
 options(scipen = 999)
@@ -36,14 +38,25 @@ table(is.na(df$ags_name))
 
 # inspect -----------------------------------------------------------------
 
+state_id_to_names
+
 # is there more than one election in one ags in one year?
 dupl <-df |>
-  group_by(ags, election_year) |>
+  group_by(ags, ags_name, election_year) |>
   summarize(n = n()) |>
   filter(n > 1) |>
   print(n=Inf) |>
   mutate(id = paste0(ags,"_",election_year))
 # no: none
+
+# Create .rds file of duplicates
+inspect <- df |>
+  mutate(id = paste0(ags,"_",election_year)) |>
+  filter(id %in% dupl$id) |>
+  arrange(ags, election_year)
+
+saveRDS(inspect, "/Users/vincentheddesheimer/Downloads/duplicates.rds")
+
 
 # inspect <- df |>
 #   mutate(id = paste0(ags,"_",election_year)) |>
@@ -113,6 +126,13 @@ df <- df |>
       id == "13053108_2004" ~ "13053109", # Prebberede
       # SA 1994
       id == "15159029_1994" ~ "15126310", # Merzien
+      # SA 2005
+      id == "15087275_2005" ~ "15260039", # Mansfeld
+      id == "15086055_2005" ~ "15358017", # Gommern
+      # SA 2006
+      id == "15088195_2006" ~ "15265026", # Landsberg
+      id == "15088235_2006" ~ "15261039", # Müseln
+      
       # SA 2007
       id == "15086270_2007" ~ "15151066", # Zeppernick
       id == "15089040_2007" ~ "15367003", # Biere
@@ -122,6 +142,7 @@ df <- df |>
       id == "15089190_2007" ~ "15367015", # Kleinmühlingen
       id == "15089335_2007" ~ "15367027", # Welsleben
       id == "15089370_2007" ~ "15367029", # Zens,
+      
       # Saxony 
       id == "14017410_1994" ~ "14077300", # Neuhausen/ Erzgeb.
       id == "14018410_1994" ~ "14091200", # Lichtenau
@@ -185,18 +206,47 @@ df <- df |>
       # id == "13057045_1999" ~ 1998, # Kenz
       # id == "13057052_1999" ~ 1998, # Küstrow
       # id == "13062015_1999" ~ 1998, # Glashütte
-      # SA 1994
-      id == "15159029_1994" ~ 1993, # Merzien
-      # SA 2007
-      id == "15086270_2007" ~ 2006, # Zeppernick
-      id == "15089040_2007" ~ 2006, # Biere
-      id == "15089080_2007" ~ 2006, # Eggersdorf
-      id == "15089085_2007" ~ 2006, # Eickendorf
-      id == "15089160_2007" ~ 2006, # Großmühlingen
-      id == "15089190_2007" ~ 2006, # Kleinmühlingen
-      id == "15089335_2007" ~ 2006, # Welsleben
-      id == "15089370_2007" ~ 2006, # Zens
       id == "13053108_2004" ~ 2004, # Prebberede
+      # SA
+      # id == "15159029_1994" ~ 1993, # Merzien
+      # id == "15086270_2007" ~ 2006, # Zeppernick
+      # id == "15089040_2007" ~ 2006, # Biere
+      # id == "15089080_2007" ~ 2006, # Eggersdorf
+      # id == "15089085_2007" ~ 2006, # Eickendorf
+      # id == "15089160_2007" ~ 2006, # Großmühlingen
+      # id == "15089190_2007" ~ 2006, # Kleinmühlingen
+      # id == "15089335_2007" ~ 2006, # Welsleben
+      # id == "15089370_2007" ~ 2006, # Zens
+      id == "15087101_2008" ~ 2009, # Brücken-Hackpfüffel
+      id == "15090635_2009" ~ 2010, # Zehrental
+      id == "15090008_2009" ~ 2010, # Altmärkische Wische
+      id == "15084442_2009" ~ 2010, # Schnaudertal
+      id == "15083361_2009" ~ 2010, # Loitsche-Heinrichsberg
+      # id == "15083362_2009" ~ 2010, # Niedere Börde
+      id == "15084013_2009" ~ 2010, # Anhalt Süd
+      id == "15084341_2009" ~ 2010, # Molauer Land
+      # id == "15084014_2009" ~ 2010, # Molauer Land
+      id == "15090003_2009" ~ 2010, # Aland
+      id == "15090631_2009" ~ 2010, # Wust-Fischbeck
+      id == "15083323_2009" ~ 2010, # Ingersleben
+      id == "15085287_2009" ~ 2010, # Selke-Aue
+      id == "15083557_2009" ~ 2010, # Westheide
+      id == "15089041_2009" ~ 2010, # Bördeaue
+      id == "15084207_2009" ~ 2010, # Gutenborn
+      id == "15090007_2009" ~ 2010, # Altmärkische Höhe
+      id == "15089043_2009" ~ 2010, # Börde-Hakel
+      id == "15087031_2009" ~ 2010, # Arnstein
+      id == "15087412_2009" ~ 2010, # Südharz
+      id == "15089026_2009" ~ 2010, # Barby
+      id == "15082256_2009" ~ 2010, # Osternienburger Land
+      id == "15087386_2009" ~ 2010, # Seegebiet Mansfelder Land
+      id == "15082301_2009" ~ 2010, # Raguhn-Jeßnitz
+      id == "15082377_2009" ~ 2010, # Südliches Anhalt
+      id == "15082241_2009" ~ 2010, # Muldestausee
+      id == "15085228_2009" ~ 2010, # Oberharz am Brocken
+      id == "15083411_2009" ~ 2010, # Oebisfelde-Weferlingen
+      id == "15083298_2009" ~ 2010, # Hohe Börde
+      
       # Saxony 1994 (the ones where we changed the ags)
       id == "14017410_1994" ~ 1994, # Neuhausen/ Erzgeb.
       id == "14018410_1994" ~ 1994, # Lichtenau
@@ -241,6 +291,8 @@ df <- df |>
       # X. use 1998 for merging for ags in MeckPomm in 1999
       # id %in% not_merged_naive[not_merged_naive$election_year == 1999 & grepl("^13", not_merged_naive$id), ]$id ~ election_year - 1,
       id %in% not_merged_naive[not_merged_naive$election_year %in% c(2004, 2009) & grepl("^15", not_merged_naive$id), ]$id ~ election_year - 1,
+      id %in% not_merged_naive[not_merged_naive$election_year %in% c(2009) & grepl("^15", not_merged_naive$id), ]$id ~ election_year + 1,
+      id %in% not_merged_naive[not_merged_naive$election_year %in% c(2010) & grepl("^15", not_merged_naive$id), ]$id ~ election_year + 1,
       # X. use election_year - 1 for merging for ags in Saxony
       id %in% not_merged_naive[grepl("^12", not_merged_naive$id), ]$id ~ election_year - 1,
       id %in% not_merged_naive[grepl("^13", not_merged_naive$id), ]$id ~ election_year - 1,
@@ -267,6 +319,7 @@ not_merged <- df_cw %>%
   distinct()
 not_merged %>%
   select(ags, election_year) %>%
+  arrange(ags, election_year) %>%
   print(n=Inf)
 # now, there is no unsuccessful merge.
 
@@ -365,7 +418,7 @@ ags21 <- read_excel(path = "data/crosswalks/raw/31122021_Auszug_GV.xlsx", sheet 
     Gemeinde = pad_zero_conditional(Gemeinde, 2, "0"),
     ags = as.numeric(paste0(Land, RB, Kreis, Gemeinde)),
     year = 2021,
-    population = as.numeric(population) / 100,
+    population = as.numeric(population) / 1000,
     area = as.numeric(area)
   ) |>
   slice(6:16065) |>
@@ -462,7 +515,14 @@ table(df_harm$year)
 plot_df <- df_final |>
   group_by(state_name, year) |>
   summarise(election_bin = max(election_bin, na.rm = TRUE)) |>
-  ungroup()
+  ungroup() |>
+  # Add special handling for Saxony-Anhalt 2006-2009 and 2011
+  mutate(
+    election_bin = case_when(
+      state_name == "Saxony-Anhalt" & year %in% c(2005:2008, 2010) ~ 2, # Use 2 for irregular elections
+      TRUE ~ election_bin
+    )
+  )
 
 plot_df |>
   ggplot(aes(x = as.numeric(year), 
@@ -472,14 +532,13 @@ plot_df |>
   ) +
   geom_tile(color = "white") + # Add borders to the squares
   scale_fill_manual(
-    values = c("1" = "grey20", "0" = "white"), 
+    values = c("1" = "grey20", "0" = "white", "2" = "grey70"), # grey70 for irregular elections
     name = "Election",
-    labels = c("1" = "Election Held", "2" = "Data Unavailable")
+    labels = c("1" = "Election Held", "0" = "Data Unavailable", "2" = "Irregular Election")
   ) +
   labs(x = "Year", y = "State") +
   theme_hanno() +
   theme(
-    # axis.text.x = element_text(angle = 90, vjust = 0.5), # Rotate x-axis labels for better readability
     panel.grid.major = element_blank(), 
     panel.grid.minor = element_blank(),
     legend.position = "none"

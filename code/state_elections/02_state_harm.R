@@ -1,9 +1,11 @@
 ### Harmonize state election results to 2021 borders
 # Vincent Heddesheimer
 # First: March 05, 2024
-# Last: Aug 13, 2024
+# Last: Nov 22, 2024
 
 rm(list = ls())
+
+conflicts_prefer(dplyr::filter)
 
 # Disallow scientific notation: leads to errors when loading data
 options(scipen = 999)
@@ -74,7 +76,7 @@ cw_not_merged <- cw |>
 wasdow <- data.frame(
   ags = "13072115", ags_name = "Wasdow", election_year = 2011, 
   area_cw = 1, pop_cw = 1,
-  area = 26.20, population = 3.9,
+  area = 26.20, population = 0.39,
   ags_21 = "13072010", ags_name_21 = "Behren-Lübchin",
   emp_cw = 1, employees = 0.2
   )

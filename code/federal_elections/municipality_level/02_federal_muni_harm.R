@@ -1,8 +1,6 @@
 ### Harmonize BTW electoral results at muni level 1980-2021
 # Vincent Heddesheimer, Hanno Hilbig
-# Sep, 24, 2024
-
-rm(list = ls())
+# Nov, 22, 2024
 
 # Disallow scientific notation: leads to errors when loading data
 options(scipen = 999)
@@ -309,7 +307,7 @@ ags21 <- read_excel(path = "data/crosswalks/raw/31122021_Auszug_GV.xlsx", sheet 
     Gemeinde = pad_zero_conditional(Gemeinde, 2, "0"),
     ags = paste0(Land, RB, Kreis, Gemeinde),
     election_year = 2021,
-    population = as.numeric(population) / 100
+    population = as.numeric(population) / 1000
   ) |>
   slice(6:16065) |>
   dplyr::filter(!is.na(Gemeinde)) |>
