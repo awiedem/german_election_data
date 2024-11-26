@@ -49,22 +49,13 @@ dupl <-df |>
   mutate(id = paste0(ags,"_",election_year))
 # no: none
 
-# Create .rds file of duplicates
-inspect <- df |>
-  mutate(id = paste0(ags,"_",election_year)) |>
-  filter(id %in% dupl$id) |>
-  arrange(ags, election_year)
-
-saveRDS(inspect, "/Users/vincentheddesheimer/Downloads/duplicates.rds")
-
-
+# # Create .rds file of duplicates
 # inspect <- df |>
 #   mutate(id = paste0(ags,"_",election_year)) |>
 #   filter(id %in% dupl$id) |>
 #   arrange(ags, election_year)
 # 
-# fwrite(inspect, "data/municipal_elections/processed_data/duplicates.csv")
-
+# saveRDS(inspect, "/Users/vincentheddesheimer/Downloads/duplicates.rds")
 
 # Merge w/ cw -------------------------------------------------------------
 
