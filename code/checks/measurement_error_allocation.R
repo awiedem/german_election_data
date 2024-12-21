@@ -133,11 +133,44 @@ df21_mailin <- df21_mailin %>%
 df21_mailin_bwbez <- df21_mailin %>%
     filter(BA == 5) %>%
     filter(BWBez == "00")
+nrow(df21_mailin_bwbez)
 
 # Data frame that is !briefwahlbezirke
 
 df21_mailin_not_bwbez <- df21_mailin %>%
-    filter(BA != 5)
+  filter(BA != 5) %>%
+  filter(BWBez == "00")
+nrow(df21_mailin_not_bwbez)
+
+# ags in df21_mailin_not_bwbez that are not in df21_mailin_bwbez
+df21_mailin_not_bwbez %>%
+  filter(!(ags %in% df21_mailin_bwbez$ags))
+# none
+
+# ags in df21_mailin_bwbez that are not in df21_mailin_not_bwbez
+df21_mailin_bwbez %>%
+  filter(!(ags %in% df21_mailin_not_bwbez$ags))
+# none
+
+# duplicates in df21_mailin_not_bwbez?
+duply <- df21_mailin_not_bwbez %>%
+  count(ags) %>%
+  filter(n > 1)
+
+# inspect
+df21_mailin_not_bwbez %>%
+  filter(ags %in% duply$ags)
+# „Bezirke für Wahlberechtigte ohne nähere Angaben“ mit „8“ gekennzeichnet
+
+
+# also exclude BA == 8
+df21_mailin_not_bwbez <- df21_mailin %>%
+filter(BA == 0) %>%
+  filter(BWBez == "00")
+nrow(df21_mailin_not_bwbez)
+nrow(df21_mailin_bwbez)
+
+
 
 # Vincent :
 
