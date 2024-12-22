@@ -130,3 +130,11 @@ df %>%
     summarise(n = n()) %>%
     ungroup() %>%
     arrange(n)
+
+
+# Check whether any variable has Inf values
+df %>%
+    summarise(across(everything(), ~ any(is.infinite(.)))) %>% 
+    pivot_longer(everything(), names_to = "variable", values_to = "has_inf") %>% 
+    filter(has_inf)
+

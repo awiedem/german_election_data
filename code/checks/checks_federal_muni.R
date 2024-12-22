@@ -15,6 +15,7 @@ df <- read_rds("data/federal_elections/municipality_level/final/federal_muni_har
 df_raw <- read_rds("data/federal_elections/municipality_level/final/federal_muni_raw.rds")
 
 glimpse(df)
+glimpse(df_raw)
 
 # how many ags?
 df %>%
@@ -152,3 +153,14 @@ df %>%
     summarise(n = n()) %>%
     ungroup() %>%
     arrange(n)
+
+# Check whether any variable has Inf values
+df %>%
+    summarise(across(everything(), ~ any(is.infinite(.)))) %>% 
+    pivot_longer(everything(), names_to = "variable", values_to = "has_inf") %>% 
+    filter(has_inf)
+
+df_raw %>% 
+  summarise(across(everything(), ~ any(is.infinite(.)))) %>% 
+  pivot_longer(everything(), names_to = "variable", values_to = "has_inf") %>% 
+  filter(has_inf)
