@@ -503,7 +503,7 @@ df_final <- df_final |>
     state_name = state_id_to_names(state)
   )
 
-table(df_harm$year)
+table(df_harm$election_year)
 
 # create plot_df
 plot_df <- df_final |>
@@ -594,8 +594,8 @@ afd_plot_data |>
 
 ggsave("output/figures/muni_elections_afd.pdf", width = 7, height = 4)
 
-view(df_final %>%
-       filter(state_name == "Mecklenburg-Vorpommern", year == 2014, !is.na(afd)))
+# view(df_final %>%
+#        filter(state_name == "Mecklenburg-Vorpommern", year == 2014, !is.na(afd)))
 
 
 move_plots_to_overleaf("code")
