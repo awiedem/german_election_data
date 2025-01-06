@@ -49,22 +49,13 @@ dupl <-df |>
   mutate(id = paste0(ags,"_",election_year))
 # no: none
 
-# Create .rds file of duplicates
-inspect <- df |>
-  mutate(id = paste0(ags,"_",election_year)) |>
-  filter(id %in% dupl$id) |>
-  arrange(ags, election_year)
-
-saveRDS(inspect, "/Users/vincentheddesheimer/Downloads/duplicates.rds")
-
-
+# # Create .rds file of duplicates
 # inspect <- df |>
 #   mutate(id = paste0(ags,"_",election_year)) |>
 #   filter(id %in% dupl$id) |>
 #   arrange(ags, election_year)
 # 
-# fwrite(inspect, "data/municipal_elections/processed_data/duplicates.csv")
-
+# saveRDS(inspect, "/Users/vincentheddesheimer/Downloads/duplicates.rds")
 
 # Merge w/ cw -------------------------------------------------------------
 
@@ -453,7 +444,8 @@ df_harm <- sums |>
     area = ifelse(!is.na(area.x), area.x, area.y),
     population = ifelse(!is.na(population.x), population.x, population.y)
   ) |>
-  select(-c(area.x, area.y, population.x, population.y))
+  select(-c(area.x, area.y, population.x, population.y)) |>
+  rename(election_year = year)
 
 glimpse(df_harm)
 
@@ -477,7 +469,7 @@ muni <- read_rds("data/covars_municipality/final/ags_area_pop_emp.rds") |>
 df_harm <- read_rds("data/municipal_elections/final/municipal_harm.rds")
 
 muni_21 <- df_harm |>
-  filter(year == 2021) |>
+  filter(election_year == 2021) |>
   dplyr::select(ags, cdu_csu, gruene, spd)
 
 # count number of municipalities
@@ -487,12 +479,12 @@ df_harm |>
 
 # count number of election years
 df_harm |>
-  distinct(year) |>
+  distinct(election_year) |>
   nrow()
 
 # Merge
 df_final <- muni |>
-  left_join_check_obs(df_harm, by = c("ags", "year"))
+  left_join_check_obs(df_harm, by = c("ags", "year" = "election_year"))
 
 # Create variable indicating whether there was election in given year
 df_final <- df_final |>

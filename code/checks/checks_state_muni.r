@@ -12,6 +12,8 @@ conflicts_prefer(lubridate::year)
 df <- read_rds("data/state_elections/final/state_harm.rds")
 df_raw <- read_rds("data/state_elections/final/state_unharm.rds")
 
+glimpse(df)
+glimpse(df_raw)
 
 # how many ags?
 df %>%
@@ -128,3 +130,17 @@ print(nrow(df_check_large_changes))
 df_check_large_changes %>%
     filter(valid_votes > 1000) %>%
     print(n = 100)
+
+
+# Check whether any variable has Inf values
+df %>%
+    summarise(across(everything(), ~ any(is.infinite(.)))) %>% 
+    pivot_longer(everything(), names_to = "variable", values_to = "has_inf") %>% 
+    filter(has_inf)
+
+df_raw %>% 
+  summarise(across(everything(), ~ any(is.infinite(.)))) %>% 
+  pivot_longer(everything(), names_to = "variable", values_to = "has_inf") %>% 
+  filter(has_inf)
+
+### END
