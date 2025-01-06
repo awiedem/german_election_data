@@ -5671,7 +5671,8 @@ mecklenburg_vorpommern_2014_kreiswahlen_data_sub <- mecklenburg_vorpommern_2014_
     SPD = sum(SPD, na.rm=T),
     DIELINKE = sum(DIELINKE, na.rm=T),
     GRÜNE = sum(GRÜNE, na.rm=T),
-    FDP = sum(FDP, na.rm=T)) %>%
+    FDP = sum(FDP, na.rm=T),
+    AfD = sum(AfD, na.rm=T)) %>%
   ungroup()
 
 mecklenburg_vorpommern_2014_kreiswahlen_data_sub <- as.data.table(mecklenburg_vorpommern_2014_kreiswahlen_data_sub)
@@ -5696,7 +5697,7 @@ mecklenburg_vorpommern_2014_kreiswahlen_data_sub$abs_CDU <- as.numeric(mecklenbu
 mecklenburg_vorpommern_2014_kreiswahlen_data_sub$abs_SPD <- as.numeric(mecklenburg_vorpommern_2014_kreiswahlen_data_sub$SPD)
 mecklenburg_vorpommern_2014_kreiswahlen_data_sub$abs_DIELINKE <- as.numeric(mecklenburg_vorpommern_2014_kreiswahlen_data_sub$DIELINKE)
 mecklenburg_vorpommern_2014_kreiswahlen_data_sub$abs_GRÜNE <- as.numeric(mecklenburg_vorpommern_2014_kreiswahlen_data_sub$GRÜNE)
-mecklenburg_vorpommern_2014_kreiswahlen_data_sub$abs_AfD <- NA
+mecklenburg_vorpommern_2014_kreiswahlen_data_sub$abs_AfD <- as.numeric(mecklenburg_vorpommern_2014_kreiswahlen_data_sub$AfD)
 mecklenburg_vorpommern_2014_kreiswahlen_data_sub$abs_PIRATEN <- NA
 mecklenburg_vorpommern_2014_kreiswahlen_data_sub$abs_FDP <- as.numeric(mecklenburg_vorpommern_2014_kreiswahlen_data_sub$FDP)
 mecklenburg_vorpommern_2014_kreiswahlen_data_sub$abs_DiePARTEI <- NA
@@ -5842,8 +5843,6 @@ mecklenburg_vorpommern_kommunalwahlen[mecklenburg_vorpommern_kommunalwahlen == "
 
 # Fix AGS
 mecklenburg_vorpommern_kommunalwahlen$AGS_8dig <- stri_pad_left(mecklenburg_vorpommern_kommunalwahlen$AGS_8dig, 8, 0)
-
-
 
 
 
@@ -10065,7 +10064,8 @@ fwrite(kommunalwahlen_merge, file=here::here("data/municipal_elections/final/mun
 
 # View(kommunalwahlen_merge)
 
-kommunalwahlen_merge <- read_rds(file=here::here("data/municipal_elections/final/municipal_unharm.rds"))
+#kommunalwahlen_merge <- read_rds(file=here::here("data/municipal_elections/final/municipal_unharm.rds"))
+
 # inspect -----------------------------------------------------------------
 
 glimpse(kommunalwahlen_merge)
