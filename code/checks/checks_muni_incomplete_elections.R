@@ -7,6 +7,10 @@ rm(list = ls())
 
 conflicts_prefer(dplyr::filter)
 
+library(pacman)
+
+pacman::p_load(tidyverse, ggplot2, ggpattern, readr)
+
 # Disallow scientific notation: leads to errors when loading data
 options(scipen = 999)
 
@@ -92,25 +96,26 @@ plot_df <- plot_df |>
 
 # Plot
 plot_df |>
-  ggplot(aes(x = as.numeric(election_year), 
-             y = factor(state, 
-                        levels = rev(levels(factor(state)))), 
-             fill = as.factor(election_bin))
+  ggplot(aes(
+    x = as.numeric(election_year), 
+    y = factor(state, levels = rev(levels(factor(state)))), 
+    fill = as.factor(election_bin), 
+    pattern = as.factor(election_bin))
   ) +
-  geom_tile(color = "white") + # Add borders to the squares
-  scale_fill_manual(
+  geom_tile_pattern(
+    color = "white", # Add borders to the tiles
+    size = 0.5,
+    pattern_angle = 30, 
+    pattern_density = 0.01, 
+    pattern_spacing = 0.01,
+    pattern_color = "white"
+  ) +
+  scale_pattern_manual(
     values = c(
-      "1" = "grey20", 
-      "0" = "white", 
-      "2" = "grey70", # Irregular elections
-      "3" = "red3"     # Insufficient municipality data
-    ), 
-    name = "Election",
-    labels = c(
-      "1" = "Election Held", 
-      "0" = "Data Unavailable", 
-      "2" = "Irregular Election",
-      "3" = "Insufficient Municipality Data"
+      "1" = "none", 
+      "0" = "none", 
+      "2" = "none", 
+      "3" = "stripe" # Add stripe pattern for insufficient data
     )
   ) +
   labs(x = "Year", y = "State") +
@@ -119,6 +124,21 @@ plot_df |>
     panel.grid.major = element_blank(), 
     panel.grid.minor = element_blank(),
     legend.position = "none"
+  ) +
+  scale_fill_manual(
+    values = c(
+      "1" = "grey20", 
+      "0" = "white", 
+      "2" = "grey70", # Irregular elections
+      "3" = "grey20"  # Insufficient municipality data
+    ), 
+    name = "Election",
+    labels = c(
+      "1" = "Election Held", 
+      "0" = "Data Unavailable", 
+      "2" = "Irregular Election",
+      "3" = "Insufficient Municipality Data"
+    )
   ) +
   scale_x_continuous(breaks = seq(1990, 2021, 5))
 
