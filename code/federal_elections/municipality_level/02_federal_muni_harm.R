@@ -589,5 +589,64 @@ df_harm |>
   dplyr::filter(turnout > 1)
 
 
+# Number of munis within shared mail in districts in 2021 ------------------
+
+glimpse(df_harm)
+
+# number of ags with unique_mailin == 0 in each election
+n_joint <- df_harm |>
+  group_by(election_year) |>
+  summarise(
+    n = n_distinct(ags),
+    n_ags_joint_mailin = sum(unique_mailin == 0),
+    ags_share = n_ags_joint_mailin / n * 100,
+    n_voters = sum(eligible_voters),
+    n_voters_joint_mailin = sum(eligible_voters[unique_mailin == 0]),
+    n_voters_joint_mailin_share = n_voters_joint_mailin / n_voters * 100
+  ) |>
+  ungroup()
+
+View(n_joint)
+
+
+mailin_df <- read_rds("data/federal_elections/municipality_level/additional/mailin_df.rds")
+
+
+# merge
+n_joint <- n_joint |>
+  left_join_check_obs(mailin_df, by = "election_year")
+
+
+# plot number of districts, number of munis per district und share of voters in these districts over time
+n_joint |>
+  pivot_longer(cols = c(mailin_join, n_ags_joint_mailin, n_voters_joint_mailin_share), names_to = "variable", values_to = "value") |>
+  mutate(
+    variable = case_when(
+      variable == "mailin_join" ~ "Number of joint mail-in voting districts (count)",
+      variable == "n_ags_joint_mailin" ~ "Number of municipalities in joint mail-in voting district (count)",
+      variable == "n_voters_joint_mailin_share" ~ "Share of voters in joint mail-in voting district (%)"
+    ),
+    # round the share to 0 decimal places
+    value = round(value, 0),
+    # election year as factor
+    election_year = factor(election_year)
+  ) |>
+  ggplot(aes(x = election_year, y = value)) +
+  geom_col() +
+  # value of mailin_join as text above each year
+  geom_text(aes(label = value), vjust = -0.5) +
+  theme_hanno() +
+  labs(
+    x = "Election",
+    y = "" # remove y axis label since it's in the titles now
+  ) +
+  # increase max of y-axis to make room for text
+  scale_y_continuous(limits = function(x) c(0, max(x) * 1.1)) +
+  facet_wrap(~variable, scales = "free_y", nrow = 3) +
+  scale_x_discrete(breaks = c(1990, 1994, 1998, 2002, 2005, 2009, 2013, 2017, 2021))
+
+ggsave("output/figures/n_mailin.pdf", width = 7, height = 7)
+
+move_plots_to_overleaf("code")
 
 ### END

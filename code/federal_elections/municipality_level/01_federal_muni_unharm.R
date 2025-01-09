@@ -4,7 +4,16 @@
 
 rm(list=ls())
 
+# Disallow scientific notation: leads to errors when loading data
+options(scipen = 999)
+pacman::p_load(
+  "tidyverse",
+  "data.table",
+  "haschaR"
+)
 
+# conflict filter dplyr, take dplyr::filter!
+conflict_prefer("filter", "dplyr")
 
 # Create dataframe to store mail-in descriptives --------------------------
 
@@ -1986,7 +1995,7 @@ df21_bezirksarten <- df21 |>
 
 # Get ags that have their own mailin data
 ags_w_mailin21 <- df21_bezirksarten |>
-  filter(BA == 5) |>
+  dplyr::filter(BA == 5) |>
   pull(ags)
 
 # Summarize variables for all ags and create variable for whether ags had unique mailin
@@ -2062,6 +2071,24 @@ df21 <- df21 |>
 #   filter(county == "01213") |>
 #   select(ags, BWBez, unique_mailin, pop, county_bwbez_pop)
 # # works!
+
+
+# Check how many municipalities per shared mail-in district
+df21 |>
+  left_join_check_obs(
+    mailin21 |>
+      mutate(county = substr(ags, 1, 5),
+      mailin_id = paste0(county,"_",BWBez)
+      ) |>
+      select(county, BWBez, mailin_id),
+    by = c("county", "BWBez")
+  ) |>
+  group_by(mailin_id) |>
+  summarise(
+    n_muni = n_distinct(ags)) |>
+  arrange(desc(n_muni)) |>
+  filter(!is.na(mailin_id))
+
 
 # mail-in counties in long format
 mailin21_long <- df21 |> 
@@ -2475,23 +2502,24 @@ mailin_tab <- mailin_df |>
 save_kable(mailin_tab, file = "output/tables/n_mailin.tex", keep_tex = T)
 save_kable(mailin_tab, file = "~/Dropbox (Princeton)/Apps/Overleaf/ElectionPaper/tables/n_mailin.tex", keep_tex = T)
 
-# plot barplot
-mailin_df %>% 
-  ggplot(aes(x = factor(election_year), y = mailin_join)) +
-  geom_col() +
-  # value of mailin_join as text above each year
-  geom_text(aes(label = mailin_join), vjust = -0.5) +
-  theme_hanno() +
-  labs(
-    x = "Election",
-    y = "Joint mail-in voting districts"
-  ) +
-  # increase max of y-axis to make room for text
-  scale_y_continuous(limits = c(0, 750))
 
-ggsave("output/figures/n_mailin.pdf", width = 7, height = 3.5)
+# # plot barplot
+# mailin_df %>% 
+#   ggplot(aes(x = factor(election_year), y = mailin_join)) +
+#   geom_col() +
+#   # value of mailin_join as text above each year
+#   geom_text(aes(label = mailin_join), vjust = -0.5) +
+#   theme_hanno() +
+#   labs(
+#     x = "Election",
+#     y = "Joint mail-in voting districts"
+#   ) +
+#   # increase max of y-axis to make room for text
+#   scale_y_continuous(limits = c(0, 750))
 
-move_plots_to_overleaf("code")
+# ggsave("output/figures/n_mailin.pdf", width = 7, height = 3.5)
+
+# move_plots_to_overleaf("code")
 
 # Inspect -----------------------------------------------------------------
 
