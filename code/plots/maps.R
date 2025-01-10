@@ -28,7 +28,7 @@ de_shp_bula <- de_shp_bula %>% dplyr::filter(GF == 4)
 # Municipal elections
 d_muni_recent <- d_muni %>%
   group_by(ags) %>%
-  slice_max(year, n = 1) %>%
+  slice_max(election_year, n = 1) %>%
   ungroup()
 
 # State elections

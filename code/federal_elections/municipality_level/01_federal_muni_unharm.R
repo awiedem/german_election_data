@@ -2071,10 +2071,10 @@ df21 <- df21 |>
 #   filter(county == "01213") |>
 #   select(ags, BWBez, unique_mailin, pop, county_bwbez_pop)
 # # works!
-
+glimpse(df21)
 
 # Check how many municipalities per shared mail-in district
-df21 |>
+muni_per_mailin_21 <- df21 |>
   left_join_check_obs(
     mailin21 |>
       mutate(county = substr(ags, 1, 5),
@@ -2085,10 +2085,18 @@ df21 |>
   ) |>
   group_by(mailin_id) |>
   summarise(
-    n_muni = n_distinct(ags)) |>
+    n_muni = n_distinct(ags),
+    n_muni_a2_a3 = sum(`Wahlberechtigte mit Sperrvermerk (A2)`, `Wahlberechtigte nach § 25 Abs. 2 BWO (A3)`, na.rm = TRUE)
+    ) |>
   arrange(desc(n_muni)) |>
   filter(!is.na(mailin_id))
 
+# Averages
+muni_per_mailin_21 |>
+  summarise(
+    n_muni_avg = mean(n_muni, na.rm = TRUE),
+    n_muni_a2_a3_avg = mean(n_muni_a2_a3, na.rm = TRUE)
+  )
 
 # mail-in counties in long format
 mailin21_long <- df21 |> 
