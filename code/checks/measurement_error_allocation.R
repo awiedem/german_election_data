@@ -169,6 +169,21 @@ df_not_mailin <- df21_mailin %>%
 nrow(df_not_mailin)
 nrow(df_mailin)
 
+# CDU CSU has to be combined
+
+df_not_mailin <- df_not_mailin %>%
+    mutate(CDU_CSU = ifelse(CDU == 0, CSU, CDU)) %>%
+    dplyr::select(-CDU, -CSU)
+
+df_mailin <- df_mailin %>%
+    mutate(CDU_CSU = ifelse(CDU == 0, CSU, CDU)) %>%
+    dplyr::select(-CDU, -CSU)
+
+# Redefine parties
+
+parties <- c("CDU_CSU", parties[!parties %in% c("CDU", "CSU")]) %>%
+    unique()
+
 # Good - same number of rows
 
 # Check if the AGS are the same in each data set
@@ -244,10 +259,35 @@ make_district <- function(ags_list = NULL, method = "simple", n_districts = 100)
 districts <- make_district(ags_list = ags_list, n_districts = 100) %>%
     arrange(desc(ags))
 
+# Some checks:
+# Distribution of A2 + A3 by district (this means: blocked voters by district)
+
+df_not_mailin %>%
+    left_join_check_obs(districts, by = "ags") %>%
+    group_by(district_id) %>%
+    summarise(
+        blocked_voter_mean = mean(A2 + A3, na.rm = TRUE),
+        blocked_voter_median = median(A2 + A3, na.rm = TRUE),
+        n_munis = n()
+    ) %>%
+    arrange(desc(blocked_voter_mean)) %>%
+    ggplot(aes(x = blocked_voter_median)) +
+    geom_histogram() +
+    labs(
+        title = "Distribution of blocked voters by district",
+        x = "Median blocked voters per district",
+        y = "Number of districts"
+    ) +
+    theme_hanno()
+
+# Make districts using k-means
+
 districts_kmeans <- make_district(ags_list = ags_list, n_districts = 100, method = "kmeans") %>%
     arrange(desc(ags))
 
 # Function to distrbute votes across districts --------------------------------
+
+# This is the set of AGS in district 1
 
 district_ags_set <- districts %>%
     filter(district_id == 1) %>%
@@ -262,7 +302,10 @@ distribute_votes <- function(district_ags_set = NULL) {
 
     df_mailin_subset_agg <- df_mailin_subset %>%
         ungroup() %>%
-        summarise(across(all_of(parties), \(x) sum(x, na.rm = TRUE)))
+        summarise(across(all_of(parties), \(x) sum(x, na.rm = TRUE))) %>%
+        pivot_longer(cols = all_of(parties), names_to = "party", values_to = "votes_mailin_district_total")
+
+    # This results in the total number of mail in votes for each party in the district
 
     # Also create a long version of the mailin votes that just has ags and all parties
 
@@ -274,7 +317,6 @@ distribute_votes <- function(district_ags_set = NULL) {
     # Now, the in-person votes:
     # Subset in-person votes to only include the AGS in district_ags_set
     # Then, create weight, which is based on A2 + A3
-    # Then, remove all variables ot
 
     df_not_mailin_subset <- df_not_mailin %>%
         ungroup() %>%
@@ -286,6 +328,10 @@ distribute_votes <- function(district_ags_set = NULL) {
 
     blocked_weights <- df_not_mailin_subset %>%
         dplyr::select(ags, weight_blocked)
+
+    # Check if weights sum to 1
+
+    message("Sum of weights: ", sum(blocked_weights$weight_blocked))
 
     # In-person votes, long format
 
@@ -304,45 +350,25 @@ distribute_votes <- function(district_ags_set = NULL) {
 
     df_long <- df_mailin_long %>%
         left_join_check_obs(df_not_mailin_long, by = c("ags", "party")) %>%
-        left_join_check_obs(blocked_weights, by = "ags")
+        left_join_check_obs(blocked_weights, by = "ags") %>%
+        left_join_check_obs(df_mailin_subset_agg, by = "party")
 
     # Distribute votes across municipalities
 
-    df_final_distributed <- df_long %>%
-        mutate(votes_distributed = round(votes_mailin * weight_blocked, 0) + votes_in_person) %>%
-        dplyr::select(ags, party, votes_distributed) %>%
+    df_distributed <- df_long %>%
+        mutate(votes_mailin_distributed = round(votes_mailin_district_total * weight_blocked, 0)) %>%
+        mutate(votes_total_distributed = votes_mailin_distributed + votes_in_person) %>%
+        mutate(votes_total_actual = votes_in_person + votes_mailin) %>%
         group_by(ags) %>%
-        mutate(votes_total_distributed = sum(votes_distributed)) %>%
-        mutate(vote_share_distributed = votes_distributed / votes_total_distributed) %>%
+        mutate(
+            votes_total_actual_ags = sum(votes_total_actual),
+            votes_total_distributed_ags = sum(votes_total_distributed)
+        ) %>%
         ungroup() %>%
-        dplyr::select(ags, party, vote_share_distributed) %>%
-        pivot_wider(names_from = party, values_from = vote_share_distributed) %>%
-        mutate(CDU_CSU = ifelse(CDU == 0, CSU, CDU)) %>%
-        pivot_longer(cols = all_of(c("CDU_CSU", parties)), names_to = "party", values_to = "vote_share_distributed") %>%
-        filter(!party %in% c("CDU", "CSU"))
+        mutate(vote_share_distributed = votes_total_distributed / votes_total_distributed_ags) %>%
+        mutate(vote_share_actual = votes_total_actual / votes_total_actual_ags)
 
-    # Also create a df of actual in person + actual mailin votes
-
-    df_actual <- df_mailin_long_not_agg %>%
-        left_join_check_obs(df_not_mailin_long, by = c("ags", "party")) %>%
-        mutate(votes_actual = votes_mailin_actual + votes_in_person) %>%
-        dplyr::select(ags, party, votes_actual) %>%
-        group_by(ags) %>%
-        mutate(votes_total_actual = sum(votes_actual)) %>%
-        mutate(vote_share_actual = votes_actual / votes_total_actual) %>%
-        ungroup() %>%
-        dplyr::select(ags, party, vote_share_actual) %>%
-        pivot_wider(names_from = party, values_from = vote_share_actual) %>%
-        mutate(CDU_CSU = ifelse(CDU == 0, CSU, CDU)) %>%
-        pivot_longer(cols = all_of(c("CDU_CSU", parties)), names_to = "party", values_to = "vote_share_actual") %>%
-        filter(!party %in% c("CDU", "CSU"))
-
-    # Merge the two and return
-
-    df_final <- df_final_distributed %>%
-        left_join_check_obs(df_actual, by = c("ags", "party"))
-
-    return(df_final)
+    return(df_distributed)
 }
 
 # Workflow:
@@ -360,20 +386,21 @@ district_id_list <- districts %>%
     pull(district_id) %>%
     unique()
 
+n_districts <- 500
+seed = 123
+method <- "simple"
+verbose <- FALSE
+
 # Diagnostics -------------------------------------------------------------
 
 parties_check <- c("CDU_CSU", "SPD", "GRÜNE", "FDP", "DIE LINKE", "AfD")
+
+# Function to run simulation -----------------------------------------------
 
 run_allocation_simulation <- function(
     n_districts = 100,
     seed = 123, verbose = TRUE, method = "simple") {
     if (verbose) message("Starting simulation with ", n_districts, " districts")
-
-    # # Set seed for reproducibility
-    # set.seed(seed)
-    # if (verbose) message("Set random seed to ", seed)
-
-    # Setting the seed once is enough
 
     # Create districts
     if (verbose) message("Creating districts...")
@@ -381,7 +408,52 @@ run_allocation_simulation <- function(
     district_id_list <- districts %>%
         pull(district_id) %>%
         unique()
+
+    # Merge population data to districts
+
+    districts <- districts %>%
+        left_join_check_obs(pop21, by = "ags")
+
+    # Merge blocked voters data to districts
+
+    districts <- districts %>%
+        left_join_check_obs(df_not_mailin %>%
+            dplyr::select(ags, A2, A3) %>%
+            mutate(a2_a3 = A2 + A3), by = "ags")
+
+    # Number of districts, mean and median district size
+
+    n_districts <- unique(districts$district_id) %>% length()
+    mean_district_size <- districts %>%
+        count(district_id) %>%
+        pull(n) %>%
+        mean()
+    median_district_size <- districts %>%
+        count(district_id) %>%
+        pull(n) %>%
+        median()
+    mean_district_pop <- districts %>%
+        group_by(district_id) %>%
+        summarize(sum_pop = sum(pop)) %>%
+        pull(sum_pop) %>%
+        mean(na.rm = TRUE)
+    median_district_pop <- districts %>%
+        group_by(district_id) %>%
+        summarize(sum_pop = sum(pop)) %>%
+        pull(sum_pop) %>%
+        median(na.rm = TRUE)
+    mean_district_a2_a3 <- districts %>%
+        group_by(district_id) %>%
+        summarise(sum_a2_a3 = sum(a2_a3, na.rm = TRUE)) %>%
+        pull(sum_a2_a3) %>%
+        mean(na.rm = TRUE)
+
+    # Message
+
     if (verbose) message("Created ", length(district_id_list), " unique districts")
+
+    if (verbose) message("District sizes: mean = ", mean_district_size, ", median = ", median_district_size)
+    if (verbose) message("District population: mean = ", mean_district_pop, ", median = ", median_district_pop)
 
     # Run distribute_votes for each district
     if (verbose) message("Distributing votes across districts...")
@@ -425,64 +497,144 @@ run_allocation_simulation <- function(
             med_diff = median(diff, na.rm = TRUE),
             sd_diff = sd(diff, na.rm = TRUE),
             q25_diff = quantile(diff, 0.25, na.rm = TRUE),
+            q75_diff = quantile(diff, 0.75, na.rm = TRUE),
+            weighted_mean_diff = weighted.mean(diff,
+                votes_total_distributed_ags,
+                na.rm = TRUE
+            ),
+            weighted_sd_diff = matrixStats::weightedSd(diff,
+                votes_total_distributed_ags,
+                na.rm = TRUE
+            ),
+            weighted_median_diff = matrixStats::weightedMedian(diff,
+                votes_total_distributed_ags,
+                na.rm = TRUE
+            )
+        ) %>%
+        ungroup() %>%
+        mutate(across(-party, ~ . * 100)) %>%
+        mutate(
+            mean_district_size = mean_district_size,
+            median_district_size = median_district_size,
+            mean_district_pop = mean_district_pop,
+            median_district_pop = median_district_pop,
+            mean_district_a2_a3 = mean_district_a2_a3
+        )
+
+    sum_district <- out_check %>%
+        group_by(district_id, party) %>%
+        summarise(
+            mean_diff = mean(diff, na.rm = TRUE),
+            med_diff = median(diff, na.rm = TRUE),
+            sd_diff = sd(diff, na.rm = TRUE),
+            weighted_mean_diff = weighted.mean(diff,
+                votes_total_distributed_ags,
+                na.rm = TRUE
+            ),
+            weighted_sd_diff = matrixStats::weightedSd(diff,
+                votes_total_distributed_ags,
+                na.rm = TRUE
+            ),
+            q25_diff = quantile(diff, 0.25, na.rm = TRUE),
             q75_diff = quantile(diff, 0.75, na.rm = TRUE)
         ) %>%
         ungroup() %>%
-        mutate(across(-party, ~ . * 100))
+        mutate(
+            mean_district_size = mean_district_size,
+            median_district_size = median_district_size,
+            mean_district_pop = mean_district_pop,
+            median_district_pop = median_district_pop,
+            mean_district_a2_a3 = mean_district_a2_a3
+        )
 
     # Return both detailed and summary results
     if (verbose) message("Simulation complete!")
     return(list(
         detailed = out_check,
-        summary = out_check_sum
+        summary_overall = out_check_sum,
+        summary_district = sum_district,
+        districts = districts
     ))
 }
 
 # Run simulations for different numbers of districts
-district_sizes <- c(30, 100, 300, 1000)
+district_sizes <- c(500, 1000)
 
 set.seed(123)
 
-run_simulations <- TRUE
+run_simulations <- T
 
 if (run_simulations) {
     simulation_results <- lapply(district_sizes, function(n) {
         results <- run_allocation_simulation(n_districts = n, seed = 1)
         results_kmeans <- run_allocation_simulation(n_districts = n, method = "kmeans", seed = 1)
-        results$summary %>%
-            mutate(n_districts = n, method = "simple") %>%
-            bind_rows(results_kmeans$summary %>%
-                mutate(n_districts = n, method = "kmeans"))
-    }) %>%
-        bind_rows()
+
+        list(
+            simple = list(
+                summary_overall = results$summary_overall %>% mutate(n_districts = n, method = "simple"),
+                summary_district = results$summary_district %>% mutate(n_districts = n, method = "simple"),
+                detailed = results$detailed %>% mutate(n_districts = n, method = "simple"),
+                districts = results$districts
+            ),
+            kmeans = list(
+                summary_overall = results_kmeans$summary_overall %>% mutate(n_districts = n, method = "kmeans"),
+                summary_district = results_kmeans$summary_district %>% mutate(n_districts = n, method = "kmeans"),
+                detailed = results_kmeans$detailed %>% mutate(n_districts = n, method = "kmeans"),
+                districts = results_kmeans$districts
+            )
+        )
+    })
 
     saveRDS(simulation_results, "data/simulation_results.rds")
 } else {
     simulation_results <- readRDS("data/simulation_results.rds")
 }
 
+# Combine summary_overall for both methods
+
+simulation_summary_overall <- simulation_results %>%
+    map_df(~ .x$simple$summary_overall) %>%
+    bind_rows(simulation_results %>%
+        map_df(~ .x$kmeans$summary_overall))
+
+
 # View results grouped by number of districts and party
-simulation_summary <- simulation_results %>%
+simulation_summary_overall <- simulation_summary_overall %>%
     arrange(n_districts, party) %>%
     mutate(method = factor(method, levels = c("simple", "kmeans"), labels = c("Simple random sample", "K-means clustering based on centroids")))
 
-pd <- position_dodge(width = 0.1)
+pd <- position_dodge(width = 0.15)
+
+# Rename parties
+
+simulation_summary_overall$party %>% unique()
+
+simulation_summary_overall <- simulation_summary_overall %>%
+    mutate(party = case_when(
+        party == "CDU_CSU" ~ "CDU/CSU",
+        party == "SPD" ~ "SPD",
+        party == "GRÜNE" ~ "Grüne",
+        party == "FDP" ~ "FDP",
+        party == "DIE LINKE" ~ "Die Linke",
+        party == "AfD" ~ "AfD"
+    ))
 
 # Plot mean_diff as a function of n_districts and party
-ggplot(simulation_summary, aes(
-    x = n_districts, y = med_diff,
+ggplot(simulation_summary_overall, aes(
+    x = n_districts, y = mean_diff,
     color = method, group = method
 )) +
     geom_hline(
         yintercept = 0,
         linetype = "dotted", color = "gray"
     ) +
-    geom_errorbar(aes(ymin = q25_diff, ymax = q75_diff), width = 0.0, position = pd) +
+    geom_errorbar(aes(ymin = mean_diff - sd_diff, ymax = mean_diff + sd_diff), width = 0.0, position = pd, size = 1.2) +
+    geom_errorbar(aes(ymin = mean_diff - 2 * sd_diff, ymax = mean_diff + 2 * sd_diff), width = 0.0, position = pd, size = 0.8) +
     geom_point(shape = 21, fill = "white", position = pd) +
     facet_wrap(~party) +
     labs(
-        title = "Median differences between distributed and actual vote shares",
-        subtitle = "Error bars represent the interquartile range (Q25-Q75)",
+        title = NULL,
+        subtitle = NULL,
         x = "Number of districts",
         y = "Median difference\n(percentage points)"
     ) +
@@ -493,5 +645,73 @@ ggplot(simulation_summary, aes(
 
 # Save plot
 ggsave("output/figures/measurement_error_allocation.pdf",
-    width = 8, height = 6
+    width = 7, height = 4.75
 )
+
+# Merge weighted and unweighted for n_districts = 1000
+
+plot_df <- simulation_summary_overall %>%
+    filter(n_districts == 1000) %>%
+    dplyr::select(party, method, weighted_mean_diff, weighted_sd_diff, mean_diff, sd_diff) %>%
+    pivot_longer(cols = c(weighted_mean_diff, weighted_sd_diff, mean_diff, sd_diff), names_to = "statistic", values_to = "value") %>%
+    mutate(what = ifelse(str_detect(statistic, "weighted"), "Weighted by total votes", "Unweighted")) %>%
+    mutate(what2 = ifelse(str_detect(statistic, "mean"), "mean", "sd")) %>%
+    dplyr::select(-statistic) %>%
+    pivot_wider(names_from = what2, values_from = value) %>%
+    mutate(what = factor(what, levels = c("Weighted by total votes", "Unweighted")))
+
+# Plot w/ weighted mean, weighted sd
+
+pd <- position_dodge(width = 0.4)
+
+ggplot(plot_df, aes(
+    x = party, y = mean,
+    color = method, group = method
+)) +
+    geom_hline(
+        yintercept = 0,
+        linetype = "dotted", color = "gray"
+    ) +
+    geom_errorbar(aes(ymin = mean - sd, ymax = mean + sd), width = 0.0, position = pd) +
+    geom_point(shape = 21, fill = "white", position = pd) +
+    labs(
+        title = NULL,
+        subtitle = NULL,
+        x = "Party",
+        y = "Mean difference:\ndistributed - actual vote share\n(municipality level)"
+    ) +
+    theme_hanno() +
+    theme(legend.position = "bottom") +
+    scale_color_brewer(palette = "Set2", name = NULL) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    facet_grid(~what)
+
+# Save plot
+
+ggsave("output/figures/measurement_error_allocation_weighted.pdf",
+    width = 7, height = 4.5
+)
+
+# Some summary stats at the district level
+
+simulation_summary_overall %>%
+    distinct(n_districts, method, .keep_all = TRUE) %>%
+    dplyr::select(n_districts, method, mean_district_size, median_district_size, mean_district_a2_a3) %>%
+    pivot_longer(cols = c(mean_district_size, median_district_size, mean_district_a2_a3), names_to = "statistic", values_to = "value") %>%
+    ggplot(aes(x = n_districts, y = value, fill = method)) +
+    geom_bar(position = "dodge", stat = "identity") +
+    facet_wrap(~statistic, scales = "free_y") +
+    labs(
+        title = NULL,
+        subtitle = NULL,
+        x = "Number of districts",
+        y = "District size"
+    ) +
+    theme_hanno() +
+    theme(legend.position = "bottom")
+
+ggsave("output/figures/measurement_error_allocation_district_size.pdf",
+    width = 7, height = 4.75
+)
+
+#
