@@ -10,6 +10,9 @@ conflicts_prefer(dplyr::filter)
 # Disallow scientific notation: leads to errors when loading data
 options(scipen = 999)
 
+# Set working directory if running 01_municipal_unharm.R before this
+setwd(here::here())
+
 # Read crosswalk files ----------------------------------------------------
 cw <- fread("data/crosswalks/final/ags_crosswalks.csv") |>
   mutate(
@@ -22,7 +25,6 @@ cw <- fread("data/crosswalks/final/ags_crosswalks.csv") |>
 #     ags = pad_zero_conditional(ags, 7),
 #     weights = pop_cw * population
 #   )
-
 
 # Merge with unharmonized election data -----------------------------------
 
@@ -501,7 +503,7 @@ df_final <- df_final |>
     state_name = state_id_to_names(state)
   )
 
-table(df_harm$year)
+table(df_harm$election_year)
 
 # create plot_df
 plot_df <- df_final |>
@@ -539,7 +541,63 @@ plot_df |>
 
 ggsave("output/figures/muni_elections.pdf", width = 7, height = 4)
 
-move_plots_to_overleaf("code")
+# Plot to show when AfD enters 
 
+# Step 1: Identify AfD presence and classify state-year pairs
+afd_plot_data <- df_final |>
+  group_by(state_name, year) |>
+  summarise(
+    afd_present = any(afd != 0 | !is.na(afd), na.rm = TRUE),
+    election_held = any(!is.na(election_bin) & election_bin == 1, na.rm = TRUE)
+  ) |>
+  mutate(
+    category = case_when(
+      !election_held ~ "No Election",                  # No election
+      election_held & !afd_present ~ "Election No AfD", # Election but no AfD
+      election_held & afd_present ~ "Election With AfD" # Election with AfD
+    )
+  ) |>
+  ungroup()
+
+# Step 2: Plot the data
+afd_plot_data |>
+  ggplot(aes(x = as.numeric(year), 
+             y = factor(state_name, 
+                        levels = rev(levels(factor(state_name)))), 
+             fill = category)
+  ) +
+  geom_tile(color = "white") + # Add borders to the squares
+  scale_fill_manual(
+    values = c(
+      "No Election" = "white", 
+      "Election No AfD" = "grey", 
+      "Election With AfD" = "#009EE0" # AfD blue
+    ), 
+    name = "Category",
+    labels = c(
+      "No Election" = "No Election", 
+      "Election No AfD" = "Election but No AfD", 
+      "Election With AfD" = "Election with AfD"
+    )
+  ) +
+  labs(
+    x = "Year", 
+    y = "State"
+  ) +
+  theme_hanno() +
+  theme(
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  ) +
+  scale_x_continuous(breaks = seq(1990, 2021, 5))
+
+ggsave("output/figures/muni_elections_afd.pdf", width = 7, height = 4)
+
+# view(df_final %>%
+#        filter(state_name == "Mecklenburg-Vorpommern", year == 2014, !is.na(afd)))
+
+
+move_plots_to_overleaf("code")
 
 ### END
