@@ -1,0 +1,123 @@
+\documentclass[12pt]{article}
+
+% Essential packages for math and symbols
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{mathtools}
+
+% For better typography and language support
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{microtype}
+
+% For enumerated lists and itemize environments
+\usepackage{enumitem}
+
+% For custom math operators and symbols
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+% Custom math commands for frequently used notation
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\ip}{\text{ip}}
+\newcommand{\mail}{\text{mail}}
+\newcommand{\total}{\text{total}}
+
+% Margins 1 inch
+\usepackage[letterpaper, margin=1in]{geometry}
+
+% For figures
+\usepackage{graphicx}
+
+\begin{document}
+
+\section{Measurement Error Setup}
+
+To evaluate the measurement error introduced by our mail-in vote distribution procedure, we construct \emph{artificial} mail-in districts and compare municipalities’ \emph{total} votes (in-person plus mail-in) under our distribution approach versus their \emph{observed} total votes. Let $\mathcal{I}$ be the set of municipalities that \emph{do not} share a mail-in district (i.e., each municipality $i \in \mathcal{I}$ has its own unique mail-in vote count). Denote by $w_i$ the number of polling card voters in municipality~$i$, let $Y_i^{\ip}$ be its in-person votes, and $Y_i^{\mail}$ its observed mail-in votes. Hence, the \emph{observed total} votes are 
+\[
+    Y_i^{\total} \;=\; Y_i^{\ip} \;+\; Y_i^{\mail}.
+\]
+We proceed as follows:
+
+\begin{enumerate}
+    \item \textbf{Subset the data:} Restrict the dataset to all municipalities $i \in \mathcal{I}$. For each of these, we observe $Y_i^{\ip}$, $Y_i^{\mail}$, and $w_i$.
+
+    \item \textbf{Create $D$ artificial mail-in districts:} Partition the municipalities in $\mathcal{I}$ into $D$ groups (districts). We consider two approaches:
+    \begin{itemize}
+        \item \textit{Random assignment:} Assign each municipality $i$ to one of the $D$ districts with equal probability.
+        \item \textit{K-means clustering:} Use centroid coordinates of municipalities to create spatially contiguous districts via a $k$-means algorithm. This more closely reflects the geographic adjacency typical of real mail-in districts.
+    \end{itemize}
+
+    \item \textbf{Aggregate mail-in votes and redistribute:} For each artificially created district $d \in \{1,\dots,D\}$, let
+    \[
+        Y_d^{\mail} \;=\; \sum_{i \in d} Y_i^{\mail}.
+    \]
+    We then redistribute $Y_d^{\mail}$ back to each municipality $i \in d$ proportionally to its $w_i$:
+    \[
+        \widetilde{Y}_i^{\mail} 
+        \;=\; 
+        \frac{w_i}{\sum_{j \in d} w_j} 
+        \; Y_d^{\mail},
+    \]
+    mirroring our procedure in Section \ref{sec:mailin}. Next, we form an \emph{artificial} total vote count for $i$:
+    \[
+        \widetilde{Y}_i^{\total} 
+        \;=\; 
+        Y_i^{\ip} 
+        \;+\;
+        \widetilde{Y}_i^{\mail}.
+    \]
+
+    \item \textbf{Compare observed vs.\ artificial totals:} For each municipality $i$, compute the discrepancy
+    \[
+        \Delta_i 
+        \;=\; 
+        \widetilde{Y}_i^{\total}
+        \;-\; 
+        Y_i^{\total}
+        \;=\;
+        \widetilde{Y}_i^{\mail} \;-\; Y_i^{\mail}.
+    \]
+    This measures how much the \emph{artificial} total deviates from the \emph{observed} total. It offers a direct estimate of the measurement error induced by our polling-card-based allocation method under different districting scenarios.
+\end{enumerate}
+
+\section{Measurement Error by Party and Method}
+
+We consider $D=1{,}000$ artificially created mail-in districts. For this number of districts, we approximate the average number of munis in the ``real'' districts. However, average district population is higher since the set of munis that do not share a mail-in district has a higher mean population than the set of munis that do share a mail-in district.
+
+\emph{Weighted} measurement error means that we weight $\Delta_i$ by $Y_i^{\ip} + \widetilde{Y}_i^{\mail}$ (the municipal-level total based on distributed mail-in votes), while \emph{unweighted} uses no weighting. Note that $Y_i^{\ip} + \widetilde{Y}_i^{\mail}$ is not the same as $Y_i^{\ip} + Y_i^{\mail}$ (i.e., we use \emph{distributed} rather than \emph{observed} mail-in votes).
+
+Figure~\ref{fig:measurement_error_allocation_weighted} shows $\Delta_i$ for both district generation methods (random and $k$-means) across parties. The error bars denote $\pm 1$ standard deviation. Since we compute $\Delta_i$ separately by party, the figures depict party-specific discrepancies. As noted by Florian, the weighted mean of $\Delta_i$ is very close to $0$; small deviations from $0$ likely come from rounding. 
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=0.9\textwidth]{../output/figures/measurement_error_allocation_weighted.pdf}
+\caption{Measurement error $\Delta_i$ by party and method with $D=1{,}000$ districts. ``Weighted'' errors weight the mean of $\Delta_i$ by $Y_i^{\ip} + \widetilde{Y}_i^{\mail}$. Error bars are $\pm 1$\,SD.}
+\label{fig:measurement_error_allocation_weighted}
+\end{figure}
+
+\section{Measurement Error by Population, Method, and Party}
+
+We also examine $\Delta_i$ for varying polling card voter thresholds, for 1,000 districts. Figure~\ref{fig:measurement_error_allocation_a2_a3} shows unweighted errors among municipalities below the polling card voter threshold on the $x$-axis, for both random and $k$-means districting. Error bars represent $\pm 1$\,SD.
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=0.8\textwidth]{../output/figures/measurement_error_allocation_a2_a3.pdf}
+\caption{Unweighted $\Delta_i$ vs.\ polling card voter threshold. Random vs.\ $k$-means districting for municipalities below each threshold on the $x$-axis. Error bars are $\pm 1$\,SD.}
+\label{fig:measurement_error_allocation_a2_a3}
+\end{figure}
+
+Figure~\ref{fig:measurement_error_allocation_a2_a3_weighted} then shows the same analysis but with \emph{weighted} $\Delta_i$, where the weight is $Y_i^{\ip} + \widetilde{Y}_i^{\mail}$. This again differs from $Y_i^{\ip} + Y_i^{\mail}$. We compare both random and $k$-means district assignments; error bars denote $\pm 1$\,SD. The threshold on the $x$-axis is again based on $w_i$, the number of polling card voters in each municipality.
+
+Finally, note that the weighted $\Delta_i$ mean does not necessarily have to be close to $0$ since the results below are for \textit{subsets} of municipalities, which means that deviations in either direction do not cancel out.
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=0.8\textwidth]{../output/figures/measurement_error_allocation_a2_a3_weighted.pdf}
+\caption{Weighted $\Delta_i$ vs.\ polling card voter threshold, by random vs.\ $k$-means districting for municipality-party combinations below each threshold on the $x$-axis. Error bars are $\pm 1$\,SD.}
+\label{fig:measurement_error_allocation_a2_a3_weighted}
+\end{figure}
+
+\end{document}

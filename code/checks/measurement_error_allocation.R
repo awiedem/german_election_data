@@ -636,7 +636,7 @@ ggplot(simulation_summary_overall, aes(
         title = NULL,
         subtitle = NULL,
         x = "Number of districts",
-        y = "Median difference\n(percentage points)"
+        y = "Mean difference\n(percentage points)"
     ) +
     theme_hanno() +
     theme(legend.position = "bottom") +
@@ -714,4 +714,114 @@ ggsave("output/figures/measurement_error_allocation_district_size.pdf",
     width = 7, height = 4.75
 )
 
-#
+simulation_res_detail <- bind_rows(simulation_results %>% map_df(~ .x$simple$detailed), simulation_results %>% map_df(~ .x$kmeans$detailed))
+
+glimpse(simulation_res_detail)
+
+simulation_res_detail$method %>% unique()
+
+# Function to get summary stats as a function of municipality size (a2_a3)
+
+get_summary_stats <- function(df, max_a2_a3 = 1000) {
+    parties_check <- c(
+        "CDU_CSU", "SPD", "GRÜNE",
+        "FDP", "DIE LINKE", "AfD"
+    )
+
+    # Calculate summary statistics
+    df %>%
+        filter(a2_a3 <= max_a2_a3) %>%
+        group_by(party, method) %>%
+        summarize(
+            mean_diff = mean(diff, na.rm = TRUE),
+            med_diff = median(diff, na.rm = TRUE),
+            sd_diff = sd(diff, na.rm = TRUE),
+            q25_diff = quantile(diff, 0.25, na.rm = TRUE),
+            q75_diff = quantile(diff, 0.75, na.rm = TRUE),
+            weighted_mean_diff = weighted.mean(diff,
+                votes_total_distributed_ags,
+                na.rm = TRUE
+            ),
+            weighted_sd_diff = matrixStats::weightedSd(diff,
+                votes_total_distributed_ags,
+                na.rm = TRUE
+            ),
+            weighted_median_diff = matrixStats::weightedMedian(diff,
+                votes_total_distributed_ags,
+                na.rm = TRUE
+            )
+        ) %>%
+        ungroup() %>%
+        mutate(across(-c(party, method), ~ . * 100)) %>%
+        mutate(max_a2_a3 = max_a2_a3)
+}
+
+# Get summary stats for different max_a2_a3
+
+quantiles_a2_a3 <- c(500, 1000, 2000, 3000, 5000)
+
+summary_stats_list <- map_dfr(quantiles_a2_a3, function(max_a2_a3) {
+    get_summary_stats(simulation_res_detail, max_a2_a3)
+}) %>%
+    mutate(method = factor(method, levels = c("simple", "kmeans"), labels = c("Simple random sample", "K-means clustering based on centroids"))) %>%
+    mutate(party = factor(party, levels = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "DIE LINKE", "AfD"), labels = c("CDU/CSU", "SPD", "Grüne", "FDP", "Die Linke", "AfD")))
+
+# Figure: x = max_a2_a3, y = mean_diff, color = method, facet = party
+
+pd <- position_dodge(width = 0.1)
+
+ggplot(summary_stats_list, aes(x = max_a2_a3, y = mean_diff, color = method, group = method, fill = method)) +
+    geom_hline(yintercept = 0, linetype = "dotted", color = "gray") +
+    geom_errorbar(aes(ymin = mean_diff - sd_diff, ymax = mean_diff + sd_diff), width = 0.0, position = pd) +
+    geom_point(position = pd) +
+    facet_wrap(~party) +
+    labs(
+        x = "Polling card voters: upper threshold",
+        y = "Mean difference\n(percentage points)",
+        title = "Unweighted",
+        subtitle = "Error bars: 1 sd",
+        color = NULL,
+        fill = NULL
+    ) +
+    theme_hanno() +
+    theme(legend.position = "bottom") +
+    scale_x_log10(
+        breaks = quantiles_a2_a3,
+        labels = quantiles_a2_a3
+    ) +
+    haschaR::x_axis_90deg()
+
+# Save plot
+
+ggsave("output/figures/measurement_error_allocation_a2_a3.pdf",
+    width = 7, height = 4.75
+)
+
+# Same w/ weighted
+
+ggplot(summary_stats_list, aes(x = max_a2_a3, y = weighted_mean_diff, color = method, group = method, fill = method)) +
+    geom_hline(yintercept = 0, linetype = "dotted", color = "gray") +
+    geom_errorbar(aes(ymin = weighted_mean_diff - weighted_sd_diff, ymax = weighted_mean_diff + weighted_sd_diff), width = 0.0, position = pd) +
+    geom_point(position = pd) +
+    facet_wrap(~party) +
+    labs(
+        x = "Polling card voters: upper threshold",
+        y = "Mean difference\n(percentage points)",
+        title = "Weighted by total votes",
+        subtitle = "Error bars: 1 sd",
+        color = NULL,
+        fill = NULL
+    ) +
+    theme_hanno() +
+    theme(legend.position = "bottom") +
+    scale_x_log10(
+        breaks = quantiles_a2_a3,
+        labels = quantiles_a2_a3
+    ) +
+    haschaR::x_axis_90deg()
+
+# Save plot
+
+ggsave("output/figures/measurement_error_allocation_a2_a3_weighted.pdf",
+    width = 7, height = 4.75
+)
