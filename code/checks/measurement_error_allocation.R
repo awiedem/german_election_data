@@ -30,8 +30,6 @@ df21 <- fread("data/federal_elections/municipality_level/raw/BTW21/btw21_wbz_erg
         BA = Bezirksart
     )
 
-glimpse(df21)
-
 # Summarize all variables by ags & BWBez & Bezirksart
 # (code from Vincent)
 
@@ -387,7 +385,7 @@ district_id_list <- districts %>%
     unique()
 
 n_districts <- 500
-seed = 123
+seed <- 123
 method <- "simple"
 verbose <- FALSE
 
@@ -487,7 +485,10 @@ run_allocation_simulation <- function(
                 mutate(a2_a3 = A2 + A3),
             by = "ags"
         ) %>%
-        mutate(diff = vote_share_distributed - vote_share_actual)
+        mutate(
+            diff = vote_share_distributed - vote_share_actual,
+            diff_abs = abs(diff)
+        )
 
     # Calculate summary statistics
     out_check_sum <- out_check %>%
@@ -507,6 +508,23 @@ run_allocation_simulation <- function(
                 na.rm = TRUE
             ),
             weighted_median_diff = matrixStats::weightedMedian(diff,
+                votes_total_distributed_ags,
+                na.rm = TRUE
+            ),
+            mean_diff_abs = mean(diff_abs, na.rm = TRUE),
+            med_diff_abs = median(diff_abs, na.rm = TRUE),
+            sd_diff_abs = sd(diff_abs, na.rm = TRUE),
+            q25_diff_abs = quantile(diff_abs, 0.25, na.rm = TRUE),
+            q75_diff_abs = quantile(diff_abs, 0.75, na.rm = TRUE),
+            weighted_mean_diff_abs = weighted.mean(diff_abs,
+                votes_total_distributed_ags,
+                na.rm = TRUE
+            ),
+            weighted_sd_diff_abs = matrixStats::weightedSd(diff_abs,
+                votes_total_distributed_ags,
+                na.rm = TRUE
+            ),
+            weighted_median_diff_abs = matrixStats::weightedMedian(diff_abs,
                 votes_total_distributed_ags,
                 na.rm = TRUE
             )
@@ -536,7 +554,7 @@ run_allocation_simulation <- function(
                 na.rm = TRUE
             ),
             q25_diff = quantile(diff, 0.25, na.rm = TRUE),
-            q75_diff = quantile(diff, 0.75, na.rm = TRUE)
+            q75_diff = quantile(diff, 0.75, na.rm = TRUE),
         ) %>%
         ungroup() %>%
         mutate(
@@ -562,7 +580,7 @@ district_sizes <- c(500, 1000)
 
 set.seed(123)
 
-run_simulations <- T
+run_simulations <- F
 
 if (run_simulations) {
     simulation_results <- lapply(district_sizes, function(n) {
@@ -619,54 +637,30 @@ simulation_summary_overall <- simulation_summary_overall %>%
         party == "AfD" ~ "AfD"
     ))
 
-# Plot mean_diff as a function of n_districts and party
-ggplot(simulation_summary_overall, aes(
-    x = n_districts, y = mean_diff,
-    color = method, group = method
-)) +
-    geom_hline(
-        yintercept = 0,
-        linetype = "dotted", color = "gray"
-    ) +
-    geom_errorbar(aes(ymin = mean_diff - sd_diff, ymax = mean_diff + sd_diff), width = 0.0, position = pd, size = 1.2) +
-    geom_errorbar(aes(ymin = mean_diff - 2 * sd_diff, ymax = mean_diff + 2 * sd_diff), width = 0.0, position = pd, size = 0.8) +
-    geom_point(shape = 21, fill = "white", position = pd) +
-    facet_wrap(~party) +
-    labs(
-        title = NULL,
-        subtitle = NULL,
-        x = "Number of districts",
-        y = "Mean difference\n(percentage points)"
-    ) +
-    theme_hanno() +
-    theme(legend.position = "bottom") +
-    scale_x_log10() +
-    scale_color_brewer(palette = "Set2", name = NULL)
-
-# Save plot
-ggsave("output/figures/measurement_error_allocation.pdf",
-    width = 7, height = 4.75
-)
-
 # Merge weighted and unweighted for n_districts = 1000
 
 plot_df <- simulation_summary_overall %>%
     filter(n_districts == 1000) %>%
-    dplyr::select(party, method, weighted_mean_diff, weighted_sd_diff, mean_diff, sd_diff) %>%
-    pivot_longer(cols = c(weighted_mean_diff, weighted_sd_diff, mean_diff, sd_diff), names_to = "statistic", values_to = "value") %>%
+    dplyr::select(party, method, weighted_mean_diff, weighted_sd_diff, mean_diff, sd_diff, mean_diff_abs, sd_diff_abs, weighted_mean_diff_abs, weighted_sd_diff_abs) %>%
+    pivot_longer(cols = c(weighted_mean_diff, weighted_sd_diff, mean_diff, sd_diff, mean_diff_abs, sd_diff_abs, weighted_mean_diff_abs, weighted_sd_diff_abs), names_to = "statistic", values_to = "value") %>%
     mutate(what = ifelse(str_detect(statistic, "weighted"), "Weighted by total votes", "Unweighted")) %>%
     mutate(what2 = ifelse(str_detect(statistic, "mean"), "mean", "sd")) %>%
+    mutate(what3 = ifelse(str_detect(statistic, "diff_abs"), "abs", "diff")) %>%
     dplyr::select(-statistic) %>%
     pivot_wider(names_from = what2, values_from = value) %>%
-    mutate(what = factor(what, levels = c("Weighted by total votes", "Unweighted")))
+    mutate(what = factor(what, levels = c("Weighted by total votes", "Unweighted"))) %>%
+    filter(method != "Simple random sample") %>%
+    mutate(what3 = case_when(
+        what3 == "diff" ~ "Simple~difference~(Delta[i]^p)",
+        what3 == "abs" ~ "Absolute~difference~(abs(Delta[i]^p))"
+    ))
 
 # Plot w/ weighted mean, weighted sd
 
 pd <- position_dodge(width = 0.4)
 
 ggplot(plot_df, aes(
-    x = party, y = mean,
-    color = method, group = method
+    x = party, y = mean
 )) +
     geom_hline(
         yintercept = 0,
@@ -678,150 +672,20 @@ ggplot(plot_df, aes(
         title = NULL,
         subtitle = NULL,
         x = "Party",
-        y = "Mean difference:\ndistributed - actual vote share\n(municipality level)"
+        y = "Mean difference between distributed\nand actual vote shares across all municipalities"
     ) +
     theme_hanno() +
     theme(legend.position = "bottom") +
-    scale_color_brewer(palette = "Set2", name = NULL) +
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-    facet_grid(~what)
+    facet_grid(what3 ~ what,
+        labeller = labeller(
+            what3 = label_parsed,
+            what = label_value
+        )
+    )
 
 # Save plot
 
 ggsave("output/figures/measurement_error_allocation_weighted.pdf",
-    width = 7, height = 4.5
-)
-
-# Some summary stats at the district level
-
-simulation_summary_overall %>%
-    distinct(n_districts, method, .keep_all = TRUE) %>%
-    dplyr::select(n_districts, method, mean_district_size, median_district_size, mean_district_a2_a3) %>%
-    pivot_longer(cols = c(mean_district_size, median_district_size, mean_district_a2_a3), names_to = "statistic", values_to = "value") %>%
-    ggplot(aes(x = n_districts, y = value, fill = method)) +
-    geom_bar(position = "dodge", stat = "identity") +
-    facet_wrap(~statistic, scales = "free_y") +
-    labs(
-        title = NULL,
-        subtitle = NULL,
-        x = "Number of districts",
-        y = "District size"
-    ) +
-    theme_hanno() +
-    theme(legend.position = "bottom")
-
-ggsave("output/figures/measurement_error_allocation_district_size.pdf",
-    width = 7, height = 4.75
-)
-
-simulation_res_detail <- bind_rows(simulation_results %>% map_df(~ .x$simple$detailed), simulation_results %>% map_df(~ .x$kmeans$detailed))
-
-glimpse(simulation_res_detail)
-
-simulation_res_detail$method %>% unique()
-
-# Function to get summary stats as a function of municipality size (a2_a3)
-
-get_summary_stats <- function(df, max_a2_a3 = 1000) {
-    parties_check <- c(
-        "CDU_CSU", "SPD", "GRÜNE",
-        "FDP", "DIE LINKE", "AfD"
-    )
-
-    # Calculate summary statistics
-    df %>%
-        filter(a2_a3 <= max_a2_a3) %>%
-        group_by(party, method) %>%
-        summarize(
-            mean_diff = mean(diff, na.rm = TRUE),
-            med_diff = median(diff, na.rm = TRUE),
-            sd_diff = sd(diff, na.rm = TRUE),
-            q25_diff = quantile(diff, 0.25, na.rm = TRUE),
-            q75_diff = quantile(diff, 0.75, na.rm = TRUE),
-            weighted_mean_diff = weighted.mean(diff,
-                votes_total_distributed_ags,
-                na.rm = TRUE
-            ),
-            weighted_sd_diff = matrixStats::weightedSd(diff,
-                votes_total_distributed_ags,
-                na.rm = TRUE
-            ),
-            weighted_median_diff = matrixStats::weightedMedian(diff,
-                votes_total_distributed_ags,
-                na.rm = TRUE
-            )
-        ) %>%
-        ungroup() %>%
-        mutate(across(-c(party, method), ~ . * 100)) %>%
-        mutate(max_a2_a3 = max_a2_a3)
-}
-
-# Get summary stats for different max_a2_a3
-
-quantiles_a2_a3 <- c(500, 1000, 2000, 3000, 5000)
-
-summary_stats_list <- map_dfr(quantiles_a2_a3, function(max_a2_a3) {
-    get_summary_stats(simulation_res_detail, max_a2_a3)
-}) %>%
-    mutate(method = factor(method, levels = c("simple", "kmeans"), labels = c("Simple random sample", "K-means clustering based on centroids"))) %>%
-    mutate(party = factor(party, levels = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "DIE LINKE", "AfD"), labels = c("CDU/CSU", "SPD", "Grüne", "FDP", "Die Linke", "AfD")))
-
-# Figure: x = max_a2_a3, y = mean_diff, color = method, facet = party
-
-pd <- position_dodge(width = 0.1)
-
-ggplot(summary_stats_list, aes(x = max_a2_a3, y = mean_diff, color = method, group = method, fill = method)) +
-    geom_hline(yintercept = 0, linetype = "dotted", color = "gray") +
-    geom_errorbar(aes(ymin = mean_diff - sd_diff, ymax = mean_diff + sd_diff), width = 0.0, position = pd) +
-    geom_point(position = pd) +
-    facet_wrap(~party) +
-    labs(
-        x = "Polling card voters: upper threshold",
-        y = "Mean difference\n(percentage points)",
-        title = "Unweighted",
-        subtitle = "Error bars: 1 sd",
-        color = NULL,
-        fill = NULL
-    ) +
-    theme_hanno() +
-    theme(legend.position = "bottom") +
-    scale_x_log10(
-        breaks = quantiles_a2_a3,
-        labels = quantiles_a2_a3
-    ) +
-    haschaR::x_axis_90deg()
-
-# Save plot
-
-ggsave("output/figures/measurement_error_allocation_a2_a3.pdf",
-    width = 7, height = 4.75
-)
-
-# Same w/ weighted
-
-ggplot(summary_stats_list, aes(x = max_a2_a3, y = weighted_mean_diff, color = method, group = method, fill = method)) +
-    geom_hline(yintercept = 0, linetype = "dotted", color = "gray") +
-    geom_errorbar(aes(ymin = weighted_mean_diff - weighted_sd_diff, ymax = weighted_mean_diff + weighted_sd_diff), width = 0.0, position = pd) +
-    geom_point(position = pd) +
-    facet_wrap(~party) +
-    labs(
-        x = "Polling card voters: upper threshold",
-        y = "Mean difference\n(percentage points)",
-        title = "Weighted by total votes",
-        subtitle = "Error bars: 1 sd",
-        color = NULL,
-        fill = NULL
-    ) +
-    theme_hanno() +
-    theme(legend.position = "bottom") +
-    scale_x_log10(
-        breaks = quantiles_a2_a3,
-        labels = quantiles_a2_a3
-    ) +
-    haschaR::x_axis_90deg()
-
-# Save plot
-
-ggsave("output/figures/measurement_error_allocation_a2_a3_weighted.pdf",
-    width = 7, height = 4.75
+    width = 7, height = 5.5
 )
