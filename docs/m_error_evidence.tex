@@ -33,6 +33,25 @@
 
 \begin{document}
 
+\section{General Problem Overview}
+
+In our setting, some municipalities share mail-in districts so that their mail-in votes are only observed in aggregated form at the district level. Let $\mathcal{S}$ be the set of municipalities that \emph{share} a mail-in district with at least one other municipality, and let $\mathcal{I}$ be the set of municipalities that do \emph{not} share a mail-in district (i.e., each municipality in $\mathcal{I}$ has a unique mail-in vote count). For each municipality $i$, let $w_i$ be the number of polling card voters, $Y_i^{\ip}$ its in-person votes, and $Y_i^{\mail}$ its observed mail-in votes if it does not share a district (i.e., $i \in \mathcal{I}$). 
+
+When multiple municipalities share a district, we only observe their collective mail-in votes,
+\[
+    Y_d^{\mail} \;=\; \sum_{i \in d} Y_i^{\mail},
+\]
+where $d$ indexes the shared mail-in district. To recover municipality-level mail-in votes for each $i \in d$, we implement a \emph{distribution procedure} that allocates $Y_d^{\mail}$ proportionally to each municipality's share of polling card voters within the district:
+\[
+    \widetilde{Y}_i^{\mail}
+    \;=\;
+    \frac{w_i}{\sum_{j \in d} w_j}
+    \; Y_d^{\mail}.
+\]
+This ensures that every municipality receives a fraction of the total mail-in votes proportional to its fraction of polling card voters. However, the actual mail-in votes for each municipality may not precisely match this proportional split, potentially introducing a \emph{measurement error}. 
+
+In what follows, we develop an approach to quantify this measurement error and assess how robust our polling-card-based allocation is under different district configurations.
+
 \section{Measurement Error Setup}
 
 To evaluate the measurement error introduced by our mail-in vote distribution procedure, we construct \emph{artificial} mail-in districts and compare municipalities’ \emph{total} votes (in-person plus mail-in) under our distribution approach versus their \emph{observed} total votes. Let $\mathcal{I}$ be the set of municipalities that \emph{do not} share a mail-in district (i.e., each municipality $i \in \mathcal{I}$ has its own unique mail-in vote count). Denote by $w_i$ the number of polling card voters in municipality~$i$, let $Y_i^{\ip}$ be its in-person votes, and $Y_i^{\mail}$ its observed mail-in votes. Hence, the \emph{observed total} votes are 
@@ -119,5 +138,38 @@ Finally, note that the weighted $\Delta_i$ mean does not necessarily have to be 
 \caption{Weighted $\Delta_i$ vs.\ polling card voter threshold, by random vs.\ $k$-means districting for municipality-party combinations below each threshold on the $x$-axis. Error bars are $\pm 1$\,SD.}
 \label{fig:measurement_error_allocation_a2_a3_weighted}
 \end{figure}
+
+\section{Approaches to Reduce Measurement Error}
+
+We conclude by outlining potential strategies to reduce the measurement error introduced by our mail-in vote redistribution procedure. Let $\widetilde{Y}_i^{\mail}$ denote the currently assigned mail-in votes for municipality $i$ under the proportional allocation, and let $Y_i^{\mail}$ be the true (but unobserved, if $i$ shares a district) mail-in votes.
+
+\begin{enumerate}[label=(\alph*)]
+    \item \textbf{Incorporate Additional Covariates into the Allocation Rule.} 
+    Instead of relying solely on $w_i$ (the polling card voter count) to distribute $Y_d^{\mail}$, one could use further covariates such as past election outcomes, demographic structure, or party-specific turnout rates. Formally, for a shared mail-in district $d$, one might replace 
+    \[
+        \frac{w_i}{\sum_{j \in d} w_j}
+    \]
+    with a function 
+    \[
+        f\bigl(w_i, x_i\bigr) \;=\; \frac{g\bigl(w_i, x_i\bigr)}{\sum_{j \in d} g\bigl(w_j, x_j\bigr)},
+    \]
+    where $x_i$ is a vector of additional predictors (e.g., demographic indicators) and $g(\cdot)$ is chosen to reflect how mail-in votes scale with $w_i$ and $x_i$. This refined allocation rule may better capture variation across municipalities and reduce systematic allocation errors.
+
+    \item \textbf{Leverage Small-Area Estimation or Hierarchical Modeling.}
+    One can embed the mail-in vote allocation into a small-area estimation framework that pools information across comparable municipalities. For instance, consider a hierarchical model:
+    \[
+        Y_i^{\mail} \;=\; \theta_i \cdot Y_d^{\mail}
+        \quad\text{for } i \in d,
+    \]
+    where $\theta_i$ is modeled using partial pooling based on known covariates, prior distributions, or historical data. By allowing $\theta_i$ to vary according to municipality-level or region-level characteristics, the estimates of $\widetilde{Y}_i^{\mail}$ (the predicted mail-in votes) can better reflect actual voting patterns within each district.
+
+    \item \textbf{Comparing Methods and Recommendations.}
+    Although many approaches can be explored, we highlight two that are likely to yield substantive improvements:
+    \begin{enumerate}[label=(\roman*)]
+        \item \emph{Refined Covariate-Based Allocation (Method a)}: This method is straightforward to implement, can incorporate different sets of predictors, and still maintains a proportional-type rule that scales mail-in votes by municipality size and other relevant variables.
+        \item \emph{Hierarchical Small-Area Estimation (Method b)}: This approach can capture additional structure—particularly when there is information about comparable municipalities or historical elections. It also provides a principled way to borrow strength across similar areas and shrink extreme estimates toward more reasonable values.
+    \end{enumerate}
+    Both methods can be deployed with modest changes to the existing allocation framework, and either can reduce measurement error by accounting for the fact that $w_i$ alone may not fully reflect $Y_i^{\mail}$ in shared mail-in districts.
+\end{enumerate}
 
 \end{document}

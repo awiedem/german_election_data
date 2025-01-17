@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2024.8.30)  10 JAN 2025 15:18
+This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2024.8.30)  12 JAN 2025 09:20
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -307,44 +307,47 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 File: mt-msb.cfg 2005/06/01 v1.0 microtype config. file: AMS symbols (b) (RS)
 )
 
-LaTeX Warning: Reference `sec:mailin' on page 1 undefined on input line 64.
-
-
-
 [1
 
 {/usr/local/texlive/2023/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/usr/local/texlive/2023/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc}{/usr/local/texlive/2023/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc}]
+
+LaTeX Warning: Reference `sec:mailin' on page 2 undefined on input line 83.
+
 <../output/figures/measurement_error_allocation_weighted.pdf, id=18, 505.89pt x 325.215pt>
 File: ../output/figures/measurement_error_allocation_weighted.pdf Graphic file (type pdf)
 <use ../output/figures/measurement_error_allocation_weighted.pdf>
-Package pdftex.def Info: ../output/figures/measurement_error_allocation_weighted.pdf  used on input line 96.
+Package pdftex.def Info: ../output/figures/measurement_error_allocation_weighted.pdf  used on input line 115.
 (pdftex.def)             Requested size: 422.77664pt x 271.78926pt.
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
 <../output/figures/measurement_error_allocation_a2_a3.pdf, id=19, 505.89pt x 343.2825pt>
 File: ../output/figures/measurement_error_allocation_a2_a3.pdf Graphic file (type pdf)
 <use ../output/figures/measurement_error_allocation_a2_a3.pdf>
-Package pdftex.def Info: ../output/figures/measurement_error_allocation_a2_a3.pdf  used on input line 107.
+Package pdftex.def Info: ../output/figures/measurement_error_allocation_a2_a3.pdf  used on input line 126.
 (pdftex.def)             Requested size: 375.80544pt x 255.01505pt.
-
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
 
 
-[2 <../output/figures/measurement_error_allocation_weighted.pdf>]
-<../output/figures/measurement_error_allocation_a2_a3_weighted.pdf, id=28, 505.89pt x 343.2825pt>
+[2]
+
+LaTeX Warning: Text page 3 contains only floats.
+
+
+
+[3 <../output/figures/measurement_error_allocation_weighted.pdf> <../output/figures/measurement_error_allocation_a2_a3.pdf>]
+<../output/figures/measurement_error_allocation_a2_a3_weighted.pdf, id=36, 505.89pt x 343.2825pt>
 File: ../output/figures/measurement_error_allocation_a2_a3_weighted.pdf Graphic file (type pdf)
 <use ../output/figures/measurement_error_allocation_a2_a3_weighted.pdf>
-Package pdftex.def Info: ../output/figures/measurement_error_allocation_a2_a3_weighted.pdf  used on input line 118.
+Package pdftex.def Info: ../output/figures/measurement_error_allocation_a2_a3_weighted.pdf  used on input line 137.
 (pdftex.def)             Requested size: 375.80544pt x 255.01505pt.
 
 
-LaTeX Warning: `!h' float specifier changed to `!ht'.
+[4 <../output/figures/measurement_error_allocation_a2_a3_weighted.pdf>]
 
-
-
-[3 <../output/figures/measurement_error_allocation_a2_a3.pdf>]
-
-[4 <../output/figures/measurement_error_allocation_a2_a3_weighted.pdf>] (./m_error_evidence.aux)
+[5] (./m_error_evidence.aux)
  ***********
 LaTeX2e <2024-06-01> patch level 2
 L3 programming layer <2024-08-16>
@@ -355,18 +358,18 @@ LaTeX Warning: There were undefined references.
 
  ) 
 Here is how much of TeX's memory you used:
- 6649 strings out of 473579
- 105743 string characters out of 5728228
- 1936957 words of memory out of 5000000
- 29392 multiletter control sequences out of 15000+600000
- 571416 words of font info for 109 fonts, out of 8000000 for 9000
+ 6672 strings out of 473579
+ 105999 string characters out of 5728228
+ 1937957 words of memory out of 5000000
+ 29393 multiletter control sequences out of 15000+600000
+ 572195 words of font info for 120 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 57i,7n,65p,1069b,321s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 57i,7n,65p,1069b,394s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/cm-super/sfbx1200.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/cm-super/sfbx1728.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/cm-super/sfrm0800.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/cm-super/sfrm1200.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/cm-super/sfti1200.pfb>
-Output written on m_error_evidence.pdf (4 pages, 185550 bytes).
+Output written on m_error_evidence.pdf (5 pages, 200609 bytes).
 PDF statistics:
- 95 PDF objects out of 1000 (max. 8388607)
- 59 compressed objects within 1 object stream
+ 98 PDF objects out of 1000 (max. 8388607)
+ 61 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  22544 words of extra memory for PDF output out of 24883 (max. 10000000)
 

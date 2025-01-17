@@ -1,9 +1,9 @@
 # Fdb version 4
-["pdflatex"] 1736551109.8757 "/Users/hanno/Documents/GitHub/german_election_data/docs/m_error_evidence.tex" "m_error_evidence.pdf" "m_error_evidence" 1736551110.37619 0
+["pdflatex"] 1736702441.67171 "/Users/hanno/Documents/GitHub/german_election_data/docs/m_error_evidence.tex" "m_error_evidence.pdf" "m_error_evidence" 1736702442.16834 0
   "../output/figures/measurement_error_allocation_a2_a3.pdf" 1736549680.84693 10433 ebab6c1010fcb91e821c7ca529aea266 ""
   "../output/figures/measurement_error_allocation_a2_a3_weighted.pdf" 1736549688.03057 10493 e184222f822257beefe07701b1f24ad5 ""
   "../output/figures/measurement_error_allocation_weighted.pdf" 1736549855.08069 7319 1f8ea1953c93863768eca80166dacde0 ""
-  "/Users/hanno/Documents/GitHub/german_election_data/docs/m_error_evidence.tex" 1736551109.72446 7021 75bbca0312d4ec33b81c590f1f2afa00 ""
+  "/Users/hanno/Documents/GitHub/german_election_data/docs/m_error_evidence.tex" 1736702440.96165 11831 b817a34a3653377465c190ccac5269c0 ""
   "/usr/local/texlive/2023/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc" 1136849721 2971 def0b6c1f0b107b3b936def894055589 ""
   "/usr/local/texlive/2023/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc" 1136849721 2900 1537cc8184ad1792082cd229ecc269f4 ""
   "/usr/local/texlive/2023/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
@@ -83,8 +83,8 @@
   "/usr/local/texlive/2023/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1725025778 5498072 de689dd23082a2d07dc8cf50dc7cb041 ""
   "/usr/local/texlive/2023/texmf-var/web2c/pdftex/pdflatex.fmt" 1725026444 8238912 3fb6f455639272f734a6f62e82541a2c ""
   "/usr/local/texlive/2023/texmf.cnf" 1678822455 577 1b2b1af17af2508fb20dd85783af4050 ""
-  "m_error_evidence.aux" 1736551110.31329 1562 2980624342952bff302c725376ba492a "pdflatex"
-  "m_error_evidence.tex" 1736551109.72446 7021 75bbca0312d4ec33b81c590f1f2afa00 ""
+  "m_error_evidence.aux" 1736702442.10588 1800 e4d1b11b239f49c64708b889c476d90d "pdflatex"
+  "m_error_evidence.tex" 1736702440.96165 11831 b817a34a3653377465c190ccac5269c0 ""
   (generated)
   "m_error_evidence.aux"
   "m_error_evidence.log"

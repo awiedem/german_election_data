@@ -23,3 +23,11 @@ data/.DS_Store
 data/municipal_elections/.DS_Store
 .DS_Store
 code/DS_Store
+docs/m_error_general.aux
+docs/m_error_general.fdb_latexmk
+docs/m_error_general.fls
+docs/m_error_general.log
+docs/m_error_general.out
+docs/m_error_general.pdf
+docs/m_error_general.synctex.gz
+docs/m_error_general.tex
