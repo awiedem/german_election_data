@@ -20,6 +20,12 @@ d_fed <- read_rds("~/Documents/GitHub/german_election_data/data/federal_election
 de_shp_muni <- read_sf("~/Documents/GitHub/german_election_data/data/shapefiles/2021/vg250_ebenen_0101", layer = "VG250_GEM")
 de_shp_bula <- read_sf("~/Documents/GitHub/german_election_data/data/shapefiles/2021/vg250_ebenen_0101", layer = "VG250_LAN")
 de_shp_bula <- de_shp_bula %>% dplyr::filter(GF == 4)
+df_shp_cty <- read_sf("~/Documents/GitHub/german_election_data/data/shapefiles/2021/vg250_ebenen_0101", layer = "VG250_KRS")
+
+# Eisenach in df_shp_cty? 16016, 16056, 16063
+df_shp_cty |>
+  filter(AGS == "16016" | AGS == "16056" | AGS == "16063")
+
 
 ### Create "most recent" election for each type
 
