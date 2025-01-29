@@ -2,71 +2,73 @@
 
 ## Overview
 
-The German Election Database provides a comprehensive dataset of local, state, and federal election results in Germany. This repository is intended to facilitate research on electoral behavior, representation, and political responsiveness at multiple levels of government. All datasets include turnout and vote shares for all major parties. Moreover, we provide geographically harmonized datasets that account for changes in municipal boundaries and mail-in voting districts.
+The German Election Database provides a comprehensive dataset of local, state, and federal election results in Germany, enabling research on electoral behavior, representation, and political responsiveness across multiple levels of government. Each dataset includes turnout and vote shares for all major parties. We provide harmonized datasets that account for municipal boundary changes and joint mail-in voting districts, ensuring comparability over time.
 
-The Github repository is organized into three main folders:
-1. **Code**: Contains scripts for data processing, harmonization, and analysis.
-2. **Data**: Includes raw and processed datasets for municipal, state, and federal elections.
-3. **Output**: Contains the results of analyses and visualizations based on the data.
+We aim to continuously update this repository as new elections become available. The repository is structured into three main folders:
+
+1. **Code**: Scripts for data processing, harmonization, and analyses.
+2. **Data**: Raw and processed datasets for municipal, state, and federal elections, plus boundary shapefiles and crosswalks.
+3. **Output**: Results of analyses and visualizations based on these datasets.
 
 ## Dataset Features
 
-### 1. Municipal Elections
-- **Coverage**: Election results for all municipalities across Germany from 1990 to 2020.
-- **Content**: Turnout and vote shares for major national parties (SPD, CDU/CSU, FDP, Greens, Die Linke) and other parties such as AfD and Freie Wähler.
+### Municipal Elections
+- **Coverage**: 1990–2020  
+- **Content**: Turnout and vote shares for major parties (SPD, CDU/CSU, FDP, Greens, Die Linke, AfD), plus smaller parties where available
 
-### 2. State Elections
-- **Coverage**: State election results at the municipal level for the period 2006–2019.
-- **Content**: Turnout and vote shares for major parties and additional parties such as AfD from 2012 onwards.
+### State Elections
+- **Coverage**: 2006–2019 at the municipal level  
+- **Content**: Turnout and party vote shares, including AfD from 2012 onward
 
-### 3. Federal Elections
-- **Coverage**: Federal election results at the municipal level since 1980 and county level since 1953.
-- **Content**: Turnout and vote shares for all parties that have contested elections, with special handling of mail-in votes.
-
-## Harmonization to 2021 Boundaries
-- We also provide all election results datasets in an adjusted format where we harmonize geographic entities (e.g. municipalities or counties) to 2021 boundaries.
+### Federal Elections
+- **Coverage**: Municipality-level data since 1980 and county-level data since 1953  
+- **Content**: Turnout and vote shares for all parties, with special handling for mail-in votes
 
 ## Data Files
 
-The following datasets are included in the repository:
-
 | **Data**                  | **Geographic Level** | **Time Period**  | **Harmonization** | **File Name**                |
-|---------------------------|----------------------|-----------------|-------------------|-----------------------------|
-| Local Elections           | Municipality         | 1990–2020       | No                | `municipal_unharm`          |
-| Local Elections           | Municipality         | 1990–2020       | Yes               | `municipal_harm`            |
-| State Elections           | Municipality         | 2006–2019       | No                | `state_unharm`              |
-| State Elections           | Municipality         | 2006–2019       | Yes               | `state_harm`                |
-| Federal Elections         | Municipality         | 1980–2021       | No                | `federal_muni_raw`          |
-| Federal Elections         | Municipality         | 1980–2021       | No                | `federal_muni_unharm`       |
-| Federal Elections         | Municipality         | 1990–2021       | Yes               | `federal_muni_harm`         |
-| Federal Elections         | County               | 1953–2021       | No                | `federal_cty_unharm`        |
-| Federal Elections         | County               | 1990–2021       | Yes               | `federal_cty_harm`          |
-| Crosswalks                | Municipality/County  | 1990–2021       | —                 | `ags_crosswalks` / `cty_crosswalks` |
-| Shapefiles                | Municipality/County  | 2000, 2021      | —                 | `VG250_GEM` / `VG250_KRS`   | 
-| Crosswalk Covariates      | Municipality/County  | 1990–2021       | Yes               | `ags_area_pop_emp` / `cty_area_pop_emp` |
+|---------------------------|----------------------|------------------|-------------------|------------------------------|
+| Local Elections           | Municipality         | 1990–2020        | No                | `municipal_unharm`           |
+| Local Elections           | Municipality         | 1990–2020        | Yes               | `municipal_harm`             |
+| State Elections           | Municipality         | 2006–2019        | No                | `state_unharm`               |
+| State Elections           | Municipality         | 2006–2019        | Yes               | `state_harm`                 |
+| Federal Elections         | Municipality         | 1980–2021        | No                | `federal_muni_raw`           |
+| Federal Elections         | Municipality         | 1980–2021        | No                | `federal_muni_unharm`        |
+| Federal Elections         | Municipality         | 1990–2021        | Yes               | `federal_muni_harm`          |
+| Federal Elections         | County               | 1953–2021        | No                | `federal_cty_unharm`         |
+| Federal Elections         | County               | 1990–2021        | Yes               | `federal_cty_harm`           |
+| Crosswalks                | Municipality/County  | 1990–2021        | —                 | `ags_crosswalks` / `cty_crosswalks` |
+| Shapefiles                | Municipality/County  | 2000, 2021       | —                 | `VG250_GEM` / `VG250_KRS`    |
+| Crosswalk Covariates      | Municipality/County  | 1990–2021        | Yes               | `ags_area_pop_emp` / `cty_area_pop_emp` |
 
+## Harmonization Details
+
+To facilitate consistent comparisons across time and regions, we provide files harmonized to the 2021 municipal and county boundaries. We use official crosswalks to track mergers, splits, and boundary shifts. In cases where multiple municipalities merged, we apply population-based weighting to aggregate votes to the new municipality’s boundaries. For mail-in voting districts shared by multiple municipalities, we allocate mail-in votes proportionally based on the number of polling-card voters in each municipality.
+
+## Known Data Issues and Resolutions
+
+- **Incongruent Municipality Keys**: Some official datasets used municipality identifiers that did not appear in crosswalk files. We manually corrected these keys by matching election results to the relevant crosswalk entries and verifying them against state archives.
+- **Mail-in Votes**: Joint mail-in voting districts complicate disaggregation. We address this by distributing mail-in votes according to each municipality’s share of polling-card voters. While this is an approximation, it avoids discarding mail-in votes altogether.
+- **Varying Reporting Standards**: States sometimes lump small local parties or independent candidates into an “Other” category. In such cases, we provide disaggregated results where possible but otherwise treat them as a single category. Researchers should be mindful of this when comparing across states.
+- **Rounding Errors**: Boundary harmonization and proportional allocation can cause minor discrepancies in total votes when comparing to official tallies. Any differences typically amount to fewer than a handful of votes, and we flag these cases in the data.
 
 ## Usage Notes
 
-Researchers are encouraged to use the harmonized datasets for longitudinal studies and the unharmonized datasets for cross-sectional analyses. When analyzing smaller municipalities or comparing across states, be aware of differences in electoral rules and reporting practices.
-
-## Applications
-
-The dataset supports a wide range of research topics, including:
-1. **Nationalization of Politics**: Study how voting behavior aligns across local, state, and federal levels.
-2. **Economic Voting**: Analyze how local economic conditions influence voting patterns at different levels of government.
+- **Harmonized Datasets**: Recommended for time-series analyses or when comparing multiple election cycles under stable geographic units.  
+- **Unharmonized Datasets**: Useful for single-election or cross-sectional analyses, especially where original boundaries are essential.  
+- **Small Municipalities**: Be aware that “Other” party votes might be large in places where major parties do not field candidates. Check the documentation on local reporting rules.
 
 ## Code Availability
 
-The code used to generate the datasets and perform the analyses is available in the `Code` folder of this repository. Additional details and instructions are provided in the scripts.
+All code is in the `Code` folder, including scripts for data ingestion, cleaning, harmonization, and visualizations. Researchers can replicate or adapt these scripts for custom analyses.
 
 ## Citation
 
 Please cite the accompanying [paper](https://osf.io/preprints/socarxiv/q28ex) when using this dataset:
 
-Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2024. "German Election Database".
+Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2024. *German Election Database*.
 
-```         
+```bibtex
 @article{Heddesheimer2024GermanElection,
   author = {Heddesheimer Vincent, and Hanno Hilbig, and Florian Sichart and Andreas Wiedemann},
   title = {German Election Database},
@@ -74,8 +76,3 @@ Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2024.
   url = {https://osf.io/preprints/socarxiv/q28ex},
   doi = {https://doi.org/10.31235/osf.io/q28ex}
 }
-```
-
-For more information, visit the [project website](http://www.german-elections.com/) or contact the authors.
-
----
