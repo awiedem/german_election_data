@@ -11,9 +11,9 @@ Please cite the accompanying [paper](https://osf.io/preprints/socarxiv/q28ex) wh
 Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2025. *GERDA: German Election Database*. Nature: Scientific Data (forthcoming).
 
 ```bibtex
-@article{Heddesheimer2025GermanElection,
+@article{Heddesheimer2025GERDA,
   author = {Heddesheimer Vincent, and Hanno Hilbig, and Florian Sichart and Andreas Wiedemann},
-  title = {German Election Database},
+  title = {GERDA: German Election Database},
   year = {2025},
   journal = {Nature: Scientific Data},
   url = {https://osf.io/preprints/socarxiv/q28ex},
