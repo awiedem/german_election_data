@@ -33,6 +33,19 @@ df <- readr::read_rds("data/municipal_elections/final/municipal_unharm.rds") |>
   filter(election_year >= 1990) |>
   mutate(election_year = as.numeric(election_year))
 
+# look at how many observations for each state and year
+df |>
+  group_by(state, election_year) |>
+  summarise(n = n()) |>
+  arrange(state, election_year) |>
+  print(n = Inf)
+
+
+df |>
+filter(state == "Schleswig-Holstein" & election_year == 1994) |>
+select(ags, ags_name, election_year)
+
+
 glimpse(df)
 glimpse(cw)
 table(df$election_year, useNA = "ifany")
@@ -469,6 +482,13 @@ muni <- read_rds("data/covars_municipality/final/ags_area_pop_emp.rds") |>
   mutate(ags = pad_zero_conditional(ags, 7))
 
 df_harm <- read_rds("data/municipal_elections/final/municipal_harm.rds")
+
+# look at how many observations for each state and year
+df_harm |>
+  group_by(state, election_year) |>
+  summarise(n = n()) |>
+  arrange(state, election_year) |>
+  print(n = Inf)
 
 muni_21 <- df_harm |>
   filter(election_year == 2021) |>
