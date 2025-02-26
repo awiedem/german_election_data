@@ -4,6 +4,23 @@
 
 The German Election Database (GERDA) provides a comprehensive dataset of local, state, and federal election results in Germany, enabling research on electoral behavior, representation, and political responsiveness across multiple levels of government. Each dataset includes turnout and vote shares for all major parties. We provide harmonized datasets that account for municipal boundary changes and joint mail-in voting districts, ensuring comparability over time.
 
+## Citation
+
+Please cite the accompanying [paper](https://osf.io/preprints/socarxiv/q28ex) when using this dataset:
+
+Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2025. *GERDA: German Election Database*. Nature: Scientific Data (forthcoming).
+
+```bibtex
+@article{Heddesheimer2025GermanElection,
+  author = {Heddesheimer Vincent, and Hanno Hilbig, and Florian Sichart and Andreas Wiedemann},
+  title = {German Election Database},
+  year = {2025},
+  journal = {Nature: Scientific Data}
+  url = {https://osf.io/preprints/socarxiv/q28ex},
+  doi = {https://doi.org/10.31235/osf.io/q28ex}
+}
+```
+
 We aim to continuously update this repository as new elections become available. The repository is structured into three main folders:
 
 1. **Code**: Scripts for data processing, harmonization, and analyses.
@@ -45,26 +62,6 @@ We aim to continuously update this repository as new elections become available.
 
 To facilitate consistent comparisons across time and regions, we provide files harmonized to the 2021 municipal and county boundaries. We use official crosswalks to track mergers, splits, and boundary shifts. In cases where multiple municipalities merged, we apply population-based weighting to aggregate votes to the new municipality’s boundaries. For mail-in voting districts shared by multiple municipalities, we allocate mail-in votes proportionally based on the number of polling-card voters in each municipality.
 
-## Municipal Elections Data Sources
-
-| **Bundesland**            | **Source**                                                                                                                                           | **Notes**                                                                                                                                                 |
-|---------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Baden-Wuerttemberg (BW)   | email                                                                                                                                                 |                                                                                                                                                           |
-| Bayern                    | [https://www.statistikdaten.bayern.de/genesis/online?operation=themes&levelindex=0&levelid=1638980673533&code=14#abreadcrumb](https://www.statistikdaten.bayern.de/genesis/online?operation=themes&levelindex=0&levelid=1638980673533&code=14#abreadcrumb) |                                                                                                                                                           |
-| Brandenburg               | [https://www.statistik-berlin-brandenburg.de/kommunalwahlen/](https://www.statistik-berlin-brandenburg.de/kommunalwahlen/)                                                                  | Before 2003 (1998, 1993): only scanned PDFs                                                                                                              |
-| Bremen                    | [https://www.statistik.bremen.de/datenangebote-8409](https://www.statistik.bremen.de/datenangebote-8409)                                                                                    |                                                                                                                                                           |
-| Hamburg                   | [https://www.statistik-nord.de/wahlen/wahlen-in-hamburg/buergerschaftswahlen/2020#c8007](https://www.statistik-nord.de/wahlen/wahlen-in-hamburg/buergerschaftswahlen/2020#c8007)          |                                                                                                                                                           |
-| Hessen                    | [https://statistik.hessen.de/zahlen-fakten/kommunalwahlen](https://statistik.hessen.de/zahlen-fakten/kommunalwahlen)                                                                        |                                                                                                                                                           |
-| Mecklenburg-Vorpommern    | [https://www.laiv-mv.de/Statistik/Zahlen-und-Fakten/Gesellschaft-&-Staat/Wahlen-&-Volksabstimmungen](https://www.laiv-mv.de/Statistik/Zahlen-und-Fakten/Gesellschaft-&-Staat/Wahlen-&-Volksabstimmungen) |                                                                                                                                                           |
-| Niedersachsen             | [https://www.statistik.niedersachsen.de/startseite/themen/wahlen/wahlen-in-niedersachsen-statistische-berichte-b-vii-3-179044.html](https://www.statistik.niedersachsen.de/startseite/themen/wahlen/wahlen-in-niedersachsen-statistische-berichte-b-vii-3-179044.html) | Email contact needed for data before 2006                                                                                                                |
-| Nordrhein-Westfalen (NRW) | email                                                                                                                                                 |                                                                                                                                                           |
-| Rheinland-Pfalz (RLP)     | email                                                                                                                                                 |                                                                                                                                                           |
-| Saarland                  | email                                                                                                                                                 |                                                                                                                                                           |
-| Sachsen                   | [https://www.statistik.sachsen.de/genonline/online?operation=find&suchanweisung_language=de&query=14431#abreadcrumb](https://www.statistik.sachsen.de/genonline/online?operation=find&suchanweisung_language=de&query=14431#abreadcrumb) |                                                                                                                                                           |
-| Sachsen-Anhalt            | [https://wahlergebnisse.sachsen-anhalt.de/wahlen/kw19/and/kw.download.html](https://wahlergebnisse.sachsen-anhalt.de/wahlen/kw19/and/kw.download.html)                                          |                                                                                                                                                           |
-| Schleswig-Holstein        | [https://www.statistischebibliothek.de/mir/receive/SHSerie_mods_00000466](https://www.statistischebibliothek.de/mir/receive/SHSerie_mods_00000466)                                              | Available and processed for 2008, 2018; machine-readable PDF for 2003; scanned PDFs before that; 2013 via email from Statistikamt Nord                   |
-| Thueringen                | [https://www.wahlen.thueringen.de/kommunalwahlen/kw_wahlergebnisse_GW.asp](https://www.wahlen.thueringen.de/kommunalwahlen/kw_wahlergebnisse_GW.asp)                                          |                                                                                                                                                           |
-
 
 ## Known Data Issues and Resolutions
 
@@ -83,18 +80,33 @@ To facilitate consistent comparisons across time and regions, we provide files h
 
 All code is in the `Code` folder, including scripts for data ingestion, cleaning, harmonization, and visualizations. Researchers can replicate or adapt these scripts for custom analyses.
 
-## Citation
+## Detailed Data Sources
 
-Please cite the accompanying [paper](https://osf.io/preprints/socarxiv/q28ex) when using this dataset:
+### Federal Elections
 
-Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2025. *GERDA: German Election Database*. Nature: Scientific Data (forthcoming).
+Bundeswahlleiterin. [https://www.bundeswahlleiterin.de/bundeswahlleiter.html]{https://www.bundeswahlleiterin.de/bundeswahlleiter.html}.
 
-```bibtex
-@article{Heddesheimer2025GermanElection,
-  author = {Heddesheimer Vincent, and Hanno Hilbig, and Florian Sichart and Andreas Wiedemann},
-  title = {German Election Database},
-  year = {2025},
-  journal = {Nature: Scientific Data}
-  url = {https://osf.io/preprints/socarxiv/q28ex},
-  doi = {https://doi.org/10.31235/osf.io/q28ex}
-}
+### State Elections
+
+Statistische Ämter des Bundes und der Länder. Landtagswahlen. [https://www.regionalstatistik.de/genesis/online/]{https://www.regionalstatistik.de/genesis/online/} (Regional data bank of the German Federal Statistical Office). Retrieved and imported using the wiesbaden R package and the SOAP XML web service of DESTATIS.
+
+### Municipal Elections
+
+| **State**               | **Source**                                                                                                    | **Procured via**                                          |
+|-------------------------|---------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------|
+| Baden-Wuerttemberg      | Statistisches Landesamt Baden-Württemberg                                                                     | email                                                     |
+| Bayern                  | Bayerisches Landesamt für Statistik                                                                           | website                                                   |
+| Brandenburg             | Amt für Statistik Berlin-Brandenburg                                                                          | website                                                   |
+| Bremen                  | Statistisches Landesamt Bremen                                                                                | website                                                   |
+| BW                      | Statistisches Landesamt Baden-Württemberg                                                                     | email                                                     |
+| Hamburg                 | Statistik Nord                                                                                                 | website                                                   |
+| Hessen                  | Hessisches Statistisches Landesamt                                                                            | website                                                   |
+| Mecklenburg Vorpommern  | Mecklenburg-Vorpommern Landesamt für innere Verwaltung & Statistisches Amt                                    | website                                                   |
+| Niedersachsen           | Landesamt für Statistik Niedersachsen                                                                         | website (post-2006), email (pre-2006)                     |
+| NRW                     | Statistisches Landesamt Nordrhein-Westfalen                                                                   | email                                                     |
+| RLP                     | Statistisches Landesamt Rheinland-Pfalz                                                                       | email                                                     |
+| Saarland                | Statistisches Landesamt des Saarlandes                                                                        | email                                                     |
+| Sachsen                 | Statistisches Landesamt des Freistaates Sachsen                                                              | website                                                   |
+| Sachsen-Anhalt          | Statistisches Landesamt Sachsen-Anhalt                                                                       | website                                                   |
+| Schleswig-Holstein      | Statistisches Amt für Hamburg und Schleswig-Holstein                                                          | website (except 2013), email for 2013                     |
+| Thueringen              | Thüringer Landesamt für Statistik                                                                             | website                                                   |
