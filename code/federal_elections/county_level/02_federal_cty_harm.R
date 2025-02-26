@@ -8,6 +8,9 @@ rm(list = ls())
 # Disallow scientific notation: leads to errors when loading data
 options(scipen = 999)
 
+# conflict: prefer filter from dplyr
+conflict_prefer("filter", "dplyr")
+
 
 # Read crosswalk files ----------------------------------------------------
 cw <- fread("data/crosswalks/final/cty_crosswalks.csv") |>
@@ -32,11 +35,22 @@ cw_info_ever_merged_cc_21 <- cw %>%
 cw_info_ever_merged_cc_21 |>
   print(n=Inf)
 
+
+View(cw)
+
+# Eisenach in cw?
+cw |>
+  filter(str_detect(county_name, "Eisenach"))
+
 # Read unharmonized election data -----------------------------------------
 
 df <- read_rds("data/federal_elections/county_level/final/federal_cty_unharm.rds") |>
   mutate(election_year = year) |>
   filter(election_year >= 1990)
+
+ # Eisenach in df? 16016, 16056, 16063
+df |>
+  filter(ags == "16016" | ags == "16056" | ags == "16063")
 
 
 # Vote shares to votes ----------------------------------------------------
@@ -312,6 +326,12 @@ write_rds(df_harm, file = "data/federal_elections/county_level/final/federal_cty
 
 df_harm <- read_rds("data/federal_elections/county_level/final/federal_cty_harm.rds")
 names(df_harm)
+
+
+# Eisenach in df_harm? 16016, 16056, 16063
+df_harm |>
+  filter(county_code == "16016" | county_code == "16056" | county_code == "16063")
+
 
 
 insp_harm <- df_harm |>

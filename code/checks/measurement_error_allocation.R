@@ -41,6 +41,7 @@ df21_bezirksarten <- df21 |>
 
 # Get ags that have their own mailin data
 # Hanno: the way I understand this, "own mailin data" means that the ags has only one mailin district - correct? @Vincent
+# Vincent: ags_w_mailin21 are all ags that have an assigned mailin district (maybe have to edit the comment here but this is what the code does)
 ags_w_mailin21 <- df21_bezirksarten |>
     filter(BA == 5) |>
     pull(ags)
@@ -162,7 +163,7 @@ df_not_mailin <- df21_mailin %>%
     filter(BWBez == "00") %>%
     dplyr::select(ags, BWBez, A2, A3, B1, all_of(parties))
 
-#
+# Vincent: this looks good
 
 nrow(df_not_mailin)
 nrow(df_mailin)

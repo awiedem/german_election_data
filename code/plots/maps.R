@@ -20,6 +20,12 @@ d_fed <- read_rds("~/Documents/GitHub/german_election_data/data/federal_election
 de_shp_muni <- read_sf("~/Documents/GitHub/german_election_data/data/shapefiles/2021/vg250_ebenen_0101", layer = "VG250_GEM")
 de_shp_bula <- read_sf("~/Documents/GitHub/german_election_data/data/shapefiles/2021/vg250_ebenen_0101", layer = "VG250_LAN")
 de_shp_bula <- de_shp_bula %>% dplyr::filter(GF == 4)
+df_shp_cty <- read_sf("~/Documents/GitHub/german_election_data/data/shapefiles/2021/vg250_ebenen_0101", layer = "VG250_KRS")
+
+# # Eisenach in df_shp_cty? 16016, 16056, 16063
+# df_shp_cty |>
+#   filter(AGS == "16016" | AGS == "16056" | AGS == "16063")
+
 
 ### Create "most recent" election for each type
 
@@ -368,3 +374,39 @@ file.copy(
   recursive = FALSE,
   copy.mode = TRUE
 )
+
+# # Combined figure for all elections ------------------------------------------
+
+# # Create combined figure with all 9 maps
+# combined_maps <- ggarrange(
+#   p_fed_turnout, p_fed_CDU, p_fed_SPD,
+#   p_state_turnout, p_state_CDU, p_state_SPD,
+#   p_muni_turnout, p_muni_CDU, p_muni_SPD,
+#   ncol = 3, nrow = 3,
+#   labels = c(
+#     "Federal - Turnout", "Federal - CDU/CSU", "Federal - SPD",
+#     "State - Turnout", "State - CDU/CSU", "State - SPD",
+#     "Municipal - Turnout", "Municipal - CDU/CSU", "Municipal - SPD"
+#   ),
+#   font.label = list(size = 8),
+#   common.legend = TRUE,
+#   legend = "bottom"
+# )
+
+# # Save the combined figure
+# ggsave("output/figures/all_elections_combined.pdf", 
+#        plot = combined_maps, 
+#        width = 12, height = 15)
+# ggsave("output/figures/all_elections_combined.png", 
+#        plot = combined_maps, 
+#        width = 12, height = 15, 
+#        dpi = 450)
+
+# # Add the new plot to plot_list
+# plot_list <- rbind(plot_list,
+#   data.frame(
+#     filename = "all_elections_combined.png",
+#     description = "Combined map of turnout and party vote shares across all election types",
+#     full_path = "output/figures/all_elections_combined.png"
+#   )
+# )
