@@ -84,11 +84,11 @@ All code is in the `Code` folder, including scripts for data ingestion, cleaning
 
 ### Federal Elections
 
-Bundeswahlleiterin. [https://www.bundeswahlleiterin.de/bundeswahlleiter.html]{https://www.bundeswahlleiterin.de/bundeswahlleiter.html}.
+Bundeswahlleiterin. [https://www.bundeswahlleiterin.de/bundeswahlleiter.html](https://www.bundeswahlleiterin.de/bundeswahlleiter.html).
 
 ### State Elections
 
-Statistische Ämter des Bundes und der Länder. Landtagswahlen. [https://www.regionalstatistik.de/genesis/online/]{https://www.regionalstatistik.de/genesis/online/} (Regional data bank of the German Federal Statistical Office). Retrieved and imported using the wiesbaden R package and the SOAP XML web service of DESTATIS.
+Statistische Ämter des Bundes und der Länder. Landtagswahlen. [https://www.regionalstatistik.de/genesis/online/](https://www.regionalstatistik.de/genesis/online/) (Regional data bank of the German Federal Statistical Office). Retrieved and imported using the wiesbaden R package and the SOAP XML web service of DESTATIS.
 
 ### Municipal Elections
 
