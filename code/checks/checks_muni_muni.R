@@ -73,7 +73,7 @@ cat("Share of rows with all party vote shares between 0 and 1:", s_votes_valid /
 
 df %>%
     filter(cdu_csu > 1 | fdp > 1) %>%
-    dplyr::select(ags, cdu_csu, fdp, year) %>%
+    dplyr::select(ags, cdu_csu, fdp, election_year) %>%
     print(n = 100)
 
 
@@ -84,7 +84,7 @@ parties_main <- c(
 )
 
 df <- df %>%
-    arrange(ags, year) %>%
+    arrange(ags, election_year) %>%
     group_by(ags) %>%
     mutate(across(all_of(parties_main),
         list(
@@ -125,8 +125,8 @@ print(party_quantiles)
 # Check linke_pds
 
 df %>%
-    arrange(ags, year) %>%
-    dplyr::select(ags, year, linke_pds, linke_pds_ratio, valid_votes) %>%
+    arrange(ags, election_year) %>%
+    dplyr::select(ags, election_year, linke_pds, linke_pds_ratio, valid_votes) %>%
     group_by(ags) %>%
     filter(any(abs(linke_pds_ratio) >= 10) & !any(is.infinite(linke_pds_ratio))) %>%
     print(n = 100)
@@ -146,7 +146,7 @@ df <- df %>%
 df_check_large_changes <- df %>%
     group_by(ags) %>%
     filter(any(valid_votes_ratio > 20)) %>%
-    dplyr::select(ags, year, valid_votes, valid_votes_ratio)
+    dplyr::select(ags, election_year, valid_votes, valid_votes_ratio)
 
 print(nrow(df_check_large_changes))
 
@@ -195,4 +195,74 @@ df %>%
     pivot_longer(everything(), names_to = "variable", values_to = "has_inf") %>% 
     filter(has_inf)
 
+
+# Afd non NA for each election year?
+
+df %>%
+    dplyr::select(ags, election_year, afd) %>%
+    filter(!is.na(afd)) %>%
+    group_by(election_year) %>%
+    summarise(n = n()) %>%
+    ungroup() %>%
+    print(n = 100)
+
+
+library(gerda)
+
+gerda::gerda_data_list()
+
+# load gerda
+df1 <- gerda::load_gerda_web("municipal_unharm")
+
+df1 %>%
+    dplyr::select(ags, election_year, afd) %>%
+    filter(!is.na(afd)) %>%
+    group_by(election_year) %>%
+    summarise(n = n()) %>%
+    ungroup() %>%
+    print(n = 100)
+
+df2 <- gerda::load_gerda_web("municipal_harm")
+
+df2 %>%
+    dplyr::select(ags, election_year, afd) %>%
+    filter(!is.na(afd)) %>%
+    group_by(election_year) %>%
+    summarise(n = n()) %>%
+    ungroup() %>%
+    print(n = 100)
+
+
+
+
+df2 %>%
+    dplyr::select(ags, election_year, afd) %>%
+    filter(ags == "05314000") %>%
+    print(n = 100)
+
+names(df2)
+
+# check Bonn 1999
+gerda::load_gerda_web("municipal_harm") %>%
+    filter(ags == "05314000" & election_year == 1999) %>%
+    select(ags_name, cdu_csu, spd, gruene, fdp, linke_pds, afd, other)
+
+
+gerda::load_gerda_web("municipal_harm") %>%
+    filter(!is.na(afd)) %>%
+    group_by(election_year) %>%
+    summarise(n = n()) %>%
+    ungroup()
+
+
+
+df <- read.csv("data/municipal_elections/final/municipal_harm.csv")
+
+df %>%
+    dplyr::select(ags, election_year, afd) %>%
+    filter(!is.na(afd)) %>%
+    group_by(election_year) %>%
+    summarise(n = n()) %>%
+    ungroup()
 ### END
+

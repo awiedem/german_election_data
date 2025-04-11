@@ -164,3 +164,13 @@ df_raw %>%
   summarise(across(everything(), ~ any(is.infinite(.)))) %>% 
   pivot_longer(everything(), names_to = "variable", values_to = "has_inf") %>% 
   filter(has_inf)
+
+# Count Afd non NA over time?
+
+df %>%
+  dplyr::select(ags, election_year, afd) %>%
+  filter(!is.na(afd)) %>%
+  group_by(election_year) %>%
+  summarise(n = n()) %>%
+  ungroup() %>%
+  print(n = 100)
