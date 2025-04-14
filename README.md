@@ -6,18 +6,23 @@ The German Election Database (GERDA) provides a comprehensive dataset of local, 
 
 ## Citation
 
-Please cite the accompanying [paper](https://osf.io/preprints/socarxiv/q28ex) when using this dataset:
+Please cite the accompanying [paper](https://www.nature.com/articles/s41597-025-04811-5) when using this dataset:
 
-Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2025. *GERDA: German Election Database*. Nature: Scientific Data (forthcoming).
+Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2025. *GERDA: German Election Database*. Nature: Scientific Data, 12: 618.
 
 ```bibtex
 @article{Heddesheimer2025GERDA,
-  author = {Heddesheimer Vincent, and Hanno Hilbig, and Florian Sichart and Andreas Wiedemann},
-  title = {GERDA: German Election Database},
-  year = {2025},
-  journal = {Nature: Scientific Data},
-  url = {https://osf.io/preprints/socarxiv/q28ex},
-  doi = {https://doi.org/10.31235/osf.io/q28ex}
+   author = {Vincent Heddesheimer and Hanno Hilbig and Florian Sichart and Andreas Wiedemann},
+   doi = {10.1038/s41597-025-04811-5},
+   issn = {2052-4463},
+   issue = {1},
+   journal = {Scientific Data},
+   month = {4},
+   pages = {618},
+   title = {GERDA: The German Election Database},
+   volume = {12},
+   url = {https://www.nature.com/articles/s41597-025-04811-5},
+   year = {2025}
 }
 ```
 
