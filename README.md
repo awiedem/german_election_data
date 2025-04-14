@@ -10,7 +10,7 @@ Please cite the accompanying [paper](https://www.nature.com/articles/s41597-025-
 
 Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2025. *GERDA: German Election Database*. Nature: Scientific Data, 12: 618.
 
-```bibtex
+```
 @article{Heddesheimer2025GERDA,
    author = {Vincent Heddesheimer and Hanno Hilbig and Florian Sichart and Andreas Wiedemann},
    doi = {10.1038/s41597-025-04811-5},
