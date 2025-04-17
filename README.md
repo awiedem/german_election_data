@@ -50,8 +50,8 @@ We aim to continuously update this repository as new elections become available.
 
 | **Data**                  | **Geographic Level** | **Time Period**  | **Harmonization** | **File Name**                |
 |---------------------------|----------------------|------------------|-------------------|------------------------------|
-| Local Elections           | Municipality         | 1990–2020        | No                | `municipal_unharm`           |
-| Local Elections           | Municipality         | 1990–2020        | Yes               | `municipal_harm`             |
+| Local Elections           | Municipality         | 1990–2021        | No                | `municipal_unharm`           |
+| Local Elections           | Municipality         | 1990–2021        | Yes               | `municipal_harm`             |
 | State Elections           | Municipality         | 2006–2019        | No                | `state_unharm`               |
 | State Elections           | Municipality         | 2006–2019        | Yes               | `state_harm`                 |
 | Federal Elections         | Municipality         | 1980–2021        | No                | `federal_muni_raw`           |
