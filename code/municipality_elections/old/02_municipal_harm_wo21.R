@@ -350,7 +350,6 @@ glimpse(df_cw)
 
 # Weighted sums
 sums <- df_cw |>
-  filter(election_year < 2021) |>  # Only harmonize years before 2021
   group_by(ags_21, ags_name_21, election_year) |>
   summarize_at(
     # 1+2+3: Weighted sum
@@ -367,7 +366,6 @@ sums <- df_cw |>
 
 # Weighted mean
 means <- df_cw %>%
-  filter(election_year < 2021) |>  # Only harmonize years before 2021
   # replace NAs with 0
   mutate(across(cdu_csu:other, ~ ifelse(is.na(.), 0, .))) %>%
   group_by(ags_21, election_year) %>%
@@ -385,7 +383,6 @@ means <- df_cw %>%
 
 # flags
 flags <- df_cw |>
-  filter(election_year < 2021) |>  # Only harmonize years before 2021
   group_by(ags_21, election_year) |>
   summarize_at(
     # for all that start with replaced_ take maximum
@@ -396,6 +393,7 @@ flags <- df_cw |>
     ags = ags_21, year = election_year
   ) |>
   ungroup() 
+
 
 ## Population & area: weighted sums ----------------------------------------
 
@@ -448,18 +446,12 @@ glimpse(area_pop)
 glimpse(ags21)
 
 
-# Merge harmonized data
+# Merge
 df_harm <- sums |>
   left_join_check_obs(means, by = c("ags", "year")) |>
   left_join_check_obs(flags, by = c("ags", "year")) |>
   left_join_check_obs(area_pop, by = c("ags", "year")) |>
-  # Bind 2021 data (that was unharmonized)
-  bind_rows(df_cw |>
-    filter(election_year == 2021) |>
-    mutate(ags_name = ags_name.x) |>
-    select(-c(ags_name.x, ags_name.y, ags_name_21, emp_cw, employees, year_cw, id)) |>
-    rename(year = election_year) |>
-    mutate(ags = as.numeric(ags))) |>
+  left_join_check_obs(ags21, by = c("ags", "year")) |>
   # Create state variable
   mutate(
     ags = pad_zero_conditional(ags, 7),
@@ -468,17 +460,12 @@ df_harm <- sums |>
   ) |>
   relocate(state, .after = year) |>
   relocate(county, .after = state) |>
-  mutate(ags = as.numeric(ags)) |>
-  # Merge with 2021 area and population data
-  left_join_check_obs(ags21, by = c("ags", "year")) |>
   mutate(
     area = ifelse(!is.na(area.x), area.x, area.y),
     population = ifelse(!is.na(population.x), population.x, population.y)
   ) |>
   select(-c(area.x, area.y, population.x, population.y)) |>
-  rename(election_year = year) |>
-  arrange(ags, election_year) |>
-  mutate(ags = pad_zero_conditional(ags, 7))
+  rename(election_year = year)
 
 glimpse(df_harm)
 
@@ -486,13 +473,6 @@ glimpse(df_harm)
 df_harm <- df_harm |>
   filter(!is.na(ags))
 
-glimpse(df_harm)
-
-# View(df_harm %>%
-#   filter(election_year == 2021))
-
-# View(df_harm %>%
-#   filter(ags == "06411000"))
 
 ## save
 fwrite(df_harm, "data/municipal_elections/final/municipal_harm.csv")
