@@ -1,6 +1,6 @@
 # GERDA: German Election Database
 
-## <0xF0><0x9F><0x93><0x96> Table of Contents
+## :clipboard: Table of Contents
 
 - [Overview](#overview)
 - [Citation](#citation)
@@ -9,10 +9,10 @@
 - [Data Files](#data-files)
 - [Harmonization Details](#harmonization-details)
 - [Known Data Issues and Resolutions](#known-data-issues-and-resolutions)
-- [<0xE2><0x84><0xb9>️ Usage Notes](#️-usage-notes)
-- [<0xF0><0x9F><0x92><0xBB> Example Usage (Direct File Access)](#-example-usage-direct-file-access)
-- [<0xF0><0x9F><0x93><0x81> Code Availability](#-code-availability)
-- [<0xF0><0x9F><0x97><0x83>️ Detailed Data Sources](#️-detailed-data-sources)
+- [:information_source: Usage Notes](#️-usage-notes)
+- [:computer: Example Usage](#-example-usage)
+- [:file_folder: Code Availability](#-code-availability)
+- [:scroll: Detailed Data Sources](#️-detailed-data-sources)
 
 ---
 
@@ -46,7 +46,7 @@ Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2025.
 
 We aim to continuously update this repository as new elections become available.
 
-## <0xF0><0x9F><0x93><0x81> Repository Structure
+## :file_folder: Repository Structure
 
 The repository is structured into four main folders:
 
@@ -99,14 +99,14 @@ To facilitate consistent comparisons across time and regions, we provide files h
 - **Varying Reporting Standards**: States sometimes lump small local parties or independent candidates into an "Other" category. In such cases, we provide disaggregated results where possible but otherwise treat them as a single category. Researchers should be mindful of this when comparing across states.
 - **Rounding Errors**: Boundary harmonization and proportional allocation can cause minor discrepancies in total votes when comparing to official tallies. Any differences typically amount to fewer than a handful of votes, and we flag these cases in the data.
 
-## <0xE2><0x84><0xb9>️ Usage Notes
+## :information_source: Usage Notes
 
 - **Harmonized Datasets**: Recommended for time-series analyses or when comparing multiple election cycles under stable geographic units.  
 - **Unharmonized Datasets**: Useful for single-election or cross-sectional analyses, especially where original boundaries are essential.  
 - **Small Municipalities**: Be aware that "Other" party votes might be large in places where major parties do not field candidates. Check the documentation on local reporting rules.
 - **Accessing Data**: See the examples below for how to load data into your own R project using the dedicated `gerda` R package or via direct file download.
 
-## <0xF0><0x9F><0x92><0xBB> Example Usage
+## :computer: Example Usage
 
 Below are examples showing how to load GERDA data into your R session.
 
@@ -170,11 +170,11 @@ glimpse(federal_data)
 
 ```
 
-## <0xF0><0x9F><0x93><0x81> Code Availability
+## :file_folder: Code Availability
 
 All code is in the `Code` folder, including scripts for data ingestion, cleaning, harmonization, and visualizations. Researchers can replicate or adapt these scripts for custom analyses.
 
-## <0xF0><0x9F><0x97><0x83>️ Detailed Data Sources
+## :scroll: Detailed Data Sources
 
 ### Federal Elections
 
