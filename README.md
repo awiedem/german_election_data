@@ -1,8 +1,30 @@
-# German Election Database
+# GERDA: German Election Database
 
 ## Overview
 
-The German Election Database provides a comprehensive dataset of local, state, and federal election results in Germany, enabling research on electoral behavior, representation, and political responsiveness across multiple levels of government. Each dataset includes turnout and vote shares for all major parties. We provide harmonized datasets that account for municipal boundary changes and joint mail-in voting districts, ensuring comparability over time.
+The German Election Database (GERDA) provides a comprehensive dataset of local, state, and federal election results in Germany, enabling research on electoral behavior, representation, and political responsiveness across multiple levels of government. Each dataset includes turnout and vote shares for all major parties. We provide harmonized datasets that account for municipal boundary changes and joint mail-in voting districts, ensuring comparability over time.
+
+## Citation
+
+Please cite the accompanying [paper](https://www.nature.com/articles/s41597-025-04811-5) when using this dataset:
+
+Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2025. *GERDA: German Election Database*. Nature: Scientific Data, 12: 618.
+
+```
+@article{Heddesheimer2025GERDA,
+   author = {Vincent Heddesheimer and Hanno Hilbig and Florian Sichart and Andreas Wiedemann},
+   doi = {10.1038/s41597-025-04811-5},
+   issn = {2052-4463},
+   issue = {1},
+   journal = {Scientific Data},
+   month = {4},
+   pages = {618},
+   title = {GERDA: The German Election Database},
+   volume = {12},
+   url = {https://www.nature.com/articles/s41597-025-04811-5},
+   year = {2025}
+}
+```
 
 We aim to continuously update this repository as new elections become available. The repository is structured into three main folders:
 
@@ -28,8 +50,8 @@ We aim to continuously update this repository as new elections become available.
 
 | **Data**                  | **Geographic Level** | **Time Period**  | **Harmonization** | **File Name**                |
 |---------------------------|----------------------|------------------|-------------------|------------------------------|
-| Local Elections           | Municipality         | 1990–2020        | No                | `municipal_unharm`           |
-| Local Elections           | Municipality         | 1990–2020        | Yes               | `municipal_harm`             |
+| Local Elections           | Municipality         | 1990–2021        | No                | `municipal_unharm`           |
+| Local Elections           | Municipality         | 1990–2021        | Yes               | `municipal_harm`             |
 | State Elections           | Municipality         | 2006–2019        | No                | `state_unharm`               |
 | State Elections           | Municipality         | 2006–2019        | Yes               | `state_harm`                 |
 | Federal Elections         | Municipality         | 1980–2021        | No                | `federal_muni_raw`           |
@@ -44,6 +66,7 @@ We aim to continuously update this repository as new elections become available.
 ## Harmonization Details
 
 To facilitate consistent comparisons across time and regions, we provide files harmonized to the 2021 municipal and county boundaries. We use official crosswalks to track mergers, splits, and boundary shifts. In cases where multiple municipalities merged, we apply population-based weighting to aggregate votes to the new municipality’s boundaries. For mail-in voting districts shared by multiple municipalities, we allocate mail-in votes proportionally based on the number of polling-card voters in each municipality.
+
 
 ## Known Data Issues and Resolutions
 
@@ -62,17 +85,41 @@ To facilitate consistent comparisons across time and regions, we provide files h
 
 All code is in the `Code` folder, including scripts for data ingestion, cleaning, harmonization, and visualizations. Researchers can replicate or adapt these scripts for custom analyses.
 
-## Citation
+## Detailed Data Sources
 
-Please cite the accompanying [paper](https://osf.io/preprints/socarxiv/q28ex) when using this dataset:
+### Federal Elections
 
-Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2024. *German Election Database*.
+Bundeswahlleiterin. [https://www.bundeswahlleiterin.de/bundeswahlleiter.html](https://www.bundeswahlleiterin.de/bundeswahlleiter.html).
 
-```bibtex
-@article{Heddesheimer2024GermanElection,
-  author = {Heddesheimer Vincent, and Hanno Hilbig, and Florian Sichart and Andreas Wiedemann},
-  title = {German Election Database},
-  year = {2024},
-  url = {https://osf.io/preprints/socarxiv/q28ex},
-  doi = {https://doi.org/10.31235/osf.io/q28ex}
-}
+### State Elections
+
+Statistische Ämter des Bundes und der Länder. Landtagswahlen. [https://www.regionalstatistik.de/genesis/online/](https://www.regionalstatistik.de/genesis/online/) (Regional data bank of the German Federal Statistical Office). Retrieved and imported using the wiesbaden R package and the SOAP XML web service of DESTATIS.
+
+### Municipal Elections
+
+| **State**               | **Source**                                                                                                    | **Procured via**                                          |
+|-------------------------|---------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------|
+| Baden-Wuerttemberg      | Statistisches Landesamt Baden-Württemberg                                                                     | email                                                     |
+| Bayern                  | Bayerisches Landesamt für Statistik                                                                           | website                                                   |
+| Brandenburg             | Amt für Statistik Berlin-Brandenburg                                                                          | website                                                   |
+| Bremen                  | Statistisches Landesamt Bremen                                                                                | website                                                   |
+| BW                      | Statistisches Landesamt Baden-Württemberg                                                                     | email                                                     |
+| Hamburg                 | Statistik Nord                                                                                                 | website                                                   |
+| Hessen                  | Hessisches Statistisches Landesamt                                                                            | website                                                   |
+| Mecklenburg Vorpommern  | Mecklenburg-Vorpommern Landesamt für innere Verwaltung & Statistisches Amt                                    | website                                                   |
+| Niedersachsen           | Landesamt für Statistik Niedersachsen                                                                         | website (post-2006), email (pre-2006)                     |
+| NRW                     | Statistisches Landesamt Nordrhein-Westfalen                                                                   | email                                                     |
+| RLP                     | Statistisches Landesamt Rheinland-Pfalz                                                                       | email                                                     |
+| Saarland                | Statistisches Landesamt des Saarlandes                                                                        | email                                                     |
+| Sachsen                 | Statistisches Landesamt des Freistaates Sachsen                                                              | website                                                   |
+| Sachsen-Anhalt          | Statistisches Landesamt Sachsen-Anhalt                                                                       | website                                                   |
+| Schleswig-Holstein      | Statistisches Amt für Hamburg und Schleswig-Holstein                                                          | website (except 2013), email for 2013                     |
+| Thueringen              | Thüringer Landesamt für Statistik                                                                             | website                                                   |
+
+### Crosswalks
+
+Bundesinstitut für Bau-, Stadt- und Raumforschung. Umsteigeschlüssel für konsistente zeitreihen. [https://www.bbsr.bund.de/BBSR/DE/forschung/raumbeobachtung/umstiegsschluessel/umsteigeschluessel.html](https://www.bbsr.bund.de/BBSR/DE/forschung/raumbeobachtung/umstiegsschluessel/umsteigeschluessel.html) (2024).
+
+### Shapefiles
+
+Federal Agency for Cartography and Geodesy (BKG). Vg250: Administrative boundaries of germany. [http://www.bkg.bund.de](http://www.bkg.bund.de) (2021). Open Data Lizenz Deutschland – Namensnennung – Version 2.0. Source reference: © GeoBasis-DE / BKG (year of last data download).

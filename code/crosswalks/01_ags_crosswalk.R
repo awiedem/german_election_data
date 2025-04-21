@@ -1,7 +1,7 @@
 ### Municipality level crosswalks
 # Vincent Heddesheimer
 # First draft: May, 23, 2024
-# Last update: Aug, 07, 2024
+# Last update: Jan, 23, 2025
 
 # remove scientific notation
 options(scipen = 999)
@@ -46,6 +46,9 @@ cw_list <- excel_sheets(excel_file) %>%
 
 # Combine all dataframes into one
 cw_combined <- bind_rows(cw_list)
+
+# inspect area = 0
+cw_combined |> filter(area == 0) |> print(n = 32) |> select(ags, ags_name, area, year)
 
 # 2000-2010 ---------------------------------------------------------------
 
@@ -151,6 +154,13 @@ cw |>
 # ags per year
 cw |> count(year) |> print(n = 32)
 # homogenous 10994
+
+# pop_density = Inf?
+cw |> filter(pop_density == Inf)
+
+# area = 0?
+cw |> filter(area == 0) |> print(n = 32)
+
 
 
 # Get population & area for 2021
