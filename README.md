@@ -2,27 +2,28 @@
 
 ## :clipboard: Table of Contents
 
-- [Overview](#overview)
-- [Citation](#citation)
-- [Repository Structure](#repository-structure)
-- [Dataset Features](#dataset-features)
-- [Data Files](#data-files)
-- [Harmonization Details](#harmonization-details)
-- [Known Data Issues and Resolutions](#known-data-issues-and-resolutions)
-- [:information_source: Usage Notes](#️-usage-notes)
-- [:computer: Example Usage](#-example-usage)
-- [:file_folder: Code Availability](#-code-availability)
-- [:scroll: Detailed Data Sources](#️-detailed-data-sources)
+- [:mag: Overview](#mag-overview)
+- [:books: Citation](#books-citation)
+- [:file_folder: Repository Structure](#file_folder-repository-structure)
+- [:star: Dataset Features](#star-dataset-features)
+- [:floppy_disk: Data Files](#floppy_disk-data-files)
+- [:gear: Harmonization Details](#gear-harmonization-details)
+- [:warning: Known Data Issues and Resolutions](#warning-known-data-issues-and-resolutions)
+- [:information_source: Usage Notes](#information_source-usage-notes)
+- [:computer: Example Usage](#computer-example-usage)
+- [:file_folder: Code Availability](#file_folder-code-availability)
+- [:scroll: Detailed Data Sources](#scroll-detailed-data-sources)
+- [:pray: Acknowledgements](#pray-acknowledgements)
 
 ---
 
-## Overview
+## :mag: Overview
 
 The German Election Database (GERDA) provides a comprehensive dataset of local, state, and federal election results in Germany, enabling research on electoral behavior, representation, and political responsiveness across multiple levels of government. Each dataset includes turnout and vote shares for all major parties. We provide harmonized datasets that account for municipal boundary changes and joint mail-in voting districts, ensuring comparability over time.
 
 For detailed descriptions of all variables in the main datasets, please consult the [Codebook](docs/codebook.md) (current work in progress.)
 
-## Citation
+## :books: Citation
 
 Please cite the accompanying [paper](https://www.nature.com/articles/s41597-025-04811-5) when using this dataset:
 
@@ -54,7 +55,7 @@ The repository is structured into four main folders:
 2. **Data**: Raw and processed datasets for municipal, state, and federal elections, plus boundary shapefiles and crosswalks. The main ready-to-use datasets are typically found within `final` subdirectories (e.g., `data/federal_elections/municipality_level/final/`).
 3. **Output**: Results of analyses and visualizations based on these datasets.
 
-## Dataset Features
+## :star: Dataset Features
 
 ### Municipal Elections
 
@@ -71,7 +72,7 @@ The repository is structured into four main folders:
 - **Coverage**: Municipality-level data since 1980 and county-level data since 1953  
 - **Content**: Turnout and vote shares for all parties, with special handling for mail-in votes
 
-## Data Files
+## :floppy_disk: Data Files
 
 | **Data**                  | **Geographic Level** | **Time Period**  | **Harmonization** | **File Name**                |
 |---------------------------|----------------------|------------------|-------------------|------------------------------|
@@ -88,11 +89,11 @@ The repository is structured into four main folders:
 | Shapefiles                | Municipality/County  | 2000, 2021       | —                 | `VG250_GEM` / `VG250_KRS`    |
 | Crosswalk Covariates      | Municipality/County  | 1990–2021        | Yes               | `ags_area_pop_emp` / `cty_area_pop_emp` |
 
-## Harmonization Details
+## :gear: Harmonization Details
 
 To facilitate consistent comparisons across time and regions, we provide files harmonized to the 2021 municipal and county boundaries. We use official crosswalks to track mergers, splits, and boundary shifts. In cases where multiple municipalities merged, we apply population-based weighting to aggregate votes to the new municipality's boundaries. For mail-in voting districts shared by multiple municipalities, we allocate mail-in votes proportionally based on the number of polling-card voters in each municipality.
 
-## Known Data Issues and Resolutions
+## :warning: Known Data Issues and Resolutions
 
 - **Incongruent Municipality Keys**: Some official datasets used municipality identifiers that did not appear in crosswalk files. We manually corrected these keys by matching election results to the relevant crosswalk entries and verifying them against state archives.
 - **Mail-in Votes**: Joint mail-in voting districts complicate disaggregation. We address this by distributing mail-in votes according to each municipality's share of polling-card voters. While this is an approximation, it avoids discarding mail-in votes altogether.
@@ -212,3 +213,9 @@ Bundesinstitut für Bau-, Stadt- und Raumforschung. Umsteigeschlüssel für kons
 ### Shapefiles
 
 Federal Agency for Cartography and Geodesy (BKG). Vg250: Administrative boundaries of germany. [http://www.bkg.bund.de](http://www.bkg.bund.de) (2021). Open Data Lizenz Deutschland – Namensnennung – Version 2.0. Source reference: © GeoBasis-DE / BKG (year of last data download).
+
+---
+
+## :pray: Acknowledgements
+
+We thank Cornelius Erfort, Sascha Riaz and Moritz Marbach for helpful comments. We also thank the anonymous reviewers at *Scientific Data* for their constructive feedback. Thanks to Daniela Gaus for excellent research assistance and Victor Kreitman for providing code and data on election dates.
