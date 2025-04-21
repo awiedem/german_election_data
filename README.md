@@ -1,5 +1,21 @@
 # GERDA: German Election Database
 
+## <0xF0><0x9F><0x93><0x96> Table of Contents
+
+- [Overview](#overview)
+- [Citation](#citation)
+- [Repository Structure](#repository-structure)
+- [Dataset Features](#dataset-features)
+- [Data Files](#data-files)
+- [Harmonization Details](#harmonization-details)
+- [Known Data Issues and Resolutions](#known-data-issues-and-resolutions)
+- [<0xE2><0x84><0xb9>️ Usage Notes](#️-usage-notes)
+- [<0xF0><0x9F><0x92><0xBB> Example Usage (Direct File Access)](#-example-usage-direct-file-access)
+- [<0xF0><0x9F><0x93><0x81> Code Availability](#-code-availability)
+- [<0xF0><0x9F><0x97><0x83>️ Detailed Data Sources](#️-detailed-data-sources)
+
+---
+
 ## Overview
 
 The German Election Database (GERDA) provides a comprehensive dataset of local, state, and federal election results in Germany, enabling research on electoral behavior, representation, and political responsiveness across multiple levels of government. Each dataset includes turnout and vote shares for all major parties. We provide harmonized datasets that account for municipal boundary changes and joint mail-in voting districts, ensuring comparability over time.
@@ -28,7 +44,11 @@ Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2025.
 }
 ```
 
-We aim to continuously update this repository as new elections become available. The repository is structured into three main folders:
+We aim to continuously update this repository as new elections become available.
+
+## <0xF0><0x9F><0x93><0x81> Repository Structure
+
+The repository is structured into four main folders:
 
 1. **Code**: Scripts for data processing, harmonization, and analyses.
 2. **Data**: Raw and processed datasets for municipal, state, and federal elections, plus boundary shapefiles and crosswalks. The main ready-to-use datasets are typically found within `final` subdirectories (e.g., `data/federal_elections/municipality_level/final/`).
@@ -79,17 +99,82 @@ To facilitate consistent comparisons across time and regions, we provide files h
 - **Varying Reporting Standards**: States sometimes lump small local parties or independent candidates into an "Other" category. In such cases, we provide disaggregated results where possible but otherwise treat them as a single category. Researchers should be mindful of this when comparing across states.
 - **Rounding Errors**: Boundary harmonization and proportional allocation can cause minor discrepancies in total votes when comparing to official tallies. Any differences typically amount to fewer than a handful of votes, and we flag these cases in the data.
 
-## Usage Notes
+## <0xE2><0x84><0xb9>️ Usage Notes
 
 - **Harmonized Datasets**: Recommended for time-series analyses or when comparing multiple election cycles under stable geographic units.  
 - **Unharmonized Datasets**: Useful for single-election or cross-sectional analyses, especially where original boundaries are essential.  
 - **Small Municipalities**: Be aware that "Other" party votes might be large in places where major parties do not field candidates. Check the documentation on local reporting rules.
+- **Accessing Data**: See the examples below for how to load data into your own R project using the dedicated `gerda` R package or via direct file download.
 
-## Code Availability
+## <0xF0><0x9F><0x92><0xBB> Example Usage
+
+Below are examples showing how to load GERDA data into your R session.
+
+### Option 1: Using the `gerda` R Package (Recommended)
+
+The easiest way to access the data is via the companion R package.
+
+```R
+# Install the package from GitHub if you haven't already
+# if (!requireNamespace("devtools", quietly = TRUE)) install.packages("devtools")
+# devtools::install_github("hhilbig/gerda") 
+
+library(gerda)
+library(dplyr)
+
+# List available datasets
+# gerda_data_list()
+
+# Load the harmonized federal election data (municipality level)
+data_fed_harm <- load_gerda_web("federal_muni_harm", verbose = TRUE, file_format = "rds")
+
+# View the structure
+glimpse(data_fed_harm)
+
+# Example: Summarize turnout for 2021 using dplyr
+turnout_summary_2021 <- data_fed_harm %>%
+  filter(election_year == 2021) %>%
+  summarise(mean_turnout = mean(turnout, na.rm = TRUE),
+            median_turnout = median(turnout, na.rm = TRUE),
+            min_turnout = min(turnout, na.rm = TRUE),
+            max_turnout = max(turnout, na.rm = TRUE))
+
+print(turnout_summary_2021)
+
+```
+
+### Option 2: Direct File Download
+
+You can also download specific data files directly from the repository URL.
+
+```R
+library(tidyverse) # For glimpse
+
+# URL for the raw RDS file on GitHub (using the awiedem repository)
+file_url <- "https://github.com/awiedem/german_election_data/raw/main/data/federal_elections/municipality_level/final/federal_muni_harm.rds"
+
+# Destination path for the downloaded file
+dest_path <- "federal_muni_harm.rds" # Or specify a full path
+
+# Download the file (consider adding error handling for robust scripts)
+download.file(file_url, destfile = dest_path, mode = "wb")
+
+# Load the downloaded RDS file
+federal_data <- readRDS(dest_path)
+
+# View the structure using glimpse
+glimpse(federal_data)
+
+# Clean up the downloaded file (optional)
+# file.remove(dest_path)
+
+```
+
+## <0xF0><0x9F><0x93><0x81> Code Availability
 
 All code is in the `Code` folder, including scripts for data ingestion, cleaning, harmonization, and visualizations. Researchers can replicate or adapt these scripts for custom analyses.
 
-## Detailed Data Sources
+## <0xF0><0x9F><0x97><0x83>️ Detailed Data Sources
 
 ### Federal Elections
 
