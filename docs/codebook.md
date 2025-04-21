@@ -90,7 +90,7 @@ This dataset contains federal election results from 1990 to 2021 at the municipa
 
 - Vote shares are proportions of `number_voters` (the potentially adjusted voter count).
 - Harmonization refers to adjustments made to account for municipal boundary changes over time, mapping results onto consistent 2021 municipality definitions using population or area weights from `ags_crosswalks.csv`.
-- The variables `eligible_voters_orig` and `number_voters_orig` (present in intermediate steps, e.g., `01_federal_muni_unharm.R`) likely represent counts before mail-in vote distribution adjustments.
+- The variables `eligible_voters_orig` and `number_voters_orig` (present in intermediate steps, e.g., `01_federal_muni_unharm.R`) represent counts before mail-in vote distribution adjustments.
 - `area` and `population` are sourced from official municipality registers (Gemeindeverzeichnisse); `area` is km², `population` is scaled to thousands.
 
 ---
@@ -184,12 +184,35 @@ This dataset provides yearly time-series data for basic municipality characteris
 
 **Notes:**
 
-- The dataset appears to be a panel covering years from 1990 onwards.
-- `ags_21` is numeric but might be better treated as a character identifier.
+- The dataset is a panel covering years from 1990 onwards.
 - Area, population, and employee data originate from official Gemeindeverzeichnis sources provided by BBSR.
 
 ---
 
-## County Covariates (INKAR, Employment, Income, Unemployment)
+## Work in progress
 
-This section is not provided in the original codebook or the code block. It is assumed to exist as it is mentioned in the original codebook.
+The database is work in progress. If you have any suggestions, comments, or issues, please feel free to email us or to file an issue.
+
+---
+
+## Citation
+
+Please cite the accompanying [paper](https://www.nature.com/articles/s41597-025-04811-5) when using this dataset:
+
+Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2025. *GERDA: German Election Database*. Nature: Scientific Data, 12: 618.
+
+```
+@article{Heddesheimer2025GERDA,
+   author = {Vincent Heddesheimer and Hanno Hilbig and Florian Sichart and Andreas Wiedemann},
+   doi = {10.1038/s41597-025-04811-5},
+   issn = {2052-4463},
+   issue = {1},
+   journal = {Scientific Data},
+   month = {4},
+   pages = {618},
+   title = {GERDA: The German Election Database},
+   volume = {12},
+   url = {https://www.nature.com/articles/s41597-025-04811-5},
+   year = {2025}
+}
+```
