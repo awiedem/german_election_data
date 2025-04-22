@@ -10031,13 +10031,56 @@ kommunalwahlen_merge <- kommunalwahlen_merge |>
 
 glimpse(kommunalwahlen_merge)
 
+# Add election dates ------------------------------------------------
+
+# output file containing combinations of state_name and election_year
+# file is then used to scrap election_year from google searches
+# see code/municipality_elections/other/01_scrap_municipal_elections_dates.ipynb for details
+
+kommunalwahlen_merge |>
+  distinct(state, election_year) |>
+  # just developing acronyms 
+  mutate(state = case_when(
+    state == "RLP" ~ "Rhineland-Palatinate",
+    state == "NRW" ~ "North Rhine-Westphalia",
+    .default = state
+  )) |> 
+  write_csv(file=here::here("data/municipal_elections/processed/municipal_elections_combinations.csv"))
+
+## import it back with the election dates, fix two missing values, and join it back to original data
+election_dates <- data.table::fread(here::here("data/municipal_elections/processed/municipal_elections_dates.csv")) |>
+  mutate(
+    year = as.character(year),
+    extracted_date = lubridate::ymd(ifelse(extracted_date == "NULL", NA, extracted_date)),
+    # reverting back to previous state names to match the original data
+    state = case_when(
+      state == "Rhineland-Palatinate" ~ "RLP",
+      state == "North Rhine-Westphalia" ~ "NRW",
+      .default = state
+    )
+  ) |> 
+  rename(election_year = year, election_date = extracted_date)
+
+# check if there are missing values for election dates
+if (election_dates |> filter(is.na(election_date)) |> nrow() > 0) {
+  message("There are missing values in the election dates.")
+  print(election_dates |> filter(is.na(election_date)))
+} else {
+  message("No missing values in the election dates.")
+}
+
+# there are two, for Sachsen-Anhalt in 2005 and 2006
+
+kommunalwahlen_merge <- kommunalwahlen_merge |>
+  left_join(election_dates, by = c("state", "election_year")) |>
+  relocate(election_date, .after = election_year) 
 
 
 # Reduce to prop_ only ----------------------------------------------------
 
 kommunalwahlen_merge <- kommunalwahlen_merge |>
   select(
-    ags, ags_name, state, election_year, election_type, eligible_voters, number_voters, valid_votes, turnout,
+    ags, ags_name, state, election_year, election_date, election_type, eligible_voters, number_voters, valid_votes, turnout,
     starts_with("prop_"), starts_with("replaced")
   )
 
