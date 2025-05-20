@@ -71,9 +71,6 @@ The repository is structured into four main folders:
 
 - **Coverage**: Municipality-level data since 1980 and county-level data since 1953  
 - **Content**: Turnout and vote shares for all parties, with special handling for mail-in votes
-- **Harmonization**: Two versions available:
-  - 2021 borders: All elections (1990-2025) mapped to 2021 municipality boundaries
-  - 2025 borders: All elections (1990-2025) mapped to 2025 municipality boundaries
 
 ## :floppy_disk: Data Files
 
@@ -85,23 +82,16 @@ The repository is structured into four main folders:
 | State Elections           | Municipality         | 2006–2019        | Yes               | `state_harm`                 |
 | Federal Elections         | Municipality         | 1980–2025        | No                | `federal_muni_raw`           |
 | Federal Elections         | Municipality         | 1980–2025        | No                | `federal_muni_unharm`        |
-| Federal Elections         | Municipality         | 1990–2025        | Yes (2021)        | `federal_muni_harm_21`       |
-| Federal Elections         | Municipality         | 1990–2025        | Yes (2025)        | `federal_muni_harm_25`       |
-| Federal Elections         | County               | 1953–2025        | No                | `federal_cty_unharm`         |
-| Federal Elections         | County               | 1990–2025        | Yes               | `federal_cty_harm`           |
+| Federal Elections         | Municipality         | 1990–2025        | Yes               | `federal_muni_harm`          |
+| Federal Elections         | County               | 1953–2021        | No                | `federal_cty_unharm`         |
+| Federal Elections         | County               | 1990–2021        | Yes               | `federal_cty_harm`           |
 | Crosswalks                | Municipality/County  | 1990–2025        | —                 | `ags_crosswalks` / `cty_crosswalks` |
-| Shapefiles                | Municipality/County  | 2000, 2021, 2025 | —                 | `VG250_GEM` / `VG250_KRS`    |
-| Crosswalk Covariates      | Municipality/County  | 1990–2025        | Yes               | `ags_area_pop_emp` / `cty_area_pop_emp` |
+| Shapefiles                | Municipality/County  | 2000, 2021       | —                 | `VG250_GEM` / `VG250_KRS`    |
+| Crosswalk Covariates      | Municipality/County  | 1990–2021        | Yes               | `ags_area_pop_emp` / `cty_area_pop_emp` |
 
 ## :gear: Harmonization Details
 
-To facilitate consistent comparisons across time and regions, we provide files harmonized to both 2021 and 2025 municipal and county boundaries. We use official crosswalks to track mergers, splits, and boundary shifts. In cases where multiple municipalities merged, we apply population-based weighting to aggregate votes to the new municipality's boundaries. For mail-in voting districts shared by multiple municipalities, we allocate mail-in votes proportionally based on the number of polling-card voters in each municipality.
-
-The harmonization process includes:
-1. Creating custom crosswalks for each time period
-2. Population-weighted aggregation of votes for merged municipalities
-3. Special handling of mail-in voting districts
-4. Validation of results against official totals
+To facilitate consistent comparisons across time and regions, we provide files harmonized to the 2021 municipal and county boundaries. We use official crosswalks to track mergers, splits, and boundary shifts. In cases where multiple municipalities merged, we apply population-based weighting to aggregate votes to the new municipality's boundaries. For mail-in voting districts shared by multiple municipalities, we allocate mail-in votes proportionally based on the number of polling-card voters in each municipality.
 
 ## :warning: Known Data Issues and Resolutions
 
@@ -137,33 +127,20 @@ library(dplyr)
 # gerda_data_list()
 
 # Load the harmonized federal election data (municipality level)
-# Choose between 2021 or 2025 harmonized versions
-data_fed_harm_21 <- load_gerda_web("federal_muni_harm_21", verbose = TRUE, file_format = "rds")
-data_fed_harm_25 <- load_gerda_web("federal_muni_harm_25", verbose = TRUE, file_format = "rds")
+data_fed_harm <- load_gerda_web("federal_muni_harm", verbose = TRUE, file_format = "rds")
 
 # View the structure
-glimpse(data_fed_harm_21)
-glimpse(data_fed_harm_25)
+glimpse(data_fed_harm)
 
-# Example: Compare turnout between 2021 and 2025 harmonized versions
-turnout_comparison <- bind_rows(
-  data_fed_harm_21 %>% 
-    filter(election_year == 2021) %>%
-    summarise(
-      version = "2021 borders",
-      mean_turnout = mean(turnout, na.rm = TRUE),
-      median_turnout = median(turnout, na.rm = TRUE)
-    ),
-  data_fed_harm_25 %>% 
-    filter(election_year == 2021) %>%
-    summarise(
-      version = "2025 borders",
-      mean_turnout = mean(turnout, na.rm = TRUE),
-      median_turnout = median(turnout, na.rm = TRUE)
-    )
-)
+# Example: Summarize turnout for 2021 using dplyr
+turnout_summary_2021 <- data_fed_harm %>%
+  filter(election_year == 2021) %>%
+  summarise(mean_turnout = mean(turnout, na.rm = TRUE),
+            median_turnout = median(turnout, na.rm = TRUE),
+            min_turnout = min(turnout, na.rm = TRUE),
+            max_turnout = max(turnout, na.rm = TRUE))
 
-print(turnout_comparison)
+print(turnout_summary_2021)
 
 ```
 
