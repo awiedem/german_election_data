@@ -128,6 +128,7 @@ df_check_large_changes <- df %>%
 print(nrow(df_check_large_changes))
 
 df_check_large_changes %>%
+    group_by(ags) %>%
     filter(any(valid_votes > 1000)) %>%
     print(n = 500)
 
