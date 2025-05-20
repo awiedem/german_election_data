@@ -85,7 +85,6 @@ The repository is structured into four main folders:
 | State Elections           | Municipality         | 2006–2019        | Yes               | `state_harm`                 |
 | Federal Elections         | Municipality         | 1980–2025        | No                | `federal_muni_raw`           |
 | Federal Elections         | Municipality         | 1980–2025        | No                | `federal_muni_unharm`        |
-<<<<<<< HEAD
 | Federal Elections         | Municipality         | 1990–2025        | Yes (2021)        | `federal_muni_harm_21`       |
 | Federal Elections         | Municipality         | 1990–2025        | Yes (2025)        | `federal_muni_harm_25`       |
 | Federal Elections         | County               | 1953–2025        | No                | `federal_cty_unharm`         |
@@ -93,14 +92,6 @@ The repository is structured into four main folders:
 | Crosswalks                | Municipality/County  | 1990–2025        | —                 | `ags_crosswalks` / `cty_crosswalks` |
 | Shapefiles                | Municipality/County  | 2000, 2021, 2025 | —                 | `VG250_GEM` / `VG250_KRS`    |
 | Crosswalk Covariates      | Municipality/County  | 1990–2025        | Yes               | `ags_area_pop_emp` / `cty_area_pop_emp` |
-=======
-| Federal Elections         | Municipality         | 1990–2025        | Yes               | `federal_muni_harm`          |
-| Federal Elections         | County               | 1953–2021        | No                | `federal_cty_unharm`         |
-| Federal Elections         | County               | 1990–2021        | Yes               | `federal_cty_harm`           |
-| Crosswalks                | Municipality/County  | 1990–2025        | —                 | `ags_crosswalks` / `cty_crosswalks` |
-| Shapefiles                | Municipality/County  | 2000, 2021       | —                 | `VG250_GEM` / `VG250_KRS`    |
-| Crosswalk Covariates      | Municipality/County  | 1990–2021        | Yes               | `ags_area_pop_emp` / `cty_area_pop_emp` |
->>>>>>> 12c529ffdda65c4f2b837edb3189c650043d4426
 
 ## :gear: Harmonization Details
 
@@ -184,10 +175,10 @@ You can also download specific data files directly from the repository URL.
 library(tidyverse) # For glimpse
 
 # URL for the raw RDS file on GitHub (using the awiedem repository)
-file_url <- "https://github.com/awiedem/german_election_data/raw/main/data/federal_elections/municipality_level/final/federal_muni_harm.rds"
+file_url <- "https://github.com/awiedem/german_election_data/raw/main/data/federal_elections/municipality_level/final/federal_muni_harm_21.rds"
 
 # Destination path for the downloaded file
-dest_path <- "federal_muni_harm.rds" # Or specify a full path
+dest_path <- "federal_muni_harm_21.rds" # Or specify a full path
 
 # Download the file (consider adding error handling for robust scripts)
 download.file(file_url, destfile = dest_path, mode = "wb")
