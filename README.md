@@ -90,7 +90,7 @@ The repository is structured into four main folders:
 | Federal Elections         | County               | 1953–2025        | No                | `federal_cty_unharm`         |
 | Federal Elections         | County               | 1990–2025        | Yes               | `federal_cty_harm`           |
 | Crosswalks                | Municipality/County  | 1990–2025        | —                 | `ags_crosswalks` / `cty_crosswalks` |
-| Shapefiles                | Municipality/County  | 2000, 2021, 2025 | —                 | `VG250_GEM` / `VG250_KRS`    |
+| Shapefiles                | Municipality/County  | 2000, 2021       | —                 | `VG250_GEM` / `VG250_KRS`    |
 | Crosswalk Covariates      | Municipality/County  | 1990–2025        | Yes               | `ags_area_pop_emp` / `cty_area_pop_emp` |
 
 ## :gear: Harmonization Details
