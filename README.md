@@ -1,86 +1,206 @@
 # GERDA: German Election Database
 
-## Overview
+## :clipboard: Table of Contents
+
+- [:mag: Overview](#mag-overview)
+- [:books: Citation](#books-citation)
+- [:file_folder: Repository Structure](#file_folder-repository-structure)
+- [:star: Dataset Features](#star-dataset-features)
+- [:floppy_disk: Data Files](#floppy_disk-data-files)
+- [:gear: Harmonization Details](#gear-harmonization-details)
+- [:warning: Known Data Issues and Resolutions](#warning-known-data-issues-and-resolutions)
+- [:information_source: Usage Notes](#information_source-usage-notes)
+- [:computer: Example Usage](#computer-example-usage)
+- [:file_folder: Code Availability](#file_folder-code-availability)
+- [:scroll: Detailed Data Sources](#scroll-detailed-data-sources)
+- [:pray: Acknowledgements](#pray-acknowledgements)
+
+---
+
+## :mag: Overview
 
 The German Election Database (GERDA) provides a comprehensive dataset of local, state, and federal election results in Germany, enabling research on electoral behavior, representation, and political responsiveness across multiple levels of government. Each dataset includes turnout and vote shares for all major parties. We provide harmonized datasets that account for municipal boundary changes and joint mail-in voting districts, ensuring comparability over time.
 
-## Citation
+For detailed descriptions of all variables in the main datasets, please consult the [Codebook](docs/codebook.md) (current work in progress.)
 
-Please cite the accompanying [paper](https://osf.io/preprints/socarxiv/q28ex) when using this dataset:
+## :books: Citation
 
-Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2025. *GERDA: German Election Database*. Nature: Scientific Data (forthcoming).
+Please cite the accompanying [paper](https://www.nature.com/articles/s41597-025-04811-5) when using this dataset:
 
-```bibtex
+Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2025. *GERDA: German Election Database*. Nature: Scientific Data, 12: 618.
+
+```
 @article{Heddesheimer2025GERDA,
-  author = {Heddesheimer Vincent, and Hanno Hilbig, and Florian Sichart and Andreas Wiedemann},
-  title = {GERDA: German Election Database},
-  year = {2025},
-  journal = {Nature: Scientific Data},
-  url = {https://osf.io/preprints/socarxiv/q28ex},
-  doi = {https://doi.org/10.31235/osf.io/q28ex}
+   author = {Vincent Heddesheimer and Hanno Hilbig and Florian Sichart and Andreas Wiedemann},
+   doi = {10.1038/s41597-025-04811-5},
+   issn = {2052-4463},
+   issue = {1},
+   journal = {Scientific Data},
+   month = {4},
+   pages = {618},
+   title = {GERDA: The German Election Database},
+   volume = {12},
+   url = {https://www.nature.com/articles/s41597-025-04811-5},
+   year = {2025}
 }
 ```
 
-We aim to continuously update this repository as new elections become available. The repository is structured into three main folders:
+We aim to continuously update this repository as new elections become available.
+
+## :file_folder: Repository Structure
+
+The repository is structured into four main folders:
 
 1. **Code**: Scripts for data processing, harmonization, and analyses.
-2. **Data**: Raw and processed datasets for municipal, state, and federal elections, plus boundary shapefiles and crosswalks.
+2. **Data**: Raw and processed datasets for municipal, state, and federal elections, plus boundary shapefiles and crosswalks. The main ready-to-use datasets are typically found within `final` subdirectories (e.g., `data/federal_elections/municipality_level/final/`).
 3. **Output**: Results of analyses and visualizations based on these datasets.
 
-## Dataset Features
+## :star: Dataset Features
 
 ### Municipal Elections
+
 - **Coverage**: 1990–2020  
 - **Content**: Turnout and vote shares for major parties (SPD, CDU/CSU, FDP, Greens, Die Linke, AfD), plus smaller parties where available
 
 ### State Elections
+
 - **Coverage**: 2006–2019 at the municipal level  
 - **Content**: Turnout and party vote shares, including AfD from 2012 onward
 
 ### Federal Elections
+
 - **Coverage**: Municipality-level data since 1980 and county-level data since 1953  
 - **Content**: Turnout and vote shares for all parties, with special handling for mail-in votes
+- **Harmonization**: Two versions available:
+  - 2021 borders: All elections (1990-2025) mapped to 2021 municipality boundaries
+  - 2025 borders: All elections (1990-2025) mapped to 2025 municipality boundaries
 
-## Data Files
+## :floppy_disk: Data Files
 
 | **Data**                  | **Geographic Level** | **Time Period**  | **Harmonization** | **File Name**                |
 |---------------------------|----------------------|------------------|-------------------|------------------------------|
-| Local Elections           | Municipality         | 1990–2020        | No                | `municipal_unharm`           |
-| Local Elections           | Municipality         | 1990–2020        | Yes               | `municipal_harm`             |
+| Local Elections           | Municipality         | 1990–2021        | No                | `municipal_unharm`           |
+| Local Elections           | Municipality         | 1990–2021        | Yes               | `municipal_harm`             |
 | State Elections           | Municipality         | 2006–2019        | No                | `state_unharm`               |
 | State Elections           | Municipality         | 2006–2019        | Yes               | `state_harm`                 |
-| Federal Elections         | Municipality         | 1980–2021        | No                | `federal_muni_raw`           |
-| Federal Elections         | Municipality         | 1980–2021        | No                | `federal_muni_unharm`        |
-| Federal Elections         | Municipality         | 1990–2021        | Yes               | `federal_muni_harm`          |
-| Federal Elections         | County               | 1953–2021        | No                | `federal_cty_unharm`         |
-| Federal Elections         | County               | 1990–2021        | Yes               | `federal_cty_harm`           |
-| Crosswalks                | Municipality/County  | 1990–2021        | —                 | `ags_crosswalks` / `cty_crosswalks` |
+| Federal Elections         | Municipality         | 1980–2025        | No                | `federal_muni_raw`           |
+| Federal Elections         | Municipality         | 1980–2025        | No                | `federal_muni_unharm`        |
+| Federal Elections         | Municipality         | 1990–2025        | Yes (2021)        | `federal_muni_harm_21`       |
+| Federal Elections         | Municipality         | 1990–2025        | Yes (2025)        | `federal_muni_harm_25`       |
+| Federal Elections         | County               | 1953–2025        | No                | `federal_cty_unharm`         |
+| Federal Elections         | County               | 1990–2025        | Yes               | `federal_cty_harm`           |
+| Crosswalks                |	Municipality         | 1990–2021	       | —	               | `ags_crosswalks`             |
+| Crosswalks                |	Municipality         | 1990–2025	       | —	               | `ags_1990_2025_crosswalk`    |
+| Crosswalks                |	County               | 1990–2021	       | —	               | `cty_crosswalks`             |
 | Shapefiles                | Municipality/County  | 2000, 2021       | —                 | `VG250_GEM` / `VG250_KRS`    |
-| Crosswalk Covariates      | Municipality/County  | 1990–2021        | Yes               | `ags_area_pop_emp` / `cty_area_pop_emp` |
+| Crosswalk Covariates      | Municipality/County  | 1990–2025        | Yes               | `ags_area_pop_emp` / `cty_area_pop_emp` |
 
-## Harmonization Details
+## :gear: Harmonization Details
 
-To facilitate consistent comparisons across time and regions, we provide files harmonized to the 2021 municipal and county boundaries. We use official crosswalks to track mergers, splits, and boundary shifts. In cases where multiple municipalities merged, we apply population-based weighting to aggregate votes to the new municipality’s boundaries. For mail-in voting districts shared by multiple municipalities, we allocate mail-in votes proportionally based on the number of polling-card voters in each municipality.
+To facilitate consistent comparisons across time and regions, we provide files harmonized to both 2021 and 2025 municipal and county boundaries. We use official crosswalks to track mergers, splits, and boundary shifts. In cases where multiple municipalities merged, we apply population-based weighting to aggregate votes to the new municipality's boundaries. For mail-in voting districts shared by multiple municipalities, we allocate mail-in votes proportionally based on the number of polling-card voters in each municipality.
 
+The harmonization process includes:
+1. Creating custom crosswalks for each time period
+2. Population-weighted aggregation of votes for merged municipalities
+3. Special handling of mail-in voting districts
+4. Validation of results against official totals
 
-## Known Data Issues and Resolutions
+## :warning: Known Data Issues and Resolutions
 
 - **Incongruent Municipality Keys**: Some official datasets used municipality identifiers that did not appear in crosswalk files. We manually corrected these keys by matching election results to the relevant crosswalk entries and verifying them against state archives.
-- **Mail-in Votes**: Joint mail-in voting districts complicate disaggregation. We address this by distributing mail-in votes according to each municipality’s share of polling-card voters. While this is an approximation, it avoids discarding mail-in votes altogether.
-- **Varying Reporting Standards**: States sometimes lump small local parties or independent candidates into an “Other” category. In such cases, we provide disaggregated results where possible but otherwise treat them as a single category. Researchers should be mindful of this when comparing across states.
+- **Mail-in Votes**: Joint mail-in voting districts complicate disaggregation. We address this by distributing mail-in votes according to each municipality's share of polling-card voters. While this is an approximation, it avoids discarding mail-in votes altogether.
+- **Varying Reporting Standards**: States sometimes lump small local parties or independent candidates into an "Other" category. In such cases, we provide disaggregated results where possible but otherwise treat them as a single category. Researchers should be mindful of this when comparing across states.
 - **Rounding Errors**: Boundary harmonization and proportional allocation can cause minor discrepancies in total votes when comparing to official tallies. Any differences typically amount to fewer than a handful of votes, and we flag these cases in the data.
 
-## Usage Notes
+## :information_source: Usage Notes
 
 - **Harmonized Datasets**: Recommended for time-series analyses or when comparing multiple election cycles under stable geographic units.  
 - **Unharmonized Datasets**: Useful for single-election or cross-sectional analyses, especially where original boundaries are essential.  
-- **Small Municipalities**: Be aware that “Other” party votes might be large in places where major parties do not field candidates. Check the documentation on local reporting rules.
+- **Small Municipalities**: Be aware that "Other" party votes might be large in places where major parties do not field candidates. Check the documentation on local reporting rules.
+- **Accessing Data**: See the examples below for how to load data into your own R project using the dedicated `gerda` R package or via direct file download.
 
-## Code Availability
+## :computer: Example Usage
+
+Below are examples showing how to load GERDA data into your R session.
+
+### Option 1: Using the `gerda` R Package (Recommended)
+
+The easiest way to access the data is via the companion R package.
+
+```R
+# Install the package from GitHub if you haven't already
+# if (!requireNamespace("devtools", quietly = TRUE)) install.packages("devtools")
+# devtools::install_github("hhilbig/gerda") 
+
+library(gerda)
+library(dplyr)
+
+# List available datasets
+# gerda_data_list()
+
+# Load the harmonized federal election data (municipality level)
+# Choose between 2021 or 2025 harmonized versions
+data_fed_harm_21 <- load_gerda_web("federal_muni_harm_21", verbose = TRUE, file_format = "rds")
+data_fed_harm_25 <- load_gerda_web("federal_muni_harm_25", verbose = TRUE, file_format = "rds")
+
+# View the structure
+glimpse(data_fed_harm_21)
+glimpse(data_fed_harm_25)
+
+# Example: Compare turnout between 2021 and 2025 harmonized versions
+turnout_comparison <- bind_rows(
+  data_fed_harm_21 %>% 
+    filter(election_year == 2021) %>%
+    summarise(
+      version = "2021 borders",
+      mean_turnout = mean(turnout, na.rm = TRUE),
+      median_turnout = median(turnout, na.rm = TRUE)
+    ),
+  data_fed_harm_25 %>% 
+    filter(election_year == 2021) %>%
+    summarise(
+      version = "2025 borders",
+      mean_turnout = mean(turnout, na.rm = TRUE),
+      median_turnout = median(turnout, na.rm = TRUE)
+    )
+)
+
+print(turnout_comparison)
+
+```
+
+### Option 2: Direct File Download
+
+You can also download specific data files directly from the repository URL.
+
+```R
+library(tidyverse) # For glimpse
+
+# URL for the raw RDS file on GitHub (using the awiedem repository)
+file_url <- "https://github.com/awiedem/german_election_data/raw/main/data/federal_elections/municipality_level/final/federal_muni_harm_21.rds"
+
+# Destination path for the downloaded file
+dest_path <- "federal_muni_harm_21.rds" # Or specify a full path
+
+# Download the file (consider adding error handling for robust scripts)
+download.file(file_url, destfile = dest_path, mode = "wb")
+
+# Load the downloaded RDS file
+federal_data <- readRDS(dest_path)
+
+# View the structure using glimpse
+glimpse(federal_data)
+
+# Clean up the downloaded file (optional)
+# file.remove(dest_path)
+
+```
+
+## :file_folder: Code Availability
 
 All code is in the `Code` folder, including scripts for data ingestion, cleaning, harmonization, and visualizations. Researchers can replicate or adapt these scripts for custom analyses.
 
-## Detailed Data Sources
+## :scroll: Detailed Data Sources
 
 ### Federal Elections
 
@@ -118,3 +238,9 @@ Bundesinstitut für Bau-, Stadt- und Raumforschung. Umsteigeschlüssel für kons
 ### Shapefiles
 
 Federal Agency for Cartography and Geodesy (BKG). Vg250: Administrative boundaries of germany. [http://www.bkg.bund.de](http://www.bkg.bund.de) (2021). Open Data Lizenz Deutschland – Namensnennung – Version 2.0. Source reference: © GeoBasis-DE / BKG (year of last data download).
+
+---
+
+## :pray: Acknowledgements
+
+We thank Cornelius Erfort, Sascha Riaz and Moritz Marbach for helpful comments. We also thank the anonymous reviewers at *Scientific Data* for their constructive feedback. Thanks to Daniela Gaus for excellent research assistance and Victor Kreitman for providing code and data on election dates.

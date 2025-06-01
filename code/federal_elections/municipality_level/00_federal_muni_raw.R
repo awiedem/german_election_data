@@ -1,18 +1,20 @@
 ### Clean and combine BTW electoral results at municipality level 1980-2021 
 # Disregard multi mail-in voting districts
 # Vincent Heddesheimer
-# Oct, 01, 2024
+# May, 07, 2025
 
 rm(list = ls())
+
+conflict_prefer("filter", "dplyr")
 
 
 # Create dataframe to store mail-in descriptives --------------------------
 
 # Create df with election year column number of join mail-in districts
 mailin_df <- data.frame(
-  election_year = c(1980, 1983, 1987, 1990, 1994, 1998, 2002, 2005, 2009, 2013, 2017, 2021),
-  mailin_join = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
-  share = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0)
+  election_year = c(1980, 1983, 1987, 1990, 1994, 1998, 2002, 2005, 2009, 2013, 2017, 2021, 2025),
+  mailin_join = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+  share = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 )
 
 
@@ -539,6 +541,8 @@ df02 <- fread("data/federal_elections/municipality_level/raw/BTW02/BTW02_Zweitst
 # inspect <- df02 |> select(ags, VG, BZA)
 
 # Eine Besonderheit stellen gemeinsame Briefwahlbezirke für mehrere Gemeinden dar.
+# Diese sind an der Gemeindekennziffer „999" zu erkennen. 
+# Das Feld „Verbandsgemeinde" enthält in diesen Fällen folgende Schlüsselnummern:
 # Diese sind an der Gemeindekennziffer „999“ zu erkennen. 
 # Das Feld „Verbandsgemeinde“ enthält in diesen Fällen folgende Schlüsselnummern:
 #   - Wenn alle Gemeinden dem gleichen Verband angehören den amtlichen Verbands-gemeindeschlüssel.
@@ -1188,6 +1192,8 @@ df21 <- fread("data/federal_elections/municipality_level/raw/BTW21/btw21_wbz_erg
 
 (inspect <- df21 |> select(ags, BWBez, BA))
 
+names(df21)
+
 # Eine Besonderheit stellen gemeinsame Briefwahlbezirke für mehrere
 # Gemeinden dar. Alle Gemeinden eines Kreises, die einen gemeinsamen 
 # Briefwahlvorstand bilden, erhalten im zusätz-lichen Feld EF7 
@@ -1231,7 +1237,7 @@ df21 <- df21_bezirksarten |>
   # variable for whether ags had unique mailin
   mutate(
     unique_mailin = ifelse(ags %in% ags_w_mailin21, 1, 0),
-    join_mailin = ifelse(str_sub(ags, -3, -3) == "9", 1, 0)
+    joint_mailin = ifelse(str_sub(ags, -3, -3) == "9", 1, 0)
     )
 
 
@@ -1292,6 +1298,132 @@ dupl <- df21 |>
   pull(ags)
 nrow(dupl) # 0 duplicates
 
+glimpse(df21)
+
+# 2025 --------------------------------------------------------------------
+
+# --- 1. Load raw 2025 file --------------------------------------------------
+df25_raw <- fread(
+  "data/federal_elections/municipality_level/raw/BTW25/btw25_wbz_ergebnisse.csv",
+  encoding = "UTF-8"
+)
+
+# First 4 rows contain meta headings; row 5 holds the *real* header.
+df25 <- df25_raw |>
+  slice(-(1:4)) |>                     # drop meta rows
+  setnames(as.character(df25_raw[5])) |>   # promote row‑5 to names
+  slice(-1) |>
+  # keep Zweitstimme cols only (1:17 meta + 48:80 parties)
+  select(c(1:17, 48:80)) |>
+  rename_with(~ str_remove(.x, " - Zweitstimmen$"))
+
+glimpse(df25)
+
+# --- 2. Harmonise identifiers ----------------------------------------------
+df25 <- df25 |>
+  mutate(
+    Land      = pad_zero_conditional(Land, 1),
+    Kreis     = pad_zero_conditional(Kreis, 1),
+    Gemeinde  = pad_zero_conditional(Gemeinde, 1, "00"),
+    Gemeinde  = pad_zero_conditional(Gemeinde, 2, "0"),
+    ags       = paste0(Land, Regierungsbezirk, Kreis, Gemeinde),
+    across(`Wahlberechtigte (A)`:WerteUnion, as.numeric)
+  ) |>
+  rename(
+    BWBez = `Kennziffer Briefwahlzugehörigkeit`,   # EF8 in 2025 file
+    BA    = Bezirksart                 # 0 = Urne, 5 = Briefwahl, 6/8 = Sonder
+  )
+
+glimpse(df25)
+
+# --- 3. Aggregate to municipality level ------------------------------------
+df25_bezirksarten <- df25 |>
+  group_by(ags, BWBez, BA) |>
+  summarise(across(`Wahlberechtigte (A)`:WerteUnion, sum, na.rm = TRUE),
+            .groups = "drop")
+
+glimpse(df25_bezirksarten)
+
+# --- 4. Identify municipalities that have their *own* mail‑in district -----
+ags_w_mailin25 <- df25_bezirksarten |>
+  filter(BA == 5) |>    # 5 = Briefwahl
+  pull(ags)
+
+# --- 5. Collapse over Bezirksarten & add flags -----------------------------
+df25 <- df25_bezirksarten |>
+  group_by(ags, BWBez) |>
+  summarise(across(`Wahlberechtigte (A)`:WerteUnion, sum, na.rm = TRUE),
+            .groups = "drop") |>
+  mutate(
+    election_year = 2025L,
+    unique_mailin = as.integer(ags %in% ags_w_mailin25),
+    joint_mailin   = as.integer(str_sub(ags, -3, -3) == "9")
+  ) |>
+  # drop parties that got *zero* votes nationwide
+  select(where(~ any(. != 0)))
+
+glimpse(df25)
+
+# --- 6. Optional: inspect combined mail‑in districts -----------------------
+mailin25 <- df25 |> filter(joint_mailin == 1)
+# mailin_df[? , 3] <- nrow(mailin25)   # store if you track counts
+
+# --- 7. Merge municipality population / area (31‑12‑2023 extract) ----------
+pop25 <- read_excel(
+  "data/covars_municipality/raw/municipality_sizes/AuszugGV4QAktuell.xlsx",
+  sheet = 2,
+  col_types = "numeric"
+) |>
+  select(
+    Land = `...3`,
+    RB   = `...4`,
+    Kreis = `...5`,
+    Gemeinde = `...7`,
+    area = `...9`,
+    pop  = `...10`
+  ) |>
+  slice(9:16018) |>
+  filter(!is.na(Gemeinde)) |>
+  mutate(
+    Land     = pad_zero_conditional(Land, 1),
+    Kreis    = pad_zero_conditional(Kreis, 1),
+    Gemeinde = pad_zero_conditional(Gemeinde, 1, "00"),
+    Gemeinde = pad_zero_conditional(Gemeinde, 2, "0"),
+    ags      = paste0(Land, RB, Kreis, Gemeinde)
+  ) |>
+  select(ags, area, pop)
+
+tail(pop25) # worked (checked with excel)
+
+glimpse(pop25)
+
+df25 <- df25 |>
+  left_join(pop25, by = "ags") |>
+  mutate(
+    county = substr(ags, 1, 5)
+  ) |>
+  group_by(county, BWBez, unique_mailin) |>
+  mutate(
+    county_bwbez_pop  = sum(pop,  na.rm = TRUE),
+    county_bwbez_area = sum(area, na.rm = TRUE)
+  ) |>
+  ungroup() |>
+  mutate(
+    pop_weight  = pop  / county_bwbez_pop,
+    area_weight = area / county_bwbez_area,
+    BWBez       = as.character(BWBez)
+  )
+
+glimpse(df25)
+
+# --- 8. Sanity check -------------------------------------------------------
+df25 |> count(ags, election_year) |> filter(n > 1)
+
+# Berlin districts
+
+names(df25)
+
+
 
 # Recoding ----------------------------------------------------------------
 
@@ -1320,12 +1452,15 @@ renames <- c(
   "number_voters" = "wählende (b)",
   "valid_votes" = "gültig",
   "valid_votes" = "gültige",
+  "invalid_votes" = "ungültig",
+  "invalid_votes" = "ungültige",
   "voters_wo_blockingnotice" = "a1",
   "voters_wo_blockingnotice" = "wahlberechtigte ohne sperrvermerk (a1)",
   "voters_blockingnotice" = "a2",
   "voters_blockingnotice" = "wahlberechtigte mit sperrvermerk (a2)",
   "voters_par25_2" = "a3",
   "voters_par25_2" = "wahlberechtigte nach § 25 abs. 2 bwo (a3)",
+  "voters_par25_2" = "wahlberechtigte nach § 25 abs 2 bwo (a3)",
   "voters_w_ballot" = "b1",
   "voters_w_ballot" = "wähler mit wahlschein (b1)",
   "voters_w_ballot" = "wählende mit wahlschein (b1)"
@@ -1335,6 +1470,9 @@ df_objects_t <- df_objects |>
   map( ~ .x |>
          rename_with(str_to_lower) |>
          rename(any_of(renames)))
+
+names(df_objects_t$df21)
+names(df_objects_t$df25)
 
 
 # Create one dataframe ----------------------------------------------------
@@ -1354,7 +1492,7 @@ dupl <- df |>
   count(ags, election_year) |>
   filter(n>1)
 nrow(dupl) # 603
-# all are the join_mailin districts
+# all are the joint_mailin districts
 
 df <- df |>
   # Get Bundesland / state from ags
@@ -1362,7 +1500,7 @@ df <- df |>
   # Organize
   select(
     # Background
-    ags, county, election_year, state, eligible_voters, number_voters, valid_votes,
+    ags, bwbez, county, election_year, state, eligible_voters, number_voters, valid_votes, invalid_votes,
     voters_wo_blockingnotice, voters_blockingnotice, voters_par25_2, voters_w_ballot,
     # Mail-in voting
     unique_mailin, joint_mailin, pop, area, pop_weight, area_weight,
@@ -1373,7 +1511,7 @@ df <- df |>
     # Left-wing
     dkp, kpd, mlpd, sgp, psg, kbw, v, spad, bsa,
     # Others
-    `50plus`, `ab 2000`, `ad-demokraten`, adm, agfg, apd, appd, asd, aufbruch, `b*`, bfb, bge, big, bp, bündnis21, `bündnis 21/rrp`, `bündnis c`, bürgerbewegung, bürgerpartei, büso, bwk, `chance 2000`, cbv, cm, deutschland, dib, diebasis, `die partei`, `die humanisten`, dm, dpd, `du.`, eap, familie, forum, `die frauen`, frauen, `freie wähler`,fwd, gartenpartei, gesundheitsforschung, graue, `die grauen`,hp, lfk, liebe, liga, lkr,  mg, `menschliche welt`, mündige, `mündige bürger`, naturgesetz, nichtwähler, `partei der nichtwähler`, ödp, `offensive d`, `öko-union`, `partei der vernunft`, pass, patrioten, pbc, pdf, pdv, piraten, prg, `pro deutschland`,`pro dm`, rentner, rrp, schill, ssw, `statt partei`, tierschutz, `die tierschutzpartei`, tierschutzpartei,`team todenhöfer`, tierschutzallianz, unabhängige, ust, vaa, violetten, `die violetten`, volksabstimmung, volt, `v-partei³`, zentrum 
+    `50plus`, `ab 2000`, `ad-demokraten`, adm, agfg, apd, appd, asd, aufbruch, `b*`, bfb, bge, big, bp, bsw, bündnis21, `bündnis 21/rrp`, `bündnis c`, `bündnis deutschland`, bürgerbewegung, bürgerpartei, büso, bwk, `chance 2000`, cbv, cm, deutschland, dib, diebasis, `die partei`, `die humanisten`, dm, dpd, `du.`, eap, familie, forum, `die frauen`, frauen, `freie wähler`,fwd, gartenpartei, gesundheitsforschung, graue, `die grauen`,hp, lfk, liebe, liga, lkr,  mg, `menschliche welt`, mera25, mündige, `mündige bürger`, naturgesetz, nichtwähler, `partei der nichtwähler`, ödp, `offensive d`, `öko-union`, `partei der vernunft`, pass, patrioten, pbc, pdf, pdh, pdv, piraten, prg, `pro deutschland`,`pro dm`, rentner, rrp, schill, ssw, `statt partei`, tierschutz, `die tierschutzpartei`, tierschutzpartei,`team todenhöfer`, tierschutzallianz, unabhängige, ust, vaa, verjüngungsforschung, violetten, `die violetten`, volksabstimmung, volt, `v-partei³`, werteunion, zentrum 
     ) %>%
   # Calculate extremist votes
   mutate(
@@ -1396,6 +1534,38 @@ df <- df |>
 # sgp  (= psg; sozialistische gleichheitspartei)
 # (Linke/PDS) not entirely left-wing but parts of it (solid - youth organization) are investigted by Verfassungsschutz
 
+# Election date ---------------------------------------------------
+
+df <- df |> mutate(election_date = case_when(
+  election_year == "1953" ~ lubridate::ymd("1953-09-06"),
+  election_year == "1957" ~ lubridate::ymd("1957-09-15"),
+  election_year == "1961" ~ lubridate::ymd("1961-09-17"),
+  election_year == "1965" ~ lubridate::ymd("1965-09-19"),
+  election_year == "1969" ~ lubridate::ymd("1969-09-28"),
+  election_year == "1972" ~ lubridate::ymd("1972-11-19"),
+  election_year == "1976" ~ lubridate::ymd("1976-10-03"),
+  election_year == "1980" ~ lubridate::ymd("1980-10-05"),
+  election_year == "1983" ~ lubridate::ymd("1983-03-06"),
+  election_year == "1987" ~ lubridate::ymd("1987-01-25"),
+  election_year == "1990" ~ lubridate::ymd("1990-12-02"),
+  election_year == "1994" ~ lubridate::ymd("1994-10-16"),
+  election_year == "1998" ~ lubridate::ymd("1998-09-27"),
+  election_year == "2002" ~ lubridate::ymd("2002-09-22"),
+  election_year == "2005" ~ lubridate::ymd("2005-09-18"),
+  election_year == "2009" ~ lubridate::ymd("2009-09-27"),
+  election_year == "2013" ~ lubridate::ymd("2013-09-22"),
+  election_year == "2017" ~ lubridate::ymd("2017-09-24"),
+  election_year == "2021" ~ lubridate::ymd("2021-09-26"),
+  election_year == "2025" ~ lubridate::ymd("2025-02-23"),
+  .default = NA
+), .after = election_year)
+
+# check whether missing values for election_date
+if (df |> filter(is.na(election_date)) |> nrow() > 0) {
+  message("Missing values for election_date")
+} else {
+  message("No missing values for election_date")
+}
 
 # Some transformations
 df <- df %>%
@@ -1451,5 +1621,7 @@ df |>
   distinct(election_year) |>
   distinct() |>
   arrange(election_year)
+
+table(df$election_year)
 
 ### END

@@ -159,13 +159,62 @@ table(nchar(out_df$ags))
 out_df <- out_df %>%
   dplyr::filter(!nchar(ags) == 7)
 
-## Add year / state
+## Add election year / election date / state
 
 ## 
 
-out_df <- out_df %>% 
-  mutate(election_year = lubridate::year(date),
-         state = substr(ags, 1, 2))
+out_df <- out_df %>%
+  mutate(
+    election_year = lubridate::year(date),
+    election_date = case_when(
+        election_year == "2006" & state_name == "Berlin" ~ ymd("2006-09-17"),
+        election_year == "2008" & state_name == "Bavaria" ~ ymd("2008-09-28"),
+        election_year == "2008" & state_name == "Niedersachsen" ~ ymd("2008-01-27"),
+        election_year == "2009" & state_name == "Brandenburg" ~ ymd("2009-09-27"),
+        election_year == "2009" & state_name == "Hesse" ~ ymd("2009-01-18"),
+        election_year == "2009" & state_name == "Saarland" ~ ymd("2009-08-30"),
+        election_year == "2009" & state_name == "Saxony" ~ ymd("2009-08-30"),
+        election_year == "2009" & state_name == "Schleswig-Holstein" ~ ymd("2009-09-27"),
+        election_year == "2009" & state_name == "Thuringia" ~ ymd("2009-08-30"),
+        election_year == "2010" & state_name == "North Rhine-Westphalia" ~ ymd("2010-05-09"),
+        election_year == "2011" & state_name == "Baden-Württemberg" ~ ymd("2011-03-27"),
+        election_year == "2011" & state_name == "Berlin" ~ ymd("2011-09-18"),
+        election_year == "2011" & state_name == "Mecklenburg-Vorpommern" ~ ymd("2011-09-04"),
+        election_year == "2011" & state_name == "Rhineland-Palatinate" ~ ymd("2011-03-27"),
+        election_year == "2011" & state_name == "Saxony-Anhalt" ~ ymd("2011-03-20"),
+        election_year == "2012" & state_name == "Saarland" ~ ymd("2012-03-25"),
+        election_year == "2012" & state_name == "Schleswig-Holstein" ~ ymd("2012-05-06"),
+        election_year == "2012" & state_name == "North Rhine-Westphalia" ~ ymd("2012-05-13"),
+        election_year == "2013" & state_name == "Bavaria" ~ ymd("2013-09-15"),
+        election_year == "2013" & state_name == "Hesse" ~ ymd("2013-09-22"),
+        election_year == "2013" & state_name == "Niedersachsen" ~ ymd("2013-01-20"),
+        election_year == "2014" & state_name == "Brandenburg" ~ ymd("2014-09-14"),
+        election_year == "2014" & state_name == "Saxony" ~ ymd("2014-08-31"),
+        election_year == "2014" & state_name == "Thuringia" ~ ymd("2014-09-14"),
+        election_year == "2016" & state_name == "Baden-Württemberg" ~ ymd("2016-03-13"),
+        election_year == "2016" & state_name == "Berlin" ~ ymd("2016-09-18"),
+        election_year == "2016" & state_name == "Mecklenburg-Vorpommern" ~ ymd("2016-09-04"),
+        election_year == "2016" & state_name == "Rhineland-Palatinate" ~ ymd("2016-03-13"),
+        election_year == "2016" & state_name == "Saxony-Anhalt" ~ ymd("2016-03-13"),
+        election_year == "2017" & state_name == "Niedersachsen" ~ ymd("2017-10-15"),
+        election_year == "2017" & state_name == "North Rhine-Westphalia" ~ ymd("2017-05-14"),
+        election_year == "2017" & state_name == "Saarland" ~ ymd("2017-03-26"),
+        election_year == "2018" & state_name == "Bavaria" ~ ymd("2018-10-14"),
+        election_year == "2018" & state_name == "Hesse" ~ ymd("2018-10-28"),
+        election_year == "2019" & state_name == "Brandenburg" ~ ymd("2019-09-01"),
+        election_year == "2019" & state_name == "Saxony" ~ ymd("2019-09-01"),
+        election_year == "2019" & state_name == "Thuringia" ~ ymd("2019-10-27"),
+        .default = NA
+    ),
+    state = substr(ags, 1, 2)
+  )
+
+# check if there are missing values in the election date variable
+if (out_df |> filter(is.na(election_date)) |> nrow() == 0) {
+  message("No missing values for election_date")
+} else {
+  message("There are missing values for election_date")
+}
 
 # ## Gen left right
 # 

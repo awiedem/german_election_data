@@ -10,6 +10,7 @@ options(scipen = 999)
 
 # conflict: prefer filter from dplyr
 conflict_prefer("filter", "dplyr")
+conflict_prefer("year", "lubridate")
 
 
 # Read crosswalk files ----------------------------------------------------
@@ -295,6 +296,38 @@ df_harm <- df_harm |>
 
 names(df_harm)
 
+# Election date ---------------------------------------------------
+
+df_harm <- df_harm |> mutate(election_date = case_when(
+  election_year == "1953" ~ lubridate::ymd("1953-09-06"),
+  election_year == "1957" ~ lubridate::ymd("1957-09-15"),
+  election_year == "1961" ~ lubridate::ymd("1961-09-17"),
+  election_year == "1965" ~ lubridate::ymd("1965-09-19"),
+  election_year == "1969" ~ lubridate::ymd("1969-09-28"),
+  election_year == "1972" ~ lubridate::ymd("1972-11-19"),
+  election_year == "1976" ~ lubridate::ymd("1976-10-03"),
+  election_year == "1980" ~ lubridate::ymd("1980-10-05"),
+  election_year == "1983" ~ lubridate::ymd("1983-03-06"),
+  election_year == "1987" ~ lubridate::ymd("1987-01-25"),
+  election_year == "1990" ~ lubridate::ymd("1990-12-02"),
+  election_year == "1994" ~ lubridate::ymd("1994-10-16"),
+  election_year == "1998" ~ lubridate::ymd("1998-09-27"),
+  election_year == "2002" ~ lubridate::ymd("2002-09-22"),
+  election_year == "2005" ~ lubridate::ymd("2005-09-18"),
+  election_year == "2009" ~ lubridate::ymd("2009-09-27"),
+  election_year == "2013" ~ lubridate::ymd("2013-09-22"),
+  election_year == "2017" ~ lubridate::ymd("2017-09-24"),
+  election_year == "2021" ~ lubridate::ymd("2021-09-26"),
+  .default = NA
+), .after = election_year)
+
+# check whether missing values for election_date
+if (df_harm |> filter(is.na(election_date)) |> nrow() > 0) {
+  message("Missing values for election_date")
+} else {
+  message("No missing values for election_date")
+}
+ga  
 # AfD to NA for years prior to 2013
 
 df_harm <- df_harm %>%

@@ -1,6 +1,9 @@
-### Harmonize BTW electoral results at muni level 1980-2021
+### Harmonize BTW electoral results at muni level 1980-2025
+# Harmonize to 2021 municipality borders
 # Vincent Heddesheimer, Hanno Hilbig
-# Nov, 22, 2024
+# May 2025
+
+rm(list = ls())
 
 # Disallow scientific notation: leads to errors when loading data
 options(scipen = 999)
@@ -41,6 +44,8 @@ df <- read_rds("data/federal_elections/municipality_level/final/federal_muni_unh
   # dplyr::filter years before 1990: no crosswalks available
   dplyr::filter(election_year >= 1990) |>
   arrange(ags, election_year)
+
+table(df$election_year)
 
 # Vote shares to votes ----------------------------------------------------
 names(df)
@@ -250,6 +255,143 @@ ggplot(agg_df, aes(x = election_year, y = value, color = variable)) +
   facet_wrap(~variable, scales = "free_y")
 
 
+# Inspect 2021 and 2025 election data -------------------------------------
+
+# AGS in 2025 but not in 2021
+df_25 <- df_cw %>%
+  dplyr::filter(election_year == 2025) %>%
+  dplyr::select(ags, election_year) %>%
+  distinct()
+
+df_21 <- df_cw %>%
+  dplyr::filter(election_year == 2021) %>%
+  dplyr::select(ags, election_year) %>%
+  distinct()
+
+df_25 %>%
+  anti_join(df_21, by = "ags") %>%
+  print(n = Inf)
+# 91 munis in 2025 but not in 2021
+
+# AGS in 2021 but not in 2025
+df_21 %>%
+  anti_join(df_25, by = "ags") %>%
+  print(n = Inf)
+# 56 munis in 2021 but not in 2025
+
+
+# Crosswalk 2025 BTW data to 2021 level -----------------------------------
+
+glimpse(df_cw)
+
+# Load necessary crosswalks
+
+full_cw <- read_rds("data/crosswalks/final/ags_1990_to_2025_crosswalk.rds")
+cw_2023_25 <- read_rds("data/crosswalks/final/crosswalk_ags_2023_to_2025.rds")
+cw_21_23 <- read_rds("data/crosswalks/final/crosswalk_ags_2021_to_2023.rds")
+
+
+# Build 2025-->2023 dis-aggregation table
+# (invert 2023-->2025 file)
+cw_25_to_23 <- cw_2023_25 %>% # year == 2023 rows
+  transmute(
+    ags_25 = ags_25, # 2025 code  (was ‘target’)
+    ags_23 = ags, # 2023 donor
+    pop_w_25_23 = pop_cw, # population share (already sums to 1 within ags_25)
+    area_w_25_23 = area_cw,
+    population = population,
+    area = area
+  )
+
+glimpse(cw_25_to_23)
+
+
+# Map 2023-->2021 using old cross-walks
+# (keep only one row per 2023 code and its weight toward a 2021 unit)
+cw_23_to_21 <- cw_21_23 %>% # ags_crosswalks.csv  (1990–2021 → 2021)
+  transmute(
+    ags_23 = ags_2023, # source = 2023 code  (mostly unchanged since 2021)
+    ags_21 = ags_2021,
+    pop_w_23_21 = w_pop,
+    area_w_23_21 = w_area
+  )
+
+glimpse(cw_23_to_21)
+
+# For the handful of municipalities born between 2021-01-01 and 2023-12-31 (≈90 units)
+# cw_23_to_21 is missing rows.  They all merge into 2021 units later, never split them, so we can safely set their 2021 weight to 1:
+cw_23_to_21 <- bind_rows(
+  cw_23_to_21,
+  cw_25_to_23 %>%
+    anti_join(cw_23_to_21, by = "ags_23") %>% # 2023 codes missing in 2021 map
+    transmute(
+      ags_23,
+      ags_21        = ags_23, # identity
+      pop_w_23_21   = 1,
+      area_w_23_21  = 1
+    )
+)
+
+
+# Create a fully-chained 2025 → 2021 cross-walk
+cw_25_to_21 <- cw_25_to_23 %>%
+  left_join(cw_23_to_21, by = "ags_23") %>%
+  mutate(
+    pop_w_25_21  = pop_w_25_23 * pop_w_23_21,
+    area_w_25_21 = area_w_25_23 * area_w_23_21
+  ) %>%
+  group_by(ags_25, ags_21) %>% # collapse double paths (rare)
+  summarise(
+    pop_w_25_21 = sum(pop_w_25_21, na.rm = TRUE),
+    area_w_25_21 = sum(area_w_25_21, na.rm = TRUE),
+    population = sum(population, na.rm = TRUE),
+    area = sum(area, na.rm = TRUE),
+    .groups = "drop"
+  )
+# Weights still sum to 1 within every 2025 source.
+
+# check
+cw_25_to_21 %>%
+  filter(pop_w_25_21 < 1) %>%
+  print(n = Inf)
+
+glimpse(df_cw)
+
+# Distribute raw 2025 votes to 2021 borders
+df25 <- df %>% # one row per 2025 AGS, votes already in counts
+  filter(election_year == 2025) %>%
+  left_join(cw_25_to_21, by = c("ags" = "ags_25")) %>%
+  mutate(
+    ags_21 = as.numeric(ags_21),
+  ) %>%
+  rename(
+    pop_cw = pop_w_25_21,
+    area_cw = area_w_25_21
+  )
+
+# check
+names(df25)
+
+df25 %>%
+  filter(pop_cw < 1) %>%
+  select(ags, election_year, ags_21, population, pop_cw, area, area_cw) %>%
+  print(n = Inf)
+
+# check those that are not in 2021
+names(df25)
+df25 %>%
+  anti_join(df |> filter(election_year == 2021) |> mutate(ags = as.numeric(ags)), by = c("ags_21" = "ags")) %>%
+  select(ags, election_year, ags_21, population, pop_cw, area, area_cw) %>%
+  print(n = Inf)
+
+df25 %>%
+  filter(ags_21 == "1001000") %>%
+  select(ags_21, year = election_year, pop = population, p_w = pop_cw, area, aa_w = area_cw, cdu, voters = eligible_voters) %>%
+  print(n = Inf)
+
+glimpse(df25)
+
+
 # Harmonize ---------------------------------------------------------------
 
 df_cw$election_year
@@ -259,6 +401,7 @@ names(df_cw)
 ## Votes: weighted sum -----------------------------------------------------
 votes <- df_cw |>
   dplyr::filter(election_year < 2021) |>
+  bind_rows(df25) |>
   group_by(ags_21, election_year) |>
   summarise(
     unique_mailin = max(unique_mailin),
@@ -278,6 +421,7 @@ votes <- df_cw |>
 ## Population & area: weighted sum -----------------------------------------
 area_pop <- df_cw |>
   dplyr::filter(election_year < 2021) |>
+  bind_rows(df25) |>
   group_by(ags_21, election_year) |>
   summarise(
     area = sum(area * area_cw, na.rm = TRUE),
@@ -317,6 +461,7 @@ ags21 <- read_excel(path = "data/crosswalks/raw/31122021_Auszug_GV.xlsx", sheet 
 # Create full df ----------------------------------------------------------
 
 glimpse(votes)
+table(votes$election_year)
 names(df_cw)
 
 # Bind back to dataframe
@@ -359,6 +504,8 @@ df_harm <- df_harm |>
 
 names(df_harm)
 
+glimpse(df_harm)
+
 row_sums <- df_harm %>%
   dplyr::select(-c(far_left, far_left_w_linke, far_right, cdu_csu)) %>%
   dplyr::select(cdu:zentrum) %>%
@@ -395,8 +542,8 @@ df_harm |>
 ### plot incongruence -------------------------------------------------------
 
 # histogram
-df_harm %>% 
-  # filter(flag_total_votes_incongruent == 1) %>% 
+df_harm %>%
+  # filter(flag_total_votes_incongruent == 1) %>%
   ggplot(aes(x = total_votes_incogruence)) +
   geom_histogram(bins = 50) +
   # number of observations above each bar
@@ -417,8 +564,10 @@ df_harm %>%
   # x axis labels for all values
   scale_x_continuous(breaks = seq(-18, 6, by = 1)) +
   # axis labels a bit smaller
-  theme(axis.text.x = element_text(size = 9),
-        axis.text.y = element_text(size = 9))
+  theme(
+    axis.text.x = element_text(size = 9),
+    axis.text.y = element_text(size = 9)
+  )
 
 ggsave("output/figures/total_votes_incongruence_hist.pdf", width = 7.5, height = 4)
 
@@ -499,6 +648,39 @@ df_harm <- df_harm |>
 
 
 
+# Election date ---------------------------------------------------
+
+df <- df |> mutate(election_date = case_when(
+  election_year == "1953" ~ lubridate::ymd("1953-09-06"),
+  election_year == "1957" ~ lubridate::ymd("1957-09-15"),
+  election_year == "1961" ~ lubridate::ymd("1961-09-17"),
+  election_year == "1965" ~ lubridate::ymd("1965-09-19"),
+  election_year == "1969" ~ lubridate::ymd("1969-09-28"),
+  election_year == "1972" ~ lubridate::ymd("1972-11-19"),
+  election_year == "1976" ~ lubridate::ymd("1976-10-03"),
+  election_year == "1980" ~ lubridate::ymd("1980-10-05"),
+  election_year == "1983" ~ lubridate::ymd("1983-03-06"),
+  election_year == "1987" ~ lubridate::ymd("1987-01-25"),
+  election_year == "1990" ~ lubridate::ymd("1990-12-02"),
+  election_year == "1994" ~ lubridate::ymd("1994-10-16"),
+  election_year == "1998" ~ lubridate::ymd("1998-09-27"),
+  election_year == "2002" ~ lubridate::ymd("2002-09-22"),
+  election_year == "2005" ~ lubridate::ymd("2005-09-18"),
+  election_year == "2009" ~ lubridate::ymd("2009-09-27"),
+  election_year == "2013" ~ lubridate::ymd("2013-09-22"),
+  election_year == "2017" ~ lubridate::ymd("2017-09-24"),
+  election_year == "2021" ~ lubridate::ymd("2021-09-26"),
+  election_year == "2025" ~ lubridate::ymd("2025-02-23"),
+  .default = NA
+), .after = election_year)
+
+# check whether missing values for election_date
+if (df |> filter(is.na(election_date)) |> nrow() > 0) {
+  message("Missing values for election_date")
+} else {
+  message("No missing values for election_date")
+}
+
 # Party votes to NA if no votes in year -----------------------------------
 
 # Identify parties that did not receive any votes in a given election year
@@ -535,14 +717,14 @@ df_harm <- df_harm |>
 ## Save this now:
 
 # Write .csv file
-fwrite(df_harm, file = "data/federal_elections/municipality_level/final/federal_muni_harm.csv")
-write_rds(df_harm, "data/federal_elections/municipality_level/final/federal_muni_harm.rds")
+fwrite(df_harm, file = "data/federal_elections/municipality_level/final/federal_muni_harm_21.csv")
+write_rds(df_harm, "data/federal_elections/municipality_level/final/federal_muni_harm_21.rds")
 
 
 
 # Inspect -----------------------------------------------------------------
 
-df_harm <- read_rds("data/federal_elections/municipality_level/final/federal_muni_harm.rds") |>
+df_harm <- read_rds("data/federal_elections/municipality_level/final/federal_muni_harm_21.rds") |>
   arrange(ags, election_year)
 
 ## Inspect turnout ---------------------------------------------------------
@@ -566,6 +748,11 @@ df_harm |>
 df_harm |>
   distinct(election_year) |>
   nrow()
+
+# count number of ags in each election year
+df_harm |>
+  group_by(election_year) |>
+  summarise(n = n_distinct(ags))
 
 glimpse(df_harm)
 
@@ -606,7 +793,7 @@ n_joint <- df_harm |>
   ) |>
   ungroup()
 
-View(n_joint)
+# View(n_joint)
 
 
 mailin_df <- read_rds("data/federal_elections/municipality_level/additional/mailin_df.rds")
@@ -643,7 +830,7 @@ n_joint |>
   # increase max of y-axis to make room for text
   scale_y_continuous(limits = function(x) c(0, max(x) * 1.1)) +
   facet_wrap(~variable, scales = "free_y", nrow = 3) +
-  scale_x_discrete(breaks = c(1990, 1994, 1998, 2002, 2005, 2009, 2013, 2017, 2021))
+  scale_x_discrete(breaks = c(1990, 1994, 1998, 2002, 2005, 2009, 2013, 2017, 2021, 2025))
 
 ggsave("output/figures/n_mailin.pdf", width = 7, height = 7)
 

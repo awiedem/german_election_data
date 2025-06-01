@@ -9,21 +9,25 @@ conflicts_prefer(dplyr::lag)
 conflicts_prefer(lubridate::year)
 
 # Load data
-df <- read_rds("data/municipal_elections/final/municipal_harm.rds")
+df <- read_rds("data/federal_elections/municipality_level/final/federal_muni_harm_25.rds")
+
+# Load raw data
+df_raw <- read_rds("data/federal_elections/municipality_level/final/federal_muni_raw.rds")
 
 glimpse(df)
+glimpse(df_raw)
 
 # how many ags?
 df %>%
-    select(ags) %>%
-    distinct() %>%
-    nrow()
+  select(ags) %>%
+  distinct() %>%
+  nrow()
 
 nrow(df)
 
 # Identify party columns
 parties <- df %>%
-    dplyr::select(cdu_csu:other) %>%
+    dplyr::select(cdu:zentrum) %>%
     colnames()
 
 # Check 1: Sum of party vote shares
@@ -34,30 +38,14 @@ s_votes <- df %>%
 
 cat("Share of rows with sum of party vote shares not equal to 1 (in pct):", 100 * mean(s_votes != 1), "\n")
 
+# 31 %
+
 # inspect the rows for which the sum of party vote shares is not equal to 1
 inspect_rows <- df %>%
-    mutate(sum_party_votes = s_votes) %>%
-    filter(sum_party_votes != 1)
+  mutate(sum_party_votes = s_votes) %>%
+  filter(sum_party_votes != 1)
 
-# Check 1.1: Deviation between sum of party vote shares and 1
-df %>%
-    mutate(deviation = abs(s_votes - 1)) %>%
-    pull(deviation) %>%
-    quantile(c(0.5, 0.9, 0.95, 0.96, 0.97, 0.98, 0.99, 0.999, 0.9999))
-
-# Check 1.2: Distribution sum of party vote shares
-df %>%
-    mutate(s_votes = s_votes) %>%
-    filter(s_votes > 1) %>%
-    ggplot(aes(x = s_votes)) +
-    geom_histogram() +
-    xlab("Sum of party vote shares (should sum to 1)") +
-    ylab("Count") +
-    theme_minimal() +
-    labs(
-        title = "Distribution of Sum of Party Vote Shares",
-        subtitle = "Only for ags with sum of party vote shares > 1"
-    )
+# These are all municipalities with 0 eligible voters.
 
 # Check 2: Party vote shares between 0 and 1
 s_votes_valid <- df %>%
@@ -66,16 +54,6 @@ s_votes_valid <- df %>%
     sum(na.rm = TRUE)
 
 cat("Share of rows with all party vote shares between 0 and 1:", s_votes_valid / nrow(df), "\n")
-
-# Check 2.1: Distribution of party vote shares for parties where the sum of party vote share is > 1
-
-# cdu_csu and fdp
-
-df %>%
-    filter(cdu_csu > 1 | fdp > 1) %>%
-    dplyr::select(ags, cdu_csu, fdp, election_year) %>%
-    print(n = 100)
-
 
 # Check 3: Large changes in party vote shares between elections
 parties_main <- c(
@@ -128,13 +106,12 @@ df %>%
     arrange(ags, election_year) %>%
     dplyr::select(ags, election_year, linke_pds, linke_pds_ratio, valid_votes) %>%
     group_by(ags) %>%
-    filter(any(abs(linke_pds_ratio) >= 10) & !any(is.infinite(linke_pds_ratio))) %>%
+    filter(any(abs(linke_pds_ratio) >= 50) & !any(is.infinite(linke_pds_ratio))) %>%
     print(n = 100)
-
 ## Fine: Small towns and Linke becomes suddenly more feasible (from PDA to Linke)
 
-# Check 4: Large changes in valid votes ----------------------------
 
+# Check 4: Large changes in valid votes
 df <- df %>%
     group_by(ags) %>%
     mutate(
@@ -145,28 +122,17 @@ df <- df %>%
 
 df_check_large_changes <- df %>%
     group_by(ags) %>%
-    filter(any(valid_votes_ratio > 20)) %>%
+    filter(any(valid_votes_ratio > 2)) %>%
     dplyr::select(ags, election_year, valid_votes, valid_votes_ratio)
 
 print(nrow(df_check_large_changes))
 
 df_check_large_changes %>%
-    filter(valid_votes > 1000) %>%
+    group_by(ags) %>%
+    filter(any(valid_votes > 1000)) %>%
     print(n = 500)
 
-# How many municipalities have a valid_votes_ratio > 20?
-
-df_check_large_changes %>%
-    filter(valid_votes_ratio > 30) %>%
-    distinct(ags) %>%
-    nrow()
-
-# Same but what about ratios < 0.1?
-
-df_check_large_changes %>%
-    filter(valid_votes_ratio < 0.1) %>%
-    distinct(ags) %>%
-    nrow()
+## oftentimes created by mergers; but show up like this in raw (unharmonized data)
 
 # Check 5: How many times does a municipality appear in the data?
 
@@ -177,11 +143,10 @@ df %>%
     pull(n) %>%
     table()
 
-# 6     7     8     9
-# 1     2   326 10459
+    # 6     7     8     9    10 
+    # 1     2    52   111 10586 
 
 # does each municipality appear exactly 9 times?
-# No; 10459 municipalities appear 9 times, 326 municipalities appear 8 times, 2 municipalities appear 7 times, and 1 municipality appears 6 times.
 
 df %>%
     group_by(ags) %>%
@@ -195,74 +160,17 @@ df %>%
     pivot_longer(everything(), names_to = "variable", values_to = "has_inf") %>% 
     filter(has_inf)
 
+df_raw %>% 
+  summarise(across(everything(), ~ any(is.infinite(.)))) %>% 
+  pivot_longer(everything(), names_to = "variable", values_to = "has_inf") %>% 
+  filter(has_inf)
 
-# Afd non NA for each election year?
-
-df %>%
-    dplyr::select(ags, election_year, afd) %>%
-    filter(!is.na(afd)) %>%
-    group_by(election_year) %>%
-    summarise(n = n()) %>%
-    ungroup() %>%
-    print(n = 100)
-
-
-library(gerda)
-
-gerda::gerda_data_list()
-
-# load gerda
-df1 <- gerda::load_gerda_web("municipal_unharm")
-
-df1 %>%
-    dplyr::select(ags, election_year, afd) %>%
-    filter(!is.na(afd)) %>%
-    group_by(election_year) %>%
-    summarise(n = n()) %>%
-    ungroup() %>%
-    print(n = 100)
-
-df2 <- gerda::load_gerda_web("municipal_harm")
-
-df2 %>%
-    dplyr::select(ags, election_year, afd) %>%
-    filter(!is.na(afd)) %>%
-    group_by(election_year) %>%
-    summarise(n = n()) %>%
-    ungroup() %>%
-    print(n = 100)
-
-
-
-
-df2 %>%
-    dplyr::select(ags, election_year, afd) %>%
-    filter(ags == "05314000") %>%
-    print(n = 100)
-
-names(df2)
-
-# check Bonn 1999
-gerda::load_gerda_web("municipal_harm") %>%
-    filter(ags == "05314000" & election_year == 1999) %>%
-    select(ags_name, cdu_csu, spd, gruene, fdp, linke_pds, afd, other)
-
-
-gerda::load_gerda_web("municipal_harm") %>%
-    filter(!is.na(afd)) %>%
-    group_by(election_year) %>%
-    summarise(n = n()) %>%
-    ungroup()
-
-
-
-df <- read.csv("data/municipal_elections/final/municipal_harm.csv")
+# Count Afd non NA over time?
 
 df %>%
-    dplyr::select(ags, election_year, afd) %>%
-    filter(!is.na(afd)) %>%
-    group_by(election_year) %>%
-    summarise(n = n()) %>%
-    ungroup()
-### END
-
+  dplyr::select(ags, election_year, afd) %>%
+  filter(!is.na(afd)) %>%
+  group_by(election_year) %>%
+  summarise(n = n()) %>%
+  ungroup() %>%
+  print(n = 100)
