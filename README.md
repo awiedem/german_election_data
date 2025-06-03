@@ -99,6 +99,8 @@ The repository is structured into four main folders:
 
 To facilitate consistent comparisons across time and regions, we provide files harmonized to both 2021 and 2025 municipal and county boundaries. We use official crosswalks to track mergers, splits, and boundary shifts. In cases where multiple municipalities merged, we apply population-based weighting to aggregate votes to the new municipality's boundaries. For mail-in voting districts shared by multiple municipalities, we allocate mail-in votes proportionally based on the number of polling-card voters in each municipality.
 
+For detailed information about the harmonization process for federal election data, including crosswalk creation and validation steps, see the [Federal Election Harmonization README](code/federal_elections/municipality_level/README.md).
+
 The harmonization process includes:
 1. Creating custom crosswalks for each time period
 2. Population-weighted aggregation of votes for merged municipalities
