@@ -55,7 +55,7 @@ df |>
 
 
 # Vote shares to votes ----------------------------------------------------
-
+names(df)
 df <- df |>
   mutate(
     across(cdu:far_left_w_linke, ~ .x * number_voters)
@@ -170,18 +170,19 @@ df_cw$year
 glimpse(df_cw)
 
 ## Votes: weighted sum -----------------------------------------------------
+names(df_cw)
 votes <- df_cw |>
   filter(year < 2021) |>
   group_by(county_code_21, election_year) |>
   summarise(
     across(
-      eligible_voters:cdu_csu,
+      eligible_voters:far_left_w_linke,
       ~ sum(.x * pop_cw, na.rm = TRUE)
     )
   ) |>
   # Round
   mutate(across(
-    eligible_voters:cdu_csu,
+    eligible_voters:far_left_w_linke,
     ~ round(.x, digits = 0)
   )) |>
   ungroup()
@@ -281,7 +282,7 @@ df_harm <- df_harm %>%
 
 df_harm <- df_harm |>
   mutate(
-    across(cdu:cdu_csu, ~ .x / total_votes),
+    across(cdu:far_left_w_linke, ~ .x / total_votes),
     turnout = number_voters / eligible_voters
   ) |>
   # Relocate columns
@@ -327,7 +328,9 @@ if (df_harm |> filter(is.na(election_date)) |> nrow() > 0) {
 } else {
   message("No missing values for election_date")
 }
-ga  
+
+glimpse(df_harm)
+
 # AfD to NA for years prior to 2013
 
 df_harm <- df_harm %>%
@@ -360,6 +363,7 @@ write_rds(df_harm, file = "data/federal_elections/county_level/final/federal_cty
 df_harm <- read_rds("data/federal_elections/county_level/final/federal_cty_harm.rds")
 names(df_harm)
 
+glimpse(df_harm)
 
 # Eisenach in df_harm? 16016, 16056, 16063
 df_harm |>
