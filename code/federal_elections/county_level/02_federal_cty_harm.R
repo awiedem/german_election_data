@@ -1,7 +1,7 @@
 ### Harmonize BTW electoral results at county level 1990-2021
 # Vincent Heddesheimer
 # Created: June, 18, 2024
-# Last updated: August, 13, 2024
+# Last updated: July, 31, 2025
 
 rm(list = ls())
 
@@ -36,9 +36,6 @@ cw_info_ever_merged_cc_21 <- cw %>%
 cw_info_ever_merged_cc_21 |>
   print(n=Inf)
 
-
-View(cw)
-
 # Eisenach in cw?
 cw |>
   filter(str_detect(county_name, "Eisenach"))
@@ -49,10 +46,15 @@ df <- read_rds("data/federal_elections/county_level/final/federal_cty_unharm.rds
   mutate(election_year = year) |>
   filter(election_year >= 1990)
 
+# Verify that there are no duplicates in the election data
+df |>
+  group_by(ags, election_year) %>%
+  count() %>%
+  filter(n > 1)
+
  # Eisenach in df? 16016, 16056, 16063
 df |>
   filter(ags == "16016" | ags == "16056" | ags == "16063")
-
 
 # Vote shares to votes ----------------------------------------------------
 names(df)
@@ -79,8 +81,7 @@ not_merged_naive
 # If we do not follow the steps below, there are 50 cases.
 # We found these by the below code.
 
-glimpse(df)
-## Check means of some variables by year
+
 
 # Dealing with unsuccessful mergers ---------------------------------------
 
@@ -107,6 +108,12 @@ df <- df |>
       TRUE ~ ags
     )
   )
+
+# Verify that there are no duplicates in the election data
+df |>
+  group_by(ags, election_year) %>%
+  count() %>%
+  filter(n > 1)
 
 # Merge crosswalks with election data -------------------------------------
 
@@ -398,5 +405,10 @@ insp <- inspect_unharm |>
   filter(value != 0) |>
   select(var, value)
 
+# duplicates
+df_harm |>
+  count(county_code, election_year) |>
+  filter(n > 1)
+# none
 
 ### END
