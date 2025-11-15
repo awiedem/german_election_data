@@ -642,6 +642,27 @@ ni22_data <- ni22_data |>
 
 rm(ni22_ags)
 
+## Calculations
+ni22_data <- ni22_data |>
+  mutate(
+    turnout = valid_votes / eligible_voters,
+    across(all_of(ni22_partylist), ~ .x / valid_votes)
+  ) |>
+  ### Final Selecting (and Arranging) of Variables
+  select(
+    ags,
+    county,
+    election_year,
+    state,
+    election_date,
+    eligible_voters,
+    number_voters,
+    valid_votes,
+    turnout,
+    all_of(ni22_partylist),
+    cdu_csu
+  )
+
 ## Final Check
 ni22_totalvoters <- ni22_data |>
   summarize(total = sum(eligible_voters, na.rm = TRUE)) |>
@@ -652,3 +673,25 @@ if (ni22_totalvoters == 6064738) {
 } else {
   cat("Houston, we've got a problem!\n")
 }
+
+
+#### Bind and Write ####
+state2223 <- bind_rows(by23_data, he23_data, ni22_data)
+
+write_csv(
+  state2223,
+  here(
+    path,
+    '../../../state_elections/final',
+    'state_2223_unharm.csv'
+  )
+)
+
+write_rds(
+  state2223,
+  here(
+    path,
+    '../../../state_elections/final',
+    'state_2223_unharm.rds'
+  )
+)
