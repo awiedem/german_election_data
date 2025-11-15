@@ -200,7 +200,7 @@ by23_data <- by23_data |>
 ## Check for Problematic Mail-In Votes
 # If art_des_stimmbezirks == 0, it is a normal voting district. For
 # art_des_stimmbezirks %in% c(1, 5, 6), eligible_voters == 0 &
-# number_voters != 0, indicating these are likely artificial mail-in vote
+# number_voters != 0, indicate that these are likely artificial mail-in vote
 # districts. All other types are special in some way, with
 # eligible_voters > number_voters. Therefore, for every art_des_stimmbezirks, if
 # the corresponding AGS occurs multiple times, one can simply summarize by AGS.
@@ -580,6 +580,7 @@ ni22_data <- ni22_data |>
   ) |>
   filter(!str_detect(ags, 'Anzahl')) |>
   filter(!if_all(-ags, is.na)) |>
+  ### Rename Variables For Consistency With Other Datasets
   rename(
     eligible_voters = wahl_berech_tigte,
     valid_votes = gultige_stimmen,
@@ -592,6 +593,7 @@ ni22_data <- ni22_data |>
     piraten = pi_raten,
     tierschutz = tier_schutz_partei,
   ) |>
+  ### Various Mutatations
   mutate(
     state = as.character('03'),
     ags = paste0(state, ags),
@@ -604,6 +606,7 @@ ni22_data <- ni22_data |>
     valid_votes = as.numeric(valid_votes),
     across(all_of(ni22_partylist), as.numeric)
   ) |>
+  ### Get Rid of Not Needed Variables
   select(
     ags,
     county,
@@ -673,7 +676,6 @@ if (ni22_totalvoters == 6064738) {
 } else {
   cat("Houston, we've got a problem!\n")
 }
-
 
 #### Bind and Write ####
 state2223 <- bind_rows(by23_data, he23_data, ni22_data)
