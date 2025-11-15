@@ -13,10 +13,10 @@
 # CPU: AMD Ryzen 7 7840U w/ Radeon 780M Graphics
 # Physical RAM: 2×32 GB DDR5, 5600 MT/s
 # Available RAM: 54.7 GB
-# R version: 4.5.1 (2025-06-13)
-# RStudio version: 2025.09.1+401
+# R version: 4.5.2 (2025-10-31)
+# RStudio version: 2025.9.2.418
 
-# Script runtime: NA
+# Script runtime: ~ 4 seconds
 
 ## Clear Everything
 rm(list = ls())
@@ -642,6 +642,7 @@ ni22_data <- ni22_data |>
 
 rm(ni22_ags)
 
+## Final Check
 ni22_totalvoters <- ni22_data |>
   summarize(total = sum(eligible_voters, na.rm = TRUE)) |>
   pull(total)
