@@ -3,7 +3,7 @@
 ###################################
 
 # Florian Sichart
-# Last update: October 2024
+# Last update: November 2025 (Luca Schenk)
 
 ########## PREPARATION ----
 rm(list = ls())
@@ -707,6 +707,9 @@ thueringen_1994_kommunalwahlen_data_sub$abs_AfD <- NA
 thueringen_1994_kommunalwahlen_data_sub$abs_PIRATEN <- NA
 thueringen_1994_kommunalwahlen_data_sub$abs_PIRATEN <- NA
 
+thueringen_1994_kommunalwahlen_data_sub$abs_DiePARTEI <- NA
+
+
 thueringen_1994_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$FDP)
 thueringen_1994_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$abs_FDP)
 
@@ -734,6 +737,7 @@ thueringen_1994_kommunalwahlen_data_sub$sitze_DIELINKE <- thueringen_1994_kommun
 thueringen_1994_kommunalwahlen_data_sub$sitze_GRÜNE <- thueringen_1994_kommunalwahlen_data_sub$GRE_sitze
 thueringen_1994_kommunalwahlen_data_sub$sitze_AfD <- NA
 thueringen_1994_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
+thueringen_1994_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
 thueringen_1994_kommunalwahlen_data_sub$sitze_FDP <- thueringen_1994_kommunalwahlen_data_sub$FDP_sitze
 thueringen_1994_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_1994_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
 thueringen_1994_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_1994_kommunalwahlen_data_sub$Waehlergruppen_sitze
@@ -741,9 +745,9 @@ thueringen_1994_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_1994_
 # Creating new dataframe with selected vars ----
 thueringen_1994_kommunalwahlen_data_sub <- thueringen_1994_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
                                                                                        Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
-                                                                                       abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
-                                                                                       gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
-                                                                                       sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
+                                                                                       abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_DiePARTEI, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
+                                                                                       gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_DiePARTEI, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
+                                                                                       sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_DiePARTEI, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
 
 thueringen_1994_kommunalwahlen_data_sub[thueringen_1994_kommunalwahlen_data_sub == "-"] <- NA
 
@@ -814,6 +818,8 @@ thueringen_1999_kommunalwahlen_data_sub$abs_AfD <- as.numeric(thueringen_1999_ko
 thueringen_1999_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(0)
 thueringen_1999_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$abs_PIRATEN)
 
+thueringen_1999_kommunalwahlen_data_sub$abs_DiePARTEI <- NA
+
 thueringen_1999_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$FDP)
 thueringen_1999_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$abs_FDP)
 
@@ -841,6 +847,7 @@ thueringen_1999_kommunalwahlen_data_sub$sitze_DIELINKE <- thueringen_1999_kommun
 thueringen_1999_kommunalwahlen_data_sub$sitze_GRÜNE <- thueringen_1999_kommunalwahlen_data_sub$GRE_sitze
 thueringen_1999_kommunalwahlen_data_sub$sitze_AfD <- NA
 thueringen_1999_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
+thueringen_1999_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
 thueringen_1999_kommunalwahlen_data_sub$sitze_FDP <- thueringen_1999_kommunalwahlen_data_sub$FDP_sitze
 thueringen_1999_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_1999_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
 thueringen_1999_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_1999_kommunalwahlen_data_sub$Waehlergruppen_sitze
@@ -849,10 +856,9 @@ thueringen_1999_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_1999_
 # Creating new dataframe with selected vars ----
 thueringen_1999_kommunalwahlen_data_sub <- thueringen_1999_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
                                                                                        Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
-                                                                                       abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
-                                                                                       gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
-                                                                                       sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
-
+                                                                                       abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_DiePARTEI, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
+                                                                                       gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_DiePARTEI, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
+                                                                                       sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_DiePARTEI, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
 thueringen_1999_kommunalwahlen_data_sub[thueringen_1999_kommunalwahlen_data_sub == "-"] <- NA
 
 
@@ -924,6 +930,8 @@ thueringen_2004_kommunalwahlen_data_sub$abs_AfD <- as.numeric(thueringen_2004_ko
 thueringen_2004_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(0)
 thueringen_2004_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$abs_PIRATEN)
 
+thueringen_2004_kommunalwahlen_data_sub$abs_DiePARTEI <- NA
+
 thueringen_2004_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$FDP)
 thueringen_2004_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$abs_FDP)
 
@@ -951,6 +959,7 @@ thueringen_2004_kommunalwahlen_data_sub$sitze_DIELINKE <- thueringen_2004_kommun
 thueringen_2004_kommunalwahlen_data_sub$sitze_GRÜNE <- thueringen_2004_kommunalwahlen_data_sub$GRE_sitze
 thueringen_2004_kommunalwahlen_data_sub$sitze_AfD <- NA
 thueringen_2004_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
+thueringen_2004_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
 thueringen_2004_kommunalwahlen_data_sub$sitze_FDP <- thueringen_2004_kommunalwahlen_data_sub$FDP_sitze
 thueringen_2004_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_2004_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
 thueringen_2004_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_2004_kommunalwahlen_data_sub$Waehlergruppen_sitze
@@ -959,10 +968,9 @@ thueringen_2004_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_2004_
 # Creating new dataframe with selected vars ----
 thueringen_2004_kommunalwahlen_data_sub <- thueringen_2004_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
                                                                                        Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
-                                                                                       abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
-                                                                                       gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
-                                                                                       sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
-
+                                                                                       abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_DiePARTEI, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
+                                                                                       gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_DiePARTEI, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
+                                                                                       sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_DiePARTEI, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
 thueringen_2004_kommunalwahlen_data_sub[thueringen_2004_kommunalwahlen_data_sub == "-"] <- NA
 
 
@@ -1034,6 +1042,8 @@ thueringen_2009_kommunalwahlen_data_sub$abs_AfD <- as.numeric(thueringen_2009_ko
 thueringen_2009_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(0)
 thueringen_2009_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$abs_PIRATEN)
 
+thueringen_2009_kommunalwahlen_data_sub$abs_DiePARTEI <- NA
+
 thueringen_2009_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$FDP)
 thueringen_2009_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$abs_FDP)
 
@@ -1061,6 +1071,7 @@ thueringen_2009_kommunalwahlen_data_sub$sitze_DIELINKE <- thueringen_2009_kommun
 thueringen_2009_kommunalwahlen_data_sub$sitze_GRÜNE <- thueringen_2009_kommunalwahlen_data_sub$GRE_sitze
 thueringen_2009_kommunalwahlen_data_sub$sitze_AfD <- NA
 thueringen_2009_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
+thueringen_2009_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
 thueringen_2009_kommunalwahlen_data_sub$sitze_FDP <- thueringen_2009_kommunalwahlen_data_sub$FDP_sitze
 thueringen_2009_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_2009_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
 thueringen_2009_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_2009_kommunalwahlen_data_sub$Waehlergruppen_sitze
@@ -1069,9 +1080,9 @@ thueringen_2009_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_2009_
 # Creating new dataframe with selected vars ----
 thueringen_2009_kommunalwahlen_data_sub <- thueringen_2009_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
                                                                                        Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
-                                                                                       abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
-                                                                                       gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
-                                                                                       sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
+                                                                                       abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_DiePARTEI, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
+                                                                                       gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_DiePARTEI, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
+                                                                                       sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_DiePARTEI, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
 
 thueringen_2009_kommunalwahlen_data_sub[thueringen_2009_kommunalwahlen_data_sub == "-"] <- NA
 
@@ -1144,6 +1155,8 @@ thueringen_2014_kommunalwahlen_data_sub$abs_AfD <- as.numeric(thueringen_2014_ko
 thueringen_2014_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(0)
 thueringen_2014_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$abs_PIRATEN)
 
+thueringen_2014_kommunalwahlen_data_sub$abs_DiePARTEI <- NA
+
 thueringen_2014_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$FDP)
 thueringen_2014_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$abs_FDP)
 
@@ -1170,6 +1183,7 @@ thueringen_2014_kommunalwahlen_data_sub$sitze_DIELINKE <- thueringen_2014_kommun
 thueringen_2014_kommunalwahlen_data_sub$sitze_GRÜNE <- thueringen_2014_kommunalwahlen_data_sub$GRE_sitze
 thueringen_2014_kommunalwahlen_data_sub$sitze_AfD <- thueringen_2014_kommunalwahlen_data_sub$AfD_sitze
 thueringen_2014_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
+thueringen_2014_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
 thueringen_2014_kommunalwahlen_data_sub$sitze_FDP <- thueringen_2014_kommunalwahlen_data_sub$FDP_sitze
 thueringen_2014_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_2014_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
 thueringen_2014_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_2014_kommunalwahlen_data_sub$Waehlergruppen_sitze
@@ -1178,9 +1192,9 @@ thueringen_2014_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_2014_
 # Creating new dataframe with selected vars ----
 thueringen_2014_kommunalwahlen_data_sub <- thueringen_2014_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
                                                                                        Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
-                                                                                       abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
-                                                                                       gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
-                                                                                       sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
+                                                                                       abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_DiePARTEI, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
+                                                                                       gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_DiePARTEI, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
+                                                                                       sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_DiePARTEI, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
 
 thueringen_2014_kommunalwahlen_data_sub[thueringen_2014_kommunalwahlen_data_sub == "-"] <- NA
 
@@ -1253,6 +1267,8 @@ thueringen_2019_kommunalwahlen_data_sub$abs_AfD <- as.numeric(thueringen_2019_ko
 thueringen_2019_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(0)
 thueringen_2019_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$abs_PIRATEN)
 
+thueringen_2019_kommunalwahlen_data_sub$abs_DiePARTEI <- NA
+
 thueringen_2019_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$FDP)
 thueringen_2019_kommunalwahlen_data_sub$abs_FDP <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$abs_FDP)
 
@@ -1279,6 +1295,7 @@ thueringen_2019_kommunalwahlen_data_sub$sitze_DIELINKE <- thueringen_2019_kommun
 thueringen_2019_kommunalwahlen_data_sub$sitze_GRÜNE <- thueringen_2019_kommunalwahlen_data_sub$GRE_sitze
 thueringen_2019_kommunalwahlen_data_sub$sitze_AfD <- thueringen_2019_kommunalwahlen_data_sub$AfD_sitze
 thueringen_2019_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
+thueringen_2019_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
 thueringen_2019_kommunalwahlen_data_sub$sitze_FDP <- thueringen_2019_kommunalwahlen_data_sub$FDP_sitze
 thueringen_2019_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_2019_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
 thueringen_2019_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_2019_kommunalwahlen_data_sub$Waehlergruppen_sitze
@@ -1287,9 +1304,9 @@ thueringen_2019_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_2019_
 # Creating new dataframe with selected vars ----
 thueringen_2019_kommunalwahlen_data_sub <- thueringen_2019_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
                                                                                        Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
-                                                                                       abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
-                                                                                       gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
-                                                                                       sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
+                                                                                       abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_DiePARTEI, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
+                                                                                       gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_DiePARTEI, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
+                                                                                       sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_DiePARTEI, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
 
 thueringen_2019_kommunalwahlen_data_sub[thueringen_2019_kommunalwahlen_data_sub == "-"] <- NA
 
@@ -1307,9 +1324,173 @@ thueringen_2019_kommunalwahlen_data_sub <-
 thueringen_2019_kommunalwahlen_data_sub$Turnout <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$Wähler) / as.numeric(thueringen_2019_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
 
 
+
+
+
+
+###### Thueringen 2024 Gemeinderatswahlen ----
+#### Load election data ----
+thueringen_2024_kommunalwahlen_data <- lapply(excel_sheets("raw/thueringen/thueringen_2024.xlsx"),
+                                              function(S) {
+                                                as.data.table(read_excel("raw/thueringen/thueringen_2024.xlsx", sheet=S, skip = 4)) |> 
+                                                  mutate(across(everything(), ~ as.character(.x)))
+                                              }) |> 
+  bind_rows()
+
+#### fix names ----
+names(thueringen_2024_kommunalwahlen_data) <- str_replace(names(thueringen_2024_kommunalwahlen_data), "-", "_nr")
+
+
+#### Recoding ----
+# Create new dataframe ----
+thueringen_2024_kommunalwahlen_data_sub <- thueringen_2024_kommunalwahlen_data |> 
+  
+  # pivot to WIDE data
+  fill(starts_with(c("Gemeinde", "Kreis"))) |> 
+  filter(Gemeinde_nr != "nr.") |> 
+  filter(!is.na(Wähler)) |> 
+  
+  # only party lists // other
+  mutate(
+    
+    AGS_8dig = paste0(Kreis_nr, Gemeinde_nr), # first three digits "160" are added later => adapted to pre-existing framework 
+    
+    label = case_when(
+      
+      Wähler %in% c(
+        "Stimmverhalten", "Wahlberechtigte", "Wähler/Wahlbeteiligung", "Ungültige Stimmzettel", 
+        "Zu vergebende Sitze", "Gültige Stimmen", "davon entfielen auf",
+        
+        "CDU", "SPD", "DIE LINKE", "GRÜNE", "AfD", "PIRATEN", "FDP", "Die PARTEI", "Freie Wähler"
+        ) ~ Wähler,
+      
+      T ~ "other"
+    )
+  ) 
+  
+# pivot both votes and seats to wide format
+thueringen_2024_kommunalwahlen_data_sub <- thueringen_2024_kommunalwahlen_data_sub |> 
+  
+  group_by(AGS_8dig, Gemeinde, label) |> 
+  summarise(Anzahl = sum(as.numeric(str_replace(Anzahl, "-", "0")), na.rm = T)) |> 
+  
+  ungroup() |> 
+  
+  pivot_wider(
+    id_cols = c("AGS_8dig", "Gemeinde"),
+    names_from = "label",
+    values_from = "Anzahl",
+    values_fill = NA
+  ) |> 
+  
+  left_join(
+    
+    thueringen_2024_kommunalwahlen_data_sub |> 
+      
+      filter(!is.na(Sitze) & Sitze != "Mehrheitswahl") |> 
+      
+      group_by(AGS_8dig, Gemeinde, label) |> 
+      summarise(Sitze = sum(as.numeric(str_replace(Sitze, "-", "0")), na.rm = T)) |> 
+      
+      ungroup() |> 
+      
+      pivot_wider(
+        id_cols = c("AGS_8dig", "Gemeinde"),
+        names_from = "label",
+        values_from = "Sitze",
+        values_fill = NA,
+        names_prefix = "sitze_"
+      ),
+    
+    by = c("AGS_8dig",
+           "Gemeinde")
+    
+  )
+
+
+# create non-existing and rename existing variables
+thueringen_2024_kommunalwahlen_data_sub <- thueringen_2024_kommunalwahlen_data_sub |> 
+  
+  mutate(
+    Bundesland = "Thueringen",
+    election_year = "2024",
+    election_type = "Kommunalwahlen",
+    IDIRB = "",
+    IDBA = ""
+  ) |> 
+  
+  rename(
+    Gebietsname = Gemeinde,
+    Wahlberechtigteinsgesamt = Wahlberechtigte,
+    Wähler = `Wähler/Wahlbeteiligung`,
+    GültigeStimmen = `Gültige Stimmen`,
+    abs_CDU = CDU,
+    abs_SPD = SPD,
+    abs_DIELINKE = `DIE LINKE`, 
+    abs_GRÜNE = GRÜNE,
+    abs_AfD = AfD,
+    abs_PIRATEN = PIRATEN,
+    abs_FDP = FDP,
+    abs_DiePARTEI = `Die PARTEI`,
+    abs_FREIEWÄHLER = `Freie Wähler`,
+    abs_Wählergruppen = other,
+    
+    # seats
+    sitze_CDU = sitze_CDU,
+    sitze_SPD = sitze_SPD,
+    sitze_DIELINKE = `sitze_DIE LINKE`, 
+    sitze_GRÜNE = sitze_GRÜNE,
+    sitze_AfD = sitze_AfD,
+    sitze_PIRATEN = sitze_PIRATEN,
+    sitze_FDP = sitze_FDP,
+    sitze_DiePARTEI = `sitze_Die PARTEI`,
+    sitze_FREIEWÄHLER = `sitze_Freie Wähler`,
+    sitze_Wählergruppen = sitze_other
+    ) |> 
+  
+  as.data.table()
+
+thueringen_2024_kommunalwahlen_data_sub$gew_CDU <- NA
+thueringen_2024_kommunalwahlen_data_sub$gew_SPD <- NA
+thueringen_2024_kommunalwahlen_data_sub$gew_DIELINKE <- NA
+thueringen_2024_kommunalwahlen_data_sub$gew_GRÜNE <- NA
+thueringen_2024_kommunalwahlen_data_sub$gew_AfD <- NA
+thueringen_2024_kommunalwahlen_data_sub$gew_PIRATEN <- NA
+thueringen_2024_kommunalwahlen_data_sub$gew_FDP <- NA
+thueringen_2024_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
+thueringen_2024_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
+thueringen_2024_kommunalwahlen_data_sub$gew_Wählergruppen <- NA
+
+
+names(thueringen_2024_kommunalwahlen_data_sub)
+
+# select vars ----
+thueringen_2024_kommunalwahlen_data_sub <- thueringen_2024_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                       Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                       abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_DiePARTEI, abs_FDP, abs_FREIEWÄHLER, abs_Wählergruppen,
+                                                                                       gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_DiePARTEI, gew_FDP, gew_FREIEWÄHLER, gew_Wählergruppen,
+                                                                                       sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_DiePARTEI, sitze_FDP, sitze_FREIEWÄHLER, sitze_Wählergruppen)]
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+thueringen_2024_kommunalwahlen_data_sub <-
+  thueringen_2024_kommunalwahlen_data_sub %>%
+  mutate_at(vars(contains("abs")), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+thueringen_2024_kommunalwahlen_data_sub$Turnout <- as.numeric(thueringen_2024_kommunalwahlen_data_sub$Wähler) / as.numeric(thueringen_2024_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
+
+
+
+
+
+
 ####### Merge files and save overall output for Thueringen ----
 # Merge
-thueringen_kommunalwahlen <- rbind(thueringen_1994_kommunalwahlen_data_sub, thueringen_1999_kommunalwahlen_data_sub,thueringen_2004_kommunalwahlen_data_sub,thueringen_2009_kommunalwahlen_data_sub,thueringen_2014_kommunalwahlen_data_sub, thueringen_2019_kommunalwahlen_data_sub)
+thueringen_kommunalwahlen <- rbind(thueringen_1994_kommunalwahlen_data_sub, thueringen_1999_kommunalwahlen_data_sub,thueringen_2004_kommunalwahlen_data_sub,thueringen_2009_kommunalwahlen_data_sub,thueringen_2014_kommunalwahlen_data_sub, thueringen_2019_kommunalwahlen_data_sub, thueringen_2024_kommunalwahlen_data_sub)
 
 thueringen_kommunalwahlen <-
   thueringen_kommunalwahlen %>%
@@ -1868,6 +2049,128 @@ hamburg_2020_buergerschaftswahl_data_sub <-
 # Calculating turnout ----
 hamburg_2020_buergerschaftswahl_data_sub$Turnout <- hamburg_2020_buergerschaftswahl_data_sub$Wähler / hamburg_2020_buergerschaftswahl_data_sub$Wahlberechtigteinsgesamt
 
+
+
+
+###### Hamburg 2025 Buergerschaftswahl ----
+#### Load election data ----
+
+hamburg_2025_buergerschaftswahl_data <- read_excel("raw/hamburg/hamburg_2025.xlsx", sheet=1, skip = 2)
+
+#### Recoding ----
+# Create new dataframe in wide format ----
+hamburg_2025_buergerschaftswahl_data_sub <- hamburg_2025_buergerschaftswahl_data |> 
+  
+  filter(!is.na(Merkmal)) |> 
+  
+  mutate(votes_total = as.numeric(Landesliste) |> replace_na(0) + 
+           as.numeric(Wahlkreislisten) |> replace_na(0),
+         AGS_8dig = "02000000",
+         Gebietsname = "Hamburg",
+         across(2:8, ~ str_replace(.x, "×", NA_character_)),
+         Merkmal = if_else(str_detect(Merkmal, "Wahlb|Stimm|SPD|CDU|FDP|GRÜNE|Linke|AfD|FREIE|PARTEI"),
+                           Merkmal,
+                           "other")
+         ) |> 
+  
+  group_by(AGS_8dig, Gebietsname, Merkmal) |> 
+  summarise(votes_total = sum(votes_total, na.rm = T),
+            Mandatsverteilung = sum(as.numeric(Mandatsverteilung), na.rm = T)) |> 
+  
+  ungroup() |> 
+  
+  
+  
+  pivot_wider(
+    id_cols = c("AGS_8dig", "Gebietsname"),
+    names_from = "Merkmal",
+    values_from = c("votes_total", "Mandatsverteilung"),
+    values_fill = NA
+  )  
+  
+names(hamburg_2025_buergerschaftswahl_data_sub)
+
+# Creating non-existing variables ----
+hamburg_2025_buergerschaftswahl_data_sub <- hamburg_2025_buergerschaftswahl_data_sub |> 
+  mutate(Bundesland = "Hamburg",
+         election_year = "2025",
+         election_type = "Buergerschaftswahl (Gesamtstimmen Landesliste)",
+         IDIRB = "", 
+         IDBA = ""
+         )
+  
+
+# Renaming existing variables ----
+hamburg_2025_buergerschaftswahl_data_sub <- hamburg_2025_buergerschaftswahl_data_sub |> 
+  rename(
+    Gebietsname = Gebietsname,
+    Wahlberechtigteinsgesamt = votes_total_Wahlberechtigte,
+    Wähler = `votes_total_Wählende / Wahlbeteiligung`,
+    GültigeStimmen = `votes_total_gültige Stimmen / Mandate`,
+    abs_CDU = votes_total_CDU,
+    abs_SPD = votes_total_SPD,
+    abs_DIELINKE = `votes_total_Die Linke`, 
+    abs_GRÜNE = votes_total_GRÜNE,
+    abs_AfD = votes_total_AfD,
+    abs_FDP = votes_total_FDP,
+    abs_DiePARTEI = `votes_total_Die PARTEI`,
+    abs_FREIEWÄHLER = `votes_total_FREIE WÄHLER`,
+    abs_Wählergruppen = votes_total_other,
+    
+    # seats
+    sitze_CDU = Mandatsverteilung_CDU,
+    sitze_SPD = Mandatsverteilung_SPD,
+    sitze_DIELINKE = `Mandatsverteilung_Die Linke`, 
+    sitze_GRÜNE = Mandatsverteilung_GRÜNE,
+    sitze_AfD = Mandatsverteilung_AfD,
+    sitze_FDP = Mandatsverteilung_FDP,
+    sitze_DiePARTEI = `Mandatsverteilung_Die PARTEI`,
+    sitze_FREIEWÄHLER = `Mandatsverteilung_FREIE WÄHLER`,
+    sitze_Wählergruppen = Mandatsverteilung_other
+  ) |> 
+  
+  mutate(
+    sitze_PIRATEN = NA,
+    abs_PIRATEN = NA
+  ) |> 
+  
+  as.data.table()
+
+hamburg_2025_buergerschaftswahl_data_sub$gew_CDU <- NA
+hamburg_2025_buergerschaftswahl_data_sub$gew_SPD <- NA
+hamburg_2025_buergerschaftswahl_data_sub$gew_DIELINKE <- NA
+hamburg_2025_buergerschaftswahl_data_sub$gew_GRÜNE <- NA
+hamburg_2025_buergerschaftswahl_data_sub$gew_AfD <- NA
+hamburg_2025_buergerschaftswahl_data_sub$gew_PIRATEN <- NA
+hamburg_2025_buergerschaftswahl_data_sub$gew_FDP <- NA
+hamburg_2025_buergerschaftswahl_data_sub$gew_DiePARTEI <- NA
+hamburg_2025_buergerschaftswahl_data_sub$gew_FREIEWÄHLER <- NA
+
+
+# Creating new dataframe with selected vars ----
+hamburg_2025_buergerschaftswahl_data_sub <- hamburg_2025_buergerschaftswahl_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                         Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                         abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_DiePARTEI, abs_FREIEWÄHLER,
+                                                                                         gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_DiePARTEI, gew_FREIEWÄHLER,
+                                                                                         sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_DiePARTEI, sitze_FREIEWÄHLER)]
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+hamburg_2025_buergerschaftswahl_data_sub <-
+  hamburg_2025_buergerschaftswahl_data_sub %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+hamburg_2025_buergerschaftswahl_data_sub$Turnout <- hamburg_2025_buergerschaftswahl_data_sub$Wähler / hamburg_2025_buergerschaftswahl_data_sub$Wahlberechtigteinsgesamt
+
+
+
+
+
+
 ####### Merge files and save overall output for Hamburg ----
 # Merge
 hamburg_kommunalwahlen <- rbind(hamburg_1991_1997_buergerschaftswahl_data_sub,
@@ -1876,7 +2179,8 @@ hamburg_kommunalwahlen <- rbind(hamburg_1991_1997_buergerschaftswahl_data_sub,
                                 hamburg_2008_buergerschaftswahl_data_sub,
                                 hamburg_2011_buergerschaftswahl_data_sub,
                                 hamburg_2015_buergerschaftswahl_data_sub, 
-                                hamburg_2020_buergerschaftswahl_data_sub)
+                                hamburg_2020_buergerschaftswahl_data_sub,
+                                hamburg_2025_buergerschaftswahl_data_sub)
 
 # Replace INF at Turnout
 hamburg_kommunalwahlen$Turnout <-  str_replace_all(hamburg_kommunalwahlen$Turnout, fixed("Inf"), NA)
@@ -3024,6 +3328,166 @@ berlin_2021_kommunalwahlen_data_sub_zweitstimmen <-
 # Calculating turnout ----
 berlin_2021_kommunalwahlen_data_sub_zweitstimmen$Turnout <- as.numeric(berlin_2021_kommunalwahlen_data_sub_zweitstimmen$Wähler) / as.numeric(berlin_2021_kommunalwahlen_data_sub_zweitstimmen$Wahlberechtigteinsgesamt)
 
+
+
+
+
+###### Berlin 2023 Kommunalwahlen Erststimmen ----
+#### Load election data ----
+berlin_2023_kommunalwahlen_data <- bind_rows(read_excel("raw/berlin/berlin_2023.xlsx", sheet="AGH_W1"),
+                                             read_excel("raw/berlin/berlin_2023.xlsx", sheet="AGH_W2"))
+names(berlin_2023_kommunalwahlen_data)
+
+
+#### Recoding ----
+# Delete white space ----
+names(berlin_2023_kommunalwahlen_data) <-  str_replace_all(names(berlin_2023_kommunalwahlen_data), fixed(" "), "")
+
+# Create new dataframe ----
+berlin_2023_kommunalwahlen_data_sub <- berlin_2023_kommunalwahlen_data |> 
+  
+  group_by(Stimmart) |> 
+  summarise(across(where(is.numeric), ~ sum(.x)))
+
+
+berlin_2023_kommunalwahlen_data_sub_erststimmen <- as.data.table(berlin_2023_kommunalwahlen_data_sub |> 
+                                                                   filter(Stimmart == "Erststimme"))
+
+# Creating non-existing variables ----
+berlin_2023_kommunalwahlen_data_sub_erststimmen[ , AGS_8dig := "11000000"] # 8 digits with leading zero
+berlin_2023_kommunalwahlen_data_sub_erststimmen[ , Bundesland := "Berlin"]
+berlin_2023_kommunalwahlen_data_sub_erststimmen[ , Gebietsname := "Berlin"]
+berlin_2023_kommunalwahlen_data_sub_erststimmen[ , election_year := "2023"]
+berlin_2023_kommunalwahlen_data_sub_erststimmen[ , election_type := "Abgeordnetenhauswahl (Erststimmen)"]
+berlin_2023_kommunalwahlen_data_sub_erststimmen[ , IDIRB := ""]
+berlin_2023_kommunalwahlen_data_sub_erststimmen[ , IDBA := ""]
+
+# Renaming existing variables ----
+berlin_2023_kommunalwahlen_data_sub_erststimmen$Wahlberechtigteinsgesamt <- berlin_2023_kommunalwahlen_data_sub_erststimmen$"Wahlberechtigteinsgesamt"
+berlin_2023_kommunalwahlen_data_sub_erststimmen$Wähler <- berlin_2023_kommunalwahlen_data_sub_erststimmen$Wählende
+berlin_2023_kommunalwahlen_data_sub_erststimmen$GültigeStimmen <- berlin_2023_kommunalwahlen_data_sub_erststimmen$"GültigeStimmen"
+
+berlin_2023_kommunalwahlen_data_sub_erststimmen$abs_CDU <- berlin_2023_kommunalwahlen_data_sub_erststimmen$CDU
+berlin_2023_kommunalwahlen_data_sub_erststimmen$abs_SPD <- berlin_2023_kommunalwahlen_data_sub_erststimmen$SPD
+berlin_2023_kommunalwahlen_data_sub_erststimmen$abs_DIELINKE <- berlin_2023_kommunalwahlen_data_sub_erststimmen$DIELINKE
+berlin_2023_kommunalwahlen_data_sub_erststimmen$abs_GRÜNE <- berlin_2023_kommunalwahlen_data_sub_erststimmen$"GRÜNE"
+berlin_2023_kommunalwahlen_data_sub_erststimmen$abs_AfD <- berlin_2023_kommunalwahlen_data_sub_erststimmen$AfD
+berlin_2023_kommunalwahlen_data_sub_erststimmen$abs_PIRATEN <- berlin_2023_kommunalwahlen_data_sub_erststimmen$PIRATEN
+berlin_2023_kommunalwahlen_data_sub_erststimmen$abs_FDP <- berlin_2023_kommunalwahlen_data_sub_erststimmen$FDP
+berlin_2023_kommunalwahlen_data_sub_erststimmen$abs_FREIEWÄHLER <- berlin_2023_kommunalwahlen_data_sub_erststimmen$FREIEWÄHLER
+
+berlin_2023_kommunalwahlen_data_sub_erststimmen$gew_CDU <- NA
+berlin_2023_kommunalwahlen_data_sub_erststimmen$gew_SPD <- NA
+berlin_2023_kommunalwahlen_data_sub_erststimmen$gew_DIELINKE <- NA
+berlin_2023_kommunalwahlen_data_sub_erststimmen$gew_GRÜNE <- NA
+berlin_2023_kommunalwahlen_data_sub_erststimmen$gew_AfD <- NA
+berlin_2023_kommunalwahlen_data_sub_erststimmen$gew_PIRATEN <- NA
+berlin_2023_kommunalwahlen_data_sub_erststimmen$gew_FDP <- NA
+berlin_2023_kommunalwahlen_data_sub_erststimmen$gew_FREIEWÄHLER <- NA
+
+berlin_2023_kommunalwahlen_data_sub_erststimmen$sitze_CDU <- NA
+berlin_2023_kommunalwahlen_data_sub_erststimmen$sitze_SPD <- NA
+berlin_2023_kommunalwahlen_data_sub_erststimmen$sitze_DIELINKE <- NA
+berlin_2023_kommunalwahlen_data_sub_erststimmen$sitze_GRÜNE <- NA
+berlin_2023_kommunalwahlen_data_sub_erststimmen$sitze_AfD <- NA
+berlin_2023_kommunalwahlen_data_sub_erststimmen$sitze_PIRATEN <- NA
+berlin_2023_kommunalwahlen_data_sub_erststimmen$sitze_FDP <- NA
+berlin_2023_kommunalwahlen_data_sub_erststimmen$sitze_FREIEWÄHLER <- NA
+
+# Creating new dataframe with selected vars ----
+berlin_2023_kommunalwahlen_data_sub_erststimmen <- berlin_2023_kommunalwahlen_data_sub_erststimmen[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                                       Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                                       abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER,
+                                                                                                       gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER,
+                                                                                                       sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER)]
+
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+berlin_2023_kommunalwahlen_data_sub_erststimmen <-
+  berlin_2023_kommunalwahlen_data_sub_erststimmen %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+berlin_2023_kommunalwahlen_data_sub_erststimmen$Turnout <- as.numeric(berlin_2023_kommunalwahlen_data_sub_erststimmen$Wähler) / as.numeric(berlin_2023_kommunalwahlen_data_sub_erststimmen$Wahlberechtigteinsgesamt)
+
+###### Berlin 2023 Kommunalwahlen Zweitstimmen ----
+#### Load election data ----
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen <- as.data.table(berlin_2023_kommunalwahlen_data_sub |> 
+                                                                   filter(Stimmart == "Zweitstimme"))
+
+
+names(berlin_2023_kommunalwahlen_data_sub_zweitstimmen)
+
+# Creating non-existing variables ----
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen[ , AGS_8dig := "11000000"] # 8 digits with leading zero
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen[ , Bundesland := "Berlin"]
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen[ , Gebietsname := "Berlin"]
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen[ , election_year := "2023"]
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen[ , election_type := "Abgeordnetenhauswahl (Zweitstimmen)"]
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen[ , IDIRB := ""]
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen[ , IDBA := ""]
+
+# Renaming existing variables ----
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$Wahlberechtigteinsgesamt <- berlin_2023_kommunalwahlen_data_sub_zweitstimmen$"Wahlberechtigteinsgesamt"
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$Wähler <- berlin_2023_kommunalwahlen_data_sub_zweitstimmen$Wählende
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$GültigeStimmen <- berlin_2023_kommunalwahlen_data_sub_zweitstimmen$"GültigeStimmen"
+
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$abs_CDU <- berlin_2023_kommunalwahlen_data_sub_zweitstimmen$CDU
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$abs_SPD <- berlin_2023_kommunalwahlen_data_sub_zweitstimmen$SPD
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$abs_DIELINKE <- berlin_2023_kommunalwahlen_data_sub_zweitstimmen$DIELINKE
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$abs_GRÜNE <- berlin_2023_kommunalwahlen_data_sub_zweitstimmen$"GRÜNE"
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$abs_AfD <- berlin_2023_kommunalwahlen_data_sub_zweitstimmen$AfD
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$abs_PIRATEN <- berlin_2023_kommunalwahlen_data_sub_zweitstimmen$PIRATEN
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$abs_FDP <- berlin_2023_kommunalwahlen_data_sub_zweitstimmen$FDP
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$abs_FREIEWÄHLER <- berlin_2023_kommunalwahlen_data_sub_zweitstimmen$FREIEWÄHLER
+
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$gew_CDU <- NA
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$gew_SPD <- NA
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$gew_DIELINKE <- NA
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$gew_GRÜNE <- NA
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$gew_AfD <- NA
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$gew_PIRATEN <- NA
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$gew_FDP <- NA
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$gew_FREIEWÄHLER <- NA
+
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$sitze_CDU <- NA
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$sitze_SPD <- NA
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$sitze_DIELINKE <- NA
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$sitze_GRÜNE <- NA
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$sitze_AfD <- NA
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$sitze_PIRATEN <- NA
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$sitze_FDP <- NA
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$sitze_FREIEWÄHLER <- NA
+
+# Creating new dataframe with selected vars ----
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen <- berlin_2023_kommunalwahlen_data_sub_zweitstimmen[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                                         Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                                         abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER,
+                                                                                                         gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER,
+                                                                                                         sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER)]
+
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen <-
+  berlin_2023_kommunalwahlen_data_sub_zweitstimmen %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$Turnout <- as.numeric(berlin_2023_kommunalwahlen_data_sub_zweitstimmen$Wähler) / as.numeric(berlin_2023_kommunalwahlen_data_sub_zweitstimmen$Wahlberechtigteinsgesamt)
+
+
+
+
+
+
 ####### Merge files and save overall output for Berlin ----
 # Merge
 berlin_kommunalwahlen <- rbind(berlin_1990_kommunalwahlen_data_sub_zweitstimmen,
@@ -3033,7 +3497,8 @@ berlin_kommunalwahlen <- rbind(berlin_1990_kommunalwahlen_data_sub_zweitstimmen,
                                berlin_2006_kommunalwahlen_data_sub_zweitstimmen,
                                berlin_2011_kommunalwahlen_data_sub_zweitstimmen,
                                berlin_2016_kommunalwahlen_data_sub_zweitstimmen,
-                               berlin_2021_kommunalwahlen_data_sub_zweitstimmen)
+                               berlin_2021_kommunalwahlen_data_sub_zweitstimmen,
+                               berlin_2023_kommunalwahlen_data_sub_zweitstimmen)
 
 # Replace INF at Turnout
 berlin_kommunalwahlen$Turnout <-  str_replace_all(berlin_kommunalwahlen$Turnout, fixed("Inf"), NA)
@@ -3669,6 +4134,127 @@ nrw_kreisfreie_kommunalwahlen_data_sub <- nrw_kreisfreie_kommunalwahlen_data_sub
 nrw_kreisfreie_kommunalwahlen_data_sub <- nrw_kreisfreie_kommunalwahlen_data_sub %>%
   filter(!election_year == "1989")
 
+
+
+
+
+
+###### NRW 2025 Kommunalwahlen ----
+#### Load election data ----
+nrw_2025_kommunalwahlen_data <- as.data.table(read_delim("raw/nrw/nrw_2025.csv", delim = ";", col_types = "c") |> 
+                                              
+  # add kreisfreie Städte                                              
+  bind_rows(read_delim("raw/nrw/nrw_2025_kreise.csv", delim = ";", col_types = "c") |> filter(str_detect(`Verwaltungsbezirks-Name`, "Krfr"))))
+  
+nrw_2025_kommunalwahlen_data_sitze <- as.data.table(read_delim("raw/nrw/nrw_2025_sitze.csv", delim = ";", skip = 3, col_types = "c") |> 
+                                                      
+                                                      # add kreisfreie Städte
+                                                      bind_rows(read_delim("raw/nrw/nrw_2025_sitze_kreise.csv", delim = ";", skip = 3, col_types = "c") 
+                                                                |> filter(str_detect(`Verwaltungsbezirks-Name`, "Krfr")))) |> 
+  rename_with(~paste0(.x, "_sitze"))
+
+# Merge Stimmen and Sitze
+nrw_2025_kommunalwahlen_data <- merge(nrw_2025_kommunalwahlen_data, nrw_2025_kommunalwahlen_data_sitze, by.x="Verwaltungsbezirks-Nr.", by.y="Verwaltungsbezirks-Nr._sitze")
+
+
+#### Recoding ----
+# Delete white space ----
+names(nrw_2025_kommunalwahlen_data) <-  str_replace_all(names(nrw_2025_kommunalwahlen_data), fixed(" "), "")
+# Delete white space in Bezirksnummer ----
+nrw_2025_kommunalwahlen_data$"Verwaltungsbezirks-Nr." <-  str_replace_all(nrw_2025_kommunalwahlen_data$"Verwaltungsbezirks-Nr.", fixed(" "), "")
+
+# Create new dataframe ----
+nrw_2025_kommunalwahlen_data_sub <- nrw_2025_kommunalwahlen_data
+
+names(nrw_2025_kommunalwahlen_data_sub)
+
+# Creating non-existing variables ----
+nrw_2025_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
+nrw_2025_kommunalwahlen_data_sub[ , Bundesland := "NRW"]
+nrw_2025_kommunalwahlen_data_sub[ , Gebietsname := ""]
+nrw_2025_kommunalwahlen_data_sub[ , election_year := "2025"]
+nrw_2025_kommunalwahlen_data_sub[ , election_type := "Kommunalwahl"]
+nrw_2025_kommunalwahlen_data_sub[ , IDIRB := ""]
+nrw_2025_kommunalwahlen_data_sub[ , IDBA := ""]
+
+# Renaming existing variables ----
+nrw_2025_kommunalwahlen_data_sub[nrw_2025_kommunalwahlen_data_sub == "-"] <- NA
+
+nrw_2025_kommunalwahlen_data_sub$AGS_8dig <- nrw_2025_kommunalwahlen_data_sub$"Verwaltungsbezirks-Nr."
+nrw_2025_kommunalwahlen_data_sub$Gebietsname <- nrw_2025_kommunalwahlen_data_sub$`Verwaltungsbezirks-Name`
+nrw_2025_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- nrw_2025_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
+nrw_2025_kommunalwahlen_data_sub$Wähler <- nrw_2025_kommunalwahlen_data_sub$"Wähler/-innen"
+nrw_2025_kommunalwahlen_data_sub$GültigeStimmen <- nrw_2025_kommunalwahlen_data_sub$GültigeStimmen
+
+nrw_2025_kommunalwahlen_data_sub$abs_CDU <- as.numeric(nrw_2025_kommunalwahlen_data_sub$CDU)
+nrw_2025_kommunalwahlen_data_sub$abs_SPD <- as.numeric(nrw_2025_kommunalwahlen_data_sub$SPD)
+nrw_2025_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(nrw_2025_kommunalwahlen_data_sub$DieLinke)
+nrw_2025_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(nrw_2025_kommunalwahlen_data_sub$GRÜNE)
+nrw_2025_kommunalwahlen_data_sub$abs_AfD <- as.numeric(nrw_2025_kommunalwahlen_data_sub$AfD)
+nrw_2025_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(nrw_2025_kommunalwahlen_data_sub$PIRATEN)
+nrw_2025_kommunalwahlen_data_sub$abs_FDP <- as.numeric(nrw_2025_kommunalwahlen_data_sub$FDP)
+nrw_2025_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(nrw_2025_kommunalwahlen_data_sub$FREIEWÄHLER)
+
+nrw_2025_kommunalwahlen_data_sub$gew_CDU <- NA
+nrw_2025_kommunalwahlen_data_sub$gew_SPD <- NA
+nrw_2025_kommunalwahlen_data_sub$gew_DIELINKE <- NA
+nrw_2025_kommunalwahlen_data_sub$gew_GRÜNE <- NA
+nrw_2025_kommunalwahlen_data_sub$gew_AfD <- NA
+nrw_2025_kommunalwahlen_data_sub$gew_PIRATEN <- NA
+nrw_2025_kommunalwahlen_data_sub$gew_FDP <- NA
+nrw_2025_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
+
+nrw_2025_kommunalwahlen_data_sub$sitze_CDU <- as.numeric(nrw_2025_kommunalwahlen_data_sub$CDU_sitze)
+nrw_2025_kommunalwahlen_data_sub$sitze_SPD <- as.numeric(nrw_2025_kommunalwahlen_data_sub$SPD_sitze)
+nrw_2025_kommunalwahlen_data_sub$sitze_DIELINKE <- as.numeric(nrw_2025_kommunalwahlen_data_sub$DieLinke_sitze)
+nrw_2025_kommunalwahlen_data_sub$sitze_GRÜNE <- as.numeric(nrw_2025_kommunalwahlen_data_sub$GRÜNE_sitze)
+nrw_2025_kommunalwahlen_data_sub$sitze_AfD <- as.numeric(nrw_2025_kommunalwahlen_data_sub$AfD_sitze)
+nrw_2025_kommunalwahlen_data_sub$sitze_PIRATEN <- as.numeric(nrw_2025_kommunalwahlen_data_sub$PIRATEN_sitze)
+nrw_2025_kommunalwahlen_data_sub$sitze_FDP <- as.numeric(nrw_2025_kommunalwahlen_data_sub$FDP_sitze)
+nrw_2025_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- as.numeric(nrw_2025_kommunalwahlen_data_sub$FREIEWÄHLER_sitze)
+
+
+# Creating new dataframe with selected vars ----
+nrw_2025_kommunalwahlen_data_sub <- nrw_2025_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                         Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                         abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER,
+                                                                         gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER,
+                                                                         sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER)]
+
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+nrw_2025_kommunalwahlen_data_sub <-
+  nrw_2025_kommunalwahlen_data_sub %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+nrw_2025_kommunalwahlen_data_sub$Turnout <- as.numeric(nrw_2025_kommunalwahlen_data_sub$Wähler) / as.numeric(nrw_2025_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
+
+# Fix AGS ----
+nrw_2025_kommunalwahlen_data_sub$AGS_8dig <- paste("05", nrw_2025_kommunalwahlen_data_sub$AGS_8dig, sep="")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ####### Merge files and save overall output for NRW ----
 # Merge
 nrw_kommunalwahlen <- rbind(nrw_1994_kommunalwahlen_data_sub,
@@ -3677,6 +4263,7 @@ nrw_kommunalwahlen <- rbind(nrw_1994_kommunalwahlen_data_sub,
                             nrw_2009_kommunalwahlen_data_sub,
                             nrw_2014_kommunalwahlen_data_sub,
                             nrw_2020_kommunalwahlen_data_sub,
+                            nrw_2025_kommunalwahlen_data_sub,
                             nrw_kreisfreie_kommunalwahlen_data_sub) %>%
   filter(!grepl("Städteregion", Gebietsname)) %>%
   arrange(election_year, AGS_8dig)
@@ -3699,9 +4286,9 @@ nrw_kommunalwahlen <- nrw_kommunalwahlen %>%
 #write_csv(nrw_kommunalwahlen, here::here("output/nrw_kommunalwahlen.csv"))
 
 ######### SAARLAND ----
-###### Saarland  Kommunalwahlen ----
+###### Saarland  Kommunalwahlen 1984 - 2019 ----
 #### Load election data ----
-saarland_kommunalwahlen_data <- as.data.table(read_excel("raw/saarland/saarland_grw.xlsx", sheet="summary"))
+saarland_kommunalwahlen_data <- as.data.table(read_excel("raw/saarland/saarland_grw.xlsx", sheet="summary")) 
 
 names(saarland_kommunalwahlen_data)
 
@@ -3767,6 +4354,101 @@ saarland_kommunalwahlen_data_sub <- saarland_kommunalwahlen_data_sub[ ,.(AGS_8di
                                                                          sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER)]
 
 
+
+
+###### Saarland  Kommunalwahlen 2024----
+#### Load election data ----
+saarland_2024_kommunalwahlen_data <- read_delim("raw/saarland/saarland_2024.csv", delim = ";", skip = 2)
+
+names(saarland_2024_kommunalwahlen_data)
+
+
+
+#### Recoding ----
+
+# Create new dataframe ----
+saarland_2024_kommunalwahlen_data_sub <- saarland_2024_kommunalwahlen_data |> 
+  filter(str_detect(Nr, "[:digit:]{5}")) |> 
+  
+  # Creating non-existing variables ----
+  mutate(AGS_8dig = paste0("100", Nr),
+         Bundesland = "Saarland",
+         election_year = 2024,
+         election_type = "Kommunalwahlen",
+         IDIRB = "", 
+         IDBA = "",
+         
+         # fix Freie Wähler 
+         across(starts_with("Freie Wähler", ignore.case = T), ~ as.numeric(.x)),
+         
+         FREIEWÄHLER = rowSums(across(starts_with("Freie Wähler", ignore.case = T)), na.rm = TRUE)
+         )|> 
+
+# Renaming existing variables ----
+  rename(
+    Gebietsname = Gebiet,
+    Wahlberechtigteinsgesamt = Wahlberechtigte,
+    Wähler = Wähler,
+    GültigeStimmen = Gültige,
+    abs_CDU = `Christlich Demokratische Union Deutschlands`,
+    abs_SPD = `Sozialdemokratische Partei Deutschlands`,
+    abs_DIELINKE = `DIE LINKE`, 
+    abs_GRÜNE = `BÜNDNIS 90/DIE GRÜNEN`,
+    abs_AfD = `Alternative für Deutschland`,
+    abs_FDP = `Freie Demokratische Partei`,
+    abs_DiePARTEI = `Partei für Arbeit, Rechtsstaat, Tierschutz, Elitenförderung und basisdemokratische Initiative`,
+    abs_FREIEWÄHLER = FREIEWÄHLER
+
+  ) |> 
+  
+  mutate(
+    sitze_PIRATEN = NA,
+    abs_PIRATEN = NA,
+    across(matches("^(abs|Wahl|Wähl|Gült)"), ~as.numeric(.x))
+  ) |> 
+  
+  as.data.table()
+
+saarland_2024_kommunalwahlen_data_sub$gew_CDU <- NA
+saarland_2024_kommunalwahlen_data_sub$gew_SPD <- NA
+saarland_2024_kommunalwahlen_data_sub$gew_DIELINKE <- NA
+saarland_2024_kommunalwahlen_data_sub$gew_GRÜNE <- NA
+saarland_2024_kommunalwahlen_data_sub$gew_AfD <- NA
+saarland_2024_kommunalwahlen_data_sub$gew_PIRATEN <- NA
+saarland_2024_kommunalwahlen_data_sub$gew_FDP <- NA
+saarland_2024_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
+saarland_2024_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
+
+names(saarland_2024_kommunalwahlen_data_sub)
+
+saarland_2024_kommunalwahlen_data_sub$sitze_CDU <- NA
+saarland_2024_kommunalwahlen_data_sub$sitze_SPD <- NA
+saarland_2024_kommunalwahlen_data_sub$sitze_DIELINKE <- NA
+saarland_2024_kommunalwahlen_data_sub$sitze_GRÜNE <- NA
+saarland_2024_kommunalwahlen_data_sub$sitze_AfD <- NA
+saarland_2024_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
+saarland_2024_kommunalwahlen_data_sub$sitze_FDP <- NA
+saarland_2024_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
+
+# Creating new dataframe with selected vars ----
+saarland_2024_kommunalwahlen_data_sub <- saarland_2024_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                         Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                         abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_FREIEWÄHLER,
+                                                                         gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_FREIEWÄHLER,
+                                                                         sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_FREIEWÄHLER)]
+
+
+
+
+
+####### Merge files and save overall output for Saarland ----
+# Merge
+saarland_kommunalwahlen_data_sub <- rbind(saarland_kommunalwahlen_data_sub,
+                                          saarland_2024_kommunalwahlen_data_sub) 
+
+
+
+
 # Calculating vote shares ----
 # https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
 
@@ -3781,6 +4463,11 @@ saarland_kommunalwahlen_data_sub$Turnout <- as.numeric(saarland_kommunalwahlen_d
 
 saarland_kommunalwahlen_data_sub <- saarland_kommunalwahlen_data_sub[
   with(saarland_kommunalwahlen_data_sub, order(election_year, AGS_8dig)),]
+
+
+
+
+
 
 
 
@@ -4262,6 +4949,88 @@ sachsen_anhalt_2019_kommunalwahlen_data_sub <-
 # Calculating turnout ----
 sachsen_anhalt_2019_kommunalwahlen_data_sub$Turnout <- sachsen_anhalt_2019_kommunalwahlen_data_sub$Wähler / sachsen_anhalt_2019_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
 
+
+
+
+###### Sachsen-Anhalt 2024 Kommunalwahlen ----
+#### Load election data ----
+sachsen_anhalt_2024_kommunalwahlen_data <- as.data.table(read_delim("raw/sachsen_anhalt/sachsen-anhalt_2024.csv", delim = ";",
+                                                                    locale = locale(encoding = "ISO-8859-1")))
+
+
+#### Recoding ----
+# Create new dataframe ----
+sachsen_anhalt_2024_kommunalwahlen_data_sub <- sachsen_anhalt_2024_kommunalwahlen_data
+
+# Creating non-existing variables ----
+sachsen_anhalt_2024_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
+sachsen_anhalt_2024_kommunalwahlen_data_sub[ , Bundesland := "Sachsen-Anhalt"]
+sachsen_anhalt_2024_kommunalwahlen_data_sub[ , Gebietsname := ""]
+sachsen_anhalt_2024_kommunalwahlen_data_sub[ , election_year := "2024"]
+sachsen_anhalt_2024_kommunalwahlen_data_sub[ , election_type := "Kommunalwahlen"]
+sachsen_anhalt_2024_kommunalwahlen_data_sub[ , IDIRB := ""]
+sachsen_anhalt_2024_kommunalwahlen_data_sub[ , IDBA := ""]
+
+# Renaming existing variables ----
+sachsen_anhalt_2024_kommunalwahlen_data_sub$AGS_8dig <- sachsen_anhalt_2024_kommunalwahlen_data_sub$Schlüsselnummer
+sachsen_anhalt_2024_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_2024_kommunalwahlen_data_sub$Name
+sachsen_anhalt_2024_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_anhalt_2024_kommunalwahlen_data_sub$`A - Wahlberechtigte`
+sachsen_anhalt_2024_kommunalwahlen_data_sub$Wähler <- sachsen_anhalt_2024_kommunalwahlen_data_sub$`B - Wähler`
+sachsen_anhalt_2024_kommunalwahlen_data_sub$GültigeStimmen <- sachsen_anhalt_2024_kommunalwahlen_data_sub$`C2 - Gültige Stimmzettel`
+
+sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_CDU <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`D01 - CDU`)
+sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_SPD <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`D04 - SPD`)
+sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_DIELINKE <- sachsen_anhalt_2024_kommunalwahlen_data_sub$`D03 - DIE LINKE`
+sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_GRÜNE <- sachsen_anhalt_2024_kommunalwahlen_data_sub$`D06 - GRÜNE`
+sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_AfD <- sachsen_anhalt_2024_kommunalwahlen_data_sub$`D02 - AfD`
+sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_PIRATEN <- NA
+sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_FDP <- sachsen_anhalt_2024_kommunalwahlen_data_sub$`D05 - FDP`
+sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_DiePARTEI <- sachsen_anhalt_2024_kommunalwahlen_data_sub$`D11 - Die PARTEI`
+sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- sachsen_anhalt_2024_kommunalwahlen_data_sub$`D07 - FREIE WÄHLER`
+
+sachsen_anhalt_2024_kommunalwahlen_data_sub$gew_CDU <- NA
+sachsen_anhalt_2024_kommunalwahlen_data_sub$gew_SPD <- NA
+sachsen_anhalt_2024_kommunalwahlen_data_sub$gew_DIELINKE <- NA
+sachsen_anhalt_2024_kommunalwahlen_data_sub$gew_GRÜNE <- NA
+sachsen_anhalt_2024_kommunalwahlen_data_sub$gew_AfD <- NA
+sachsen_anhalt_2024_kommunalwahlen_data_sub$gew_PIRATEN <- NA
+sachsen_anhalt_2024_kommunalwahlen_data_sub$gew_FDP <- NA
+sachsen_anhalt_2024_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
+sachsen_anhalt_2024_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
+
+sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_CDU <- NA
+sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_SPD <- NA
+sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_DIELINKE <- NA
+sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_GRÜNE <- NA
+sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_AfD <- NA
+sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
+sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_FDP <- NA
+sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
+sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
+
+# Creating new dataframe with selected vars ----
+sachsen_anhalt_2024_kommunalwahlen_data_sub <- sachsen_anhalt_2024_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                               Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                               abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_DiePARTEI, abs_FREIEWÄHLER,
+                                                                                               gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_DiePARTEI, gew_FREIEWÄHLER,
+                                                                                               sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_DiePARTEI, sitze_FREIEWÄHLER)] 
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+sachsen_anhalt_2024_kommunalwahlen_data_sub <-
+  sachsen_anhalt_2024_kommunalwahlen_data_sub %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~as.numeric(.)/as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+sachsen_anhalt_2024_kommunalwahlen_data_sub$Turnout <- sachsen_anhalt_2024_kommunalwahlen_data_sub$Wähler / sachsen_anhalt_2024_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
+
+
+
+
+
 ####### Merge files and save overall output for Sachsen-Anhalt ----
 # Merge
 sachsen_anhalt_kommunalwahlen <- rbind(sachsen_anhalt_1994_kommunalwahlen_data_sub,
@@ -4269,7 +5038,8 @@ sachsen_anhalt_kommunalwahlen <- rbind(sachsen_anhalt_1994_kommunalwahlen_data_s
                                        sachsen_anhalt_2004_kommunalwahlen_data_sub,
                                        sachsen_anhalt_2009_kommunalwahlen_data_sub,
                                        sachsen_anhalt_2014_kommunalwahlen_data_sub,
-                                       sachsen_anhalt_2019_kommunalwahlen_data_sub)
+                                       sachsen_anhalt_2019_kommunalwahlen_data_sub,
+                                       sachsen_anhalt_2024_kommunalwahlen_data_sub)
 
 # Replace INF at Turnout
 sachsen_anhalt_kommunalwahlen$Turnout <-  str_replace_all(sachsen_anhalt_kommunalwahlen$Turnout, fixed("Inf"), NA)
@@ -4831,11 +5601,135 @@ baden_wuerttemberg_2019_gemeinderatswahlen_data_sub <-
 # Calculating turnout ----
 baden_wuerttemberg_2019_gemeinderatswahlen_data_sub$Turnout <- baden_wuerttemberg_2019_gemeinderatswahlen_data_sub$Wähler / baden_wuerttemberg_2019_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
 
+
+
+
+
+###### Baden-Wuerttemberg 2024 Gemeinderatswahlen ----
+#### Load election data ----
+baden_wuerttemberg_2024_gemeinderatswahlen_data <- as.data.table(read_delim("raw/baden_wuerttemberg/baden_wuerttemberg_2024.csv", delim = ";",
+                                                                            locale = locale(encoding = "ISO-8859-1"))) |>
+  bind_rows(
+    # add seat data
+    as.data.table(read_delim("raw/baden_wuerttemberg/baden_wuerttemberg_2024_seats.csv", delim = ";",
+                                                                                 locale = locale(encoding = "ISO-8859-1"))) |> 
+      # no distinction by gender
+      filter(`3_variable_attribute_label` == "Insgesamt"),
+    
+    #add turnout data
+    as.data.table(read_delim("raw/baden_wuerttemberg/baden_wuerttemberg_2024_turnout.csv", delim = ";",
+                             locale = locale(encoding = "ISO-8859-1"))) |> 
+      filter(value_variable_label %in% c("Wahlberechtigte", "Wähler/-innen"))
+    
+  )
+
+
+
+#### Recoding ----
+# Create new dataframe ----
+baden_wuerttemberg_2024_gemeinderatswahlen_data_sub <- baden_wuerttemberg_2024_gemeinderatswahlen_data |> 
+  
+  # clean ID and party variables
+  mutate(Gebietsname = `1_variable_attribute_label`,
+         AGS_8dig = `1_variable_attribute_code` |> 
+           str_remove("GEMI") |> 
+           
+           # for compatibility with preexisting code (adds NUTS1 code after combining years)
+           str_remove("^08"),
+         value = as.numeric(value),
+         newnames = case_when(
+           `2_variable_attribute_code` == "GTW-AFD" ~ "AfD",
+           `2_variable_attribute_code` == "GTW-GRUENE" ~ "GRÜNE",
+           `2_variable_attribute_code` == "GTW-DIE-LINKE" ~ "DIELINKE",
+           `2_variable_attribute_code` == "GTW-DIE-PARTEI" ~ "DiePARTEI",
+           `2_variable_attribute_code` == "GTW-FDP" ~ "FDP",
+           `2_variable_attribute_code` == "GTW-FREIWAEHLER" ~ "FREIEWÄHLER",
+           `2_variable_attribute_code` == "GTW-CDU" ~ "CDU",
+           `2_variable_attribute_code` == "GTW-SPD" ~ "SPD",
+           `2_variable_attribute_code` == "GTW-PIRATEN" ~ "PIRATEN",
+           `2_variable_attribute_label` == "Insgesamt" ~ "Insgesamt",
+           
+           value_variable_label == "Wahlberechtigte" ~ "Wahlberechtigteinsgesamt",
+           value_variable_label == "Wähler/-innen" ~ "Wähler",
+           
+           T ~ "other"
+         ),
+         
+         newnames = case_when(
+           value_variable_label == "Gültige Stimmen" ~ paste0("abs_", newnames),
+           value_variable_label == "Sitze" ~ paste0("sitze_", newnames),
+           T ~ newnames
+         )
+         
+         ) |> 
+  
+  filter(`1_variable_code` == "GEMI", # only municipal level data
+         value_unit == "Anzahl", value_variable_label %in% c("Gültige Stimmen", "Sitze",
+                                                             "Wahlberechtigte", "Wähler/-innen"),
+         !is.na(value)) |> # only absolute votes
+
+  # pivot to wide
+  pivot_wider(
+    id_cols = c("Gebietsname", "AGS_8dig"),
+    values_from = "value",
+    names_from = "newnames",
+    values_fn = ~sum(.x, na.rm = T) # (for summarising "other")
+    ) |> 
+  
+  # Creating non-existing variables ----
+mutate(Bundesland = "Baden-Wuerttemberg",
+       election_year = 2024,
+       election_type = "Kommunalwahlen",
+       IDIRB = "", 
+       IDBA = ""
+       )|> 
+  
+  # Renaming existing variables ----
+rename(
+  GültigeStimmen = abs_Insgesamt,
+) |> as.data.table()
+
+
+
+baden_wuerttemberg_2024_gemeinderatswahlen_data_sub$gew_CDU <- NA
+baden_wuerttemberg_2024_gemeinderatswahlen_data_sub$gew_SPD <- NA
+baden_wuerttemberg_2024_gemeinderatswahlen_data_sub$gew_DIELINKE <- NA
+baden_wuerttemberg_2024_gemeinderatswahlen_data_sub$gew_GRÜNE <- NA
+baden_wuerttemberg_2024_gemeinderatswahlen_data_sub$gew_AfD <- NA
+baden_wuerttemberg_2024_gemeinderatswahlen_data_sub$gew_PIRATEN <- NA
+baden_wuerttemberg_2024_gemeinderatswahlen_data_sub$gew_FDP <- NA
+baden_wuerttemberg_2024_gemeinderatswahlen_data_sub$gew_DiePARTEI <- NA
+baden_wuerttemberg_2024_gemeinderatswahlen_data_sub$gew_FREIEWÄHLER <- NA
+
+# Creating new dataframe with selected vars ----
+baden_wuerttemberg_2024_gemeinderatswahlen_data_sub <- baden_wuerttemberg_2024_gemeinderatswahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                                               Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                                               abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_DiePARTEI, abs_FREIEWÄHLER,
+                                                                                                               gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_DiePARTEI, gew_FREIEWÄHLER,
+                                                                                                               sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_DiePARTEI, sitze_FREIEWÄHLER)]
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+baden_wuerttemberg_2024_gemeinderatswahlen_data_sub <-
+  baden_wuerttemberg_2024_gemeinderatswahlen_data_sub %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+baden_wuerttemberg_2024_gemeinderatswahlen_data_sub$Turnout <- baden_wuerttemberg_2024_gemeinderatswahlen_data_sub$Wähler / baden_wuerttemberg_2024_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
+
+
+
+
+
+
 ####### Merge files and save overall output for Baden-Wuerttemberg ----
 # Merge
 baden_wuerttemberg_kommunalwahlen <- rbind(baden_wuerttemberg_1989_gemeinderatswahlen_data_sub,baden_wuerttemberg_1994_gemeinderatswahlen_data_sub, baden_wuerttemberg_1999_gemeinderatswahlen_data_sub,
                                            baden_wuerttemberg_2004_gemeinderatswahlen_data_sub, baden_wuerttemberg_2009_gemeinderatswahlen_data_sub, baden_wuerttemberg_2014_gemeinderatswahlen_data_sub,
-                                           baden_wuerttemberg_2019_gemeinderatswahlen_data_sub)
+                                           baden_wuerttemberg_2019_gemeinderatswahlen_data_sub, baden_wuerttemberg_2024_gemeinderatswahlen_data_sub)
 
 # Replace INF at Turnout
 baden_wuerttemberg_kommunalwahlen$Turnout <-  str_replace_all(baden_wuerttemberg_kommunalwahlen$Turnout, fixed("Inf"), NA)
@@ -5355,6 +6249,245 @@ mecklenburg_vorpommern_2019_kommunalwahlen_data_sub <- mecklenburg_vorpommern_20
          !AGS_8dig == "13075000")
 
 
+
+
+
+
+###### Mecklenburg-Vorpommern 2019 Kommunalwahlen ----
+#### Load election data ----
+mecklenburg_vorpommern_2019_kommunalwahlen_data <- as.data.table(read_excel("raw/mecklenburg_vorpommern/mecklenburg_vorpommern_kommunalwahlen_2019.xlsx", sheet="summary"))
+
+mecklenburg_vorpommern_2019_kommunalwahlen_data[mecklenburg_vorpommern_2019_kommunalwahlen_data == "x"] <- NA
+
+#### Delete white space ----
+names(mecklenburg_vorpommern_2019_kommunalwahlen_data) <-  str_replace_all(names(mecklenburg_vorpommern_2019_kommunalwahlen_data), fixed(" "), "")
+
+#### Recoding ----
+# Create new dataframe ----
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub <- mecklenburg_vorpommern_2019_kommunalwahlen_data
+
+names(mecklenburg_vorpommern_2019_kommunalwahlen_data_sub)
+
+# Creating non-existing variables ----
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub[ , Bundesland := "Mecklenburg-Vorpommern"]
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub[ , Gebietsname := ""]
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub[ , election_year := "2019"]
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub[ , election_type := "Kommunalwahlen"]
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub[ , IDIRB := ""]
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub[ , IDBA := ""]
+
+# Renaming existing variables ----
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$AGS_8dig <- mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$Gemeindenummer
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$Gebietsname <- mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$Gemeindename
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$Wahlberechtigte
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$Wähler <- mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$Waehler
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$GültigeStimmen <- mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$gültig
+
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$abs_CDU <- as.numeric(mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$CDU)
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$abs_SPD <- as.numeric(mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$SPD)
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$DIELINKE)
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$GRÜNE)
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$abs_AfD <- as.numeric(mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$AfD)
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$abs_PIRATEN <- NA
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$abs_FDP <- as.numeric(mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$FDP)
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$abs_DiePARTEI <- NA
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- NA
+
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$gew_CDU <- NA
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$gew_SPD <- NA
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$gew_DIELINKE <- NA
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$gew_GRÜNE <- NA
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$gew_AfD <- NA
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$gew_PIRATEN <- NA
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$gew_FDP <- NA
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
+
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$sitze_CDU <- as.numeric(mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$sitze_CDU)
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$sitze_SPD <- as.numeric(mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$sitze_SPD)
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$sitze_DIELINKE <- as.numeric(mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$sitze_DIELINKE)
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$sitze_GRÜNE <- as.numeric(mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$sitze_GRÜNE)
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$sitze_AfD <- as.numeric(mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$sitze_AfD)
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$sitze_FDP <- as.numeric(mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$sitze_FDP)
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
+
+# Creating new dataframe with selected vars ----
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub <- mecklenburg_vorpommern_2019_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                                               Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                                               abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_DiePARTEI, abs_FREIEWÄHLER,
+                                                                                                               gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_DiePARTEI, gew_FREIEWÄHLER,
+                                                                                                               sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_DiePARTEI, sitze_FREIEWÄHLER)]
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub <-
+  mecklenburg_vorpommern_2019_kommunalwahlen_data_sub %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$Turnout <- mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$Wähler / mecklenburg_vorpommern_2019_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
+
+# Remove Mecklenburgische ----
+mecklenburg_vorpommern_2019_kommunalwahlen_data_sub <- mecklenburg_vorpommern_2019_kommunalwahlen_data_sub %>%
+  filter(!AGS_8dig == "13071000",
+         !AGS_8dig == "13076000",
+         !AGS_8dig == "13072000",
+         !AGS_8dig == "13073000",
+         !AGS_8dig == "13074000",
+         !AGS_8dig == "13075000")
+
+
+
+
+
+
+###### Mecklenburg-Vorpommern 2024 Kommunalwahlen ----
+#### Load election data ----
+mecklenburg_vorpommern_2024_kommunalwahlen_data <- as.data.table(read_excel("raw/mecklenburg_vorpommern/mecklenburg_vorpommern_kommunalwahlen_2024.xlsx", sheet="3. Ergebnisse nach Gemeinden", skip = 3)) 
+  
+mecklenburg_vorpommern_2024_kommunalwahlen_data_sub <- mecklenburg_vorpommern_2024_kommunalwahlen_data |>  
+ rename_with(str_squish) |> 
+  fill(`Gemeinde-schlüssel`, `Landkreis Gemeinde`) |> 
+  
+  # add krfr Städte
+  bind_rows(
+    as.data.table(read_excel("raw/mecklenburg_vorpommern/mecklenburg_vorpommern_kreistagswahlen_2024.xlsx", sheet="3.3 Ergebnisse nach Wahlgeb.", skip = 6, col_types = "text")) |> 
+      rename_with(str_squish) |> mutate(`Wahl-jahr`= as.numeric(`Wahl-jahr`)) |> 
+      fill(`Wahlgebiet Land`) |> 
+      filter(str_detect(`Wahlgebiet Land`, "Rostock, Hanse|Schwerin, Landes")) |> 
+      
+      left_join(
+        as.data.table(read_excel("raw/mecklenburg_vorpommern/mecklenburg_vorpommern_kreistagswahlen_2024.xlsx", sheet="3.4 Ergebnisse nach Sitzen", skip = 4, col_types = "text")) |> 
+          rename_with(str_squish) |> mutate(`Wahljahr`= as.numeric(`Wahljahr`)) |> fill(`Wahlgebiet Land`),
+        by = c("Wahlgebiet Land", "Wahl-jahr" = "Wahljahr")
+      ) |> 
+      rename(`Landkreis Gemeinde` = `Wahlgebiet Land`) 
+  ) |> 
+  
+  filter(`Wahl-jahr` == 2024, `Maß- einheit` %in% c("Anzahl", "Mandate")) |> 
+  pivot_longer(names_to = "newnames",
+               values_to = "value",
+               cols = matches("Gültige Stimmen|Wahlb|Wähl|Stimm|Sitze")) |> 
+  
+  mutate(value = as.numeric(value),
+         
+         `Maß- einheit` = if_else(str_detect(newnames, "Sitze"),
+                                    "Mandate",
+                                    `Maß- einheit`),
+         
+         newnames = str_remove(newnames, "Gültige Stimmen |Sitze "),
+         
+         newnames = case_when(
+           `newnames` == "DIE LINKE" ~ "DIELINKE",
+           `newnames` == "Stimmen gültig" ~ "GültigeStimmen",
+           `newnames` == "Stimmen ungültig" ~ "UngültigeStimmen",
+           `newnames` %in% c("Wahlbe-rechtigte", "Wahl- berechtigte") ~ "Wahlberechtigteinsgesamt",
+           `newnames` %in% c("Wähler-innen und Wähler", "Wählerinnen und Wähler") ~ "Wähler",
+           `newnames` %in% c("Sonstige", "Einzelbe- werber/in", "Wähler- gruppen",
+                             "BSW", "Einzel- bewerber/in und Sonstige") ~ "other",
+        
+           T ~ newnames
+         ),
+         
+         newnames = case_when(
+           `newnames` %in% c("GültigeStimmen", "UngültigeStimmen", "Wahlberechtigteinsgesamt", "Wähler") ~newnames,
+
+           `Maß- einheit` == "Anzahl" ~ paste0("abs_", newnames),
+           `Maß- einheit` == "Mandate" ~ paste0("sitze_", newnames)
+         ),
+         
+         `Gemeinde-schlüssel` = case_when(
+           str_detect(`Landkreis Gemeinde`, "Rostock, Hanse") ~ "13003000",
+           str_detect(`Landkreis Gemeinde`, "Schwerin, Landes") ~ "13004000",
+           T~as.character(`Gemeinde-schlüssel`) 
+         )
+         
+  ) |> 
+  
+  filter(!str_detect(`Gemeinde-schlüssel`, "000$") | `Gemeinde-schlüssel` %in% c("13003000", "13004000"), # only municipal level data
+         `Landkreis Gemeinde` != "Mecklenburg-Vorpommern",
+         !is.na(value)) |> 
+  
+  rename("Gebietsname" = "Landkreis Gemeinde", "AGS_8dig" = "Gemeinde-schlüssel",
+         "election_year" = "Wahl-jahr") |> 
+  
+  # pivot to wide
+  pivot_wider(
+    id_cols = c("Gebietsname", "AGS_8dig", "election_year"),
+    values_from = "value",
+    names_from = "newnames",
+    values_fn = ~sum(.x, na.rm = T) # (for summarising "other")
+  ) |> 
+  
+  # Creating non-existing variables ----
+mutate(Bundesland = "Mecklenburg-Vorpommern",
+       election_year = 2024,
+       election_type = "Kommunalwahlen",
+       IDIRB = "", 
+       IDBA = ""
+) |> 
+  as.data.table()
+
+mecklenburg_vorpommern_2024_kommunalwahlen_data_sub$abs_PIRATEN <- NA
+mecklenburg_vorpommern_2024_kommunalwahlen_data_sub$abs_DiePARTEI <- NA
+mecklenburg_vorpommern_2024_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- NA
+
+mecklenburg_vorpommern_2024_kommunalwahlen_data_sub$gew_CDU <- NA
+mecklenburg_vorpommern_2024_kommunalwahlen_data_sub$gew_SPD <- NA
+mecklenburg_vorpommern_2024_kommunalwahlen_data_sub$gew_DIELINKE <- NA
+mecklenburg_vorpommern_2024_kommunalwahlen_data_sub$gew_GRÜNE <- NA
+mecklenburg_vorpommern_2024_kommunalwahlen_data_sub$gew_AfD <- NA
+mecklenburg_vorpommern_2024_kommunalwahlen_data_sub$gew_PIRATEN <- NA
+mecklenburg_vorpommern_2024_kommunalwahlen_data_sub$gew_FDP <- NA
+mecklenburg_vorpommern_2024_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
+mecklenburg_vorpommern_2024_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
+
+mecklenburg_vorpommern_2024_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
+mecklenburg_vorpommern_2024_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
+mecklenburg_vorpommern_2024_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
+
+# Creating new dataframe with selected vars ----
+mecklenburg_vorpommern_2024_kommunalwahlen_data_sub <- mecklenburg_vorpommern_2024_kommunalwahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                                               Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                                               abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_DiePARTEI, abs_FREIEWÄHLER,
+                                                                                                               gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_DiePARTEI, gew_FREIEWÄHLER,
+                                                                                                               sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_DiePARTEI, sitze_FREIEWÄHLER)]
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+mecklenburg_vorpommern_2024_kommunalwahlen_data_sub <-
+  mecklenburg_vorpommern_2024_kommunalwahlen_data_sub %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+mecklenburg_vorpommern_2024_kommunalwahlen_data_sub$Turnout <- mecklenburg_vorpommern_2024_kommunalwahlen_data_sub$Wähler / mecklenburg_vorpommern_2024_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ###### Mecklenburg-Vorpommern 1994 Kreiswahlen ----
 #### Load election data ----
 mecklenburg_vorpommern_1994_kreiswahlen_data <- as.data.table(read_excel("raw/mecklenburg_vorpommern/mecklenburg_vorpommern_kreistagswahlen_1994.xls", sheet="summary"))
@@ -5817,6 +6950,87 @@ mecklenburg_vorpommern_2019_kreiswahlen_data_sub <-
 # Calculating turnout ----
 mecklenburg_vorpommern_2019_kreiswahlen_data_sub$Turnout <- mecklenburg_vorpommern_2019_kreiswahlen_data_sub$Wähler / mecklenburg_vorpommern_2019_kreiswahlen_data_sub$Wahlberechtigteinsgesamt
 
+
+
+
+
+
+###### Mecklenburg-Vorpommern 2024 Kreiswahlen ----
+#### Load election data ----
+mecklenburg_vorpommern_2024_kreiswahlen_data <- as.data.table(read_excel("raw/mecklenburg_vorpommern/mecklenburg_vorpommern_kreistagswahlen_2024.xlsx", sheet="3.3 Ergebnisse nach Wahlgeb.", skip = 6)) |> 
+  rename_with(str_squish)
+
+
+#### Recoding ----
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub <- mecklenburg_vorpommern_2019_kreiswahlen_data
+
+# Creating non-existing variables ----
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub[ , AGS_8dig := ""] # 8 digits with leading zero
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub[ , Bundesland := "Mecklenburg-Vorpommern"]
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub[ , Gebietsname := ""]
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub[ , election_year := "2019"]
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub[ , election_type := "Kommunalwahlen"]
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub[ , IDIRB := ""]
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub[ , IDBA := ""]
+
+# Renaming existing variables ----
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$AGS_8dig <- mecklenburg_vorpommern_2019_kreiswahlen_data_sub$Gemeindenummer
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$Gebietsname <- mecklenburg_vorpommern_2019_kreiswahlen_data_sub$Gemeindename
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(mecklenburg_vorpommern_2019_kreiswahlen_data_sub$Wahlberechtigte)
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$Wähler <- as.numeric(mecklenburg_vorpommern_2019_kreiswahlen_data_sub$Wähler)
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$GültigeStimmen <- as.numeric(mecklenburg_vorpommern_2019_kreiswahlen_data_sub$GültigeStimmen)
+
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$abs_CDU <- as.numeric(mecklenburg_vorpommern_2019_kreiswahlen_data_sub$CDU)
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$abs_SPD <- as.numeric(mecklenburg_vorpommern_2019_kreiswahlen_data_sub$SPD)
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$abs_DIELINKE <- as.numeric(mecklenburg_vorpommern_2019_kreiswahlen_data_sub$DIELINKE)
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$abs_GRÜNE <- as.numeric(mecklenburg_vorpommern_2019_kreiswahlen_data_sub$GRÜNE)
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$abs_AfD <- as.numeric(mecklenburg_vorpommern_2019_kreiswahlen_data_sub$AfD)
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$abs_PIRATEN <- as.numeric(mecklenburg_vorpommern_2019_kreiswahlen_data_sub$PIRATEN)
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$abs_FDP <- as.numeric(mecklenburg_vorpommern_2019_kreiswahlen_data_sub$FDP)
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$abs_DiePARTEI <- as.numeric(mecklenburg_vorpommern_2019_kreiswahlen_data_sub$DiePARTEI)
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(mecklenburg_vorpommern_2019_kreiswahlen_data_sub$FREIEWÄHLER)
+
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$gew_CDU <- NA
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$gew_SPD <- NA
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$gew_DIELINKE <- NA
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$gew_GRÜNE <- NA
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$gew_AfD <- NA
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$gew_PIRATEN <- NA
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$gew_FDP <- NA
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$gew_DiePARTEI <- NA
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$gew_FREIEWÄHLER <- NA
+
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$sitze_CDU <- NA
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$sitze_SPD <- NA
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$sitze_DIELINKE <- NA
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$sitze_GRÜNE <- NA
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$sitze_AfD <- NA
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$sitze_PIRATEN <- NA
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$sitze_FDP <- NA
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$sitze_DiePARTEI <- NA
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+
+# Creating new dataframe with selected vars ----
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub <- mecklenburg_vorpommern_2019_kreiswahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                                         Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                                         abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_DiePARTEI, abs_FREIEWÄHLER,
+                                                                                                         gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_DiePARTEI, gew_FREIEWÄHLER,
+                                                                                                         sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_DiePARTEI, sitze_FREIEWÄHLER)]
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub <-
+  mecklenburg_vorpommern_2019_kreiswahlen_data_sub %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$Turnout <- mecklenburg_vorpommern_2019_kreiswahlen_data_sub$Wähler / mecklenburg_vorpommern_2019_kreiswahlen_data_sub$Wahlberechtigteinsgesamt
+
+
+
 ####### Merge files and save overall output for Mecklenburg-Vorpommern ----
 # Merge
 mecklenburg_vorpommern_kommunalwahlen <- rbind(mecklenburg_vorpommern_1994_kommunalwahlen_data_sub,
@@ -5825,10 +7039,12 @@ mecklenburg_vorpommern_kommunalwahlen <- rbind(mecklenburg_vorpommern_1994_kommu
                                                mecklenburg_vorpommern_2009_kommunalwahlen_data_sub,
                                                mecklenburg_vorpommern_2014_kommunalwahlen_data_sub,
                                                mecklenburg_vorpommern_2019_kommunalwahlen_data_sub,
+                                               mecklenburg_vorpommern_2024_kommunalwahlen_data_sub,
                                                mecklenburg_vorpommern_1994_kreiswahlen_data_sub,
                                                mecklenburg_vorpommern_1999_kreiswahlen_data_sub,
                                                mecklenburg_vorpommern_2004_kreiswahlen_data_sub,
                                                mecklenburg_vorpommern_2014_kreiswahlen_data_sub,
+                                               mecklenburg_vorpommern_2019_kreiswahlen_data_sub,
                                                mecklenburg_vorpommern_2019_kreiswahlen_data_sub)
 
 
@@ -7128,11 +8344,179 @@ niedersachsen_2011_16_staedte$Turnout <- as.numeric(niedersachsen_2011_16_staedt
 
 
 
+
+
+###### Niedersachsen 2021 Gemeinderatswahlen ----
+#### Load election data ----
+niedersachsen_2021_gemeinderatswahlen_data <- as.data.table(read_xlsx("raw/niedersachsen/niedersachsen_kommunalwahlen_2021.xlsx", sheet = "M5000314", skip = 13)) |> 
+  
+rename(label = 1) |>
+  
+  
+  filter(label != "%") |> 
+  mutate(Gebietsname = lag(label),
+         AGS_8dig = str_extract(Gebietsname, "^[:digit:]{6}(?= )") 
+
+  )  |> 
+  filter(!is.na(AGS_8dig),
+         !str_detect(Gebietsname, "gemfr\\."),
+         `3` != "-") |> 
+  
+  mutate(AGS_8dig = paste0("03", AGS_8dig),
+         Gebietsname = Gebietsname |> str_remove_all("[:digit:]") |> str_squish()) |> 
+  
+  # no samtgemeinden
+  filter(!str_detect(Gebietsname, ", SG"))
+
+
+niedersachsen_2021_gemeinderatswahlen_data_sub <- niedersachsen_2021_gemeinderatswahlen_data
+
+names(niedersachsen_2021_gemeinderatswahlen_data_sub)
+
+# Creating non-existing variables ----
+niedersachsen_2021_gemeinderatswahlen_data_sub[ , Bundesland := "Niedersachsen"]
+niedersachsen_2021_gemeinderatswahlen_data_sub[ , election_year := "2021"]
+niedersachsen_2021_gemeinderatswahlen_data_sub[ , election_type := "Kommunalwahlen"]
+niedersachsen_2021_gemeinderatswahlen_data_sub[ , IDIRB := ""]
+niedersachsen_2021_gemeinderatswahlen_data_sub[ , IDBA := ""]
+
+# Renaming existing variables ----
+niedersachsen_2021_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(niedersachsen_2021_gemeinderatswahlen_data_sub$`1`)
+niedersachsen_2021_gemeinderatswahlen_data_sub$Wähler <- as.numeric(niedersachsen_2021_gemeinderatswahlen_data_sub$`2`)
+niedersachsen_2021_gemeinderatswahlen_data_sub$GültigeStimmen <- as.numeric(niedersachsen_2021_gemeinderatswahlen_data_sub$`3`)
+
+niedersachsen_2021_gemeinderatswahlen_data_sub$abs_CDU <- as.numeric(niedersachsen_2021_gemeinderatswahlen_data_sub$`4`)
+niedersachsen_2021_gemeinderatswahlen_data_sub$abs_SPD <- as.numeric(niedersachsen_2021_gemeinderatswahlen_data_sub$`5`)
+niedersachsen_2021_gemeinderatswahlen_data_sub$abs_DIELINKE <- as.numeric(niedersachsen_2021_gemeinderatswahlen_data_sub$`22`)
+niedersachsen_2021_gemeinderatswahlen_data_sub$abs_GRÜNE <- as.numeric(niedersachsen_2021_gemeinderatswahlen_data_sub$`6`)
+niedersachsen_2021_gemeinderatswahlen_data_sub$abs_AfD <- as.numeric(niedersachsen_2021_gemeinderatswahlen_data_sub$`9`)
+niedersachsen_2021_gemeinderatswahlen_data_sub$abs_PIRATEN <- as.numeric(niedersachsen_2021_gemeinderatswahlen_data_sub$`41`)
+niedersachsen_2021_gemeinderatswahlen_data_sub$abs_FDP <- as.numeric(niedersachsen_2021_gemeinderatswahlen_data_sub$`7`)
+niedersachsen_2021_gemeinderatswahlen_data_sub$abs_DiePARTEI <- as.numeric(niedersachsen_2021_gemeinderatswahlen_data_sub$`23`)
+niedersachsen_2021_gemeinderatswahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(niedersachsen_2021_gemeinderatswahlen_data_sub$`31`)
+
+niedersachsen_2021_gemeinderatswahlen_data_sub$gew_CDU <- NA
+niedersachsen_2021_gemeinderatswahlen_data_sub$gew_SPD <- NA
+niedersachsen_2021_gemeinderatswahlen_data_sub$gew_DIELINKE <- NA
+niedersachsen_2021_gemeinderatswahlen_data_sub$gew_GRÜNE <- NA
+niedersachsen_2021_gemeinderatswahlen_data_sub$gew_AfD <- NA
+niedersachsen_2021_gemeinderatswahlen_data_sub$gew_PIRATEN <- NA
+niedersachsen_2021_gemeinderatswahlen_data_sub$gew_FDP <- NA
+niedersachsen_2021_gemeinderatswahlen_data_sub$gew_DiePARTEI <- NA
+niedersachsen_2021_gemeinderatswahlen_data_sub$gew_FREIEWÄHLER <- NA
+
+niedersachsen_2021_gemeinderatswahlen_data_sub$sitze_CDU <- NA
+niedersachsen_2021_gemeinderatswahlen_data_sub$sitze_SPD <- NA
+niedersachsen_2021_gemeinderatswahlen_data_sub$sitze_DIELINKE <- NA
+niedersachsen_2021_gemeinderatswahlen_data_sub$sitze_GRÜNE <- NA
+niedersachsen_2021_gemeinderatswahlen_data_sub$sitze_AfD <- NA
+niedersachsen_2021_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
+niedersachsen_2021_gemeinderatswahlen_data_sub$sitze_FDP <- NA
+niedersachsen_2021_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
+niedersachsen_2021_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+
+
+# add NUTS3 level election results for Kreisfreie Städte
+
+v_cities_nds = c(
+  "Braunschweig, Stadt" = "03101000", 
+  "Delmenhorst, Stadt" = "03401000", 
+  "Emden, Stadt" = "03402000", 
+  "Oldenburg (Oldb), Stadt" = "03403000", 
+  "Osnabrück, Stadt" = "03404000",
+  "Salzgitter, Stadt" = "03102000",
+  "Wilhelmshaven, Stadt" = "03405000",
+  "Wolfsburg, Stadt" = "03103000")
+
+niedersachsen_2021_kreiswahlen_data <- as.data.table(read_csv("raw/niedersachsen/niedersachsen_kreiswahlen_2021.csv")) |> 
+  mutate(AGS_8dig = paste0("03", Wahlkreis, "000")) |> 
+  
+  # only keep cities
+  right_join(
+    tibble(AGS_8dig = v_cities_nds,
+           Gebietsname = names(v_cities_nds)),
+    by = "AGS_8dig"
+  )
+
+  
+
+
+niedersachsen_2021_kreiswahlen_data_sub <- niedersachsen_2021_kreiswahlen_data
+  
+  names(niedersachsen_2021_kreiswahlen_data_sub)
+  
+  # Creating non-existing variables ----
+  niedersachsen_2021_kreiswahlen_data_sub[ , Bundesland := "Niedersachsen"]
+  niedersachsen_2021_kreiswahlen_data_sub[ , election_year := "2021"]
+  niedersachsen_2021_kreiswahlen_data_sub[ , election_type := "Kommunalwahlen"]
+  niedersachsen_2021_kreiswahlen_data_sub[ , IDIRB := ""]
+  niedersachsen_2021_kreiswahlen_data_sub[ , IDBA := ""]
+  
+  # Renaming existing variables ----
+  niedersachsen_2021_kreiswahlen_data_sub$Wahlberechtigteinsgesamt <- niedersachsen_2021_kreiswahlen_data_sub$Wahlberechtigte
+  niedersachsen_2021_kreiswahlen_data_sub$Wähler <- niedersachsen_2021_kreiswahlen_data_sub$Wähler
+  niedersachsen_2021_kreiswahlen_data_sub$GültigeStimmen <- niedersachsen_2021_kreiswahlen_data_sub$`Gültige Stimmen`
+  
+  niedersachsen_2021_kreiswahlen_data_sub$abs_CDU <- as.numeric(niedersachsen_2021_kreiswahlen_data_sub$`CDU Stimmen`)
+  niedersachsen_2021_kreiswahlen_data_sub$abs_SPD <- as.numeric(niedersachsen_2021_kreiswahlen_data_sub$`SPD Stimmen`)
+  niedersachsen_2021_kreiswahlen_data_sub$abs_DIELINKE <- as.numeric(niedersachsen_2021_kreiswahlen_data_sub$`DIE LINKE. Stimmen`)
+  niedersachsen_2021_kreiswahlen_data_sub$abs_GRÜNE <- as.numeric(niedersachsen_2021_kreiswahlen_data_sub$`GRÜNE Stimmen`)
+  niedersachsen_2021_kreiswahlen_data_sub$abs_AfD <- as.numeric(niedersachsen_2021_kreiswahlen_data_sub$`AfD Stimmen`)
+  niedersachsen_2021_kreiswahlen_data_sub$abs_PIRATEN <- as.numeric(niedersachsen_2021_kreiswahlen_data_sub$`PIRATEN Stimmen`)
+  niedersachsen_2021_kreiswahlen_data_sub$abs_FDP <- as.numeric(niedersachsen_2021_kreiswahlen_data_sub$`FDP Stimmen`)
+  niedersachsen_2021_kreiswahlen_data_sub$abs_DiePARTEI <- as.numeric(niedersachsen_2021_kreiswahlen_data_sub$`Die PARTEI Stimmen`)
+  niedersachsen_2021_kreiswahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(niedersachsen_2021_kreiswahlen_data_sub$`FREIE WÄHLER Stimmen`)
+  
+  niedersachsen_2021_kreiswahlen_data_sub$sitze_CDU <- as.numeric(niedersachsen_2021_kreiswahlen_data_sub$`CDU Sitze`)
+  niedersachsen_2021_kreiswahlen_data_sub$sitze_SPD <- as.numeric(niedersachsen_2021_kreiswahlen_data_sub$`SPD Sitze`)
+  niedersachsen_2021_kreiswahlen_data_sub$sitze_DIELINKE <- as.numeric(niedersachsen_2021_kreiswahlen_data_sub$`DIE LINKE. Sitze`)
+  niedersachsen_2021_kreiswahlen_data_sub$sitze_GRÜNE <- as.numeric(niedersachsen_2021_kreiswahlen_data_sub$`GRÜNE Sitze`)
+  niedersachsen_2021_kreiswahlen_data_sub$sitze_AfD <- as.numeric(niedersachsen_2021_kreiswahlen_data_sub$`AfD Sitze`)
+  niedersachsen_2021_kreiswahlen_data_sub$sitze_PIRATEN <- as.numeric(niedersachsen_2021_kreiswahlen_data_sub$`PIRATEN Sitze`)
+  niedersachsen_2021_kreiswahlen_data_sub$sitze_FDP <- as.numeric(niedersachsen_2021_kreiswahlen_data_sub$`FDP Sitze`)
+  niedersachsen_2021_kreiswahlen_data_sub$sitze_DiePARTEI <- as.numeric(niedersachsen_2021_kreiswahlen_data_sub$`Die PARTEI Sitze`)
+  niedersachsen_2021_kreiswahlen_data_sub$sitze_FREIEWÄHLER <- as.numeric(niedersachsen_2021_kreiswahlen_data_sub$`FREIE WÄHLER Sitze`)
+  
+
+# bind to dataframe
+  niedersachsen_2021_gemeinderatswahlen_data_sub <- bind_rows(
+    niedersachsen_2021_gemeinderatswahlen_data_sub,
+    niedersachsen_2021_kreiswahlen_data_sub
+  )
+  
+    
+  # Creating new dataframe with selected vars ----
+  niedersachsen_2021_gemeinderatswahlen_data_sub <- niedersachsen_2021_gemeinderatswahlen_data_sub[ ,.(AGS_8dig, Bundesland, Gebietsname, election_year, election_type, IDIRB, IDBA,
+                                                                                                       Wahlberechtigteinsgesamt, Wähler, GültigeStimmen,
+                                                                                                       abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_DiePARTEI, abs_FREIEWÄHLER,
+                                                                                                       gew_CDU, gew_SPD, gew_DIELINKE, gew_GRÜNE, gew_AfD, gew_PIRATEN, gew_FDP, gew_DiePARTEI, gew_FREIEWÄHLER,
+                                                                                                       sitze_CDU, sitze_SPD, sitze_DIELINKE, sitze_GRÜNE, sitze_AfD, sitze_PIRATEN, sitze_FDP, sitze_DiePARTEI, sitze_FREIEWÄHLER)]
+  
+
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+niedersachsen_2021_gemeinderatswahlen_data_sub <-
+  niedersachsen_2021_gemeinderatswahlen_data_sub %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
+  rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
+
+# Calculating turnout ----
+niedersachsen_2021_gemeinderatswahlen_data_sub$Turnout <- as.numeric(niedersachsen_2021_gemeinderatswahlen_data_sub$Wähler) / as.numeric(niedersachsen_2021_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt)
+
+
+
+
+
+
 ####### Merge files and save overall output for Niedersachsen ----
 # Merge
 niedersachsen_kommunalwahlen <- rbind(niedersachsen_1991_gemeinderatswahlen_data_sub, niedersachsen_1996_gemeinderatswahlen_data_sub,
                                       niedersachsen_2001_gemeinderatswahlen_data_sub, niedersachsen_2006_gemeinderatswahlen_data_sub,
-                                      niedersachsen_2011_gemeinderatswahlen_data_sub, niedersachsen_2016_gemeinderatswahlen_data_sub
+                                      niedersachsen_2011_gemeinderatswahlen_data_sub, niedersachsen_2016_gemeinderatswahlen_data_sub,
+                                      niedersachsen_2021_gemeinderatswahlen_data_sub
                                       )
 
 niedersachsen_kommunalwahlen <- niedersachsen_kommunalwahlen |>
@@ -9903,6 +11287,7 @@ kommunalwahlen_merge <- kommunalwahlen_merge %>%
 
 # Change FW and remainder category ----
 kommunalwahlen_merge <- kommunalwahlen_merge %>%
+  mutate(across(starts_with("abs_"), ~as.numeric(.x)))%>%
   rowwise%>%
   mutate(
     abs_OTHER = (GültigeStimmen-sum(abs_CDU, abs_SPD, abs_DIELINKE, abs_GRÜNE, abs_AfD, abs_PIRATEN, abs_FDP, abs_DiePARTEI, abs_FREIEWÄHLER, na.rm=T)),
@@ -10051,7 +11436,7 @@ kommunalwahlen_merge |>
 election_dates <- data.table::fread(here::here("data/municipal_elections/processed/municipal_elections_dates.csv")) |>
   mutate(
     year = as.character(year),
-    extracted_date = lubridate::ymd(ifelse(extracted_date == "NULL", NA, extracted_date)),
+    extracted_date = lubridate::parse_date_time(ifelse(extracted_date == "NULL", NA, extracted_date), orders = c("mdy", "ymd")),
     # reverting back to previous state names to match the original data
     state = case_when(
       state == "Rhineland-Palatinate" ~ "RLP",
