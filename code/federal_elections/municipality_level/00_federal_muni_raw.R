@@ -1599,29 +1599,35 @@ fwrite(df, file = "data/federal_elections/municipality_level/final/federal_muni_
 
 # Inspect -----------------------------------------------------------------
 
-df <- read_rds("data/federal_elections/municipality_level/final/federal_muni_raw.rds")
+df_raw <- read_rds("data/federal_elections/municipality_level/final/federal_muni_raw.rds")
 
-names(df)
+names(df_raw)
 
 # when did party v have non NA?
-df |>
+df_raw |>
   filter(!is.na(v)) |>
   select(election_year) |>
   distinct() |>
   print(n = Inf)
 
 # for which election_years did parties b90_gr, grune have non NA?
-df |>
+df_raw |>
   filter(!is.na(b90_gr)) |>
   distinct(election_year) |>
   distinct()
 
-df |>
+df_raw |>
   filter(!is.na(grune)) |>
   distinct(election_year) |>
   distinct() |>
   arrange(election_year)
 
-table(df$election_year)
+table(df_raw$election_year)
+
+# check 
+df_raw |>
+  filter(ags == "07131011" & election_year == 2021) |>
+  glimpse()
+
 
 ### END

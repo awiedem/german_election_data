@@ -1,7 +1,7 @@
 ### Harmonize BTW electoral results at muni level 1980-2025
 # Harmonize to 2021 municipality borders
 # Vincent Heddesheimer, Hanno Hilbig
-# May 2025
+# November 2025
 
 rm(list = ls())
 
@@ -13,6 +13,8 @@ pacman::p_load(
   "haschaR"
 )
 
+conflict_prefer("filter", "dplyr")
+conflict_prefer("year", "lubridate")
 
 # Read crosswalk files ----------------------------------------------------
 cw <- fread("data/crosswalks/final/ags_crosswalks.csv") |>
@@ -22,7 +24,8 @@ cw <- fread("data/crosswalks/final/ags_crosswalks.csv") |>
 # how many ags_21 for each year?
 cw |>
   distinct(ags_21, year) |>
-  count(year)
+  count(year) |>
+  print(n = Inf)
 
 ## DF : in year 2021, was the muni ever part of a merger?
 
@@ -46,6 +49,14 @@ df <- read_rds("data/federal_elections/municipality_level/final/federal_muni_unh
   arrange(ags, election_year)
 
 table(df$election_year)
+
+# check Hamburg & Berlin
+df |>
+  dplyr::filter(state == "02" | state == "11") |>
+  dplyr::filter(election_year < 2021) |>
+  select(ags, election_year, state) |>
+  as.data.frame()
+
 
 # Vote shares to votes ----------------------------------------------------
 names(df)
@@ -240,19 +251,19 @@ agg_df <- df_cw %>%
     names_to = "variable", values_to = "value"
   )
 
-## Distribution
+# ## Distribution
 
-ggplot(agg_df, aes(x = election_year, y = value, color = variable)) +
-  geom_point() +
-  theme_hanno() +
-  labs(
-    title = "Descriptives of BTW data",
-    x = "Year",
-    y = "Mean value"
-  ) +
-  theme(legend.position = "bottom") +
-  scale_color_brewer(palette = "Set1", name = "") +
-  facet_wrap(~variable, scales = "free_y")
+# ggplot(agg_df, aes(x = election_year, y = value, color = variable)) +
+#   geom_point() +
+#   theme_hanno() +
+#   labs(
+#     title = "Descriptives of BTW data",
+#     x = "Year",
+#     y = "Mean value"
+#   ) +
+#   theme(legend.position = "bottom") +
+#   scale_color_brewer(palette = "Set1", name = "") +
+#   facet_wrap(~variable, scales = "free_y")
 
 
 # Inspect 2021 and 2025 election data -------------------------------------
@@ -350,6 +361,8 @@ cw_25_to_21 <- cw_25_to_23 %>%
   )
 # Weights still sum to 1 within every 2025 source.
 
+glimpse(cw_25_to_21)
+
 # check
 cw_25_to_21 %>%
   filter(pop_w_25_21 < 1) %>%
@@ -371,6 +384,9 @@ df25 <- df %>% # one row per 2025 AGS, votes already in counts
 
 # check
 names(df25)
+glimpse(df25)
+
+
 
 df25 %>%
   filter(pop_cw < 1) %>%
@@ -398,6 +414,8 @@ df_cw$election_year
 
 names(df_cw)
 
+table(df_cw$election_year)
+
 ## Votes: weighted sum -----------------------------------------------------
 votes <- df_cw |>
   dplyr::filter(election_year < 2021) |>
@@ -417,6 +435,8 @@ votes <- df_cw |>
     ~ round(.x, digits = 0)
   )) |>
   ungroup()
+
+table(votes$election_year)
 
 ## Population & area: weighted sum -----------------------------------------
 area_pop <- df_cw |>
@@ -441,6 +461,7 @@ ags21 <- read_excel(path = "data/crosswalks/raw/31122021_Auszug_GV.xlsx", sheet 
     RB = `...4`,
     Kreis = `...5`,
     Gemeinde = `...7`,
+    ags_name = `...8`,
     area = `...9`,
     population = `...10`
   ) |>
@@ -455,7 +476,70 @@ ags21 <- read_excel(path = "data/crosswalks/raw/31122021_Auszug_GV.xlsx", sheet 
   ) |>
   slice(6:16065) |>
   dplyr::filter(!is.na(Gemeinde)) |>
-  dplyr::select(ags, election_year, area, population)
+  dplyr::select(ags, ags_name, election_year, area, population)
+
+
+# check which ags in unharm df in 2021 are not in ags21
+df |>
+  dplyr::filter(election_year == 2021) |>
+  anti_join(ags21, by = "ags")
+# they are all in ags21
+
+# check which ags in ags21 are not in unharm df in 2021
+ags21 |>
+  anti_join(df |> dplyr::filter(election_year == 2021), by = "ags") |>
+  select(ags, ags_name, area, population) |>
+  arrange(population) |>
+  print(n = Inf) 
+# they just really don't exist in the 2021 raw data
+
+
+ags_21 <- ags21 |> select(-ags_name)
+
+# Get population & area for 2025 (map to 2021 boundaries via crosswalk)
+ags25_raw <- read_excel(
+  "data/covars_municipality/raw/municipality_sizes/AuszugGV4QAktuell_2024.xlsx",
+  sheet = 2
+) |>
+  slice(9:16018) |>
+  select(
+    Land = `...3`,
+    RB   = `...4`,
+    Kreis = `...5`,
+    Gemeinde = `...7`,
+    Gemeindename = `...8`,
+    area = `...9`,
+    population  = `...10`
+  ) |>
+  dplyr::filter(!is.na(Gemeinde)) |>
+  mutate(
+    Land     = pad_zero_conditional(Land, 1),
+    Kreis    = pad_zero_conditional(Kreis, 1),
+    Gemeinde = pad_zero_conditional(Gemeinde, 1, "00"),
+    Gemeinde = pad_zero_conditional(Gemeinde, 2, "0"),
+    ags_25   = paste0(Land, RB, Kreis, Gemeinde),
+    population = as.numeric(population) / 1000,
+    area = as.numeric(area)
+  ) |>
+  select(ags_25, area, population)
+
+# Map 2025 data to 2021 boundaries using crosswalk
+ags25 <- ags25_raw |>
+  rename(area_25 = area, population_25 = population) |>
+  left_join(cw_25_to_21, by = "ags_25") |>
+  group_by(ags_21) |>
+  summarise(
+    area = sum(area_25 * area_w_25_21, na.rm = TRUE),
+    population = sum(population_25 * pop_w_25_21, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  mutate(
+    election_year = 2025,
+    area = round(area, digits = 2),
+    population = round(population, digits = 1),
+    ags_21 = pad_zero_conditional(ags_21, 7)
+  ) |>
+  select(ags = ags_21, election_year, area, population)
 
 
 # Create full df ----------------------------------------------------------
@@ -492,9 +576,21 @@ df_harm <- votes |>
 # Continue transformation
 df_harm <- df_harm |>
   left_join_check_obs(ags21, by = c("ags", "election_year")) |>
+  left_join_check_obs(ags25, by = c("ags", "election_year")) |>
   mutate(
-    area = ifelse(!is.na(area.x), area.x, area.y),
-    population = ifelse(!is.na(population.x), population.x, population.y)
+    # Convert all area/population columns to numeric first
+    area.x = as.numeric(area.x),
+    area.y = as.numeric(area.y),
+    area = as.numeric(area),
+    population.x = as.numeric(population.x),
+    population.y = as.numeric(population.y),
+    population = as.numeric(population),
+    # Use area/population from ags21 or ags25 if available and not NA/0, otherwise keep original
+    # Priority: ags21 (area.x) > ags25 (area.y) > original (area)
+    area = ifelse(!is.na(area.x) & area.x > 0, area.x,
+           ifelse(!is.na(area.y) & area.y > 0, area.y, area)),
+    population = ifelse(!is.na(population.x) & population.x > 0, population.x,
+                 ifelse(!is.na(population.y) & population.y > 0, population.y, population))
   ) |>
   dplyr::select(-c(area.x, area.y, population.x, population.y))
 
@@ -571,7 +667,7 @@ df_harm %>%
 
 ggsave("output/figures/total_votes_incongruence_hist.pdf", width = 7.5, height = 4)
 
-move_plots_to_overleaf("code")
+# ts_to_overleaf("code")
 
 
 # check total_votes vs. other vote variables
@@ -727,6 +823,9 @@ write_rds(df_harm, "data/federal_elections/municipality_level/final/federal_muni
 df_harm <- read_rds("data/federal_elections/municipality_level/final/federal_muni_harm_21.rds") |>
   arrange(ags, election_year)
 
+table(df_harm$election_year)
+
+
 ## Inspect turnout ---------------------------------------------------------
 
 insp <- df_harm |>
@@ -834,6 +933,9 @@ n_joint |>
 
 ggsave("output/figures/n_mailin.pdf", width = 7, height = 7)
 
-move_plots_to_overleaf("code")
+# move_plots_to_overleaf("code")
+
+
+
 
 ### END
