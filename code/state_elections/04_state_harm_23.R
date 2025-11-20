@@ -252,7 +252,7 @@ votes <- df_cw |>
 glimpse(votes)
 
 # Convert vote counts back to vote shares
-df_harm <- votes |>
+df_harm <- votes %>%
   mutate(
     across(all_of(party_vars), ~ ifelse(valid_votes > 0, .x / valid_votes, NA_real_)),
     turnout = ifelse(eligible_voters > 0, number_voters / eligible_voters, NA_real_)
@@ -356,7 +356,7 @@ df_harm <- df_harm |>
 df_harm <- df_harm %>%
   mutate(
     total_vote_share = rowSums(
-      select(., cdu:other),
+      select(., cdu:other, -cdu_csu),
       na.rm = TRUE
     ),
     total_vote_share = round(total_vote_share, 8),
@@ -365,7 +365,6 @@ df_harm <- df_harm %>%
 
 glimpse(df_harm)
 
-# if 
 
 # Save ----------------------------------------------------------------------
 
