@@ -697,3 +697,9 @@ write_rds(
     'state_2223_unharm.rds'
   )
 )
+
+
+# Inspect
+state2223 <- read_rds(here(path, '../../../state_elections/final', 'state_2223_unharm.rds'))
+
+glimpse(state2223)
