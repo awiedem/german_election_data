@@ -302,6 +302,7 @@ ags25 <- read_excel(
   "data/covars_municipality/raw/municipality_sizes/AuszugGV4QAktuell_2024.xlsx",
   sheet = 2
 ) |>
+  slice(9:16018) |>
   select(
     Land = `...3`,
     RB   = `...4`,
@@ -311,8 +312,7 @@ ags25 <- read_excel(
     area = `...9`,
     population  = `...10`
   ) |>
-  slice(9:16018) |>
-  filter(!is.na(Gemeinde)) |>
+  dplyr::filter(!is.na(Gemeinde)) |>
   mutate(
     Land     = pad_zero_conditional(Land, 1),
     Kreis    = pad_zero_conditional(Kreis, 1),
@@ -436,7 +436,7 @@ df_harm %>%
 
 ggsave("output/figures/total_votes_incongruence_hist_25.pdf", width = 7.5, height = 4)
 
-move_plots_to_overleaf("code")
+# move_plots_to_overleaf("code")
 
 
 # check total_votes vs. other vote variables
@@ -540,7 +540,7 @@ df <- df |> mutate(election_date = case_when(
   ), .after = election_year)
 
   # check whether missing values for election_date
-  if (df |> filter(is.na(election_date)) |> nrow() > 0) {
+  if (df |> dplyr::filter(is.na(election_date)) |> nrow() > 0) {
     message("Missing values for election_date")
   } else {
     message("No missing values for election_date")
@@ -696,6 +696,6 @@ n_joint |>
 
 ggsave("output/figures/n_mailin_25.pdf", width = 7, height = 7)
 
-move_plots_to_overleaf("code")
+# move_plots_to_overleaf("code")
 
 ### END

@@ -1,8 +1,15 @@
 ### Clean and combine BTW electoral results at municipality level 1953-2021
 # Vincent Heddesheimer
 # June, 18, 2024
+# Last updated: July, 31, 2025
 
-rm(list=ls())
+# Disallow scientific notation: leads to errors when loading data
+options(scipen = 999)
+
+rm(list = ls())
+
+# conflict: prefer filter from dplyr
+conflict_prefer("filter", "dplyr")
 
 
 # Load datasets -----------------------------------------------------------
@@ -11,13 +18,13 @@ rm(list=ls())
 process_election_data <- function(file_path) {
   # Read the file
   df <- fread(file_path, encoding = "Latin-1")
-  
+
   # Find the row number where "Lfd. Nr." or "Statistische Kennziffer" appears in the second column
   start_row <- which(grepl("Lfd. Nr.|Statistische Kennziffer", df[[2]]))[1]
-  
+
   # Find the last non-empty row
   end_row <- max(which(df[[1]] != ""))
-  
+
   # Check if start_row or end_row is NA
   if (is.na(start_row) | is.na(end_row)) {
     print(paste("Error in file:", file_path))
@@ -25,28 +32,28 @@ process_election_data <- function(file_path) {
     print(paste("end_row:", end_row))
     stop("Start row or end row is NA")
   }
-  
+
   # Process the data
   df <- df %>%
     slice(start_row:end_row) %>%
     # Remove all columns where first row contains "Erststimmen"
-    select(-which(grepl("erststimmen", df[start_row+1, ], ignore.case = TRUE))) %>%
+    select(-which(grepl("erststimmen", df[start_row + 1, ], ignore.case = TRUE))) %>%
     row_to_names(row_number = 1) %>%
     clean_names() %>%
     # Remove rows that contain "zweitstimmen" in any column
     filter_all(all_vars(!grepl("zweitstimmen", ., ignore.case = TRUE)))
-  
+
   # Add a column for the year
   df <- df |>
-    mutate(year = as.numeric(gsub("btw|kreis.csv", "", basename(file_path)))
-  )
-  
+    mutate(year = as.numeric(gsub("btw|kreis.csv", "", basename(file_path))))
+
   return(df)
 }
 
 # List of file paths for federal elections from 1953 to 2021
-file_paths <- list.files("data/federal_elections/county_level/raw/", 
-                         pattern = "btw[0-9]+kreis.csv", full.names = TRUE)
+file_paths <- list.files("data/federal_elections/county_level/raw/",
+  pattern = "btw[0-9]+kreis.csv", full.names = TRUE
+)
 
 # Process all files and store results in a list
 election_data <- map(file_paths, safely(process_election_data))
@@ -89,7 +96,7 @@ renames <- c(
   "spad" = "sp_ad",
   "graue" = "die_grauen",
   "tierschutz" = "die_tier_schutzpartei",
-  "tierschutz" = "tierschutzpartei", 
+  "tierschutz" = "tierschutzpartei",
   "tierschutz" = "die_tierschutzpartei",
   "frauen" = "die_frauen",
   "violetten" = "die_violetten",
@@ -117,9 +124,9 @@ renames <- c(
 
 election_data_t <- election_data |>
   map("result") |>
-  map( ~ .x |>
-         rename_with(str_to_lower) |>
-         rename(any_of(renames)))
+  map(~ .x |>
+    rename_with(str_to_lower) |>
+    rename(any_of(renames)))
 
 # Create one dataframe ----------------------------------------------------
 
@@ -140,9 +147,9 @@ comb2 <- comb |>
     statistische_kennziffer = as.numeric(statistische_kennziffer),
     statistische_kennziffer_bundestagswahl_1990 = as.numeric(statistische_kennziffer_bundestagswahl_1990),
     ags = paste0(land, lfd_nr),
-    ags = as.numeric(ags), 
+    ags = as.numeric(ags),
     ags = coalesce(ags, statistische_kennziffer, statistische_kennziffer_bundestagswahl_1990)
-    ) |>
+  ) |>
   select(-c(statistische_kennziffer_bundestagswahl_1990, statistische_kennziffer)) |>
   # filter all non numeric ags and ags that are smaller than 4 digits
   filter(!is.na(ags) & ags >= 1000)
@@ -160,7 +167,7 @@ glimpse(comb2)
 # Check duplicates
 dupl <- comb2 |>
   count(ags, year) |>
-  filter(n>1)
+  filter(n > 1)
 nrow(dupl)
 # zero
 
@@ -176,7 +183,7 @@ df <- comb2 |>
   mutate(
     state = pad_zero_conditional(str_sub(ags, end = -4), 1),
     state_name = state_id_to_names(state)
-    ) |>
+  ) |>
   # Organize
   select(
     # Background
@@ -188,15 +195,15 @@ df <- comb2 |>
     # Left-wing
     dkp, kpd, mlpd, sgp, spad, bsa, bwk, #  kbw, v
     # Others
-    `50plus`, ab_2000, ad_demokraten, adf, adm, agfg, apd, ags, appd, aufbruch, b, bge, big, bp, buendnis_c, buendnis21, 
-    buergerbewegung, bueso, cbv, chance_2000, cm, deutschland, di_b, die_basis, die_humanisten, die_partei, dm, dp, dpd, 
+    `50plus`, ab_2000, ad_demokraten, adf, adm, agfg, apd, ags, appd, aufbruch, b, bge, big, bp, buendnis_c, buendnis21,
+    buergerbewegung, bueso, cbv, chance_2000, cm, deutschland, di_b, die_basis, die_humanisten, die_partei, dm, dp, dpd,
     du, eap, familie, forum, frauen, freie_waehler, fwd, gartenpartei, gb_bhe, gdp, gesundheitsforschung, graue, gvp, hp,
-    liebe, liga, lkr,  menschliche_welt, mg, muendige, naturgesetz, nichtwaehler, oedp, offensive_d, oko_union, 
-    partei_der_vernunft, pass, patrioten, pbc, pd_f, pdv, piraten, prg, pro_deutschland, pro_dm, rentner, rrp, schill, 
-    ssw, statt_partei, team_todenhoefer, tierschutz, tierschutzallianz, unabhaengige, usd, v_partei3, vaa, violetten, 
-    volksabstimmung, volt, zentrum 
-      # asd, bfb, buergerpartei, dib, lfk, oeko_union, pdf, ust,
-    ) %>%
+    liebe, liga, lkr, menschliche_welt, mg, muendige, naturgesetz, nichtwaehler, oedp, offensive_d, oko_union,
+    partei_der_vernunft, pass, patrioten, pbc, pd_f, pdv, piraten, prg, pro_deutschland, pro_dm, rentner, rrp, schill,
+    ssw, statt_partei, team_todenhoefer, tierschutz, tierschutzallianz, unabhaengige, usd, v_partei3, vaa, violetten,
+    volksabstimmung, volt, zentrum
+    # asd, bfb, buergerpartei, dib, lfk, oeko_union, pdf, ust,
+  ) %>%
   # from eligible_voters:zentrum as numeric
   mutate(across(eligible_voters:ncol(.), as.numeric)) %>%
   ungroup() %>%
@@ -217,7 +224,7 @@ df <- comb2 |>
 ## Left wing
 # dkp, kpd, v, kbw (kommunistischer bund westdeutschland),
 # bwk (bund westdeutscher kommunisten),
-# spad (spartakist-arbeiterparte deutschlands), 
+# spad (spartakist-arbeiterparte deutschlands),
 # bsa (bund sozialistischer arbeiter),
 # sgp  (= psg; sozialistische gleichheitspartei)
 # (Linke/PDS) not entirely left-wing but parts of it (solid - youth organization) are investigted by Verfassungsschutz
@@ -249,7 +256,8 @@ zero_elig |>
 # inspect
 df94 <- fread("data/federal_elections/county_level/raw/btw1994kreis.csv")
 
-df94 |> filter(V2 %in% c("12999", "13999", "14999", "15999")) |>
+df94 |>
+  filter(V2 %in% c("12999", "13999", "14999", "15999")) |>
   select(V2, V3)
 # nicht zuordenbare Briefwahl
 
@@ -259,7 +267,7 @@ df94 |> filter(V2 %in% c("12999", "13999", "14999", "15999")) |>
 # Check duplicates
 dupl <- df |>
   count(ags, year) |>
-  filter(n>1)
+  filter(n > 1)
 nrow(dupl)
 # zero
 
@@ -269,6 +277,9 @@ df |>
   summarise(n = n()) |>
   print(n = Inf)
 
+df |>
+  filter(year == 2021) |>
+  distinct(ags)
 
 # Party votes to NA if no votes in year -----------------------------------
 
@@ -322,6 +333,44 @@ if (df |> filter(is.na(election_date)) |> nrow() > 0) {
   message("No missing values for election_date")
 }
 
+# Aggregate Berlin --------------------------------------------------------
+
+# Check Berlin
+df |>
+  filter(state == "11")
+# Berlin sometimes with two different ags per year
+
+# Summarize Berlin to one county 11000
+df_berlin <- df |>
+  filter(ags %in% c("11100", "11200"))
+
+df_berlin |>
+  filter(year >= 1990) |>
+  select(ags, year, number_voters, valid_votes, invalid_votes, cdu_csu, far_right)
+
+
+df_berlin <- df_berlin |>
+  group_by(year) %>%
+  summarise(
+    ags = 11000,
+    state = first(state),
+    state_name = first(state_name),
+    election_date = first(election_date),
+    across(eligible_voters:zentrum, ~ sum(.x, na.rm = TRUE))
+  )
+
+# Bind to df
+df <- df |>
+  filter(ags != "11100" & ags != "11200") |>
+  bind_rows(df_berlin)
+
+
+df |>
+  filter(state == 11) |>
+  arrange(year) |>
+  print(n = Inf)
+
+
 # Vote shares + turnout ---------------------------------------------------
 
 df <- df |>
@@ -337,10 +386,12 @@ df |>
 
 # Relocate
 df <- df |>
-  select(ags:invalid_votes, 
-         turnout,
-         cdu:zentrum, 
-         cdu_csu, far_right:far_left_wLinke)
+  select(
+    ags:invalid_votes,
+    turnout,
+    cdu:zentrum,
+    cdu_csu, far_right:far_left_wLinke
+  )
 
 
 
@@ -361,6 +412,14 @@ names(df)
 
 write_rds(df, "data/federal_elections/county_level/final/federal_cty_unharm.rds")
 fwrite(df, "data/federal_elections/county_level/final/federal_cty_unharm.csv")
+
+
+# duplicates
+df |>
+  count(ags, year) |>
+  filter(n > 1)
+# none
+
 
 
 # Inspect -----------------------------------------------------------------

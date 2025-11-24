@@ -1,7 +1,7 @@
 ### Harmonize BTW electoral results at county level 1990-2021
 # Vincent Heddesheimer
 # Created: June, 18, 2024
-# Last updated: August, 13, 2024
+# Last updated: July, 31, 2025
 
 rm(list = ls())
 
@@ -36,9 +36,6 @@ cw_info_ever_merged_cc_21 <- cw %>%
 cw_info_ever_merged_cc_21 |>
   print(n=Inf)
 
-
-View(cw)
-
 # Eisenach in cw?
 cw |>
   filter(str_detect(county_name, "Eisenach"))
@@ -49,13 +46,18 @@ df <- read_rds("data/federal_elections/county_level/final/federal_cty_unharm.rds
   mutate(election_year = year) |>
   filter(election_year >= 1990)
 
+# Verify that there are no duplicates in the election data
+df |>
+  group_by(ags, election_year) %>%
+  count() %>%
+  filter(n > 1)
+
  # Eisenach in df? 16016, 16056, 16063
 df |>
   filter(ags == "16016" | ags == "16056" | ags == "16063")
 
-
 # Vote shares to votes ----------------------------------------------------
-
+names(df)
 df <- df |>
   mutate(
     across(cdu:far_left_w_linke, ~ .x * number_voters)
@@ -79,8 +81,7 @@ not_merged_naive
 # If we do not follow the steps below, there are 50 cases.
 # We found these by the below code.
 
-glimpse(df)
-## Check means of some variables by year
+
 
 # Dealing with unsuccessful mergers ---------------------------------------
 
@@ -107,6 +108,12 @@ df <- df |>
       TRUE ~ ags
     )
   )
+
+# Verify that there are no duplicates in the election data
+df |>
+  group_by(ags, election_year) %>%
+  count() %>%
+  filter(n > 1)
 
 # Merge crosswalks with election data -------------------------------------
 
@@ -170,18 +177,19 @@ df_cw$year
 glimpse(df_cw)
 
 ## Votes: weighted sum -----------------------------------------------------
+names(df_cw)
 votes <- df_cw |>
   filter(year < 2021) |>
   group_by(county_code_21, election_year) |>
   summarise(
     across(
-      eligible_voters:cdu_csu,
+      eligible_voters:far_left_w_linke,
       ~ sum(.x * pop_cw, na.rm = TRUE)
     )
   ) |>
   # Round
   mutate(across(
-    eligible_voters:cdu_csu,
+    eligible_voters:far_left_w_linke,
     ~ round(.x, digits = 0)
   )) |>
   ungroup()
@@ -281,7 +289,7 @@ df_harm <- df_harm %>%
 
 df_harm <- df_harm |>
   mutate(
-    across(cdu:cdu_csu, ~ .x / total_votes),
+    across(cdu:far_left_w_linke, ~ .x / total_votes),
     turnout = number_voters / eligible_voters
   ) |>
   # Relocate columns
@@ -327,7 +335,9 @@ if (df_harm |> filter(is.na(election_date)) |> nrow() > 0) {
 } else {
   message("No missing values for election_date")
 }
-ga  
+
+glimpse(df_harm)
+
 # AfD to NA for years prior to 2013
 
 df_harm <- df_harm %>%
@@ -360,6 +370,7 @@ write_rds(df_harm, file = "data/federal_elections/county_level/final/federal_cty
 df_harm <- read_rds("data/federal_elections/county_level/final/federal_cty_harm.rds")
 names(df_harm)
 
+glimpse(df_harm)
 
 # Eisenach in df_harm? 16016, 16056, 16063
 df_harm |>
@@ -394,5 +405,10 @@ insp <- inspect_unharm |>
   filter(value != 0) |>
   select(var, value)
 
+# duplicates
+df_harm |>
+  count(county_code, election_year) |>
+  filter(n > 1)
+# none
 
 ### END
