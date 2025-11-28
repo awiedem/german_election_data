@@ -10,7 +10,7 @@ rm(list = ls())
 gc()
 
 library(pacman)
-pacman::p_load(writexl, readr, stringr, tidyverse, grid, gridExtra, tidyverse, broom, tidyr, data.table, readxl, dplyr, stringi)
+pacman::p_load(writexl, readr, stringr, tidyverse, grid, gridExtra, tidyverse, broom, tidyr, data.table, readxl, dplyr, stringi, conflicted)
 
 conflict_prefer_all("dplyr")
 
@@ -23,10 +23,6 @@ setwd(here::here("data/municipal_elections"))
 
 options(scipen=999)
 
-
-# if (Sys.info()['user'] == 'flosic') {
-#   setwd("/Users/flosic/Dropbox/RA_work/Data collection/Germany_Kommunalwahlen")
-# }
 
 ########## DATA PROCESSING ----
 ######### BAYERN ----
@@ -10241,14 +10237,13 @@ rlp_1999_gemeinderatswahlen_data_sub <- rlp_1999_gemeinderatswahlen_data_sub[ ,.
 
 rlp_1999_gemeinderatswahlen_data_sub <-
   rlp_1999_gemeinderatswahlen_data_sub %>%
-  mutate_at(vars(contains('gew')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
-  rename_at(vars(matches("gew") & matches("X")), list(~paste(sub("gew_","prop_",.), sep = "_"))) %>%
+  mutate_at(vars(contains('abs')), .funs = list(XXX= ~./as.numeric(GültigeStimmen))) %>%
+  rename_at(vars(matches("abs") & matches("X")), list(~paste(sub("abs_","prop_",.), sep = "_"))) %>%
   rename_at(vars(matches("_XXX")), list(~paste(sub("_XXX","",.), sep = "")))
-
-
 
 # Calculating turnout ----
 rlp_1999_gemeinderatswahlen_data_sub$Turnout <- rlp_1999_gemeinderatswahlen_data_sub$Wähler / rlp_1999_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
+
 
 ###### RLP 2004 Gemeinderatswahlen ----
 #### Load election data ----
@@ -11096,7 +11091,7 @@ sh_1998_gemeinderatswahlen_data_sub[ , IDBA := ""]
 # Renaming existing variables ----
 sh_1998_gemeinderatswahlen_data_sub$Gebietsname <- sh_1998_gemeinderatswahlen_data_sub$Gemeindename
 sh_1998_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(sh_1998_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt)
-sh_1998_gemeinderatswahlen_data_sub$Wähler <- as.numeric(sh_1998_gemeinderatswahlen_data_sub$Waehler)
+sh_1998_gemeinderatswahlen_data_sub$Wähler <- as.numeric(sh_1998_gemeinderatswahlen_data_sub$Wahler)
 sh_1998_gemeinderatswahlen_data_sub$GültigeStimmen <- as.numeric(sh_1998_gemeinderatswahlen_data_sub$gueltigeStimmen)
 
 sh_1998_gemeinderatswahlen_data_sub$abs_CDU <- as.numeric(sh_1998_gemeinderatswahlen_data_sub$CDU)
@@ -11156,7 +11151,6 @@ sh_1998_gemeinderatswahlen_data_sub <-
 
 # Calculating turnout ----
 sh_1998_gemeinderatswahlen_data_sub$Turnout <- sh_1998_gemeinderatswahlen_data_sub$Wähler / sh_1998_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
-
 
 
 ###### SH 1994 Gemeinderatswahlen ----
