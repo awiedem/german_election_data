@@ -59,6 +59,11 @@ cw_22_23 <- read_excel(path_xlsx, sheet = "2022") %>%
 cw_21_23 <- cw_21_22 %>%
   left_join(cw_22_23 |> select(-c(year, ags_name, population, area)), by = c("ags_2022" = "ags")) %>%
   mutate(
+    # Handle NA weights: if identity mapping (ags == ags_2023) and weight is NA, set to 1
+    w_pop_21_22 = ifelse(ags == ags_2023 & is.na(w_pop_21_22), 1, w_pop_21_22),
+    w_area_21_22 = ifelse(ags == ags_2023 & is.na(w_area_21_22), 1, w_area_21_22),
+    w_pop_22_23 = ifelse(ags == ags_2023 & is.na(w_pop_22_23), 1, w_pop_22_23),
+    w_area_22_23 = ifelse(ags == ags_2023 & is.na(w_area_22_23), 1, w_area_22_23),
     pop_cw  = w_pop_21_22 * w_pop_22_23,
     area_cw = w_area_21_22 * w_area_22_23
   ) %>%
@@ -68,6 +73,11 @@ cw_21_23 <- cw_21_22 %>%
 # 3B.  Build 2022 → 2023 (direct)
 # ────────────────────────────────────────────────────────────────
 cw_22_23_direct <- cw_22_23 %>%
+  mutate(
+    # Handle NA weights: if identity mapping (ags == ags_2023) and weight is NA, set to 1
+    w_pop_22_23 = ifelse(ags == ags_2023 & is.na(w_pop_22_23), 1, w_pop_22_23),
+    w_area_22_23 = ifelse(ags == ags_2023 & is.na(w_area_22_23), 1, w_area_22_23)
+  ) %>%
   transmute(
     ags,
     ags_name,

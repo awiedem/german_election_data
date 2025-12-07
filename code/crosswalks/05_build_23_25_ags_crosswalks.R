@@ -108,7 +108,7 @@ mergers <- changes %>%
     select(
         event_id, ags_old, name_old,
         ags_new, name_new,
-        pop_old, area_old
+        pop_old, area_old, law_short
     ) %>%
     mutate(
         pop_old  = as.numeric(gsub("[^0-9]", "", pop_old)), # strip spaces & dots
@@ -131,13 +131,23 @@ mergers <- mergers %>%
     mutate(
         pop_total = sum(pop_old, na.rm = TRUE),
         area_total = sum(area_old, na.rm = TRUE),
-        pop_cw = ifelse(pop_total > 0,
-            pop_old / pop_total,
-            0
-        ), # every donor had 0 pop
-        area_cw = ifelse(area_total > 0,
-            area_old / area_total,
-            0
+        # For identity mappings (ags_old == ags_new) with missing data, set weights to 1
+        is_identity = ags_old == ags_new,
+        pop_cw = ifelse(
+            is_identity & (is.na(pop_old) | pop_old == 0),
+            1,
+            ifelse(pop_total > 0,
+                pop_old / pop_total,
+                0
+            )
+        ),
+        area_cw = ifelse(
+            is_identity & (is.na(area_old) | area_old == 0),
+            1,
+            ifelse(area_total > 0,
+                area_old / area_total,
+                0
+            )
         )
     ) %>%
     ungroup()
@@ -159,6 +169,14 @@ cw_23_25 <- cw_23_25 %>%
                 area = area_old,
                 population = pop_old
             )
+    )
+
+# Manual fix for Obergeckler (07232096 -> 07232503): set weights to 1
+# This is a key change (law_short == 3) with missing population/area data
+cw_23_25 <- cw_23_25 %>%
+    mutate(
+        pop_cw = ifelse(ags == "07232096" & ags_25 == "07232503", 1, pop_cw),
+        area_cw = ifelse(ags == "07232096" & ags_25 == "07232503", 1, area_cw)
     )
 
 glimpse(cw_23_25)
@@ -252,7 +270,7 @@ mergers <- chg_2025 %>%
     select(
         event_id, ags_old, name_old,
         ags_new, name_new,
-        pop_old, area_old
+        pop_old, area_old, law_short
     ) %>%
     mutate(
         pop_old  = as.numeric(gsub("[^0-9]", "", pop_old)), # strip spaces & dots
@@ -267,13 +285,23 @@ mergers <- mergers %>%
     mutate(
         pop_total = sum(pop_old, na.rm = TRUE),
         area_total = sum(area_old, na.rm = TRUE),
-        pop_cw = ifelse(pop_total > 0,
-            pop_old / pop_total,
-            0
-        ), # every donor had 0 pop
-        area_cw = ifelse(area_total > 0,
-            area_old / area_total,
-            0
+        # For identity mappings (ags_old == ags_new) with missing data, set weights to 1
+        is_identity = ags_old == ags_new,
+        pop_cw = ifelse(
+            is_identity & (is.na(pop_old) | pop_old == 0),
+            1,
+            ifelse(pop_total > 0,
+                pop_old / pop_total,
+                0
+            )
+        ),
+        area_cw = ifelse(
+            is_identity & (is.na(area_old) | area_old == 0),
+            1,
+            ifelse(area_total > 0,
+                area_old / area_total,
+                0
+            )
         )
     ) %>%
     ungroup()
@@ -295,6 +323,14 @@ cw_24_25 <- cw_24_25 %>%
                 area = area_old,
                 population = pop_old
             )
+    )
+
+# Manual fix for Obergeckler (07232096 -> 07232503): set weights to 1
+# This is a key change (law_short == 3) with missing population/area data
+cw_24_25 <- cw_24_25 %>%
+    mutate(
+        pop_cw = ifelse(ags == "07232096" & ags_25 == "07232503", 1, pop_cw),
+        area_cw = ifelse(ags == "07232096" & ags_25 == "07232503", 1, area_cw)
     )
 
 glimpse(cw_24_25)
@@ -338,6 +374,8 @@ write_rds(cw_23_24_25, "data/crosswalks/final/crosswalk_ags_2023_24_to_2025.rds"
 
 
 # 1990-2025 crosswalk ------------------------------------------------------------
+
+getwd()
 
 # load the 1990-2023 crosswalk
 cw_1990_23 <- read_rds("data/crosswalks/final/ags_1990_to_2023_crosswalk.rds")

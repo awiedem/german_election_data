@@ -22,18 +22,18 @@
 rm(list = ls())
 
 ## Set English Locale
-Sys.setlocale('LC_TIME', 'en_US.UTF-8')
+Sys.setlocale("LC_TIME", "en_US.UTF-8")
 
 ## Packages Setup
 packages <- c(
   ### Special Packages
-  'readxl',
-  'xml2',
+  "readxl",
+  "xml2",
 
   ### Standard Packages
-  'here',
-  'janitor',
-  'tidyverse'
+  "here",
+  "janitor",
+  "tidyverse"
 )
 
 for (pkg in packages) {
@@ -43,7 +43,7 @@ for (pkg in packages) {
   library(pkg, character.only = TRUE)
 }
 
-rm('packages', 'pkg')
+rm("packages", "pkg")
 
 ## Working Directory Setup
 # If you use 'german_election_data.Rproj', the following should suffice.
@@ -51,32 +51,32 @@ rm('packages', 'pkg')
 
 setwd(here())
 
-path = 'data/state_elections/raw/Landtagswahlen'
+path <- "data/state_elections/raw/Landtagswahlen"
 
 #### Bavaria ####
 ## Party List
 by23_partylist <- c(
-  'cdu',
-  'csu',
-  'spd',
-  'grune',
-  'fdp',
-  'linke_pds',
-  'afd',
-  'freie_wahler',
-  'bp',
-  'odp',
-  'die_humanisten',
-  'die_partei',
-  'v_partei3',
-  'cdu_csu'
+  "cdu",
+  "csu",
+  "spd",
+  "grune",
+  "fdp",
+  "linke_pds",
+  "afd",
+  "freie_wahler",
+  "bp",
+  "odp",
+  "die_humanisten",
+  "die_partei",
+  "v_partei3",
+  "cdu_csu"
 )
 
 ## Read Raw File
 by23_data <- read_xlsx(
   path = here(
     path,
-    'Bayern/Selbst recherchiert/Bayern_2023_Landtagswahl.xlsx'
+    "Bayern/Selbst recherchiert/Bayern_2023_Landtagswahl.xlsx"
   ),
   sheet = 1,
   skip = 1
@@ -101,11 +101,11 @@ by23_data <- by23_data |>
   ### General Cleaning
   mutate(
     #### Add Needed Variables
-    ags = as.character(paste0('09', regional_schlussel)),
+    ags = as.character(paste0("09", regional_schlussel)),
     county = as.character(substr(ags, 1, 5)),
     election_year = as.numeric(2023),
-    election_date = as.Date('2023-10-08'),
-    state = as.character('09'),
+    election_date = as.Date("2023-10-08"),
+    state = as.character("09"),
     cdu = as.numeric(NA),
     cdu_csu = csu,
   )
@@ -197,6 +197,10 @@ by23_data <- by23_data |>
     gemeinde_name
   )
 
+by23_data |>
+  filter(ags == "09564000") |>
+  glimpse()
+
 ## Check for Problematic Mail-In Votes
 # If art_des_stimmbezirks == 0, it is a normal voting district. For
 # art_des_stimmbezirks %in% c(1, 5, 6), eligible_voters == 0 &
@@ -218,6 +222,20 @@ if (nrow(by23_mailcheck) == 0) {
 
 rm(by23_mailcheck)
 
+## Fill NA gemeinde_name values before aggregation
+# Some voting districts have NA gemeinde_name but belong to the same AGS
+# Fill with the most common gemeinde_name for each AGS to avoid duplicate rows
+by23_data <- by23_data |>
+  group_by(ags) |>
+  mutate(
+    gemeinde_name = if_else(
+      is.na(gemeinde_name),
+      names(sort(table(gemeinde_name), decreasing = TRUE))[1],
+      gemeinde_name
+    )
+  ) |>
+  ungroup()
+
 ## Aggregate to Municipality Level
 by23_data <- by23_data |>
   group_by(
@@ -238,6 +256,12 @@ by23_data <- by23_data |>
   mutate(cdu = NA) |>
   arrange(ags)
 
+by23_data |>
+  filter(ags == "09564000") |>
+  glimpse()
+
+glimpse(by23_data)
+
 ## Check for Problematic Aggregation
 by23_checkdata <- by23_data |>
   summarise(
@@ -249,7 +273,7 @@ by23_checkdata <- by23_data |>
   pull(check_data)
 
 if (by23_checkdata == by23_checksum) {
-  cat('There is no problem.\n')
+  cat("There is no problem.\n")
 } else {
   cat("Houston, we've got a problem!\n")
 }
@@ -281,6 +305,18 @@ by23_data |>
   summarize(n_rows = n()) |>
   filter(n_rows > 1)
 
+
+# Duplicates?
+by23_data %>%
+  group_by(ags, election_year) %>%
+  summarise(n = n()) %>%
+  filter(n > 1)
+
+by23_data %>%
+  filter(ags == "09564000") |>
+  glimpse()
+
+
 rm(by23_checkdata, by23_checksum, by23_kreisfrei)
 
 by23_totalvoters <- by23_data |>
@@ -288,57 +324,64 @@ by23_totalvoters <- by23_data |>
   pull(total)
 
 if (by23_totalvoters == 9430600) {
-  cat('There is no problem.\n')
+  cat("There is no problem.\n")
 } else {
   cat("Houston, we've got a problem!\n")
 }
 
+# duplicates?
+by23_data %>%
+  group_by(ags, election_year) %>%
+  summarise(n = n()) %>%
+  filter(n > 1)
+# none
+
 #### Hesse ####
 ## Party List
 he23_partylist <- c(
-  'cdu',
-  'csu',
-  'spd',
-  'grune',
-  'fdp',
-  'linke_pds',
-  'afd',
-  'freie_wahler',
-  'tierschutzpartei',
-  'die_partei',
-  'piraten',
-  'odp',
-  'verjungungsforschung',
-  'v_partei3',
-  'die_humanisten',
-  'abg',
-  'appd',
-  'diebasis',
-  'dkp',
-  'neue_mitte',
-  'volt',
-  'klimaliste',
-  'cdu_csu'
+  "cdu",
+  "csu",
+  "spd",
+  "grune",
+  "fdp",
+  "linke_pds",
+  "afd",
+  "freie_wahler",
+  "tierschutzpartei",
+  "die_partei",
+  "piraten",
+  "odp",
+  "verjungungsforschung",
+  "v_partei3",
+  "die_humanisten",
+  "abg",
+  "appd",
+  "diebasis",
+  "dkp",
+  "neue_mitte",
+  "volt",
+  "klimaliste",
+  "cdu_csu"
 )
 
 ## Read Raw File
 he23_data <- read_csv2(
   here(
     path,
-    'Hessen/Hessen_2023_Landtagswahl.csv'
+    "Hessen/Hessen_2023_Landtagswahl.csv"
   ),
   skip = 1
 ) |>
   clean_names() |>
   slice(-1:-499) |> # loose pre-aggregated Data
   select(
-    -matches('wahlkreisstimmen'), # data on direct candidate votes is not needed
-    -matches('landesstimmen_percent'),
-    -matches('_gewonnen_'),
-    -matches('anzahl_wahlbezirke'),
-    -'letzte_anderung',
-    -'freigegeben',
-    -'name_aufnehmender_wahlbezirk'
+    -matches("wahlkreisstimmen"), # data on direct candidate votes is not needed
+    -matches("landesstimmen_percent"),
+    -matches("_gewonnen_"),
+    -matches("anzahl_wahlbezirke"),
+    -"letzte_anderung",
+    -"freigegeben",
+    -"name_aufnehmender_wahlbezirk"
   )
 
 ## Clean Dataset
@@ -359,24 +402,24 @@ he23_data <- he23_data |>
   ### General Cleaning
   mutate(
     #### Add Needed Variables
-    ags = as.character(paste0('06', substr(gebietsschlussel, 4, 9))),
+    ags = as.character(paste0("06", substr(gebietsschlussel, 4, 9))),
     county = as.character(substr(ags, 1, 5)),
     election_year = as.numeric(2023),
-    election_date = as.Date('2023-10-08'),
-    state = as.character('06'),
+    election_date = as.Date("2023-10-08"),
+    state = as.character("06"),
     csu = as.numeric(NA),
     cdu_csu = cdu,
   ) |>
   ### Clean Parties w/o Landesstimmen
   select(
-    -'bundnis_c',
-    -'wdmr',
-    -'bundespa_klimaliste',
-    -'mera25',
-    -'nev',
-    -'pp',
-    -'sgv',
-    -'solibew'
+    -"bundnis_c",
+    -"wdmr",
+    -"bundespa_klimaliste",
+    -"mera25",
+    -"nev",
+    -"pp",
+    -"sgv",
+    -"solibew"
   )
 
 he23_data <- he23_data |>
@@ -486,7 +529,7 @@ he23_totalvoters <- he23_data |>
   pull(total)
 
 if (he23_totalvoters == 4332235) {
-  cat('There is no problem.\n')
+  cat("There is no problem.\n")
 } else {
   cat("Houston, we've got a problem!\n")
 }
@@ -494,40 +537,40 @@ if (he23_totalvoters == 4332235) {
 #### Lower Saxony ####
 ## Party List
 ni22_partylist <- c(
-  'cdu',
-  'csu',
-  'spd',
-  'grune',
-  'fdp',
-  'linke_pds',
-  'afd',
-  'diebasis',
-  'die_humanisten',
-  'die_partei',
-  'freie_wahler',
-  'verjungungsforschung',
-  'piraten',
-  'tierschutz',
-  'volt',
-  'cdu_csu'
+  "cdu",
+  "csu",
+  "spd",
+  "grune",
+  "fdp",
+  "linke_pds",
+  "afd",
+  "diebasis",
+  "die_humanisten",
+  "die_partei",
+  "freie_wahler",
+  "verjungungsforschung",
+  "piraten",
+  "tierschutz",
+  "volt",
+  "cdu_csu"
 )
 
 ## Read Raw File
 ni22_xml <- read_xml(
-  here(path, 'Niedersachsen/Niedersachsen_2022_Landtagswahl_ZS.xml')
+  here(path, "Niedersachsen/Niedersachsen_2022_Landtagswahl_ZS.xml")
 )
 
 ## Get Data.Frame from XML
-ni22_ns <- c(ss = 'urn:schemas-microsoft-com:office:spreadsheet')
+ni22_ns <- c(ss = "urn:schemas-microsoft-com:office:spreadsheet")
 
 ni22_rows <- xml_find_all(
   ni22_xml,
-  './/ss:Worksheet/ss:Table/ss:Row',
+  ".//ss:Worksheet/ss:Table/ss:Row",
   ni22_ns
 )
 
 extract_ni22row <- function(row) {
-  cells <- xml_find_all(row, './/ss:Cell/ss:Data', ni22_ns)
+  cells <- xml_find_all(row, ".//ss:Cell/ss:Data", ni22_ns)
   map_chr(cells, xml_text)
 }
 
@@ -546,7 +589,7 @@ ni22_list <- map(
 
 ni22_data <- ni22_list |>
   do.call(what = rbind) |>
-  as_tibble(.name_repair = 'unique') |>
+  as_tibble(.name_repair = "unique") |>
   slice(-(1:10))
 
 rm(ni22_list, ni22_rows, ni22_xml, ni22_maxlen, ni22_ns)
@@ -565,20 +608,20 @@ ni22_data <- ni22_data |>
   slice(-(2:4)) |>
   row_to_names(row_number = 1) |>
   rename(ags = 1) |>
-  rename_with(~ gsub('-', '', .)) |>
+  rename_with(~ gsub("-", "", .)) |>
   clean_names() |>
-  filter(!str_detect(ags, '%')) |>
+  filter(!str_detect(ags, "%")) |>
   select(
     -where(~ all(is.na(.))),
     -sonst_ige
   ) |>
   mutate(
-    ags = lag(gsub('[^0-9]', '', ags), 1),
-    across(everything(), ~ na_if(., '-')),
+    ags = lag(gsub("[^0-9]", "", ags), 1),
+    across(everything(), ~ na_if(., "-")),
     csu = as.numeric(NA),
     cdu_csu = cdu
   ) |>
-  filter(!str_detect(ags, 'Anzahl')) |>
+  filter(!str_detect(ags, "Anzahl")) |>
   filter(!if_all(-ags, is.na)) |>
   ### Rename Variables For Consistency With Other Datasets
   rename(
@@ -595,12 +638,12 @@ ni22_data <- ni22_data |>
   ) |>
   ### Various Mutatations
   mutate(
-    state = as.character('03'),
+    state = as.character("03"),
     ags = paste0(state, ags),
-    ags = str_pad(ags, width = 8, side = 'right', pad = '0'),
+    ags = str_pad(ags, width = 8, side = "right", pad = "0"),
     county = substr(ags, 1, 5),
     election_year = as.numeric(2022),
-    election_date = as.Date('2022-10-09'),
+    election_date = as.Date("2022-10-09"),
     eligible_voters = as.numeric(eligible_voters),
     number_voters = as.numeric(number_voters),
     valid_votes = as.numeric(valid_votes),
@@ -629,14 +672,14 @@ ni22_data <- ni22_data |>
 ni22_ags <- read_excel(
   here(
     path,
-    '../../../covars_municipality/raw/municipality_sizes',
-    'AuszugGV4QAktuell_2024.xlsx'
+    "../../../covars_municipality/raw/municipality_sizes",
+    "AuszugGV4QAktuell_2024.xlsx"
   ),
   sheet = 2,
   skip = 5,
   col_names = FALSE
 ) |>
-  filter(...1 == 60, ...3 == '03') |>
+  filter(...1 == 60, ...3 == "03") |>
   mutate(ags = paste0(...3, ...4, ...5, ...7)) |>
   select(ags)
 
@@ -672,7 +715,7 @@ ni22_totalvoters <- ni22_data |>
   pull(total)
 
 if (ni22_totalvoters == 6064738) {
-  cat('There is no problem.\n')
+  cat("There is no problem.\n")
 } else {
   cat("Houston, we've got a problem!\n")
 }
@@ -680,12 +723,20 @@ if (ni22_totalvoters == 6064738) {
 #### Bind and Write ####
 state2223 <- bind_rows(by23_data, he23_data, ni22_data)
 
+# Change cdu / csu inconsistencies
+state2223 <- state2223 |>
+  mutate(
+    cdu = ifelse(state != "09" & (cdu == 0 | is.na(cdu)), cdu_csu, cdu),
+    csu = ifelse(state == "09" & (csu == 0 | is.na(csu)), cdu_csu, csu)
+  )
+
+
 write_csv(
   state2223,
   here(
     path,
-    '../../../state_elections/final',
-    'state_2223_unharm.csv'
+    "../../../state_elections/final",
+    "state_2223_unharm.csv"
   )
 )
 
@@ -693,7 +744,13 @@ write_rds(
   state2223,
   here(
     path,
-    '../../../state_elections/final',
-    'state_2223_unharm.rds'
+    "../../../state_elections/final",
+    "state_2223_unharm.rds"
   )
 )
+
+
+# Inspect
+state2223 <- read_rds(here(path, "../../../state_elections/final", "state_2223_unharm.rds"))
+
+glimpse(state2223)
