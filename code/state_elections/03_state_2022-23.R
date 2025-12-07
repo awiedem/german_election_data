@@ -5,7 +5,7 @@
 # Date: 2025-10-19
 
 ### Machine Specifications
-# This Script was reated and therefore extensively tested using a machine with
+# This Script was created and therefore extensively tested using a machine with
 # the following specifications:
 
 # OS: Ubuntu 24.04.3 LTS
