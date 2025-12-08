@@ -14388,6 +14388,7 @@ sachsen_1994_gemeinderatswahlen_data_sub$abs_PIRATEN <- NA
 sachsen_1994_gemeinderatswahlen_data_sub$abs_FDP <- sachsen_1994_gemeinderatswahlen_data_sub$FDP
 sachsen_1994_gemeinderatswahlen_data_sub$abs_DiePARTEI <- NA
 sachsen_1994_gemeinderatswahlen_data_sub$abs_FREIEWÄHLER <- NA
+sachsen_1994_gemeinderatswahlen_data_sub$abs_BSW <- NA
 
 sachsen_1994_gemeinderatswahlen_data_sub$gew_CDU <- NA
 sachsen_1994_gemeinderatswahlen_data_sub$gew_SPD <- NA
@@ -14398,6 +14399,7 @@ sachsen_1994_gemeinderatswahlen_data_sub$gew_PIRATEN <- NA
 sachsen_1994_gemeinderatswahlen_data_sub$gew_FDP <- NA
 sachsen_1994_gemeinderatswahlen_data_sub$gew_DiePARTEI <- NA
 sachsen_1994_gemeinderatswahlen_data_sub$gew_FREIEWÄHLER <- NA
+sachsen_1994_gemeinderatswahlen_data_sub$gew_BSW <- NA
 
 sachsen_1994_gemeinderatswahlen_data_sub$sitze_CDU <- NA
 sachsen_1994_gemeinderatswahlen_data_sub$sitze_SPD <- NA
@@ -14408,6 +14410,7 @@ sachsen_1994_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
 sachsen_1994_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 sachsen_1994_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 sachsen_1994_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+sachsen_1994_gemeinderatswahlen_data_sub$sitze_BSW <- NA
 
 # Creating new dataframe with selected vars ----
 sachsen_1994_gemeinderatswahlen_data_sub <- sachsen_1994_gemeinderatswahlen_data_sub[, .(
@@ -14430,6 +14433,7 @@ sachsen_1994_gemeinderatswahlen_data_sub <- sachsen_1994_gemeinderatswahlen_data
   abs_FDP,
   abs_DiePARTEI,
   abs_FREIEWÄHLER,
+  abs_BSW,
   gew_CDU,
   gew_SPD,
   gew_DIELINKE,
@@ -14439,6 +14443,7 @@ sachsen_1994_gemeinderatswahlen_data_sub <- sachsen_1994_gemeinderatswahlen_data
   gew_FDP,
   gew_DiePARTEI,
   gew_FREIEWÄHLER,
+  gew_BSW,
   sitze_CDU,
   sitze_SPD,
   sitze_DIELINKE,
@@ -14447,7 +14452,8 @@ sachsen_1994_gemeinderatswahlen_data_sub <- sachsen_1994_gemeinderatswahlen_data
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  sitze_BSW
 )]
 
 # Calculating vote shares ----
@@ -14520,6 +14526,7 @@ sachsen_1999_gemeinderatswahlen_data_sub$abs_PIRATEN <- NA
 sachsen_1999_gemeinderatswahlen_data_sub$abs_FDP <- sachsen_1999_gemeinderatswahlen_data_sub$FDP
 sachsen_1999_gemeinderatswahlen_data_sub$abs_DiePARTEI <- NA
 sachsen_1999_gemeinderatswahlen_data_sub$abs_FREIEWÄHLER <- NA
+sachsen_1999_gemeinderatswahlen_data_sub$abs_BSW <- NA
 
 sachsen_1999_gemeinderatswahlen_data_sub$gew_CDU <- NA
 sachsen_1999_gemeinderatswahlen_data_sub$gew_SPD <- NA
@@ -14530,6 +14537,7 @@ sachsen_1999_gemeinderatswahlen_data_sub$gew_PIRATEN <- NA
 sachsen_1999_gemeinderatswahlen_data_sub$gew_FDP <- NA
 sachsen_1999_gemeinderatswahlen_data_sub$gew_DiePARTEI <- NA
 sachsen_1999_gemeinderatswahlen_data_sub$gew_FREIEWÄHLER <- NA
+sachsen_1999_gemeinderatswahlen_data_sub$gew_BSW <- NA
 
 sachsen_1999_gemeinderatswahlen_data_sub$sitze_CDU <- NA
 sachsen_1999_gemeinderatswahlen_data_sub$sitze_SPD <- NA
@@ -14540,6 +14548,7 @@ sachsen_1999_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
 sachsen_1999_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 sachsen_1999_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 sachsen_1999_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+sachsen_1999_gemeinderatswahlen_data_sub$sitze_BSW <- NA
 
 # Creating new dataframe with selected vars ----
 sachsen_1999_gemeinderatswahlen_data_sub <- sachsen_1999_gemeinderatswahlen_data_sub[, .(
@@ -14562,6 +14571,7 @@ sachsen_1999_gemeinderatswahlen_data_sub <- sachsen_1999_gemeinderatswahlen_data
   abs_FDP,
   abs_DiePARTEI,
   abs_FREIEWÄHLER,
+  abs_BSW,
   gew_CDU,
   gew_SPD,
   gew_DIELINKE,
@@ -14571,6 +14581,7 @@ sachsen_1999_gemeinderatswahlen_data_sub <- sachsen_1999_gemeinderatswahlen_data
   gew_FDP,
   gew_DiePARTEI,
   gew_FREIEWÄHLER,
+  gew_BSW,
   sitze_CDU,
   sitze_SPD,
   sitze_DIELINKE,
@@ -14579,7 +14590,8 @@ sachsen_1999_gemeinderatswahlen_data_sub <- sachsen_1999_gemeinderatswahlen_data
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  sitze_BSW
 )]
 
 # Calculating vote shares ----
@@ -14652,6 +14664,7 @@ sachsen_2004_gemeinderatswahlen_data_sub$abs_PIRATEN <- NA
 sachsen_2004_gemeinderatswahlen_data_sub$abs_FDP <- sachsen_2004_gemeinderatswahlen_data_sub$FDP
 sachsen_2004_gemeinderatswahlen_data_sub$abs_DiePARTEI <- NA
 sachsen_2004_gemeinderatswahlen_data_sub$abs_FREIEWÄHLER <- NA
+sachsen_2004_gemeinderatswahlen_data_sub$abs_BSW <- NA
 
 sachsen_2004_gemeinderatswahlen_data_sub$gew_CDU <- NA
 sachsen_2004_gemeinderatswahlen_data_sub$gew_SPD <- NA
@@ -14662,6 +14675,7 @@ sachsen_2004_gemeinderatswahlen_data_sub$gew_PIRATEN <- NA
 sachsen_2004_gemeinderatswahlen_data_sub$gew_FDP <- NA
 sachsen_2004_gemeinderatswahlen_data_sub$gew_DiePARTEI <- NA
 sachsen_2004_gemeinderatswahlen_data_sub$gew_FREIEWÄHLER <- NA
+sachsen_2004_gemeinderatswahlen_data_sub$gew_BSW <- NA
 
 sachsen_2004_gemeinderatswahlen_data_sub$sitze_CDU <- NA
 sachsen_2004_gemeinderatswahlen_data_sub$sitze_SPD <- NA
@@ -14672,6 +14686,7 @@ sachsen_2004_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
 sachsen_2004_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 sachsen_2004_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 sachsen_2004_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+sachsen_2004_gemeinderatswahlen_data_sub$sitze_BSW <- NA
 
 # Creating new dataframe with selected vars ----
 sachsen_2004_gemeinderatswahlen_data_sub <- sachsen_2004_gemeinderatswahlen_data_sub[, .(
@@ -14694,6 +14709,7 @@ sachsen_2004_gemeinderatswahlen_data_sub <- sachsen_2004_gemeinderatswahlen_data
   abs_FDP,
   abs_DiePARTEI,
   abs_FREIEWÄHLER,
+  abs_BSW,
   gew_CDU,
   gew_SPD,
   gew_DIELINKE,
@@ -14703,6 +14719,7 @@ sachsen_2004_gemeinderatswahlen_data_sub <- sachsen_2004_gemeinderatswahlen_data
   gew_FDP,
   gew_DiePARTEI,
   gew_FREIEWÄHLER,
+  gew_BSW,
   sitze_CDU,
   sitze_SPD,
   sitze_DIELINKE,
@@ -14711,7 +14728,8 @@ sachsen_2004_gemeinderatswahlen_data_sub <- sachsen_2004_gemeinderatswahlen_data
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  sitze_BSW
 )]
 
 # Calculating vote shares ----
@@ -14783,6 +14801,7 @@ sachsen_2009_gemeinderatswahlen_data_sub$abs_PIRATEN <- NA
 sachsen_2009_gemeinderatswahlen_data_sub$abs_FDP <- sachsen_2009_gemeinderatswahlen_data_sub$FDP
 sachsen_2009_gemeinderatswahlen_data_sub$abs_DiePARTEI <- NA
 sachsen_2009_gemeinderatswahlen_data_sub$abs_FREIEWÄHLER <- NA
+sachsen_2009_gemeinderatswahlen_data_sub$abs_BSW <- NA
 
 sachsen_2009_gemeinderatswahlen_data_sub$gew_CDU <- NA
 sachsen_2009_gemeinderatswahlen_data_sub$gew_SPD <- NA
@@ -14793,6 +14812,7 @@ sachsen_2009_gemeinderatswahlen_data_sub$gew_PIRATEN <- NA
 sachsen_2009_gemeinderatswahlen_data_sub$gew_FDP <- NA
 sachsen_2009_gemeinderatswahlen_data_sub$gew_DiePARTEI <- NA
 sachsen_2009_gemeinderatswahlen_data_sub$gew_FREIEWÄHLER <- NA
+sachsen_2009_gemeinderatswahlen_data_sub$gew_BSW <- NA
 
 sachsen_2009_gemeinderatswahlen_data_sub$sitze_CDU <- NA
 sachsen_2009_gemeinderatswahlen_data_sub$sitze_SPD <- NA
@@ -14803,6 +14823,7 @@ sachsen_2009_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
 sachsen_2009_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 sachsen_2009_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 sachsen_2009_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+sachsen_2009_gemeinderatswahlen_data_sub$sitze_BSW <- NA
 
 # Creating new dataframe with selected vars ----
 sachsen_2009_gemeinderatswahlen_data_sub <- sachsen_2009_gemeinderatswahlen_data_sub[, .(
@@ -14825,6 +14846,7 @@ sachsen_2009_gemeinderatswahlen_data_sub <- sachsen_2009_gemeinderatswahlen_data
   abs_FDP,
   abs_DiePARTEI,
   abs_FREIEWÄHLER,
+  abs_BSW,
   gew_CDU,
   gew_SPD,
   gew_DIELINKE,
@@ -14834,6 +14856,7 @@ sachsen_2009_gemeinderatswahlen_data_sub <- sachsen_2009_gemeinderatswahlen_data
   gew_FDP,
   gew_DiePARTEI,
   gew_FREIEWÄHLER,
+  gew_BSW,
   sitze_CDU,
   sitze_SPD,
   sitze_DIELINKE,
@@ -14842,7 +14865,8 @@ sachsen_2009_gemeinderatswahlen_data_sub <- sachsen_2009_gemeinderatswahlen_data
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  sitze_BSW
 )]
 
 # Calculating vote shares ----
@@ -14914,6 +14938,7 @@ sachsen_2014_gemeinderatswahlen_data_sub$abs_PIRATEN <- sachsen_2014_gemeinderat
 sachsen_2014_gemeinderatswahlen_data_sub$abs_FDP <- sachsen_2014_gemeinderatswahlen_data_sub$FDP
 sachsen_2014_gemeinderatswahlen_data_sub$abs_DiePARTEI <- sachsen_2014_gemeinderatswahlen_data_sub$DiePARTEI
 sachsen_2014_gemeinderatswahlen_data_sub$abs_FREIEWÄHLER <- NA
+sachsen_2014_gemeinderatswahlen_data_sub$abs_BSW <- NA
 
 sachsen_2014_gemeinderatswahlen_data_sub$gew_CDU <- NA
 sachsen_2014_gemeinderatswahlen_data_sub$gew_SPD <- NA
@@ -14924,6 +14949,7 @@ sachsen_2014_gemeinderatswahlen_data_sub$gew_PIRATEN <- NA
 sachsen_2014_gemeinderatswahlen_data_sub$gew_FDP <- NA
 sachsen_2014_gemeinderatswahlen_data_sub$gew_DiePARTEI <- NA
 sachsen_2014_gemeinderatswahlen_data_sub$gew_FREIEWÄHLER <- NA
+sachsen_2014_gemeinderatswahlen_data_sub$gew_BSW <- NA
 
 sachsen_2014_gemeinderatswahlen_data_sub$sitze_CDU <- NA
 sachsen_2014_gemeinderatswahlen_data_sub$sitze_SPD <- NA
@@ -14934,6 +14960,7 @@ sachsen_2014_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
 sachsen_2014_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 sachsen_2014_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 sachsen_2014_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+sachsen_2014_gemeinderatswahlen_data_sub$sitze_BSW <- NA
 
 # Creating new dataframe with selected vars ----
 sachsen_2014_gemeinderatswahlen_data_sub <- sachsen_2014_gemeinderatswahlen_data_sub[, .(
@@ -14956,6 +14983,7 @@ sachsen_2014_gemeinderatswahlen_data_sub <- sachsen_2014_gemeinderatswahlen_data
   abs_FDP,
   abs_DiePARTEI,
   abs_FREIEWÄHLER,
+  abs_BSW,
   gew_CDU,
   gew_SPD,
   gew_DIELINKE,
@@ -14965,6 +14993,7 @@ sachsen_2014_gemeinderatswahlen_data_sub <- sachsen_2014_gemeinderatswahlen_data
   gew_FDP,
   gew_DiePARTEI,
   gew_FREIEWÄHLER,
+  gew_BSW,
   sitze_CDU,
   sitze_SPD,
   sitze_DIELINKE,
@@ -14973,7 +15002,8 @@ sachsen_2014_gemeinderatswahlen_data_sub <- sachsen_2014_gemeinderatswahlen_data
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  sitze_BSW
 )]
 
 # Calculating vote shares ----
@@ -15045,6 +15075,7 @@ sachsen_2019_gemeinderatswahlen_data_sub$abs_PIRATEN <- sachsen_2019_gemeinderat
 sachsen_2019_gemeinderatswahlen_data_sub$abs_FDP <- sachsen_2019_gemeinderatswahlen_data_sub$FDP
 sachsen_2019_gemeinderatswahlen_data_sub$abs_DiePARTEI <- sachsen_2019_gemeinderatswahlen_data_sub$DiePARTEI
 sachsen_2019_gemeinderatswahlen_data_sub$abs_FREIEWÄHLER <- sachsen_2019_gemeinderatswahlen_data_sub$FREIEWAEHLER
+sachsen_2019_gemeinderatswahlen_data_sub$abs_BSW <- NA
 
 sachsen_2019_gemeinderatswahlen_data_sub$gew_CDU <- NA
 sachsen_2019_gemeinderatswahlen_data_sub$gew_SPD <- NA
@@ -15055,6 +15086,7 @@ sachsen_2019_gemeinderatswahlen_data_sub$gew_PIRATEN <- NA
 sachsen_2019_gemeinderatswahlen_data_sub$gew_FDP <- NA
 sachsen_2019_gemeinderatswahlen_data_sub$gew_DiePARTEI <- NA
 sachsen_2019_gemeinderatswahlen_data_sub$gew_FREIEWÄHLER <- NA
+sachsen_2019_gemeinderatswahlen_data_sub$gew_BSW <- NA
 
 sachsen_2019_gemeinderatswahlen_data_sub$sitze_CDU <- NA
 sachsen_2019_gemeinderatswahlen_data_sub$sitze_SPD <- NA
@@ -15065,6 +15097,7 @@ sachsen_2019_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
 sachsen_2019_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 sachsen_2019_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 sachsen_2019_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+sachsen_2019_gemeinderatswahlen_data_sub$sitze_BSW <- NA
 
 # Creating new dataframe with selected vars ----
 sachsen_2019_gemeinderatswahlen_data_sub <- sachsen_2019_gemeinderatswahlen_data_sub[, .(
@@ -15087,6 +15120,7 @@ sachsen_2019_gemeinderatswahlen_data_sub <- sachsen_2019_gemeinderatswahlen_data
   abs_FDP,
   abs_DiePARTEI,
   abs_FREIEWÄHLER,
+  abs_BSW,
   gew_CDU,
   gew_SPD,
   gew_DIELINKE,
@@ -15096,6 +15130,7 @@ sachsen_2019_gemeinderatswahlen_data_sub <- sachsen_2019_gemeinderatswahlen_data
   gew_FDP,
   gew_DiePARTEI,
   gew_FREIEWÄHLER,
+  gew_BSW,
   sitze_CDU,
   sitze_SPD,
   sitze_DIELINKE,
@@ -15104,7 +15139,8 @@ sachsen_2019_gemeinderatswahlen_data_sub <- sachsen_2019_gemeinderatswahlen_data
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  sitze_BSW
 )]
 
 # Calculating vote shares ----
@@ -15169,18 +15205,13 @@ sachsen_2024_gemeinderatswahlen_data_sub$GültigeStimmen <- sachsen_2024_gemeind
 sachsen_2024_gemeinderatswahlen_data_sub$abs_CDU <- sachsen_2024_gemeinderatswahlen_data_sub$cdu
 sachsen_2024_gemeinderatswahlen_data_sub$abs_SPD <- sachsen_2024_gemeinderatswahlen_data_sub$spd
 sachsen_2024_gemeinderatswahlen_data_sub$abs_DIELINKE <- sachsen_2024_gemeinderatswahlen_data_sub$die_linke
-sachsen_2024_gemeinderatswahlen_data_sub$abs_GRÜNE <- sachsen_2024_gemeinderatswahlen_data_sub$gruene
+sachsen_2024_gemeinderatswahlen_data_sub$abs_GRÜNE <- sachsen_2024_gemeinderatswahlen_data_sub$grune
 sachsen_2024_gemeinderatswahlen_data_sub$abs_AfD <- sachsen_2024_gemeinderatswahlen_data_sub$af_d
 sachsen_2024_gemeinderatswahlen_data_sub$abs_PIRATEN <- sachsen_2024_gemeinderatswahlen_data_sub$piraten
 sachsen_2024_gemeinderatswahlen_data_sub$abs_FDP <- sachsen_2024_gemeinderatswahlen_data_sub$fdp
 sachsen_2024_gemeinderatswahlen_data_sub$abs_DiePARTEI <- sachsen_2024_gemeinderatswahlen_data_sub$die_partei
-sachsen_2024_gemeinderatswahlen_data_sub$abs_NPD <- sachsen_2024_gemeinderatswahlen_data_sub$heimat
-sachsen_2024_gemeinderatswahlen_data_sub$abs_DSU <- sachsen_2024_gemeinderatswahlen_data_sub$dsu
-sachsen_2024_gemeinderatswahlen_data_sub$abs_DieBASIS <- sachsen_2024_gemeinderatswahlen_data_sub$die_basis
-sachsen_2024_gemeinderatswahlen_data_sub$abs_FREIESACHSEN <- sachsen_2024_gemeinderatswahlen_data_sub$freiesachsen
+sachsen_2024_gemeinderatswahlen_data_sub$abs_FREIEWÄHLER <- NA
 sachsen_2024_gemeinderatswahlen_data_sub$abs_BSW <- sachsen_2024_gemeinderatswahlen_data_sub$bsw
-sachsen_2024_gemeinderatswahlen_data_sub$abs_BÜNDNISDEUTSCHLAND <- sachsen_2024_gemeinderatswahlen_data_sub$bundnis_deutschland
-sachsen_2024_gemeinderatswahlen_data_sub$abs_VOLT <- sachsen_2024_gemeinderatswahlen_data_sub$volt
 
 sachsen_2024_gemeinderatswahlen_data_sub$gew_CDU <- NA
 sachsen_2024_gemeinderatswahlen_data_sub$gew_SPD <- NA
@@ -15190,13 +15221,8 @@ sachsen_2024_gemeinderatswahlen_data_sub$gew_AfD <- NA
 sachsen_2024_gemeinderatswahlen_data_sub$gew_PIRATEN <- NA
 sachsen_2024_gemeinderatswahlen_data_sub$gew_FDP <- NA
 sachsen_2024_gemeinderatswahlen_data_sub$gew_DiePARTEI <- NA
-sachsen_2024_gemeinderatswahlen_data_sub$gew_NPD <- NA
-sachsen_2024_gemeinderatswahlen_data_sub$gew_DSU <- NA
-sachsen_2024_gemeinderatswahlen_data_sub$gew_DieBASIS <- NA
-sachsen_2024_gemeinderatswahlen_data_sub$gew_FREIESACHSEN <- NA
+sachsen_2024_gemeinderatswahlen_data_sub$gew_FREIEWÄHLER <- NA
 sachsen_2024_gemeinderatswahlen_data_sub$gew_BSW <- NA
-sachsen_2024_gemeinderatswahlen_data_sub$gew_BÜNDNISDEUTSCHLAND <- NA
-sachsen_2024_gemeinderatswahlen_data_sub$gew_VOLT <- NA
 
 
 sachsen_2024_gemeinderatswahlen_data_sub$sitze_CDU <- NA
@@ -15207,31 +15233,52 @@ sachsen_2024_gemeinderatswahlen_data_sub$sitze_AfD <- NA
 sachsen_2024_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
 sachsen_2024_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 sachsen_2024_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
-sachsen_2024_gemeinderatswahlen_data_sub$sitze_NPD <- NA
-sachsen_2024_gemeinderatswahlen_data_sub$sitze_DSU <- NA
-sachsen_2024_gemeinderatswahlen_data_sub$sitze_DieBASIS <- NA
-sachsen_2024_gemeinderatswahlen_data_sub$sitze_FREIESACHSEN <- NA
+sachsen_2024_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
 sachsen_2024_gemeinderatswahlen_data_sub$sitze_BSW <- NA
-sachsen_2024_gemeinderatswahlen_data_sub$sitze_BÜNDNISDEUTSCHLAND <- NA
-sachsen_2024_gemeinderatswahlen_data_sub$sitze_VOLT <- NA
 
 # Creating new dataframe with selected vars ----
-sachsen_2024_gemeinderatswahlen_data_sub <- sachsen_2024_gemeinderatswahlen_data_sub |>
-  select(
-    AGS_8dig,
-    Bundesland,
-    Gebietsname,
-    election_year,
-    election_type,
-    IDIRB,
-    IDBA,
-    Wahlberechtigteinsgesamt,
-    Wähler,
-    GültigeStimmen,
-    starts_with('abs_'),
-    starts_with('gew_'),
-    starts_with('sitze_')
-  ) |>
+sachsen_2024_gemeinderatswahlen_data_sub <- sachsen_2024_gemeinderatswahlen_data_sub[, .(
+  AGS_8dig,
+  Bundesland,
+  Gebietsname,
+  election_year,
+  election_type,
+  IDIRB,
+  IDBA,
+  Wahlberechtigteinsgesamt,
+  Wähler,
+  GültigeStimmen,
+  abs_CDU,
+  abs_SPD,
+  abs_DIELINKE,
+  abs_GRÜNE,
+  abs_AfD,
+  abs_PIRATEN,
+  abs_FDP,
+  abs_DiePARTEI,
+  abs_FREIEWÄHLER,
+  abs_BSW,
+  gew_CDU,
+  gew_SPD,
+  gew_DIELINKE,
+  gew_GRÜNE,
+  gew_AfD,
+  gew_PIRATEN,
+  gew_FDP,
+  gew_DiePARTEI,
+  gew_FREIEWÄHLER,
+  gew_BSW,
+  sitze_CDU,
+  sitze_SPD,
+  sitze_DIELINKE,
+  sitze_GRÜNE,
+  sitze_AfD,
+  sitze_PIRATEN,
+  sitze_FDP,
+  sitze_DiePARTEI,
+  sitze_FREIEWÄHLER,
+  sitze_BSW
+)] |>
   mutate(across(
     c(starts_with('abs_'), starts_with('gew_'), starts_with('sitze_')),
     ~ as.numeric(.)
@@ -15262,7 +15309,7 @@ sachsen_2024_gemeinderatswahlen_data_sub <- sachsen_2024_gemeinderatswahlen_data
 
 ####### Merge files and save overall output for Sachsen ----
 # Merge
-sachsen_kommunalwahlen <- bind_rows(
+sachsen_kommunalwahlen <- rbind(
   sachsen_1994_gemeinderatswahlen_data_sub,
   sachsen_1999_gemeinderatswahlen_data_sub,
   sachsen_2004_gemeinderatswahlen_data_sub,
