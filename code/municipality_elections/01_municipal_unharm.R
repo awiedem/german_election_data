@@ -15171,7 +15171,7 @@ sachsen_2019_gemeinderatswahlen_data_sub <- sachsen_2019_gemeinderatswahlen_data
 
 sachsen_2024_gemeinderatswahlen_data <- as.data.table(read_excel(
   'raw/sachsen/sachsen_2024.xlsx',
-  sheet = 'GR24_EE_KS_GE'
+  sheet = 'summary'
 )) |>
   clean_names()
 
@@ -15196,11 +15196,11 @@ sachsen_2024_gemeinderatswahlen_data_sub[, IDIRB := ""]
 sachsen_2024_gemeinderatswahlen_data_sub[, IDBA := ""]
 
 # Renaming existing variables ----
-sachsen_2024_gemeinderatswahlen_data_sub$AGS_8dig <- sachsen_2024_gemeinderatswahlen_data_sub$ortnummer
-sachsen_2024_gemeinderatswahlen_data_sub$Gebietsname <- sachsen_2024_gemeinderatswahlen_data_sub$ortname
+sachsen_2024_gemeinderatswahlen_data_sub$AGS_8dig <- sachsen_2024_gemeinderatswahlen_data_sub$ags
+sachsen_2024_gemeinderatswahlen_data_sub$Gebietsname <- sachsen_2024_gemeinderatswahlen_data_sub$gemeindename
 sachsen_2024_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_2024_gemeinderatswahlen_data_sub$wahlberechtigte
-sachsen_2024_gemeinderatswahlen_data_sub$Wähler <- sachsen_2024_gemeinderatswahlen_data_sub$wahler
-sachsen_2024_gemeinderatswahlen_data_sub$GültigeStimmen <- sachsen_2024_gemeinderatswahlen_data_sub$gultige_stimmen
+sachsen_2024_gemeinderatswahlen_data_sub$Wähler <- sachsen_2024_gemeinderatswahlen_data_sub$waehler
+sachsen_2024_gemeinderatswahlen_data_sub$GültigeStimmen <- sachsen_2024_gemeinderatswahlen_data_sub$gueltige_stimmzettel
 
 sachsen_2024_gemeinderatswahlen_data_sub$abs_CDU <- sachsen_2024_gemeinderatswahlen_data_sub$cdu
 sachsen_2024_gemeinderatswahlen_data_sub$abs_SPD <- sachsen_2024_gemeinderatswahlen_data_sub$spd
