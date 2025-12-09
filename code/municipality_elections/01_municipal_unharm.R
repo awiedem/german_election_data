@@ -17403,6 +17403,478 @@ brandenburg_2019_gemeinderatswahlen_data_recoded <-
 brandenburg_2019_gemeinderatswahlen_data_recoded$Turnout <- brandenburg_2019_gemeinderatswahlen_data_recoded$Wähler /
   brandenburg_2019_gemeinderatswahlen_data_recoded$Wahlberechtigteinsgesamt
 
+###### Brandenburg 2024 Gemeinderatswahlen ----
+#### Load election data ----
+brandenburg_2024_gemeinderatswahlen_data <- as.data.table(read_excel(
+  'raw/brandenburg/brandenburg_2024.xlsx',
+  sheet = 'BB_GVW2024'
+)) |>
+  rename(AGS = ARS) |>
+  mutate(AGS = str_c(str_sub(AGS, 1, 5), str_sub(AGS, 10)))
+
+names(brandenburg_2024_gemeinderatswahlen_data) <- str_replace_all(
+  names(brandenburg_2024_gemeinderatswahlen_data),
+  fixed(' '),
+  ''
+)
+
+#### Recode to split by party vote ----
+brandenburg_2024_gemeinderatswahlen_data_recoded <-
+  brandenburg_2024_gemeinderatswahlen_data %>%
+  group_by(AGS) %>%
+  summarise(Gebietsname = unique(Gemeindename))
+brandenburg_2024_gemeinderatswahlen_data_recoded <- as.data.frame(
+  brandenburg_2024_gemeinderatswahlen_data_recoded
+)
+
+# Wahlberechtigte
+brandenburg_2024_gemeinderatswahlen_data_Wahlberechtigte <- brandenburg_2024_gemeinderatswahlen_data[
+  brandenburg_2024_gemeinderatswahlen_data$Merkmal_Kurzname == "Wahlberechtigt"
+]
+brandenburg_2024_gemeinderatswahlen_data_Wahlberechtigte <- brandenburg_2024_gemeinderatswahlen_data_Wahlberechtigte[, c(
+  'AGS',
+  'Anzahl'
+)]
+names(brandenburg_2024_gemeinderatswahlen_data_Wahlberechtigte)[
+  names(brandenburg_2024_gemeinderatswahlen_data_Wahlberechtigte) == "Anzahl"
+] <- "Wahlberechtigte"
+brandenburg_2024_gemeinderatswahlen_data_recoded <- merge(
+  brandenburg_2024_gemeinderatswahlen_data_recoded,
+  brandenburg_2024_gemeinderatswahlen_data_Wahlberechtigte,
+  by = c('AGS'),
+  all.x = TRUE
+)
+
+# Wähler
+brandenburg_2024_gemeinderatswahlen_data_Wähler <- brandenburg_2024_gemeinderatswahlen_data[
+  brandenburg_2024_gemeinderatswahlen_data$Merkmal_Kurzname == "Wähler"
+]
+brandenburg_2024_gemeinderatswahlen_data_Wähler <- brandenburg_2024_gemeinderatswahlen_data_Wähler[, c(
+  'AGS',
+  'Anzahl'
+)]
+names(brandenburg_2024_gemeinderatswahlen_data_Wähler)[
+  names(brandenburg_2024_gemeinderatswahlen_data_Wähler) == "Anzahl"
+] <- "Wähler"
+brandenburg_2024_gemeinderatswahlen_data_recoded <- merge(
+  brandenburg_2024_gemeinderatswahlen_data_recoded,
+  brandenburg_2024_gemeinderatswahlen_data_Wähler,
+  by = c('AGS'),
+  all.x = TRUE
+)
+
+# gültigeStimmen
+brandenburg_2024_gemeinderatswahlen_data_gültigeStimmen <- brandenburg_2024_gemeinderatswahlen_data[
+  brandenburg_2024_gemeinderatswahlen_data$Merkmal_Kurzname == "Gueltig"
+]
+brandenburg_2024_gemeinderatswahlen_data_gültigeStimmen <- brandenburg_2024_gemeinderatswahlen_data_gültigeStimmen[, c(
+  'AGS',
+  'Anzahl'
+)]
+names(brandenburg_2024_gemeinderatswahlen_data_gültigeStimmen)[
+  names(brandenburg_2024_gemeinderatswahlen_data_gültigeStimmen) == "Anzahl"
+] <- "gültigeStimmen"
+brandenburg_2024_gemeinderatswahlen_data_recoded <- merge(
+  brandenburg_2024_gemeinderatswahlen_data_recoded,
+  brandenburg_2024_gemeinderatswahlen_data_gültigeStimmen,
+  by = c('AGS'),
+  all.x = TRUE
+)
+
+# CDU
+brandenburg_2024_gemeinderatswahlen_data_CDU <- brandenburg_2024_gemeinderatswahlen_data[
+  brandenburg_2024_gemeinderatswahlen_data$Merkmal_Kurzname == "CDU"
+]
+brandenburg_2024_gemeinderatswahlen_data_CDU <- brandenburg_2024_gemeinderatswahlen_data_CDU[, c(
+  'AGS',
+  'Anzahl',
+  'Sitze'
+)]
+names(brandenburg_2024_gemeinderatswahlen_data_CDU)[
+  names(brandenburg_2024_gemeinderatswahlen_data_CDU) == "Anzahl"
+] <- "CDU"
+names(brandenburg_2024_gemeinderatswahlen_data_CDU)[
+  names(brandenburg_2024_gemeinderatswahlen_data_CDU) == "Sitze"
+] <- "sitze_CDU"
+brandenburg_2024_gemeinderatswahlen_data_recoded <- merge(
+  brandenburg_2024_gemeinderatswahlen_data_recoded,
+  brandenburg_2024_gemeinderatswahlen_data_CDU,
+  by = c('AGS'),
+  all.x = TRUE
+)
+
+# SPD
+brandenburg_2024_gemeinderatswahlen_data_SPD <- brandenburg_2024_gemeinderatswahlen_data[
+  brandenburg_2024_gemeinderatswahlen_data$Merkmal_Kurzname == "SPD"
+]
+brandenburg_2024_gemeinderatswahlen_data_SPD <- brandenburg_2024_gemeinderatswahlen_data_SPD[, c(
+  'AGS',
+  'Anzahl',
+  'Sitze'
+)]
+names(brandenburg_2024_gemeinderatswahlen_data_SPD)[
+  names(brandenburg_2024_gemeinderatswahlen_data_SPD) == "Anzahl"
+] <- "SPD"
+names(brandenburg_2024_gemeinderatswahlen_data_SPD)[
+  names(brandenburg_2024_gemeinderatswahlen_data_SPD) == "Sitze"
+] <- "sitze_SPD"
+brandenburg_2024_gemeinderatswahlen_data_recoded <- merge(
+  brandenburg_2024_gemeinderatswahlen_data_recoded,
+  brandenburg_2024_gemeinderatswahlen_data_SPD,
+  by = c('AGS'),
+  all.x = TRUE
+)
+
+# FDP
+brandenburg_2024_gemeinderatswahlen_data_FDP <- brandenburg_2024_gemeinderatswahlen_data[
+  brandenburg_2024_gemeinderatswahlen_data$Merkmal_Kurzname == "FDP"
+]
+brandenburg_2024_gemeinderatswahlen_data_FDP <- brandenburg_2024_gemeinderatswahlen_data_FDP[, c(
+  'AGS',
+  'Anzahl',
+  'Sitze'
+)]
+names(brandenburg_2024_gemeinderatswahlen_data_FDP)[
+  names(brandenburg_2024_gemeinderatswahlen_data_FDP) == "Anzahl"
+] <- "FDP"
+names(brandenburg_2024_gemeinderatswahlen_data_FDP)[
+  names(brandenburg_2024_gemeinderatswahlen_data_FDP) == "Sitze"
+] <- "sitze_FDP"
+brandenburg_2024_gemeinderatswahlen_data_recoded <- merge(
+  brandenburg_2024_gemeinderatswahlen_data_recoded,
+  brandenburg_2024_gemeinderatswahlen_data_FDP,
+  by = c('AGS'),
+  all.x = TRUE
+)
+
+# DiePARTEI
+brandenburg_2024_gemeinderatswahlen_data_DiePARTEI <- brandenburg_2024_gemeinderatswahlen_data[
+  brandenburg_2024_gemeinderatswahlen_data$Merkmal_Kurzname == "Die PARTEI"
+]
+brandenburg_2024_gemeinderatswahlen_data_DiePARTEI <- brandenburg_2024_gemeinderatswahlen_data_DiePARTEI[, c(
+  'AGS',
+  'Anzahl',
+  'Sitze'
+)]
+names(brandenburg_2024_gemeinderatswahlen_data_DiePARTEI)[
+  names(brandenburg_2024_gemeinderatswahlen_data_DiePARTEI) == "Anzahl"
+] <- "DiePARTEI"
+names(brandenburg_2024_gemeinderatswahlen_data_DiePARTEI)[
+  names(brandenburg_2024_gemeinderatswahlen_data_DiePARTEI) == "Sitze"
+] <- "sitze_DiePARTEI"
+brandenburg_2024_gemeinderatswahlen_data_recoded <- merge(
+  brandenburg_2024_gemeinderatswahlen_data_recoded,
+  brandenburg_2024_gemeinderatswahlen_data_DiePARTEI,
+  by = c('AGS'),
+  all.x = TRUE
+)
+
+# DIELINKE
+brandenburg_2024_gemeinderatswahlen_data_DIELINKE <- brandenburg_2024_gemeinderatswahlen_data[
+  brandenburg_2024_gemeinderatswahlen_data$Merkmal_Kurzname == "DIE LINKE"
+]
+brandenburg_2024_gemeinderatswahlen_data_DIELINKE <- brandenburg_2024_gemeinderatswahlen_data_DIELINKE[, c(
+  'AGS',
+  'Anzahl',
+  'Sitze'
+)]
+names(brandenburg_2024_gemeinderatswahlen_data_DIELINKE)[
+  names(brandenburg_2024_gemeinderatswahlen_data_DIELINKE) == "Anzahl"
+] <- "DIELINKE"
+names(brandenburg_2024_gemeinderatswahlen_data_DIELINKE)[
+  names(brandenburg_2024_gemeinderatswahlen_data_DIELINKE) == "Sitze"
+] <- "sitze_DIELINKE"
+brandenburg_2024_gemeinderatswahlen_data_recoded <- merge(
+  brandenburg_2024_gemeinderatswahlen_data_recoded,
+  brandenburg_2024_gemeinderatswahlen_data_DIELINKE,
+  by = c('AGS'),
+  all.x = TRUE
+)
+
+# AfD
+brandenburg_2024_gemeinderatswahlen_data_AfD <- brandenburg_2024_gemeinderatswahlen_data[
+  brandenburg_2024_gemeinderatswahlen_data$Merkmal_Kurzname == "AfD"
+]
+brandenburg_2024_gemeinderatswahlen_data_AfD <- brandenburg_2024_gemeinderatswahlen_data_AfD[, c(
+  'AGS',
+  'Anzahl',
+  'Sitze'
+)]
+names(brandenburg_2024_gemeinderatswahlen_data_AfD)[
+  names(brandenburg_2024_gemeinderatswahlen_data_AfD) == "Anzahl"
+] <- "AfD"
+names(brandenburg_2024_gemeinderatswahlen_data_AfD)[
+  names(brandenburg_2024_gemeinderatswahlen_data_AfD) == "Sitze"
+] <- "sitze_AfD"
+brandenburg_2024_gemeinderatswahlen_data_recoded <- merge(
+  brandenburg_2024_gemeinderatswahlen_data_recoded,
+  brandenburg_2024_gemeinderatswahlen_data_AfD,
+  by = c('AGS'),
+  all.x = TRUE
+)
+
+# PIRATEN
+brandenburg_2024_gemeinderatswahlen_data_PIRATEN <- brandenburg_2024_gemeinderatswahlen_data[
+  brandenburg_2024_gemeinderatswahlen_data$Merkmal_Kurzname == "PIRATEN"
+]
+brandenburg_2024_gemeinderatswahlen_data_PIRATEN <- brandenburg_2024_gemeinderatswahlen_data_PIRATEN[, c(
+  'AGS',
+  'Anzahl',
+  'Sitze'
+)]
+names(brandenburg_2024_gemeinderatswahlen_data_PIRATEN)[
+  names(brandenburg_2024_gemeinderatswahlen_data_PIRATEN) == "Anzahl"
+] <- "PIRATEN"
+names(brandenburg_2024_gemeinderatswahlen_data_PIRATEN)[
+  names(brandenburg_2024_gemeinderatswahlen_data_PIRATEN) == "Sitze"
+] <- "sitze_PIRATEN"
+brandenburg_2024_gemeinderatswahlen_data_recoded <- merge(
+  brandenburg_2024_gemeinderatswahlen_data_recoded,
+  brandenburg_2024_gemeinderatswahlen_data_PIRATEN,
+  by = c('AGS'),
+  all.x = TRUE
+)
+
+# GRUENE
+brandenburg_2024_gemeinderatswahlen_data_GRUENE <- dplyr::filter(
+  brandenburg_2024_gemeinderatswahlen_data,
+  grepl('GRÜNE', Merkmal_Kurzname)
+)
+brandenburg_2024_gemeinderatswahlen_data_GRUENE <- brandenburg_2024_gemeinderatswahlen_data_GRUENE[, c(
+  'AGS',
+  'Anzahl',
+  'Sitze'
+)]
+names(brandenburg_2024_gemeinderatswahlen_data_GRUENE)[
+  names(brandenburg_2024_gemeinderatswahlen_data_GRUENE) == "Anzahl"
+] <- "GRUENE"
+names(brandenburg_2024_gemeinderatswahlen_data_GRUENE)[
+  names(brandenburg_2024_gemeinderatswahlen_data_GRUENE) == "Sitze"
+] <- "sitze_GRUENE"
+brandenburg_2024_gemeinderatswahlen_data_recoded <- merge(
+  brandenburg_2024_gemeinderatswahlen_data_recoded,
+  brandenburg_2024_gemeinderatswahlen_data_GRUENE,
+  by = c('AGS'),
+  all.x = TRUE
+)
+
+# FW
+brandenburg_2024_gemeinderatswahlen_data_FW <- dplyr::filter(
+  brandenburg_2024_gemeinderatswahlen_data,
+  grepl('Freie Wähler|FW|Freie WG', Merkmal_Kurzname)
+)
+brandenburg_2024_gemeinderatswahlen_data_FW <- brandenburg_2024_gemeinderatswahlen_data_FW[, c(
+  'AGS',
+  'Anzahl',
+  'Sitze'
+)]
+names(brandenburg_2024_gemeinderatswahlen_data_FW)[
+  names(brandenburg_2024_gemeinderatswahlen_data_FW) == "Anzahl"
+] <- "FREIEWÄHLER"
+names(brandenburg_2024_gemeinderatswahlen_data_FW)[
+  names(brandenburg_2024_gemeinderatswahlen_data_FW) == "Sitze"
+] <- "sitze_FREIEWÄHLER"
+
+brandenburg_2024_gemeinderatswahlen_data_FW <- brandenburg_2024_gemeinderatswahlen_data_FW %>%
+  group_by(AGS) %>%
+  mutate(
+    FREIEWÄHLER = sum(FREIEWÄHLER, na.rm = T),
+    sitze_FREIEWÄHLER = sum(sitze_FREIEWÄHLER, na.rm = T)
+  ) %>%
+  distinct()
+
+brandenburg_2024_gemeinderatswahlen_data_recoded <- merge(
+  brandenburg_2024_gemeinderatswahlen_data_recoded,
+  brandenburg_2024_gemeinderatswahlen_data_FW,
+  by = c('AGS'),
+  all.x = TRUE
+)
+
+# Wählergruppen
+brandenburg_2024_gemeinderatswahlen_data_WAEHLERGRUPPEN <- dplyr::filter(
+  brandenburg_2024_gemeinderatswahlen_data,
+  grepl('WG', `ArtdesWahl-vorschlags`)
+)
+brandenburg_2024_gemeinderatswahlen_data_WAEHLERGRUPPEN <- brandenburg_2024_gemeinderatswahlen_data_WAEHLERGRUPPEN[, c(
+  'AGS',
+  'Anzahl',
+  'Sitze'
+)]
+names(brandenburg_2024_gemeinderatswahlen_data_WAEHLERGRUPPEN)[
+  names(brandenburg_2024_gemeinderatswahlen_data_WAEHLERGRUPPEN) == "Anzahl"
+] <- "WAEHLERGRUPPEN"
+names(brandenburg_2024_gemeinderatswahlen_data_WAEHLERGRUPPEN)[
+  names(brandenburg_2024_gemeinderatswahlen_data_WAEHLERGRUPPEN) == "Sitze"
+] <- "sitze_WAEHLERGRUPPEN"
+
+brandenburg_2024_gemeinderatswahlen_data_WAEHLERGRUPPEN <- brandenburg_2024_gemeinderatswahlen_data_WAEHLERGRUPPEN %>%
+  group_by(AGS) %>%
+  mutate(
+    WAEHLERGRUPPEN = sum(WAEHLERGRUPPEN, na.rm = T),
+    sitze_WAEHLERGRUPPEN = sum(sitze_WAEHLERGRUPPEN, na.rm = T)
+  ) %>%
+  distinct()
+
+brandenburg_2024_gemeinderatswahlen_data_recoded <- merge(
+  brandenburg_2024_gemeinderatswahlen_data_recoded,
+  brandenburg_2024_gemeinderatswahlen_data_WAEHLERGRUPPEN,
+  by = c('AGS'),
+  all.x = TRUE
+)
+
+# Einzelbewerber
+brandenburg_2024_gemeinderatswahlen_data_EINZELBEWERBER <- dplyr::filter(
+  brandenburg_2024_gemeinderatswahlen_data,
+  grepl('EB', `ArtdesWahl-vorschlags`)
+)
+brandenburg_2024_gemeinderatswahlen_data_EINZELBEWERBER <- brandenburg_2024_gemeinderatswahlen_data_EINZELBEWERBER[, c(
+  'AGS',
+  'Anzahl',
+  'Sitze'
+)]
+names(brandenburg_2024_gemeinderatswahlen_data_EINZELBEWERBER)[
+  names(brandenburg_2024_gemeinderatswahlen_data_EINZELBEWERBER) == "Anzahl"
+] <- "EINZELBEWERBER"
+names(brandenburg_2024_gemeinderatswahlen_data_EINZELBEWERBER)[
+  names(brandenburg_2024_gemeinderatswahlen_data_EINZELBEWERBER) == "Sitze"
+] <- "sitze_EINZELBEWERBER"
+
+brandenburg_2024_gemeinderatswahlen_data_EINZELBEWERBER <- brandenburg_2024_gemeinderatswahlen_data_EINZELBEWERBER %>%
+  group_by(AGS) %>%
+  mutate(
+    EINZELBEWERBER = sum(EINZELBEWERBER, na.rm = T),
+    sitze_EINZELBEWERBER = sum(sitze_EINZELBEWERBER, na.rm = T)
+  ) %>%
+  distinct()
+
+brandenburg_2024_gemeinderatswahlen_data_recoded <- merge(
+  brandenburg_2024_gemeinderatswahlen_data_recoded,
+  brandenburg_2024_gemeinderatswahlen_data_EINZELBEWERBER,
+  by = c('AGS'),
+  all.x = TRUE
+)
+
+brandenburg_2024_gemeinderatswahlen_data_recoded <- as.data.table(
+  brandenburg_2024_gemeinderatswahlen_data_recoded
+)
+
+#### Recoding ----
+# Creating non-existing variables ----
+brandenburg_2024_gemeinderatswahlen_data_recoded[, AGS_8dig := ""] # 8 digits with leading zero
+brandenburg_2024_gemeinderatswahlen_data_recoded[, Bundesland := "Brandenburg"]
+brandenburg_2024_gemeinderatswahlen_data_recoded[, election_year := "2024"]
+brandenburg_2024_gemeinderatswahlen_data_recoded[,
+  election_type := "Kommunalwahlen"
+]
+brandenburg_2024_gemeinderatswahlen_data_recoded[, IDIRB := ""]
+brandenburg_2024_gemeinderatswahlen_data_recoded[, IDBA := ""]
+
+# Renaming existing variables ----
+brandenburg_2024_gemeinderatswahlen_data_recoded$AGS_8dig <- brandenburg_2024_gemeinderatswahlen_data_recoded$AGS
+brandenburg_2024_gemeinderatswahlen_data_recoded$Gebietsname <- brandenburg_2024_gemeinderatswahlen_data_recoded$Gebietsname
+brandenburg_2024_gemeinderatswahlen_data_recoded$Wahlberechtigteinsgesamt <- brandenburg_2024_gemeinderatswahlen_data_recoded$Wahlberechtigte
+brandenburg_2024_gemeinderatswahlen_data_recoded$Wähler <- brandenburg_2024_gemeinderatswahlen_data_recoded$Wähler
+brandenburg_2024_gemeinderatswahlen_data_recoded$GültigeStimmen <- brandenburg_2024_gemeinderatswahlen_data_recoded$gültigeStimmen
+
+brandenburg_2024_gemeinderatswahlen_data_recoded$abs_CDU <- brandenburg_2024_gemeinderatswahlen_data_recoded$CDU
+brandenburg_2024_gemeinderatswahlen_data_recoded$abs_SPD <- brandenburg_2024_gemeinderatswahlen_data_recoded$SPD
+brandenburg_2024_gemeinderatswahlen_data_recoded$abs_DIELINKE <- brandenburg_2024_gemeinderatswahlen_data_recoded$DIELINKE
+brandenburg_2024_gemeinderatswahlen_data_recoded$abs_GRÜNE <- brandenburg_2024_gemeinderatswahlen_data_recoded$GRUENE
+brandenburg_2024_gemeinderatswahlen_data_recoded$abs_AfD <- brandenburg_2024_gemeinderatswahlen_data_recoded$AfD
+brandenburg_2024_gemeinderatswahlen_data_recoded$abs_PIRATEN <- brandenburg_2024_gemeinderatswahlen_data_recoded$PIRATEN
+brandenburg_2024_gemeinderatswahlen_data_recoded$abs_FDP <- brandenburg_2024_gemeinderatswahlen_data_recoded$FDP
+brandenburg_2024_gemeinderatswahlen_data_recoded$abs_DiePARTEI <- brandenburg_2024_gemeinderatswahlen_data_recoded$DiePARTEI
+brandenburg_2024_gemeinderatswahlen_data_recoded$abs_FREIEWÄHLER <- brandenburg_2024_gemeinderatswahlen_data_recoded$FREIEWÄHLER
+brandenburg_2024_gemeinderatswahlen_data_recoded$abs_Gemeinsame_Wahlvorschläge <- brandenburg_2024_gemeinderatswahlen_data_recoded$`EINZELBEWERBER`
+brandenburg_2024_gemeinderatswahlen_data_recoded$abs_Wählergruppen <- brandenburg_2024_gemeinderatswahlen_data_recoded$`WAEHLERGRUPPEN`
+
+brandenburg_2024_gemeinderatswahlen_data_recoded$gew_CDU <- NA
+brandenburg_2024_gemeinderatswahlen_data_recoded$gew_SPD <- NA
+brandenburg_2024_gemeinderatswahlen_data_recoded$gew_DIELINKE <- NA
+brandenburg_2024_gemeinderatswahlen_data_recoded$gew_GRÜNE <- NA
+brandenburg_2024_gemeinderatswahlen_data_recoded$gew_AfD <- NA
+brandenburg_2024_gemeinderatswahlen_data_recoded$gew_PIRATEN <- NA
+brandenburg_2024_gemeinderatswahlen_data_recoded$gew_FDP <- NA
+brandenburg_2024_gemeinderatswahlen_data_recoded$gew_DiePARTEI <- NA
+brandenburg_2024_gemeinderatswahlen_data_recoded$gew_FREIEWÄHLER <- NA
+brandenburg_2024_gemeinderatswahlen_data_recoded$gew_Gemeinsame_Wahlvorschläge <- NA
+brandenburg_2024_gemeinderatswahlen_data_recoded$gew_Wählergruppen <- NA
+
+brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_CDU <- brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_CDU
+brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_SPD <- brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_SPD
+brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_DIELINKE <- brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_DIELINKE
+brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_GRÜNE <- brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_GRUENE
+brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_AfD <- brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_AfD
+brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_PIRATEN <- brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_PIRATEN
+brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_FDP <- brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_FDP
+brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_DiePARTEI <- brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_DiePARTEI
+brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_FREIEWÄHLER <- brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_FREIEWÄHLER
+brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_Gemeinsame_Wahlvorschläge <- brandenburg_2024_gemeinderatswahlen_data_recoded$`sitze_WAEHLERGRUPPEN`
+brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_Wählergruppen <- brandenburg_2024_gemeinderatswahlen_data_recoded$`sitze_EINZELBEWERBER`
+
+
+# Creating new dataframe with selected vars ----
+brandenburg_2024_gemeinderatswahlen_data_recoded <- brandenburg_2024_gemeinderatswahlen_data_recoded[, .(
+  AGS_8dig,
+  Bundesland,
+  Gebietsname,
+  election_year,
+  election_type,
+  IDIRB,
+  IDBA,
+  Wahlberechtigteinsgesamt,
+  Wähler,
+  GültigeStimmen,
+  abs_CDU,
+  abs_SPD,
+  abs_DIELINKE,
+  abs_GRÜNE,
+  abs_AfD,
+  abs_PIRATEN,
+  abs_FDP,
+  abs_FREIEWÄHLER,
+  abs_Gemeinsame_Wahlvorschläge,
+  abs_Wählergruppen,
+  gew_CDU,
+  gew_SPD,
+  gew_DIELINKE,
+  gew_GRÜNE,
+  gew_AfD,
+  gew_PIRATEN,
+  gew_FDP,
+  gew_FREIEWÄHLER,
+  gew_Gemeinsame_Wahlvorschläge,
+  gew_Wählergruppen,
+  sitze_CDU,
+  sitze_SPD,
+  sitze_DIELINKE,
+  sitze_GRÜNE,
+  sitze_AfD,
+  sitze_PIRATEN,
+  sitze_FDP,
+  sitze_FREIEWÄHLER,
+  sitze_Gemeinsame_Wahlvorschläge,
+  sitze_Wählergruppen
+)]
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+brandenburg_2024_gemeinderatswahlen_data_recoded <-
+  brandenburg_2024_gemeinderatswahlen_data_recoded %>%
+  mutate_at(
+    vars(contains('abs')),
+    .funs = list(XXX = ~ . / as.numeric(GültigeStimmen))
+  ) %>%
+  rename_at(
+    vars(matches("abs") & matches("X")),
+    list(~ paste(sub("abs_", "prop_", .), sep = "_"))
+  ) %>%
+  rename_at(vars(matches("_XXX")), list(~ paste(sub("_XXX", "", .), sep = "")))
+
+# Calculating turnout ----
+brandenburg_2024_gemeinderatswahlen_data_recoded$Turnout <- brandenburg_2024_gemeinderatswahlen_data_recoded$Wähler /
+  brandenburg_2024_gemeinderatswahlen_data_recoded$Wahlberechtigteinsgesamt
 
 ####### Merge files and save overall output for Brandenburg ----
 # Merge
@@ -17412,7 +17884,8 @@ brandenburg_kommunalwahlen <- rbind(
   brandenburg_2003_gemeinderatswahlen_data_recoded,
   brandenburg_2008_gemeinderatswahlen_data_recoded,
   brandenburg_2014_gemeinderatswahlen_data_recoded,
-  brandenburg_2019_gemeinderatswahlen_data_recoded
+  brandenburg_2019_gemeinderatswahlen_data_recoded,
+  brandenburg_2024_gemeinderatswahlen_data_recoded
 )
 
 # Replace - with NA
