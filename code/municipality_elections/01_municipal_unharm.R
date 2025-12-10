@@ -3,7 +3,7 @@
 ###################################
 
 # Florian Sichart
-# Last update: November 2025 (Luca Schenk)
+# Last update: Dezember 2025 (Maurice Baudet von Gersdorff)
 
 ########## PREPARATION ----
 rm(list = ls())
@@ -19079,6 +19079,143 @@ rlp_kommunalwahlen <- rlp_kommunalwahlen %>%
 #write_csv(rlp_kommunalwahlen, "processed/rlp_kommunalwahlen.csv")
 
 ######### Schleswig-Holstein ----
+###### SH 2023 Gemeinderatswahlen ----
+#### Load election data ----
+sh_2023_gemeinderatswahlen_data <- read_csv2(
+  'raw/schleswig_holstein/sh_2023.csv'
+)
+
+sh_2023_sheets <- excel_sheets(
+  'raw/schleswig_holstein/sh_2023_feldbezeichner.xlsx'
+)
+
+sh_2023_names <- sh_2023_sheets |>
+  set_names() |>
+  map_dfr(
+    ~ read_excel(
+      'raw/schleswig_holstein/sh_2023_feldbezeichner.xlsx',
+      sheet = .x,
+      col_types = 'text'
+    )
+  ) |>
+  rename(
+    Gebietsname = Gemeinde
+  ) |>
+  mutate(
+    Gebietsname = coalesce(`Gebietsname`, `Kreisfreie Stadt`),
+    Regionalschlüssel = str_replace(Regionalschlüssel, '^1', '01')
+  ) |>
+  select(
+    -`Kreisfreie Stadt`
+  )
+
+#### Recode ----
+sh_2023_gemeinderatswahlen_data_sub <- sh_2023_gemeinderatswahlen_data |>
+  select(Gemeinde) |>
+  mutate(AGS_8dig = Gemeinde, Bundesland = 'Schleswig-Holstein') |>
+  left_join(
+    sh_2023_names |> select(Regionalschlüssel, Gebietsname),
+    by = c('AGS_8dig' = 'Regionalschlüssel')
+  ) |>
+  mutate(
+    AGS_8dig = as.character(AGS_8dig),
+    AGS_8dig = str_pad(AGS_8dig, width = 8, side = 'right', pad = '0'),
+    AGS_8dig = ifelse(
+      nchar(AGS_8dig) > 8,
+      paste0(substr(AGS_8dig, 1, 5), substr(AGS_8dig, 10, nchar(AGS_8dig))),
+      AGS_8dig
+    ),
+    Gebietsname = ifelse(
+      str_detect(Gebietsname, '^[A-ZÄÖÜ\\s]+$'),
+      str_to_sentence(str_to_lower(Gebietsname)),
+      Gebietsname
+    ),
+    election_year = '2023',
+    election_type = 'Kommunalwahlen',
+    IDIRB = '',
+    IDBA = '',
+  ) |>
+  distinct(AGS_8dig, .keep_all = TRUE)
+
+#### Handle Mail In Votes ----
+sh_2023_gemeinderatswahlen_data_cleared <- sh_2023_gemeinderatswahlen_data |>
+  group_by(Gemeinde) |>
+  summarize(
+    across(where(is.double), \(x) sum(x, na.rm = TRUE)),
+    .groups = 'drop'
+  ) |>
+  rename(
+    abs_CDU = D1,
+    abs_SPD = D3,
+    abs_DIELINKE = D7,
+    abs_GRÜNE = D2,
+    abs_AfD = D6,
+    abs_PIRATEN = D12,
+    abs_FDP = D4,
+    abs_DiePARTEI = D9,
+    abs_FREIEWÄHLER = D11
+  ) |>
+  rename(
+    Wahlberechtigteinsgesamt = `Wahlberechtigte gesamt (A)`,
+    Wähler = `Waehlende gesamt (B)`,
+    GültigeStimmen = `Stimmen gueltige (D)`
+  ) |>
+  select(
+    -D5,
+    -D8,
+    -D10,
+    -D13:-D23,
+    -D124,
+    -matches(' ')
+  ) |>
+  mutate(
+    across(starts_with('abs_'), as.numeric)
+  )
+
+#### Join Vote Data ----
+sh_2023_gemeinderatswahlen_data_sub <- sh_2023_gemeinderatswahlen_data_sub |>
+  left_join(sh_2023_gemeinderatswahlen_data_cleared, by = 'Gemeinde') |>
+  mutate(
+    across(
+      starts_with('abs_'),
+      ~NA_real_, # oder NA_character_ je nach Typ
+      .names = "gew_{sub('^abs_', '', .col)}"
+    ),
+    across(
+      starts_with('abs_'),
+      ~NA_real_,
+      .names = "sitze_{sub('^abs_', '', .col)}"
+    )
+  ) |>
+  select(
+    -Gemeinde
+  )
+
+# Calculating vote shares ----
+# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
+
+sh_2023_gemeinderatswahlen_data_sub <-
+  sh_2023_gemeinderatswahlen_data_sub %>%
+  mutate_at(
+    vars(contains('abs')),
+    .funs = list(XXX = ~ . / as.numeric(GültigeStimmen))
+  ) %>%
+  rename_at(
+    vars(matches("abs") & matches("X")),
+    list(~ paste(sub("abs_", "prop_", .), sep = "_"))
+  ) %>%
+  rename_at(vars(matches("_XXX")), list(~ paste(sub("_XXX", "", .), sep = "")))
+
+# Calculating turnout ----
+sh_2023_gemeinderatswahlen_data_sub$Turnout <- sh_2023_gemeinderatswahlen_data_sub$Wähler /
+  sh_2023_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
+
+#### Finalize as data.table ----
+sh_2023_gemeinderatswahlen_data_sub <- as.data.table(
+  sh_2023_gemeinderatswahlen_data_sub
+)
+
+
 ###### SH 2018 Gemeinderatswahlen ----
 #### Load election data ----
 
@@ -19940,15 +20077,9 @@ sh_kommunalwahlen <- rbind(
   sh_1998_gemeinderatswahlen_data_sub,
   sh_2003_gemeinderatswahlen_data_sub,
   sh_2008_gemeinderatswahlen_data_sub,
-  sh_2013_gemeinderatswahlen_data_sub
-) %>%
-  filter(
-    AGS_8dig %in% c("01001000", "01002000", "01003000", "01004000")
-  )
-
-sh_kommunalwahlen <- rbind(
-  sh_kommunalwahlen,
-  sh_2018_gemeinderatswahlen_data_sub
+  sh_2013_gemeinderatswahlen_data_sub,
+  sh_2018_gemeinderatswahlen_data_sub,
+  sh_2023_gemeinderatswahlen_data_sub
 )
 
 # Replace - with NA
