@@ -366,28 +366,48 @@ df_harm <- df_harm %>%
 glimpse(df_harm)
 
 
+## Add area and population
+area_pop <- read_rds("data/covars_municipality/final/ags_area_pop_emp_2023.rds")
+
+
+glimpse(area_pop)
+
+glimpse(df_harm)
+
+
+df_final <- df_harm |>
+  left_join_check_obs(area_pop, by = c("ags" = "ags_2023", "election_year" = "year")) |>
+  mutate(
+    ags_name = ags_name_23
+  ) |>
+  relocate(ags_name, .after = ags) |>
+  select(-ags_name_23)
+
+glimpse(df_final)
+
+
 # Save ----------------------------------------------------------------------
 
 cat("Saving harmonized data...\n")
 
-fwrite(df_harm, "data/state_elections/final/state_harm_23.csv")
-write_rds(df_harm, "data/state_elections/final/state_harm_23.rds")
+fwrite(df_final, "data/state_elections/final/state_harm_23.csv")
+write_rds(df_final, "data/state_elections/final/state_harm_23.rds")
 
 cat("Done!\n")
-cat("Total observations:", nrow(df_harm), "\n")
-cat("Election years:", paste(sort(unique(df_harm$election_year)), collapse = ", "), "\n")
-cat("Number of municipalities:", n_distinct(df_harm$ags), "\n")
+cat("Total observations:", nrow(df_final), "\n")
+cat("Election years:", paste(sort(unique(df_final$election_year)), collapse = ", "), "\n")
+cat("Number of municipalities:", n_distinct(df_final$ags), "\n")
 
-table(df_harm$election_year)
+table(df_final$election_year)
 
 # missing csu values in 2023?
-df_harm %>%
+df_final %>%
   filter(election_year == 2023) %>%
   filter((is.na(csu) | csu == 0) & state == "09") |>
   glimpse()
 # none
 
-df_harm %>%
+df_final %>%
   filter(election_year == 2023) %>%
   filter((is.na(cdu) | cdu == 0) & state == "06") |>
   glimpse()
