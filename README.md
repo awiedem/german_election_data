@@ -59,13 +59,13 @@ The repository is structured into four main folders:
 
 ### Municipal Elections
 
-- **Coverage**: 1990–2020  
+- **Coverage**: 1990–2021
 - **Content**: Turnout and vote shares for major parties (SPD, CDU/CSU, FDP, Greens, Die Linke, AfD), plus smaller parties where available
 
 ### State Elections
 
-- **Coverage**: 2006–2019 at the municipal level  
-- **Content**: Turnout and party vote shares, including AfD from 2012 onward
+- **Coverage**: 2006–2024 at the municipal level
+- **Content**: Turnout and party vote shares, including AfD from 2012 onward and BSW from 2024
 
 ### Federal Elections
 
@@ -75,6 +75,12 @@ The repository is structured into four main folders:
   - 2021 borders: All elections (1990-2025) mapped to 2021 municipality boundaries
   - 2025 borders: All elections (1990-2025) mapped to 2025 municipality boundaries
 
+### Mayoral Elections
+
+- **Coverage**: 6 states (Bayern, NRW, Saarland, Sachsen, Rheinland-Pfalz, Niedersachsen), 1945–2025
+- **Content**: Candidate-level results including name, party affiliation, vote count, and runoff status
+- **Note**: Unharmonized only; no boundary harmonization available yet
+
 ## :floppy_disk: Data Files
 
 | **Data**                  | **Geographic Level** | **Time Period**  | **Harmonization** | **File Name**                |
@@ -82,15 +88,22 @@ The repository is structured into four main folders:
 | Local Elections           | Municipality         | 1990–2021        | No                | `municipal_unharm`           |
 | Local Elections           | Municipality         | 1990–2021        | Yes               | `municipal_harm`             |
 | State Elections           | Municipality         | 2006–2019        | No                | `state_unharm`               |
-| State Elections           | Municipality         | 2006–2019        | Yes               | `state_harm`                 |
+| State Elections           | Municipality         | 2006–2019        | Yes (2021)        | `state_harm`                 |
+| State Elections           | Municipality         | 2022–2023        | No                | `state_2223_unharm`          |
+| State Elections           | Municipality         | 2022–2024        | No                | `state_2224_unharm`          |
+| State Elections           | Municipality         | 2006–2023        | Yes (2023)        | `state_harm_23`              |
+| State Elections           | Municipality         | 2006–2024        | Yes (2021)        | `state_harm_21`              |
+| State Elections           | Municipality         | 2006–2024        | Yes (2025)        | `state_harm_25`              |
 | Federal Elections         | Municipality         | 1980–2025        | No                | `federal_muni_raw`           |
 | Federal Elections         | Municipality         | 1980–2025        | No                | `federal_muni_unharm`        |
 | Federal Elections         | Municipality         | 1990–2025        | Yes (2021)        | `federal_muni_harm_21`       |
 | Federal Elections         | Municipality         | 1990–2025        | Yes (2025)        | `federal_muni_harm_25`       |
-| Federal Elections         | County               | 1953–2025        | No                | `federal_cty_unharm`         |
-| Federal Elections         | County               | 1990–2025        | Yes               | `federal_cty_harm`           |
+| Federal Elections         | County               | 1953–2021        | No                | `federal_cty_unharm`         |
+| Federal Elections         | County               | 1990–2021        | Yes               | `federal_cty_harm`           |
+| Mayoral Elections         | Municipality         | 1945–2025        | No                | `mayoral_unharm`             |
 | Crosswalks                |	Municipality         | 1990–2021	       | —	               | `ags_crosswalks`             |
-| Crosswalks                |	Municipality         | 1990–2025	       | —	               | `ags_1990_2025_crosswalk`    |
+| Crosswalks                |	Municipality         | 1990–2023	       | —	               | `ags_1990_to_2023_crosswalk` |
+| Crosswalks                |	Municipality         | 1990–2025	       | —	               | `ags_1990_to_2025_crosswalk` |
 | Crosswalks                |	County               | 1990–2021	       | —	               | `cty_crosswalks`             |
 | Shapefiles                | Municipality/County  | 2000, 2021       | —                 | `VG250_GEM` / `VG250_KRS`    |
 | Crosswalk Covariates      | Municipality/County  | 1990–2025        | Yes               | `ags_area_pop_emp` / `cty_area_pop_emp` |

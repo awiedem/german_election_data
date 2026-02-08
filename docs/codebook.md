@@ -31,7 +31,6 @@ header-includes:
 - [State Elections (Municipality Level, Harmonized)](#state-elections-municipality-level-harmonized)
 - [Municipal Elections (Municipality Level, Harmonized)](#municipal-elections-municipality-level-harmonized)
 - [Municipality Covariates (Area, Population, Employment)](#municipality-covariates-area-population-employment)
-- [County Covariates (INKAR, Employment, Income, Unemployment)](#county-covariates-inkar-employment-income-unemployment)
 
 ---
 
@@ -49,9 +48,9 @@ This codebook describes the main datasets provided in the GERDA project.
 
 ## Federal Elections (Municipality Level, Harmonized)
 
-**File:** `data/federal_elections/municipality_level/final/federal_muni_harm.rds` or `data/federal_elections/municipality_level/final/federal_muni_harm.csv`
+**File:** `data/federal_elections/municipality_level/final/federal_muni_harm_21.rds` or `data/federal_elections/municipality_level/final/federal_muni_harm_21.csv`
 
-This dataset contains federal election results from 1990 to 2021 at the municipality level, harmonized to 2021 administrative boundaries.
+This dataset contains federal election results from 1990 to 2025 at the municipality level, harmonized to 2021 administrative boundaries.
 
 | Variable                       | Type      | Description                                                                                                                                                                                |
 | :----------------------------- | :-------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -80,10 +79,10 @@ This dataset contains federal election results from 1990 to 2021 at the municipa
 | `far_left`                     | numeric   | Aggregated vote share for designated far-left parties. Sum of shares for: `dkp`, `kpd`, `mlpd`, `sgp`, `psg`, `kbw`, `v`, `spad`, `bsa`. See `00_federal_muni_raw.R`.                     |
 | `far_left_w_linke`             | numeric   | Aggregated vote share for designated far-left parties including Linke/PDS. Sum of shares for: `far_left`, `die linke`, `pds`. See `00_federal_muni_raw.R`.                                  |
 | `area`                         | character | Area of the municipality (km²). Sourced from official Gemeindeverzeichnis files, originally numeric but type may change during processing. |
-| `population`                   | numeric   | Population of the municipality (thousands). Scaled by dividing raw counts by 1000 during harmonization (`02_federal_muni_harm.R`). Sourced from official Gemeindeverzeichnis files. |
-| `ags_21`                       | numeric   | Municipality identifier harmonized to 2021 boundaries, based on crosswalk merge in `02_federal_muni_harm.R`. |
+| `population`                   | numeric   | Population of the municipality (thousands). Scaled by dividing raw counts by 1000 during harmonization (`02_federal_muni_harm_21.R`). Sourced from official Gemeindeverzeichnis files. |
+| `ags_21`                       | numeric   | Municipality identifier harmonized to 2021 boundaries, based on crosswalk merge in `02_federal_muni_harm_21.R`. |
 | `flag_naive_turnout_above_1`   | numeric   | Flag (1/0) indicating if the initial `turnout` calculation (`number_voters` / `eligible_voters_orig`) resulted in a value > 1. See `01_federal_muni_unharm.R`.                          |
-| `flag_unsuccessful_naive_merge`| numeric   | Flag (1/0) indicating if the initial merge between election data and crosswalk data failed and required alternative years/AGS for matching. See `02_federal_muni_harm.R`.               |
+| `flag_unsuccessful_naive_merge`| numeric   | Flag (1/0) indicating if the initial merge between election data and crosswalk data failed and required alternative years/AGS for matching. See `02_federal_muni_harm_21.R`.               |
 | ... (other flag variables)     | numeric   | Various flags indicating data properties or processing steps (e.g., related to mail-in voting).                                                                                              |
 
 **Notes:**
