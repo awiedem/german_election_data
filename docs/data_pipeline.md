@@ -126,7 +126,7 @@ Crosswalks are the foundation of all boundary harmonization. They map each histo
 ### 2.4 Party code mapping
 
 **Script:** `code/crosswalks/03_partycodes.R`
-**Source:** `partyfacts-mapping.csv` (9 MB, project root)
+**Source:** `data/crosswalks/raw/partyfacts-mapping.csv` (9 MB)
 Maps party names across different data sources and election types.
 
 ---

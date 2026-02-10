@@ -93,7 +93,7 @@ write_rds(crosswalk, "data/crosswalks/party_crosswalk.rds")
 
 # Get it from: https://partyfacts.herokuapp.com/
 # download and read Party Facts mapping table
-# file_name <- "partyfacts-mapping.csv"
+# file_name <- "data/crosswalks/raw/partyfacts-mapping.csv"
 # if( ! file_name %in% list.files()) {
 #   url <- "https://partyfacts.herokuapp.com/download/external-parties-csv/"
 #   download.file(url, file_name)
