@@ -195,30 +195,27 @@ df_cw <- df_cw_naive |>
 
 # For observations that didn't merge, try using year - 1 for crosswalk
 # This handles cases where municipalities merged right after an election
-df_cw <- df_cw |>
-  mutate(
-    year_cw = case_when(
-      is.na(ags_25) & election_year > 1990 ~ election_year - 1,
-      TRUE ~ election_year
+# NOTE: Only apply fallback join to unmatched rows to avoid duplicating
+# multi-target AGS (which map to >1 ags_25 with pop_cw weights)
+df_matched <- df_cw |> filter(!is.na(ags_25))
+df_unmatched <- df_cw |> filter(is.na(ags_25))
+
+if (nrow(df_unmatched) > 0) {
+  df_unmatched <- df_unmatched |>
+    mutate(
+      year_cw = ifelse(election_year > 1990, election_year - 1, election_year)
+    ) |>
+    select(-ags_25, -pop_cw, -area_cw) |>
+    left_join(
+      cw |> select(ags, election_year, ags_25, pop_cw, area_cw) |>
+        rename(year_cw = election_year),
+      by = c("ags", "year_cw")
     )
-  )
+}
+
+df_cw <- bind_rows(df_matched, df_unmatched)
 
 glimpse(df_cw)
-
-# Try merging again with adjusted year
-df_cw <- df_cw |>
-  left_join(
-    cw |>
-      select(ags, election_year, ags_25, pop_cw, area_cw) |>
-      rename(year_cw = election_year, pop_cw_alt = pop_cw, area_cw_alt = area_cw),
-    by = c("ags", "year_cw")
-  ) |>
-  mutate(
-    ags_25 = ifelse(is.na(ags_25.x), ags_25.y, ags_25.x),
-    pop_cw = ifelse(is.na(pop_cw), pop_cw_alt, pop_cw),
-    area_cw = ifelse(is.na(area_cw), area_cw_alt, area_cw)
-  ) |>
-  select(-ags_25.x, -ags_25.y, -pop_cw_alt, -area_cw_alt)
 
 # Check remaining unsuccessful merges
 not_merged_final <- df_cw |>
