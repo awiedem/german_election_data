@@ -355,7 +355,7 @@ cat("BaWü 2016 from raw files:", nrow(bw_2016), "municipalities,",
 
 ## --- Replace BaWü rows in state_elections ---
 state_elections <- state_elections |>
-  filter(!(state == "08")) |>
+  filter(!(state == "08" & election_year %in% c(2011, 2016))) |>
   bind_rows(bw_2011, bw_2016) |>
   arrange(ags, election_year)
 

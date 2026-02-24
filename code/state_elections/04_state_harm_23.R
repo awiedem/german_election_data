@@ -29,7 +29,7 @@ df_old <- read_rds("data/state_elections/final/state_unharm.rds") |>
   ) |>
   rename(election_date = date)
 
-df_new <- read_rds("data/state_elections/final/state_2223_unharm.rds") |>
+df_new <- read_rds("data/state_elections/final/state_2224_unharm.rds") |>
   as_tibble() |>
   mutate(
     ags = pad_zero_conditional(ags, 7),
@@ -199,7 +199,8 @@ df_unmatched <- df_cw |> filter(is.na(ags_23))
 if (nrow(df_unmatched) > 0) {
   df_unmatched <- df_unmatched |>
     mutate(
-      year_cw = ifelse(election_year > 1990, election_year - 1, election_year)
+      # Cap at 2022 (max year in ags_1990_to_2023_crosswalk)
+      year_cw = ifelse(election_year > 1990, pmin(election_year - 1, 2022), election_year)
     ) |>
     select(-ags_23, -pop_cw, -area_cw) |>
     left_join(
@@ -224,6 +225,9 @@ if (nrow(not_merged_final) > 0) {
   print(not_merged_final, n = Inf)
 }
 
+
+# Filter out unmatched rows before harmonization
+df_cw <- df_cw |> filter(!is.na(ags_23))
 
 # Harmonize ----------------------------------------------------------------
 
@@ -307,9 +311,21 @@ df_harm <- df_harm |>
       election_year == 2019 & state_name == "Brandenburg" ~ ymd("2019-09-01"),
       election_year == 2019 & state_name == "Saxony" ~ ymd("2019-09-01"),
       election_year == 2019 & state_name == "Thuringia" ~ ymd("2019-10-27"),
+      election_year == 2021 & state_name == "Baden-Württemberg" ~ ymd("2021-03-14"),
+      election_year == 2021 & state_name == "Saxony-Anhalt" ~ ymd("2021-06-06"),
+      election_year == 2021 & state_name == "Berlin" ~ ymd("2021-09-26"),
+      election_year == 2021 & state_name == "Mecklenburg-Vorpommern" ~ ymd("2021-09-26"),
+      election_year == 2022 & state_name == "Saarland" ~ ymd("2022-03-27"),
+      election_year == 2022 & state_name == "Schleswig-Holstein" ~ ymd("2022-05-08"),
+      election_year == 2022 & state_name == "North Rhine-Westphalia" ~ ymd("2022-05-15"),
       election_year == 2022 & state_name == "Niedersachsen" ~ ymd("2022-10-09"),
+      election_year == 2023 & state_name == "Berlin" ~ ymd("2023-02-12"),
+      election_year == 2023 & state_name == "Bremen" ~ ymd("2023-05-14"),
       election_year == 2023 & state_name == "Bavaria" ~ ymd("2023-10-08"),
       election_year == 2023 & state_name == "Hesse" ~ ymd("2023-10-08"),
+      election_year == 2024 & state_name == "Saxony" ~ ymd("2024-09-01"),
+      election_year == 2024 & state_name == "Thuringia" ~ ymd("2024-09-01"),
+      election_year == 2024 & state_name == "Brandenburg" ~ ymd("2024-09-22"),
       TRUE ~ NA_Date_
     )
   ) |>

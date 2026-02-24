@@ -317,6 +317,11 @@ df_harm <- df_harm |>
       election_year == 2019 & state_name == "Brandenburg" ~ ymd("2019-09-01"),
       election_year == 2019 & state_name == "Saxony" ~ ymd("2019-09-01"),
       election_year == 2019 & state_name == "Thuringia" ~ ymd("2019-10-27"),
+      # 2021 elections
+      election_year == 2021 & state_name == "Baden-Württemberg" ~ ymd("2021-03-14"),
+      election_year == 2021 & state_name == "Saxony-Anhalt" ~ ymd("2021-06-06"),
+      election_year == 2021 & state_name == "Berlin" ~ ymd("2021-09-26"),
+      election_year == 2021 & state_name == "Mecklenburg-Vorpommern" ~ ymd("2021-09-26"),
       # 2022-2024 (from manual pipeline)
       election_year == 2022 & state_name == "Saarland" ~ ymd("2022-03-27"),
       election_year == 2022 & state_name == "Schleswig-Holstein" ~ ymd("2022-05-08"),

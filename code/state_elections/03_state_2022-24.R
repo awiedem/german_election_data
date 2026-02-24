@@ -2008,12 +2008,744 @@ th24_totalvoters <- th24_data |>
 cat("TH 2024 eligible voters:", th24_totalvoters, "\n")
 cat("TH 2024 rows:", nrow(th24_data), "\n")
 
+#### Baden-Württemberg 2021 ####
+## Party List
+bw21_partylist <- c(
+  "cdu",
+  "csu",
+  "spd",
+  "grune",
+  "fdp",
+  "linke_pds",
+  "afd",
+  "freie_wahler",
+  "odp",
+  "piraten",
+  "die_partei",
+  "diebasis",
+  "volt",
+  "die_humanisten",
+  "cdu_csu"
+)
+
+## Read Raw File
+bw21_raw <- read_delim(
+  here(path, "Baden-Württemberg/Baden-Württemberg_2021_Landtagswahl.csv"),
+  delim = ";", show_col_types = FALSE,
+  locale = locale(encoding = "latin1")
+)
+
+## Clean Dataset
+bw21_data <- bw21_raw |>
+  mutate(ags = str_extract(Gemeinde, "^[0-9]+")) |>
+  # Drop gemeindefreie Gebiete (AGS ending in 99x)
+  filter(!str_detect(ags, "99[0-9]$")) |>
+  transmute(
+    ags,
+    county = substr(ags, 1, 5),
+    election_year = as.numeric(2021),
+    election_date = as.Date("2021-03-14"),
+    state = as.character("08"),
+    eligible_voters = Wahlberechtigte,
+    number_voters = .data[["Wähler(innen)"]],
+    valid_votes = .data[["Gültige Stimmen"]],
+    cdu_n = CDU,
+    spd_n = SPD,
+    grune_n = .data[["GRÜNE"]],
+    fdp_n = FDP,
+    linke_n = .data[["DIE LINKE"]],
+    afd_n = AfD,
+    freie_wahler_n = .data[["FREIE WÄHLER"]],
+    odp_n = .data[["ÖDP"]],
+    piraten_n = PIRATEN,
+    die_partei_n = .data[["Die PARTEI"]],
+    diebasis_n = dieBasis,
+    volt_n = Volt,
+    die_humanisten_n = .data[["Die Humanisten"]]
+  ) |>
+  mutate(
+    other_n = valid_votes - rowSums(across(c(cdu_n, spd_n, grune_n, fdp_n,
+      linke_n, afd_n, freie_wahler_n, odp_n, piraten_n, die_partei_n,
+      diebasis_n, volt_n, die_humanisten_n)), na.rm = TRUE),
+    csu = as.numeric(NA),
+    # Compute shares
+    turnout = valid_votes / eligible_voters,
+    cdu = cdu_n / valid_votes,
+    spd = spd_n / valid_votes,
+    grune = grune_n / valid_votes,
+    fdp = fdp_n / valid_votes,
+    linke_pds = linke_n / valid_votes,
+    afd = afd_n / valid_votes,
+    freie_wahler = freie_wahler_n / valid_votes,
+    odp = odp_n / valid_votes,
+    piraten = piraten_n / valid_votes,
+    die_partei = die_partei_n / valid_votes,
+    diebasis = diebasis_n / valid_votes,
+    volt = volt_n / valid_votes,
+    die_humanisten = die_humanisten_n / valid_votes,
+    other = other_n / valid_votes,
+    cdu_csu = cdu
+  ) |>
+  select(
+    ags, county, election_year, state, election_date,
+    eligible_voters, number_voters, valid_votes, turnout,
+    all_of(bw21_partylist),
+    cdu_csu
+  )
+
+### Final Check
+bw21_data |>
+  group_by(ags, election_year) |>
+  summarize(n = n()) |>
+  filter(n > 1)
+
+bw21_totalvoters <- bw21_data |>
+  summarize(total = sum(eligible_voters, na.rm = TRUE)) |>
+  pull(total)
+
+cat("BW 2021 eligible voters:", bw21_totalvoters, "\n")
+cat("BW 2021 valid votes:", sum(bw21_data$valid_votes, na.rm = TRUE), "\n")
+cat("BW 2021 rows:", nrow(bw21_data), "\n")
+
+#### Sachsen-Anhalt 2021 ####
+## Party List
+st21_partylist <- c(
+  "cdu",
+  "csu",
+  "spd",
+  "grune",
+  "fdp",
+  "linke_pds",
+  "afd",
+  "freie_wahler",
+  "npd",
+  "tierschutzpartei",
+  "die_partei",
+  "diebasis",
+  "piraten",
+  "die_humanisten",
+  "cdu_csu"
+)
+
+## Read Raw File
+# Skip 7 header rows; use text for all columns to handle "-" and "x" values
+st21_raw <- read_xlsx(
+  path = here(path, "Sachsen-Anhalt/Sachsen-Anhalt_2021_Landtagswahl.xlsx"),
+  sheet = "Gemeinden",
+  col_names = FALSE,
+  col_types = "text",
+  skip = 7
+)
+
+## Clean Dataset
+# Keep only "Insgesamt" rows (total of Brief + Urne)
+# Exclude the Land-level total row (AGS = "15") — only keep 8-digit municipality AGS
+st21_data <- st21_raw |>
+  filter(...3 == "Insgesamt", nchar(...1) == 8)
+
+cat("SA Insgesamt rows:", nrow(st21_data), "\n")
+
+# Column mapping (from header exploration):
+# col1 = AGS, col2 = Name, col3 = Wahllokalart
+# col4 = Wahlberechtigte, col8 = Wähler/-innen
+# col30 = Ungültige Zweitstimmen, col31 = Gültige Zweitstimmen
+# col32-53 = Zweitstimmen party columns:
+#   32=CDU, 33=AfD, 34=DIE LINKE, 35=SPD, 36=GRÜNE, 37=FDP,
+#   38=FREIE WÄHLER, 39=NPD, 40=Tierschutzpartei, 41=Tierschutzallianz,
+#   42=LKR, 43=Die PARTEI, 44=Gartenpartei, 45=FBM,
+#   46=TIERSCHUTZ hier!, 47=dieBasis, 48=Klimaliste ST, 49=ÖDP,
+#   50=Die Humanisten, 51=Gesundheitsforschung, 52=PIRATEN, 53=WiR2020
+
+# Replace "-" and "x" with NA, convert numeric
+st21_numeric_cols <- c(4, 8, 31, 32:53)
+st21_data <- st21_data |>
+  mutate(across(all_of(st21_numeric_cols),
+    ~ as.numeric(na_if(na_if(.x, "-"), "x"))))
+
+st21_data <- st21_data |>
+  transmute(
+    ags = as.character(...1),
+    county = substr(ags, 1, 5),
+    election_year = as.numeric(2021),
+    election_date = as.Date("2021-06-06"),
+    state = as.character("15"),
+    eligible_voters = ...4,
+    number_voters = ...8,
+    valid_votes = ...31,
+    cdu_n = ...32,
+    afd_n = ...33,
+    linke_n = ...34,
+    spd_n = ...35,
+    grune_n = ...36,
+    fdp_n = ...37,
+    freie_wahler_n = ...38,
+    npd_n = ...39,
+    tierschutzpartei_n = ...40,
+    die_partei_n = ...43,
+    diebasis_n = ...47,
+    piraten_n = ...52,
+    die_humanisten_n = ...50
+  ) |>
+  mutate(
+    other_n = valid_votes - rowSums(across(c(cdu_n, afd_n, linke_n, spd_n,
+      grune_n, fdp_n, freie_wahler_n, npd_n, tierschutzpartei_n,
+      die_partei_n, diebasis_n, piraten_n, die_humanisten_n)), na.rm = TRUE),
+    csu = as.numeric(NA),
+    turnout = valid_votes / eligible_voters,
+    cdu = cdu_n / valid_votes,
+    spd = spd_n / valid_votes,
+    grune = grune_n / valid_votes,
+    fdp = fdp_n / valid_votes,
+    linke_pds = linke_n / valid_votes,
+    afd = afd_n / valid_votes,
+    freie_wahler = freie_wahler_n / valid_votes,
+    npd = npd_n / valid_votes,
+    tierschutzpartei = tierschutzpartei_n / valid_votes,
+    die_partei = die_partei_n / valid_votes,
+    diebasis = diebasis_n / valid_votes,
+    piraten = piraten_n / valid_votes,
+    die_humanisten = die_humanisten_n / valid_votes,
+    other = other_n / valid_votes,
+    cdu_csu = cdu
+  ) |>
+  select(
+    ags, county, election_year, state, election_date,
+    eligible_voters, number_voters, valid_votes, turnout,
+    all_of(st21_partylist),
+    cdu_csu
+  )
+
+### Final Check
+st21_data |>
+  group_by(ags, election_year) |>
+  summarize(n = n()) |>
+  filter(n > 1)
+
+st21_totalvoters <- st21_data |>
+  summarize(total = sum(eligible_voters, na.rm = TRUE)) |>
+  pull(total)
+
+cat("SA 2021 eligible voters:", st21_totalvoters, "\n")
+cat("SA 2021 valid votes:", sum(st21_data$valid_votes, na.rm = TRUE), "\n")
+cat("SA 2021 rows:", nrow(st21_data), "\n")
+
+#### Berlin 2021 ####
+## Party List (follows be23 pattern)
+be21_partylist <- c(
+  "cdu",
+  "csu",
+  "spd",
+  "grune",
+  "fdp",
+  "linke_pds",
+  "afd",
+  "piraten",
+  "freie_wahler",
+  "die_partei",
+  "tierschutzpartei",
+  "volt",
+  "diebasis",
+  "die_humanisten",
+  "cdu_csu"
+)
+
+## Read Raw File
+# Berlin AGH (Abgeordnetenhaus) 2021 - use AGH_W2 sheet (Zweitstimmen)
+# Polling-district level; aggregate to 12 Bezirke + whole city
+be21_raw <- read_xlsx(
+  path = here(path, "Berlin/Berlin_2021_AGH_BVV.xlsx"),
+  sheet = "AGH_W2"
+) |>
+  clean_names()
+
+## Clean Dataset
+be21_party_cols <- c("spd", "cdu", "grune", "die_linke", "af_d", "fdp",
+  "die_partei", "tierschutzpartei", "piraten", "freie_wahler",
+  "die_basis", "die_humanisten", "volt")
+
+be21_data <- be21_raw |>
+  mutate(across(c(wahlberechtigte_insgesamt, wahlende, gultige_stimmen,
+    all_of(be21_party_cols)), as.numeric))
+
+# Aggregate to Bezirk level
+be21_bezirk <- be21_data |>
+  group_by(bezirksnummer) |>
+  summarize(
+    eligible_voters = sum(wahlberechtigte_insgesamt, na.rm = TRUE),
+    number_voters = sum(wahlende, na.rm = TRUE),
+    valid_votes = sum(gultige_stimmen, na.rm = TRUE),
+    across(all_of(be21_party_cols), ~ sum(.x, na.rm = TRUE)),
+    .groups = "drop"
+  )
+
+# Also create whole-city aggregate (AGS 11000000)
+be21_total <- be21_bezirk |>
+  summarize(
+    bezirksnummer = "00",
+    eligible_voters = sum(eligible_voters),
+    number_voters = sum(number_voters),
+    valid_votes = sum(valid_votes),
+    across(all_of(be21_party_cols), ~ sum(.x))
+  )
+
+be21_combined <- bind_rows(be21_total, be21_bezirk)
+
+## Map to standard party names and AGS
+# Berlin Bezirke have AGS pattern 110XX0XX (e.g., 11001001, 11002002, ..., 11012012)
+be21_data <- be21_combined |>
+  mutate(
+    ags = case_when(
+      bezirksnummer == "00" ~ "11000000",
+      TRUE ~ paste0("110", sprintf("%02s", bezirksnummer), "0",
+                     sprintf("%02s", bezirksnummer))
+    ),
+    county = substr(ags, 1, 5),
+    election_year = as.numeric(2021),
+    election_date = as.Date("2021-09-26"),
+    state = as.character("11"),
+    csu = as.numeric(NA)
+  ) |>
+  rename(
+    linke_pds = die_linke,
+    afd = af_d,
+    diebasis = die_basis
+  ) |>
+  mutate(cdu_csu = cdu)
+
+## Calculations
+be21_data <- be21_data |>
+  mutate(
+    turnout = valid_votes / eligible_voters,
+    across(all_of(be21_partylist), ~ .x / valid_votes)
+  ) |>
+  select(
+    ags, county, election_year, state, election_date,
+    eligible_voters, number_voters, valid_votes, turnout,
+    all_of(be21_partylist),
+    cdu_csu
+  )
+
+### Final Check
+be21_data |>
+  group_by(ags, election_year) |>
+  summarize(n = n()) |>
+  filter(n > 1)
+
+be21_totalvoters <- be21_data |>
+  filter(ags == "11000000") |>
+  pull(eligible_voters)
+
+cat("Berlin 2021 eligible voters:", be21_totalvoters, "\n")
+cat("Berlin 2021 rows:", nrow(be21_data), "\n")
+
+#### Mecklenburg-Vorpommern 2021 ####
+## Party List
+mv21_partylist <- c(
+  "cdu",
+  "csu",
+  "spd",
+  "grune",
+  "fdp",
+  "linke_pds",
+  "afd",
+  "npd",
+  "freie_wahler",
+  "die_partei",
+  "tierschutzpartei",
+  "piraten",
+  "diebasis",
+  "die_humanisten",
+  "cdu_csu"
+)
+
+## Read Raw File
+# Sheet "3.12 Zweitst. n. Gemeinden" — municipality-level Zweitstimmen
+# Complex multi-row header (skip 10 rows: 8 header + 2 numbering/blank rows)
+# Each municipality has 4 rows: 2021 Anzahl, 2016 Anzahl, 2021 %, 2016 %
+# Briefwahl is separate for amtsangehörige Gemeinden (76 Briefwahl entries)
+# NO AGS column — need name-to-AGS mapping via BBSR reference
+mv21_raw <- read_xlsx(
+  path = here(path,
+    "Mecklenburg-Vorpommern/Mecklenburg-Vorpommern_2021_2016_Landtagswahl.xlsx"),
+  sheet = "3.12 Zweitst. n. Gemeinden",
+  col_names = FALSE,
+  col_types = "text",
+  skip = 10
+)
+
+## Step 1: Filter to 2021 Anzahl rows only
+# Column mapping from header:
+# col1 = Municipality name, col2 = Wahljahr, col3 = Maßeinheit
+# col4 = Wahlberechtigte, col5 = Wähler, col6 = ungültig, col7 = gültig
+# col8=SPD, col9=AfD, col10=CDU, col11=DIE LINKE, col12=GRÜNE, col13=FDP,
+# col14=NPD, col15=Tierschutzpartei, col16=FREiER HORIZONT,
+# col17=Die PARTEI, col18=FREIE WÄHLER, col19=PIRATEN, col20=DKP,
+# col21=Bündnis C, col22=TIERSCHUTZ hier!, col23=dieBasis, col24=DiB,
+# col25=FPA, col26=LKR, col27=ÖDP, col28=Die Humanisten,
+# col29=Gesundheitsforschung, col30=Team Todenhöfer, col31=UNABHÄNGIGE,
+# col32=Sonstige
+
+# Municipality names are in col1 of the first row of each 4-row block.
+# Subsequent rows for the same municipality have NA in col1.
+# Landkreis section headers appear in col1 with NA in col2/col3.
+# Track Landkreis to disambiguate duplicate municipality names across counties.
+# Landkreis -> county prefix mapping for MV:
+mv21_lk_map <- c(
+  "Mecklenburgische Seenplatte" = "13071",
+  "Landkreis Rostock" = "13072",
+  "Landkreis Vorpommern R\u00fcgen" = "13073",
+  "Landkreis Nordwestmecklenburg" = "13074",
+  "Landkreis Vorpommern-Greifswald" = "13075",
+  "Landkreis Ludwigslust-Parchim" = "13076"
+)
+
+# Add Landkreis section tracking before filling municipality names
+mv21_data <- mv21_raw |>
+  mutate(
+    name = ...1,
+    # Detect Landkreis header rows: name present, but no Wahljahr/Maßeinheit
+    is_lk_header = !is.na(name) & is.na(...2) & is.na(...3)
+  )
+
+# Build Landkreis assignment: fill Landkreis forward from header rows
+# Kreisfreie Städte (Rostock, Schwerin) appear before any LK header
+clean_name <- function(x) {
+  x |>
+    str_replace_all("\\r\\n|\\n", " ") |>
+    str_replace_all("\\s+", " ") |>
+    str_trim()
+}
+
+mv21_data <- mv21_data |>
+  mutate(
+    lk_name = if_else(is_lk_header, clean_name(name), NA_character_)
+  ) |>
+  fill(lk_name, .direction = "down") |>
+  mutate(
+    # Map LK name to county prefix; kreisfreie Städte have no LK header
+    county_prefix = mv21_lk_map[lk_name]
+  ) |>
+  fill(name, .direction = "down") |>
+  filter(...2 == "2021", ...3 == "Anzahl")
+
+cat("MV 2021 Anzahl rows:", nrow(mv21_data), "\n")
+
+# Separate Briefwahl rows from municipality rows
+mv21_brief <- mv21_data |> filter(str_detect(name, "^Briefwahl"))
+mv21_munis <- mv21_data |>
+  filter(!str_detect(name, "^Briefwahl"),
+         !str_detect(name, "^Mecklenburg-Vorpommern$"))
+
+cat("MV municipality rows:", nrow(mv21_munis), "\n")
+cat("MV Briefwahl rows:", nrow(mv21_brief), "\n")
+
+## Step 2: Convert numeric columns
+mv21_numeric_cols <- paste0("...", 4:32)
+mv21_munis <- mv21_munis |>
+  mutate(across(all_of(mv21_numeric_cols),
+    ~ as.numeric(na_if(na_if(.x, "-"), "x"))))
+mv21_brief <- mv21_brief |>
+  mutate(across(all_of(mv21_numeric_cols),
+    ~ as.numeric(na_if(na_if(.x, "-"), "x"))))
+
+## Step 3: Build name-to-AGS crosswalk from BBSR reference
+mv21_ref <- read_xlsx(
+  here("data/crosswalks/raw/ref-gemeinden-ab-2020.xlsx"),
+  sheet = "2021", col_types = "text"
+)
+# Column 1 = AGS, Column 2 = Gemeindename
+mv21_ref_col1 <- names(mv21_ref)[1]
+mv21_ref_col2 <- names(mv21_ref)[2]
+mv21_ref_mv <- mv21_ref |>
+  filter(str_detect(.data[[mv21_ref_col1]], "^13")) |>
+  transmute(
+    ref_ags = .data[[mv21_ref_col1]],
+    ref_name = .data[[mv21_ref_col2]],
+    ref_county = substr(ref_ags, 1, 5)
+  )
+
+mv21_munis <- mv21_munis |> mutate(name_clean = clean_name(name))
+mv21_ref_mv <- mv21_ref_mv |> mutate(ref_name_clean = clean_name(ref_name))
+
+# Manual name overrides for known discrepancies between election data and
+# BBSR reference (different suffixes, word order)
+mv21_name_overrides <- c(
+  "Neubukow, Stadt" = "13072074",
+  "Tessin, Stadt" = "13072105",
+  "Hansestadt Stralsund" = "13073088",
+  "Hansestadt Wismar" = "13074087"
+)
+
+# Match with county-aware disambiguation:
+# For kreisfreie Städte (no county_prefix), match by name only.
+# For others, restrict BBSR reference to same county prefix.
+mv21_matched <- mv21_munis |>
+  mutate(ref_ags = mv21_name_overrides[name_clean])
+
+for (i in seq_len(nrow(mv21_matched))) {
+  if (!is.na(mv21_matched$ref_ags[i])) next  # already matched via override
+  nm <- mv21_matched$name_clean[i]
+  cp <- mv21_matched$county_prefix[i]
+
+  # Restrict reference to same county (if known)
+  if (!is.na(cp)) {
+    ref_sub <- mv21_ref_mv |> filter(ref_county == cp)
+  } else {
+    # Kreisfreie Städte: match from full MV reference
+    ref_sub <- mv21_ref_mv
+  }
+
+  # Exact match
+  exact <- ref_sub |> filter(ref_name_clean == nm)
+  if (nrow(exact) == 1) {
+    mv21_matched$ref_ags[i] <- exact$ref_ags
+    next
+  }
+
+  # Fuzzy match
+  dists <- adist(nm, ref_sub$ref_name_clean, ignore.case = TRUE, partial = FALSE)
+  best <- which.min(dists)
+  if (length(best) > 0 && dists[best] <= 5) {
+    mv21_matched$ref_ags[i] <- ref_sub$ref_ags[best]
+    if (dists[best] > 0) {
+      cat("  Fuzzy matched:", nm, "->", ref_sub$ref_name_clean[best],
+          "(AGS:", ref_sub$ref_ags[best], ")\n")
+    }
+  } else {
+    cat("  FAILED to match:", nm, "(county:", cp, ")\n")
+  }
+}
+
+mv21_munis <- mv21_matched |>
+  filter(!is.na(ref_ags)) |>
+  mutate(ags = ref_ags)
+
+cat("Matched municipalities:", nrow(mv21_munis), "\n")
+
+# Fix duplicate AGS: two "Neuenkirchen" in county 13075 get the same AGS.
+# Use BBSR population to disambiguate: 13075101 (pop 221) and 13075102 (pop 2409).
+# The Neuenkirchen with fewer eligible voters maps to the smaller population AGS.
+mv21_dup_ags <- mv21_munis |>
+  group_by(ags) |> filter(n() > 1) |> ungroup()
+if (nrow(mv21_dup_ags) > 0) {
+  cat("Resolving", nrow(mv21_dup_ags), "duplicate AGS rows by population\n")
+  ref_pop <- mv21_ref_mv |>
+    filter(ref_ags %in% mv21_dup_ags$ags |
+           (ref_county %in% unique(substr(mv21_dup_ags$ags, 1, 5)) &
+            ref_name_clean %in% mv21_dup_ags$name_clean))
+  # For each set of duplicates, sort by EV and assign AGS in population order
+  for (dup_name in unique(mv21_dup_ags$name_clean)) {
+    dup_cp <- mv21_dup_ags$county_prefix[mv21_dup_ags$name_clean == dup_name][1]
+    # Get all ref entries with this name in this county
+    ref_candidates <- mv21_ref_mv |>
+      filter(ref_name_clean == dup_name, ref_county == dup_cp) |>
+      arrange(ref_ags)
+    dup_rows <- which(mv21_munis$name_clean == dup_name &
+                      mv21_munis$county_prefix == dup_cp)
+    if (length(dup_rows) == nrow(ref_candidates)) {
+      # Sort data rows by eligible voters, assign AGS in population order
+      ev_order <- order(mv21_munis$...4[dup_rows])
+      for (j in seq_along(dup_rows)) {
+        mv21_munis$ags[dup_rows[ev_order[j]]] <- ref_candidates$ref_ags[j]
+      }
+      cat("  Resolved:", dup_name, "->",
+          paste(ref_candidates$ref_ags, collapse = ", "), "\n")
+    }
+  }
+}
+
+# Final duplicate check
+mv21_dup_check <- mv21_munis |> group_by(ags) |> filter(n() > 1)
+if (nrow(mv21_dup_check) > 0) {
+  cat("WARNING: Still have duplicate AGS:", nrow(mv21_dup_check), "rows\n")
+}
+
+## Step 4: Briefwahl allocation using Amt mapping from GV file
+# Read GV (Gemeindeverzeichnis) for Amt membership
+mv21_gv <- read_xlsx(
+  here("data/crosswalks/raw/31122021_Auszug_GV.xlsx"),
+  sheet = 2, col_types = "text", skip = 3
+)
+
+# Get municipality -> Amt mapping (MV, Satzart=60)
+mv21_gem_amt <- mv21_gv |>
+  filter(...1 == "60", Land == "13", VB != "9999", Gem != "999") |>
+  mutate(
+    ags = paste0(Land, "0", Kreis, Gem),
+    amt_code = paste0(Land, "0", Kreis, VB)
+  ) |>
+  select(ags, amt_code, VB)
+
+# Get Amt names (Satzart=50 for VG/Amt level, VB starting with 5 = actual Ämter)
+mv21_amt_names <- mv21_gv |>
+  filter(...1 == "50", Land == "13", str_detect(VB, "^5")) |>
+  mutate(
+    amt_code = paste0(Land, "0", Kreis, VB),
+    amt_name = clean_name(...8)
+  ) |>
+  select(amt_code, amt_name)
+
+# Map Briefwahl names to Amt names
+# Briefwahl names are "Briefwahl [AmtName]" -> extract AmtName
+mv21_brief <- mv21_brief |>
+  mutate(
+    brief_name = clean_name(str_remove(name, "^Briefwahl\\s+")),
+    # "Amt Grabow" -> match to "Grabow" in amt_names
+    brief_name_alt = str_remove(brief_name, "^Amt\\s+")
+  )
+
+# Match Briefwahl to Amt code
+mv21_brief_matched <- mv21_brief |>
+  left_join(mv21_amt_names, by = c("brief_name" = "amt_name"))
+# Try alternative name for unmatched
+unmatched_brief <- mv21_brief_matched |> filter(is.na(amt_code))
+if (nrow(unmatched_brief) > 0) {
+  for (i in seq_len(nrow(unmatched_brief))) {
+    # Try exact match on alt name
+    match_idx <- which(mv21_amt_names$amt_name == unmatched_brief$brief_name_alt[i])
+    if (length(match_idx) == 1) {
+      unmatched_brief$amt_code[i] <- mv21_amt_names$amt_code[match_idx]
+    } else {
+      # Fuzzy match
+      dists <- adist(unmatched_brief$brief_name_alt[i], mv21_amt_names$amt_name,
+                     ignore.case = TRUE)
+      best <- which.min(dists)
+      if (dists[best] <= 5) {
+        unmatched_brief$amt_code[i] <- mv21_amt_names$amt_code[best]
+        cat("  Briefwahl fuzzy:", unmatched_brief$brief_name[i], "->",
+            mv21_amt_names$amt_name[best], "\n")
+      } else {
+        cat("  Briefwahl UNMATCHED:", unmatched_brief$brief_name[i], "\n")
+      }
+    }
+  }
+  mv21_brief_matched <- mv21_brief_matched |>
+    filter(!is.na(amt_code)) |>
+    bind_rows(unmatched_brief)
+}
+
+cat("Matched Briefwahl entries:", sum(!is.na(mv21_brief_matched$amt_code)),
+    "of", nrow(mv21_brief_matched), "\n")
+
+# Get amtsangehörige municipalities for each Amt
+mv21_amt_members <- mv21_gem_amt |>
+  filter(str_detect(VB, "^5")) |>
+  select(ags, amt_code)
+
+# Join to get Amt code for each municipality in our data
+mv21_munis <- mv21_munis |>
+  left_join(mv21_amt_members, by = "ags")
+
+# Compute allocation weights (eligible voters per municipality within each Amt)
+mv21_weights <- mv21_munis |>
+  filter(!is.na(amt_code)) |>
+  group_by(amt_code) |>
+  mutate(weight = ...4 / sum(...4, na.rm = TRUE)) |>
+  ungroup() |>
+  select(ags, amt_code, weight)
+
+# Allocate Briefwahl votes to municipalities
+mv21_brief_alloc <- mv21_brief_matched |>
+  filter(!is.na(amt_code)) |>
+  select(amt_code, brief_voters = ...5, brief_valid = ...7,
+    brief_spd = ...8, brief_afd = ...9, brief_cdu = ...10,
+    brief_linke = ...11, brief_grune = ...12, brief_fdp = ...13,
+    brief_npd = ...14, brief_tierschutz = ...15, brief_freier_horizont = ...16,
+    brief_die_partei = ...17, brief_freie_wahler = ...18, brief_piraten = ...19,
+    brief_dkp = ...20, brief_bundnis_c = ...21, brief_tierschutz_hier = ...22,
+    brief_diebasis = ...23, brief_dib = ...24, brief_fpa = ...25,
+    brief_lkr = ...26, brief_odp = ...27, brief_humanisten = ...28,
+    brief_gesundheit = ...29, brief_todenhofer = ...30,
+    brief_unabhangige = ...31, brief_sonstige = ...32) |>
+  inner_join(mv21_weights, by = "amt_code", relationship = "many-to-many") |>
+  mutate(across(starts_with("brief_"), ~ round(.x * weight))) |>
+  select(-amt_code, -weight)
+
+# Aggregate allocated Briefwahl by municipality
+mv21_brief_by_muni <- mv21_brief_alloc |>
+  group_by(ags) |>
+  summarize(across(starts_with("brief_"), ~ sum(.x, na.rm = TRUE)),
+    .groups = "drop")
+
+## Step 5: Combine municipality (Urne) + allocated Briefwahl votes
+# Build final dataset
+mv21_final <- mv21_munis |>
+  left_join(mv21_brief_by_muni, by = "ags") |>
+  transmute(
+    ags,
+    county = substr(ags, 1, 5),
+    election_year = as.numeric(2021),
+    election_date = as.Date("2021-09-26"),
+    state = as.character("13"),
+    # Wahlberechtigte comes from Urne rows only (Briefwahl has "-")
+    eligible_voters = ...4,
+    # Add Briefwahl voters to Urne voters
+    number_voters = ...5 + coalesce(brief_voters, 0),
+    valid_votes = ...7 + coalesce(brief_valid, 0),
+    spd_n   = ...8 + coalesce(brief_spd, 0),
+    afd_n   = ...9 + coalesce(brief_afd, 0),
+    cdu_n   = ...10 + coalesce(brief_cdu, 0),
+    linke_n = ...11 + coalesce(brief_linke, 0),
+    grune_n = ...12 + coalesce(brief_grune, 0),
+    fdp_n   = ...13 + coalesce(brief_fdp, 0),
+    npd_n   = ...14 + coalesce(brief_npd, 0),
+    tierschutzpartei_n = ...15 + coalesce(brief_tierschutz, 0),
+    die_partei_n    = ...17 + coalesce(brief_die_partei, 0),
+    freie_wahler_n  = ...18 + coalesce(brief_freie_wahler, 0),
+    piraten_n       = ...19 + coalesce(brief_piraten, 0),
+    diebasis_n      = ...23 + coalesce(brief_diebasis, 0),
+    die_humanisten_n = ...28 + coalesce(brief_humanisten, 0)
+  ) |>
+  mutate(
+    other_n = valid_votes - rowSums(across(c(spd_n, afd_n, cdu_n, linke_n,
+      grune_n, fdp_n, npd_n, tierschutzpartei_n, die_partei_n,
+      freie_wahler_n, piraten_n, diebasis_n, die_humanisten_n)), na.rm = TRUE),
+    csu = as.numeric(NA),
+    turnout = valid_votes / eligible_voters,
+    cdu = cdu_n / valid_votes,
+    spd = spd_n / valid_votes,
+    grune = grune_n / valid_votes,
+    fdp = fdp_n / valid_votes,
+    linke_pds = linke_n / valid_votes,
+    afd = afd_n / valid_votes,
+    npd = npd_n / valid_votes,
+    freie_wahler = freie_wahler_n / valid_votes,
+    die_partei = die_partei_n / valid_votes,
+    tierschutzpartei = tierschutzpartei_n / valid_votes,
+    piraten = piraten_n / valid_votes,
+    diebasis = diebasis_n / valid_votes,
+    die_humanisten = die_humanisten_n / valid_votes,
+    other = other_n / valid_votes,
+    cdu_csu = cdu
+  ) |>
+  select(
+    ags, county, election_year, state, election_date,
+    eligible_voters, number_voters, valid_votes, turnout,
+    all_of(mv21_partylist),
+    cdu_csu
+  )
+
+### Final Check
+mv21_final |>
+  group_by(ags, election_year) |>
+  summarize(n = n()) |>
+  filter(n > 1)
+
+mv21_totalvoters <- mv21_final |>
+  summarize(total = sum(eligible_voters, na.rm = TRUE)) |>
+  pull(total)
+
+cat("MV 2021 eligible voters:", mv21_totalvoters, "\n")
+cat("MV 2021 valid votes:", sum(mv21_final$valid_votes, na.rm = TRUE), "\n")
+cat("MV 2021 rows:", nrow(mv21_final), "\n")
+
 #### Bind and Write ####
 state2224 <- bind_rows(
   by23_data, he23_data, ni22_data,
   sl22_data, nrw22_data, sh22_data,
   hb23_data, be23_data,
-  bb24_data, sn24_data, th24_data
+  bb24_data, sn24_data, th24_data,
+  bw21_data, st21_data, be21_data, mv21_final
 )
 
 # Change cdu / csu inconsistencies
