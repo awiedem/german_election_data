@@ -51,10 +51,11 @@ print(coverage)
 # Expected row counts (approximate)
 expected <- tibble(
   state_name = c("Bayern", "Sachsen", "Rheinland-Pfalz",
-                 "Nordrhein-Westfalen", "Niedersachsen", "Saarland"),
-  expected_min_rows = c(30000, 2000, 1000, 1000, 50, 50),
-  expected_min_year = c(1945, 2001, 1994, 2009, 2019, 2019),
-  expected_max_year = c(2025, 2024, 2025, 2025, 2019, 2025)
+                 "Nordrhein-Westfalen", "Niedersachsen", "Saarland",
+                 "Schleswig-Holstein"),
+  expected_min_rows = c(30000, 2000, 1000, 1000, 50, 50, 30),
+  expected_min_year = c(1945, 2001, 1994, 2009, 2019, 2019, 2023),
+  expected_max_year = c(2025, 2024, 2025, 2025, 2019, 2025, 2025)
 )
 
 coverage_check <- coverage |>
@@ -415,21 +416,70 @@ if (nrow(df_rlp_ob) > 0) {
   print(df_rlp_ob |> distinct(ags, ags_name) |> arrange(ags))
 }
 
-# Check 9: Duplicate detection ------------------------------------------------
+# Check 9: Round distribution --------------------------------------------------
 
 cat("\n", strrep("=", 70), "\n")
-cat("CHECK 9: DUPLICATE DETECTION\n")
+cat("CHECK 9: ROUND DISTRIBUTION (HAUPTWAHL vs STICHWAHL)\n")
 cat(strrep("=", 70), "\n\n")
 
-# Check for duplicate (ags, election_date) — but Bayern can have multiple
-# election types/rounds on same date, so check within election_type
+round_by_state <- df |>
+  group_by(state_name, round) |>
+  summarise(n = n(), .groups = "drop") |>
+  arrange(state_name, round)
+
+cat("Round distribution by state:\n")
+print(round_by_state, n = 30)
+
+# Expected Stichwahl counts (approximate)
+expected_sw <- tribble(
+  ~state_name,              ~expected_min_sw,
+  "Bayern",                 3000,
+  "Sachsen",                250,
+  "Nordrhein-Westfalen",    100,
+  "Rheinland-Pfalz",        30,
+  "Saarland",               10,
+  "Niedersachsen",          5,
+  "Schleswig-Holstein",     1,
+)
+
+sw_counts <- round_by_state |>
+  filter(round == "stichwahl") |>
+  left_join(expected_sw, by = "state_name") |>
+  mutate(ok = n >= expected_min_sw)
+
+cat("\nStichwahl counts vs expected minimums:\n")
+print(sw_counts)
+
+sw_issues <- sw_counts |> filter(!ok)
+if (nrow(sw_issues) > 0) {
+  cat("\n!! WARNING: Some states below expected Stichwahl minimum:\n")
+  print(sw_issues |> select(state_name, n, expected_min_sw))
+} else {
+  cat("\n>> PASS: All states meet expected Stichwahl minimums\n")
+}
+
+# Check that round column only has valid values
+invalid_round <- df |> filter(!round %in% c("hauptwahl", "stichwahl"))
+if (nrow(invalid_round) > 0) {
+  cat(sprintf("!! FAIL: %d rows with invalid round value\n", nrow(invalid_round)))
+} else {
+  cat(">> PASS: All round values are 'hauptwahl' or 'stichwahl'\n")
+}
+
+# Check 10: Duplicate detection ------------------------------------------------
+
+cat("\n", strrep("=", 70), "\n")
+cat("CHECK 10: DUPLICATE DETECTION\n")
+cat(strrep("=", 70), "\n\n")
+
+# Check for duplicate (ags, election_date, election_type, round)
 dupes <- df |>
-  group_by(ags, election_date, election_type) |>
+  group_by(ags, election_date, election_type, round) |>
   summarise(n = n(), .groups = "drop") |>
   filter(n > 1)
 
 if (nrow(dupes) > 0) {
-  cat(sprintf("!! WARNING: %d (ags, election_date, election_type) combinations with >1 row\n",
+  cat(sprintf("!! WARNING: %d (ags, date, type, round) combinations with >1 row\n",
               nrow(dupes)))
   cat("   By state:\n")
   dupes_detail <- dupes |>
@@ -438,7 +488,7 @@ if (nrow(dupes) > 0) {
   cat("   Examples:\n")
   print(head(dupes_detail |> arrange(desc(n)), 20))
 } else {
-  cat(">> PASS: No duplicate (ags, election_date, election_type) rows\n")
+  cat(">> PASS: No duplicate (ags, date, type, round) rows\n")
 }
 
 # Also check without election_type (looser check)
@@ -457,10 +507,10 @@ if (nrow(dupes_loose) > 0) {
               nrow(dupes_loose) - n_same_type))
 }
 
-# Check 10: Election type distribution ----------------------------------------
+# Check 11: Election type distribution ----------------------------------------
 
 cat("\n", strrep("=", 70), "\n")
-cat("CHECK 10: ELECTION TYPE DISTRIBUTION\n")
+cat("CHECK 11: ELECTION TYPE DISTRIBUTION\n")
 cat(strrep("=", 70), "\n\n")
 
 type_by_state <- df |>

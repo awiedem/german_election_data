@@ -1,7 +1,7 @@
-### Harmonize BTW electoral results at county level 1990-2021
+### Harmonize BTW electoral results at county level 1990-2025
 # Vincent Heddesheimer
 # Created: June, 18, 2024
-# Last updated: July, 31, 2025
+# Last updated: March 2026
 
 rm(list = ls())
 
@@ -235,15 +235,15 @@ df_harm <- votes |>
   left_join_check_obs(area_pop, by = c("county_code_21", "election_year")) |>
   rename(county_code = county_code_21) |>
   mutate(county_code = pad_zero_conditional(county_code, 4)) |>
-  # Bind 2021 data (that was unharmonized)
+  # Bind 2021 + 2025 data (already in 2021 boundaries, no harmonization needed)
   bind_rows(df_cw |>
               rename(county_code = ags) |>
-              filter(election_year == 2021) |>
-              select(-c(
-                county_name, area, population,
-                county_name_21, emp_cw, employees,
-                area_cw, pop_cw, county_code_21
-              ))) |>
+              filter(election_year %in% c(2021, 2025)) |>
+              select(-any_of(c(
+                "county_name", "area", "population",
+                "county_name_21", "emp_cw", "employees",
+                "area_cw", "pop_cw", "county_code_21"
+              )))) |>
   # Create state variable
   mutate(
     county_code = pad_zero_conditional(county_code, 4),
@@ -253,11 +253,16 @@ df_harm <- votes |>
 
 glimpse(df_harm)
 
+# Also provide area/population for 2025 (same boundaries as 2021)
+ags25 <- ags21 |>
+  mutate(election_year = 2025)
+ags_area_pop <- bind_rows(ags21, ags25)
+
 # Continue transformation
 df_harm <- df_harm |>
   # Remove rows that have no voting data
   filter(eligible_voters != 0 & number_voters != 0) %>%
-  left_join_check_obs(ags21, by = c("county_code" = "ags", "election_year")) |>
+  left_join_check_obs(ags_area_pop, by = c("county_code" = "ags", "election_year")) |>
   mutate(
     area = ifelse(!is.na(area.x), area.x, area.y),
     population = ifelse(!is.na(population.x), population.x, population.y)
@@ -326,6 +331,7 @@ df_harm <- df_harm |> mutate(election_date = case_when(
   election_year == "2013" ~ lubridate::ymd("2013-09-22"),
   election_year == "2017" ~ lubridate::ymd("2017-09-24"),
   election_year == "2021" ~ lubridate::ymd("2021-09-26"),
+  election_year == "2025" ~ lubridate::ymd("2025-02-23"),
   .default = NA
 ), .after = election_year)
 

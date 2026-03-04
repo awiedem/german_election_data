@@ -1,0 +1,150 @@
+# Mayoral Elections Data
+
+Three datasets covering mayoral elections in 7 German states (Bayern, Niedersachsen, Nordrhein-Westfalen, Rheinland-Pfalz, Saarland, Sachsen, Schleswig-Holstein), 1945--2025.
+
+## Datasets
+
+| File | Rows | Cols | Unit | Description |
+|---|---|---|---|---|
+| `mayoral_unharm` | 41,436 | 16 | Election | One row per election-round (winner-level summary), original boundaries |
+| `mayoral_harm` | 38,667 | 23 | Election | Same as above, mapped to 2021 municipal boundaries |
+| `mayoral_candidates` | 85,160 | 32 | Candidate | One row per candidate per election cycle (wide format), original boundaries |
+
+All files are available as `.rds` and `.csv`.
+
+---
+
+## 1. `mayoral_unharm` -- Election-Level, Unharmonized
+
+One row per (municipality, election date, election type, round). Reports the winner's party, votes, and vote share.
+
+**Columns**: `ags`, `ags_name`, `state`, `state_name`, `election_year`, `election_date`, `election_type`, `round`, `eligible_voters`, `number_voters`, `valid_votes`, `invalid_votes`, `turnout`, `winner_party`, `winner_votes`, `winner_voteshare`
+
+**Election types**: `Buergermeisterwahl`, `Oberbuergermeisterwahl`, `Landratswahl`, `VG-Buergermeisterwahl` (RLP), `SG-Buergermeisterwahl` (NI)
+
+**Round**: `"hauptwahl"` (first round) or `"stichwahl"` (runoff). All 7 states have Stichwahl data.
+
+---
+
+## 2. `mayoral_harm` -- Election-Level, Harmonized to 2021 Boundaries
+
+Maps all AGS codes to fixed 2021 municipal boundaries using population-weighted crosswalks (`data/crosswalks/final/ags_crosswalks.csv`). This allows consistent panel analysis across time despite municipal mergers and splits.
+
+Same 16 core columns as `mayoral_unharm` (including `round`), plus 7 flag/metadata columns:
+
+| Column | Description |
+|---|---|
+| `flag_unsuccessful_naive_merge` | Crosswalk year-shift fallback was needed |
+| `flag_pre_1990` | Pre-1990 election using 1990 crosswalk as fallback |
+| `flag_aggregated` | Row aggregated from multiple predecessor municipalities |
+| `flag_turnout_above_1` | Raw turnout exceeded 1 before capping |
+| `flag_voteshare_above_1` | Raw winner voteshare exceeded 1 before capping |
+| `flag_pct_only` | Percentage-only data (all counts NA; RLP + some old Bayern) |
+| `n_predecessors` | Number of predecessor municipalities in aggregation group |
+
+**Key design decisions**:
+
+- **Grouping by `(ags_21, election_date)`** rather than `(ags_21, election_year)`, so runoff elections stay as separate rows and non-synchronized predecessor elections are not incorrectly merged.
+- **Aggregation**: For N:1 mergers (103 rows), vote counts use `sum(x * pop_cw)` and the winner is taken from the largest predecessor by population. For percentage-only data (RLP), turnout and vote share use weighted means.
+- **Pre-1990 fallback**: Bayern data from 1945--1989 (19,093 rows) uses the 1990 crosswalk since no earlier crosswalk exists.
+- **Excluded types**: VG-Buergermeisterwahl, SG-Buergermeisterwahl, and Landratswahl are dropped because their pseudo-AGS codes cannot be mapped through the municipality crosswalk. Approximately 1,300 rows are excluded.
+
+---
+
+## 3. `mayoral_candidates` -- Candidate-Level (Wide Format)
+
+One row per candidate per election cycle. Companion to `mayoral_unharm` -- same elections, but with all candidates and both Hauptwahl and Stichwahl results in columns.
+
+**Election-level columns** (shared across candidates):
+
+| Column | Description |
+|---|---|
+| `ags`, `ags_name`, `state`, `state_name` | Municipality identifiers |
+| `election_year` | Year of the election cycle |
+| `election_date` | Hauptwahl (first round) date |
+| `election_date_sw` | Stichwahl (runoff) date, `NA` if no runoff |
+| `election_type` | Type of election |
+| `has_stichwahl` | `TRUE` if this election went to a runoff |
+| `eligible_voters`, `number_voters`, `valid_votes`, `invalid_votes` | Hauptwahl vote metadata |
+| `turnout` | Hauptwahl turnout as proportion (0--1) |
+| `turnout_sw` | Stichwahl turnout (NA if no runoff) |
+
+**Candidate-level columns**:
+
+| Column | Description |
+|---|---|
+| `candidate_name` | Full name (available for NRW, RLP, NI, SL, SN partial, SH) |
+| `candidate_last_name` | Last name |
+| `candidate_first_name` | First name |
+| `candidate_gender` | `"m"` / `"w"` (RLP and SL only) |
+| `candidate_party` | Party or label (e.g., CSU, SPD, Parteilos, EB) |
+| `candidate_votes_hw` | Hauptwahl vote count (NA for RLP) |
+| `candidate_voteshare_hw` | Hauptwahl vote share (0--1) |
+| `candidate_rank_hw` | Hauptwahl rank by votes (1 = most votes) |
+| `n_candidates_hw` | Number of candidates in the Hauptwahl |
+| `candidate_votes_sw` | Stichwahl vote count (NA if not in runoff) |
+| `candidate_voteshare_sw` | Stichwahl vote share (NA if not in runoff) |
+| `candidate_rank_sw` | Stichwahl rank (NA if not in runoff) |
+| `n_candidates_sw` | Number of candidates in the Stichwahl |
+| `is_winner` | Overall election winner (won HW outright OR won SW) |
+| `candidate_birth_year` | Birth year (NI only) |
+| `candidate_profession` | Profession (NI only) |
+| `office_type` | Office type (BY and SL only) |
+
+**Field availability by state**:
+
+| State | Names | Gender | Birth Year | Profession | Candidate Votes |
+|---|---|---|---|---|---|
+| Bayern | -- | -- | -- | -- | Yes |
+| Niedersachsen | Yes | -- | Yes | Yes | Yes |
+| Nordrhein-Westfalen | Yes | -- | -- | -- | Yes |
+| Rheinland-Pfalz | Yes | Yes | -- | -- | -- (% only) |
+| Saarland | Yes | Yes | -- | -- | Yes |
+| Sachsen | Partial | -- | -- | -- | Yes |
+| Schleswig-Holstein | Yes | -- | -- | -- | Yes |
+
+---
+
+## Stichwahl (Runoff) Coverage
+
+| State | HW Elections | SW Elections | Detection Method |
+|---|---|---|---|
+| Bayern | 31,534 | 3,174 | `Wahlart` column in raw data |
+| Sachsen | 1,576 | 300 | `Status` VE/EE + date matching |
+| Nordrhein-Westfalen | 1,341 | 331 | 60-day cycle detection |
+| Niedersachsen | 1,000 | 93 | Separate Stichwahl PDFs (2006/2013) + round detection |
+| Rheinland-Pfalz | 693 | 227 | `Stichwahltag` column + separate HW/SW results |
+| Saarland | 42 | 15 | `Wahlart...3` column in raw data |
+| Schleswig-Holstein | 25 | 10 | Scraped with round info |
+
+---
+
+## Coverage by State
+
+| State | Code | Year Range | Unharm Rows | Source | Notes |
+|---|---|---|---|---|---|
+| Bayern | 09 | 1945--2025 | 34,824 | Excel (Bayerisches Landesamt) | Longest series; no candidate names |
+| Sachsen | 14 | 2001--2024 | 2,176 | Excel (Buergermeisteratlas) | VE rows = runoff-required (no winner) |
+| Nordrhein-Westfalen | 05 | 2009--2025 | 1,986 | Excel (IT.NRW) | BM + OB elections |
+| Rheinland-Pfalz | 07 | 1994--2025 | 1,147 | Excel (Stat. Landesamt) | Percentages only; 4 election types |
+| Niedersachsen | 03 | 2006--2025 | 1,186 | PDF extraction | 3 PDF formats across 9 election years |
+| Saarland | 10 | 2019--2025 | 72 | Excel | Includes gender |
+| Schleswig-Holstein | 01 | 2023--2025 | 45 | Web scraping (wahlen-sh.de) | Portal started late 2023 |
+
+---
+
+## Known Issues and Caveats
+
+**Rheinland-Pfalz has no absolute vote counts.** All count columns are NA; only turnout and vote shares (as percentages) are available. In `mayoral_harm`, these use weighted-mean aggregation instead of weighted-sum.
+
+**Bayern has no candidate names.** The source data provides party and votes per candidate slot but not names. In `mayoral_candidates`, Bayern rows have `candidate_name = NA`.
+
+**Niedersachsen data is PDF-extracted.** Parsing 3 different PDF layouts introduces minor issues: 91 elections where the sum of candidate votes falls below 50% of valid_votes (top candidates listed, not all), and 2 elections with a vote count discrepancy of 8 votes (source data rounding).
+
+**Stichwahl completeness varies.** NRW and Bayern have both candidates in runoff elections. NS 2013 and RLP Stichwahl results list only the winner (1 candidate instead of 2). SH scrapes both Stichwahl candidates. NS only has separate Stichwahl PDFs for 2006 and 2013; other years have no candidate-level Stichwahl data.
+
+**Sachsen year-boundary runoffs.** 2 elections where `election_year != year(election_date)` because the runoff crossed a calendar year (e.g., `election_year = 2008`, `election_date = 2009-01-11`).
+
+**Sachsen "Stichwahl" is not a 2-person runoff.** In Sachsen, when no candidate wins >50% in the first round (VE), a full re-election (EE) is held with all candidates, not a 2-person runoff. This means `n_candidates_sw` can be 3--6 for Sachsen elections.
+
+For the full list of known issues including fixed bugs, see `docs/mayoral_elections_known_issues.md`.

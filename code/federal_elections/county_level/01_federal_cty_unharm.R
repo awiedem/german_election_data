@@ -245,6 +245,114 @@ df <- df %>%
 
 glimpse(df)
 
+
+# BTW 2025 from ballot-district data --------------------------------------
+
+# No county-level raw file for 2025. Aggregate from ballot-district data.
+df25_raw <- fread(
+  "data/federal_elections/municipality_level/raw/BTW25/btw25_wbz_ergebnisse.csv",
+  encoding = "UTF-8"
+)
+
+# Row 5 holds the real header
+df25 <- df25_raw |>
+  slice(-(1:4)) |>
+  setnames(as.character(df25_raw[5])) |>
+  slice(-1) |>
+  # Keep Zweitstimme columns only (1:17 meta + 48:80 parties)
+  select(c(1:17, 48:80)) |>
+  rename_with(~ str_remove(.x, " - Zweitstimmen$"))
+
+# Construct 5-digit county code
+df25 <- df25 |>
+  mutate(
+    Land = pad_zero_conditional(Land, 1),
+    Kreis = pad_zero_conditional(Kreis, 1),
+    ags = paste0(Land, Regierungsbezirk, Kreis),
+    ags = as.numeric(ags),
+    # Berlin: aggregate all Bezirke to single county 11000
+    ags = ifelse(Land == "11", 11000, ags),
+    # Hamburg: aggregate all Bezirke to single county 02000
+    ags = ifelse(Land == "02", 2000, ags)
+  )
+
+# Aggregate all ballot districts to county level
+party_cols_25 <- setdiff(
+  names(df25)[which(names(df25) == "SPD"):which(names(df25) == "WerteUnion")],
+  c("Ungekürzte Wahlbezirksbezeichnung", "Bezeichnung des Wahlbezirkes gemäß Anlage 30 zur BWO")
+)
+vote_cols_25 <- c("Wahlberechtigte (A)", "Wählende (B)", "Ungültige", "Gültige", party_cols_25)
+
+df25 <- df25 |>
+  mutate(across(all_of(vote_cols_25), as.numeric)) |>
+  group_by(ags) |>
+  summarise(across(all_of(vote_cols_25), \(x) sum(x, na.rm = TRUE)), .groups = "drop") |>
+  mutate(year = 2025)
+
+# Rename to match existing column names
+df25 <- df25 |>
+  rename(
+    eligible_voters = `Wahlberechtigte (A)`,
+    number_voters = `Wählende (B)`,
+    invalid_votes = Ungültige,
+    valid_votes = Gültige
+  ) |>
+  janitor::clean_names() |>
+  rename(
+    afd = af_d,
+    linke_pds = die_linke,
+    gruene = grune,
+    freie_waehler = freie_wahler,
+    tierschutz = tierschutzpartei,
+    oedp = odp,
+    buendnis_c = bundnis_c,
+    bueso = bu_so,
+    buendnis_deutschland = bundnis_deutschland,
+    team_todenhoefer = team_todenhofer,
+    verjuengungsforschung = verjungungsforschung,
+    werteunion = werte_union
+  ) |>
+  # Add state
+  mutate(
+    state = pad_zero_conditional(str_sub(ags, end = -4), 1),
+    state_name = state_id_to_names(state)
+  )
+
+# Harmonize CDU/CSU
+df25 <- df25 |>
+  mutate(
+    cdu_csu = ifelse(csu > 0, csu, cdu),
+    cdu = ifelse(is.na(cdu) & state != "09" & !is.na(cdu_csu), cdu_csu, cdu),
+    csu = ifelse(is.na(csu) & state == "09" & !is.na(cdu_csu), cdu_csu, csu)
+  )
+
+# Compute extremist votes
+df25 <- df25 |>
+  mutate(
+    far_right = rowSums(pick(any_of(c("afd", "npd", "rep", "die_rechte", "dvu",
+      "iii_weg", "bf_b", "ddd", "dg", "dns", "drp", "dsu"))), na.rm = TRUE),
+    far_left = rowSums(pick(any_of(c("dkp", "kpd", "mlpd", "sgp", "spad",
+      "bsa", "bwk"))), na.rm = TRUE),
+    far_left_wLinke = rowSums(pick(any_of(c("linke_pds", "far_left"))), na.rm = TRUE)
+  )
+
+cat("BTW25 counties:", nrow(df25), "\n")
+cat("BTW25 total voters:", sum(df25$number_voters, na.rm = TRUE), "\n")
+
+# Bind to existing data
+df <- bind_rows(df, df25)
+
+# Relocate new 2025 party columns into the cdu:zentrum range
+# (bind_rows appends new columns at end, outside existing column ranges)
+df <- df |>
+  relocate(any_of(c("bsw", "mera25", "werteunion", "verjuengungsforschung",
+                     "pd_h", "buendnis_deutschland")), .before = zentrum)
+
+# Check duplicates
+dupl25 <- df |> filter(year == 2025) |> count(ags) |> filter(n > 1)
+if (nrow(dupl25) > 0) warning("Duplicate county codes in 2025")
+
+
 # Cases with 0 eligible voters --------------------------------------------
 
 (zero_elig <- df |> filter(eligible_voters == 0))
@@ -323,6 +431,7 @@ df <- df |> mutate(election_date = case_when(
   year == "2013" ~ lubridate::ymd("2013-09-22"),
   year == "2017" ~ lubridate::ymd("2017-09-24"),
   year == "2021" ~ lubridate::ymd("2021-09-26"),
+  year == "2025" ~ lubridate::ymd("2025-02-23"),
   .default = NA
 ), .after = year)
 

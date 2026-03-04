@@ -45,7 +45,7 @@ Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2025.
 
 ## Datasets
 
-**Municipal elections** cover 1990-2021. **State elections** cover 2006-2024 (15 states; all except Hamburg, which lacks municipality-level data). **Federal elections** are available at the municipality level since 1980 and at the county level since 1953. **Mayoral elections** cover 6 states (Bayern, NRW, Saarland, Sachsen, Rheinland-Pfalz, Niedersachsen), 1945-2025, candidate-level, unharmonized only. Raw data also exists for **county elections** (~10 states) and **European elections** (2024), but processing pipelines have not yet been built.
+**Municipal elections** cover 1990-2021. **State elections** cover 2006-2024 (15 states; all except Hamburg, which lacks municipality-level data). **Federal elections** are available at the municipality level since 1980 and at the county level since 1953. **Mayoral elections** cover 7 states (Bayern, NRW, Saarland, Sachsen, Rheinland-Pfalz, Niedersachsen, Schleswig-Holstein), 1945-2025, with election-level and candidate-level datasets in both unharmonized and harmonized (2021 boundaries) versions. Raw data also exists for **county elections** (~10 states) and **European elections** (2024), but processing pipelines have not yet been built.
 
 | **Data**                  | **Level**            | **Period**       | **Harmonization** | **File Name**                |
 |---------------------------|----------------------|------------------|-------------------|------------------------------|
@@ -65,6 +65,8 @@ Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2025.
 | Federal Elections         | County               | 1953-2021        | No                | `federal_cty_unharm`         |
 | Federal Elections         | County               | 1990-2021        | Yes               | `federal_cty_harm`           |
 | Mayoral Elections         | Municipality         | 1945-2025        | No                | `mayoral_unharm`             |
+| Mayoral Elections         | Municipality         | 1945-2025        | Yes (2021)        | `mayoral_harm`               |
+| Mayoral Elections         | Municipality (cand.) | 1945-2025        | No                | `mayoral_candidates`         |
 | Crosswalks                | Municipality         | 1990-2021        | --                | `ags_crosswalks`             |
 | Crosswalks                | Municipality         | 1990-2023        | --                | `ags_1990_to_2023_crosswalk` |
 | Crosswalks                | Municipality         | 1990-2025        | --                | `ags_1990_to_2025_crosswalk` |
@@ -78,7 +80,9 @@ We provide datasets harmonized to 2021 and 2025 municipal and county boundaries.
 
 The newer harmonized state election files (`state_harm_21`, `state_harm_23`, `state_harm_25`) use a weighted sum of vote counts, which correctly handles mergers between municipalities of different sizes. The older `state_harm` file (2006-2019) used a weighted mean of vote shares and is retained for backward compatibility; for new work, we recommend the `_21` or `_25` versions.
 
-For details on the federal election harmonization process, including crosswalk creation and validation steps, see the [Federal Election Harmonization README](code/federal_elections/municipality_level/README.md).
+The mayoral election harmonization (`mayoral_harm`) uses the same crosswalk infrastructure but differs in key ways: it groups by `(ags_21, election_date)` rather than election year (since mayoral elections are not synchronized across municipalities), takes the winner from the largest predecessor by population for merged municipalities, and flags pre-1990 Bayern data that relies on the 1990 crosswalk as a fallback. VG, SG, and Landrat election types are excluded since their pseudo-AGS codes cannot be crosswalked.
+
+For details on the federal election harmonization process, including crosswalk creation and validation steps, see the [Federal Election Harmonization README](code/federal_elections/municipality_level/README.md). For the mayoral harmonization approach, see the [Mayoral Elections README](data/mayoral_elections/final/README.md).
 
 ## Known Data Issues
 
@@ -171,6 +175,20 @@ Statistische Ämter des Bundes und der Länder. Landtagswahlen. [https://www.reg
 | Sachsen-Anhalt          | Statistisches Landesamt Sachsen-Anhalt                                                                       | website                                                   |
 | Schleswig-Holstein      | Statistisches Amt für Hamburg und Schleswig-Holstein                                                          | website (except 2013), email for 2013                     |
 | Thueringen              | Thüringer Landesamt für Statistik                                                                             | website                                                   |
+
+### Mayoral Elections
+
+| **State**               | **Source**                                                        | **Procured via**                         |
+|-------------------------|------------------------------------------------------------------|------------------------------------------|
+| Bayern                  | Bayerisches Landesamt für Statistik                              | website (Excel)                          |
+| Niedersachsen           | Landesamt für Statistik Niedersachsen                            | website (PDF)                            |
+| Nordrhein-Westfalen     | IT.NRW                                                           | website (Excel)                          |
+| Rheinland-Pfalz         | Statistisches Landesamt Rheinland-Pfalz                          | website (Excel, percentages only)        |
+| Saarland                | Statistisches Landesamt des Saarlandes                           | website (Excel)                          |
+| Sachsen                 | Statistisches Landesamt des Freistaates Sachsen (Bürgermeisteratlas) | website (Excel)                      |
+| Schleswig-Holstein      | Statistisches Amt für Hamburg und Schleswig-Holstein              | web scraping (wahlen-sh.de)              |
+
+For details on data structure and known issues, see the [Mayoral Elections README](data/mayoral_elections/final/README.md) and [Known Issues](docs/mayoral_elections_known_issues.md).
 
 ### Crosswalks
 

@@ -80,8 +80,13 @@ bayern_clean <- bayern_raw %>%
     number_voters = as.numeric(Wähler),
     valid_votes = as.numeric(`Gültige Stimmen`),
     invalid_votes = as.numeric(`ungültige Stimmen`),
-    turnout = ifelse(!is.na(eligible_voters) & eligible_voters > 0, 
-                    number_voters / eligible_voters, NA)
+    turnout = ifelse(!is.na(eligible_voters) & eligible_voters > 0,
+                    number_voters / eligible_voters, NA),
+    # Round: Wahlart distinguishes "erster Wahlgang" from "Stichwahl"
+    round = case_when(
+      Wahlart %in% c("Stichwahl", "Stichwahl ungültig", "Losentscheid") ~ "stichwahl",
+      TRUE ~ "hauptwahl"  # "erster Wahlgang", "Hauptwahl ungültig", NA
+    )
   ) %>%
   # Extract winner information
   mutate(
@@ -104,7 +109,7 @@ bayern_clean <- bayern_raw %>%
   # Select relevant columns
   select(
     ags, ags_name = Gemeindename, state, state_name, election_year, election_date,
-    election_type, Wahlart, eligible_voters, number_voters, valid_votes, invalid_votes,
+    election_type, round, eligible_voters, number_voters, valid_votes, invalid_votes,
     turnout, winner_party, winner_votes, winner_voteshare
   ) %>%
   # Filter out rows with missing AGS
@@ -272,12 +277,26 @@ if (length(nrw_list) > 0 && any(sapply(nrw_list, nrow) > 0)) {
     # Deduplicate: same election can appear in multiple files (e.g. 2020 runoff
     # rows appear in both the KW 2020 and KW 2025 OB files)
     distinct(ags, election_date, election_type, .keep_all = TRUE) %>%
+    # Detect Stichwahl: elections within 60 days for same ags+type form a cycle
+    group_by(ags, election_type) %>%
+    arrange(election_date) %>%
+    mutate(
+      date_gap = as.numeric(election_date - lag(election_date)),
+      cycle_id = cumsum(is.na(date_gap) | date_gap > 60)
+    ) %>%
+    group_by(ags, election_type, cycle_id) %>%
+    mutate(
+      round = ifelse(election_date == min(election_date), "hauptwahl", "stichwahl")
+    ) %>%
+    ungroup() %>%
+    select(-date_gap, -cycle_id) %>%
     arrange(ags, election_year, election_date)
 } else {
   nrw_combined <- data.frame(
     ags = character(0), ags_name = character(0), state = character(0),
     state_name = character(0), election_year = numeric(0),
     election_date = as.Date(character(0)), election_type = character(0),
+    round = character(0),
     eligible_voters = numeric(0), number_voters = numeric(0),
     valid_votes = numeric(0), invalid_votes = numeric(0), turnout = numeric(0),
     winner_party = character(0), winner_votes = numeric(0),
@@ -309,6 +328,11 @@ saarland_clean <- saarland_raw %>%
     state_name = "Saarland",
     election_year = Wahljahr,
     election_type = "Bürgermeisterwahl",
+    # Round: Wahlart...3 distinguishes "Bürgermeisterwahl" from "Stichwahl"
+    round = case_when(
+      `Wahlart...3` == "Stichwahl" ~ "stichwahl",
+      TRUE ~ "hauptwahl"
+    ),
     # Create election date
     election_date = as.Date(paste(Wahljahr, Monat, Tag, sep = "-")),
     ags_name = `Gemeinde/Kreis`,
@@ -318,7 +342,7 @@ saarland_clean <- saarland_raw %>%
   # Filter out rows with missing AGS
   filter(!is.na(ags), nchar(ags) == 8) %>%
   # Group by municipality and election
-  group_by(ags, ags_name, state, state_name, election_year, election_date, election_type) %>%
+  group_by(ags, ags_name, state, state_name, election_year, election_date, election_type, round) %>%
   summarise(
     # Extract summary statistics
     eligible_voters = value[info_type == "Wahlberechtigte"][1],
@@ -352,7 +376,7 @@ saarland_clean <- saarland_raw %>%
   ) %>%
   ungroup() %>%
   select(ags, ags_name, state, state_name, election_year, election_date, election_type,
-         eligible_voters, number_voters, valid_votes, invalid_votes, turnout,
+         round, eligible_voters, number_voters, valid_votes, invalid_votes, turnout,
          winner_party, winner_votes, winner_voteshare) %>%
   # Remove rows where we don't have valid vote information
   filter(!is.na(valid_votes) | !is.na(eligible_voters))
@@ -401,13 +425,42 @@ sachsen_clean <- sachsen_raw %>%
     # For VE rows, use the candidate with most votes
     winner_votes = as.numeric(`1_Stimmen`),
     winner_voteshare = ifelse(!is.na(valid_votes) & valid_votes > 0 & !is.na(winner_votes),
-                              winner_votes / valid_votes, NA)
+                              winner_votes / valid_votes, NA),
+    # Keep Status for round detection
+    status_raw = Status
   ) %>%
   select(
     ags, ags_name, state, state_name, election_year, election_date,
     election_type, eligible_voters, number_voters, valid_votes, invalid_votes,
-    turnout, winner_party, winner_votes, winner_voteshare
+    turnout, winner_party, winner_votes, winner_voteshare, status_raw
   )
+
+# Detect round from Status: VE = first round (runoff needed), EE = final result
+# Every VE row has a matching EE row 14–28 days later for the same municipality
+ve_dates <- sachsen_clean %>%
+  filter(status_raw == "VE") %>%
+  select(ags, ve_date = election_date)
+
+# For each EE row, check if there's a VE row for same municipality within 7–35 days before
+ee_has_ve <- sachsen_clean %>%
+  filter(status_raw == "EE") %>%
+  select(ags, election_date) %>%
+  left_join(ve_dates, by = "ags", relationship = "many-to-many") %>%
+  mutate(gap = as.numeric(election_date - ve_date)) %>%
+  filter(gap > 0, gap < 60) %>%
+  distinct(ags, election_date) %>%
+  mutate(is_stichwahl_ee = TRUE)
+
+sachsen_clean <- sachsen_clean %>%
+  left_join(ee_has_ve, by = c("ags", "election_date")) %>%
+  mutate(
+    round = case_when(
+      status_raw == "VE" ~ "hauptwahl",
+      is_stichwahl_ee == TRUE ~ "stichwahl",
+      TRUE ~ "hauptwahl"  # Standalone EE = won outright in first round
+    )
+  ) %>%
+  select(-status_raw, -is_stichwahl_ee)
 
 cat("Sachsen: Processed", nrow(sachsen_clean), "elections\n")
 cat("  Years:", paste(range(sachsen_clean$election_year, na.rm = TRUE), collapse = "-"), "\n")
@@ -591,6 +644,8 @@ rlp_combined <- bind_rows(rlp_landraete, rlp_ob, rlp_vg, rlp_vfr) %>%
     state = "07",
     state_name = "Rheinland-Pfalz",
     ags_name = ort_name,
+    # Map is_stichwahl flag to round column
+    round = ifelse(is_stichwahl, "stichwahl", "hauptwahl"),
     # RLP only has percentages, no absolute counts
     eligible_voters = NA_real_,
     number_voters = NA_real_,
@@ -600,7 +655,7 @@ rlp_combined <- bind_rows(rlp_landraete, rlp_ob, rlp_vg, rlp_vfr) %>%
   ) %>%
   select(
     ags, ags_name, state, state_name, election_year, election_date,
-    election_type, eligible_voters, number_voters, valid_votes, invalid_votes,
+    election_type, round, eligible_voters, number_voters, valid_votes, invalid_votes,
     turnout, winner_party, winner_votes, winner_voteshare
   )
 
@@ -1136,6 +1191,7 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
 
         if (length(file_results) > 0) {
           file_df <- bind_rows(file_results)
+          file_df$round <- "hauptwahl"
           cat("    ", fc$path, ":", nrow(file_df), "elections\n")
           ns_all_results[[length(ns_all_results) + 1]] <- file_df
         }
@@ -1153,6 +1209,7 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
 
         if (length(file_results) > 0) {
           file_df <- bind_rows(file_results)
+          file_df$round <- "stichwahl"
           cat("    ", fc$path, ":", nrow(file_df), "elections\n")
           ns_all_results[[length(ns_all_results) + 1]] <- file_df
         }
@@ -1162,6 +1219,7 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
         file_df <- parse_ns_2013_tabular(pdf_path, file_date, is_stichwahl = is_sw)
 
         if (!is.null(file_df) && nrow(file_df) > 0) {
+          file_df$round <- if (is_sw) "stichwahl" else "hauptwahl"
           # Apply AGS lookup: try name first, then name + type suffix for disambiguation
           file_df$ags <- ns_2013_ags_lookup[file_df$ags_name]
           # For rows where simple name didn't match, try "Name Bezeichnung" key
@@ -1192,17 +1250,10 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
   if (length(ns_all_results) > 0) {
     ns_combined <- bind_rows(ns_all_results)
 
-    # Deduplicate: if a municipality appears in both first-round (Stichwahl required)
-    # and Stichwahl results file, keep the Stichwahl result (which has the winner)
-    # For 2006: main file has Stichwahl-required rows (no winner), Stichwahl file has results
-    # For 2013: main file has Stichwahl rows, Stichwahl file has results
-    # Strategy: for same ags + election_year, if both NA and non-NA winner_party exist,
-    # keep the one with the winner
+    # Deduplicate within same round: handles 2021 where two identical PDFs exist
+    # Keep both hauptwahl and stichwahl rows (different dates/rounds)
     ns_combined <- ns_combined %>%
-      group_by(ags, election_year) %>%
-      arrange(desc(!is.na(winner_party))) %>%
-      slice(1) %>%
-      ungroup()
+      distinct(ags, election_date, round, .keep_all = TRUE)
 
     cat("Niedersachsen: Processed", nrow(ns_combined), "elections across",
         length(unique(ns_combined$election_year)), "years\n")
@@ -1220,6 +1271,62 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
 }
 
 # ============================================================================
+# SCHLESWIG-HOLSTEIN
+# ============================================================================
+# Data is scraped from wahlen-sh.de by 00_sh_scrape.R and saved as
+# data/mayoral_elections/raw/sh/sh_mayoral_scraped.rds
+# Coverage: 2023–2025, 35 municipalities, 45 elections
+# Special cases:
+#   - 4 confirmation elections (Ja/Nein votes for a single candidate)
+#   - Candidate-level data is aggregated to winner-level for unharm
+
+cat("\n=== Processing Schleswig-Holstein mayoral elections ===\n")
+
+sh_file <- "data/mayoral_elections/raw/sh/sh_mayoral_scraped.rds"
+
+if (file.exists(sh_file)) {
+  sh_raw <- readRDS(sh_file)
+
+  sh_clean <- sh_raw %>%
+    # For Ja/Nein confirmation elections, keep the "Ja" row as the winner
+    # and treat "Nein-Stimmen" rows as irrelevant for the winner-level dataset
+    filter(is.na(candidate_party) | candidate_party != "Nein-Stimmen") %>%
+    # For each election-round, identify the winner (highest votes)
+    group_by(ags, election_date, round) %>%
+    arrange(desc(candidate_votes)) %>%
+    slice(1) %>%
+    ungroup() %>%
+    mutate(
+      state = "01",
+      state_name = "Schleswig-Holstein",
+      election_year = year(election_date),
+      # For Ja/Nein elections, the party is from the candidate, not "Ja-Stimmen"
+      winner_party = ifelse(candidate_party == "Ja-Stimmen", "EB", candidate_party),
+      winner_votes = candidate_votes,
+      winner_voteshare = candidate_voteshare,
+      turnout = ifelse(!is.na(number_voters) & !is.na(eligible_voters) &
+                         eligible_voters > 0,
+                       number_voters / eligible_voters, NA_real_)
+    ) %>%
+    select(
+      ags, ags_name, state, state_name, election_year, election_date,
+      election_type, round, eligible_voters, number_voters, valid_votes,
+      invalid_votes, turnout, winner_party, winner_votes, winner_voteshare
+    )
+
+  cat("Schleswig-Holstein: Processed", nrow(sh_clean), "elections across",
+      length(unique(sh_clean$election_year)), "years\n")
+  cat("  By year:\n")
+  print(table(sh_clean$election_year))
+  cat("  By type:\n")
+  print(table(sh_clean$election_type))
+  all_mayoral_data[["schleswig_holstein"]] <- sh_clean
+} else {
+  cat("Note: SH scraped data not found at", sh_file, "\n")
+  cat("  Run 00_sh_scrape.R first to generate the data.\n")
+}
+
+# ============================================================================
 # COMBINE ALL DATA
 # ============================================================================
 
@@ -1234,6 +1341,7 @@ mayoral_unharm <- bind_rows(all_mayoral_data) %>%
     state = as.character(state),
     election_year = as.numeric(election_year),
     election_date = as.Date(election_date),
+    round = as.character(round),
     eligible_voters = as.numeric(eligible_voters),
     number_voters = as.numeric(number_voters),
     valid_votes = as.numeric(valid_votes),
@@ -1244,7 +1352,7 @@ mayoral_unharm <- bind_rows(all_mayoral_data) %>%
   ) %>%
   # Ensure all required columns are present
   select(ags, ags_name, state, state_name, election_year, election_date, election_type,
-         eligible_voters, number_voters, valid_votes, invalid_votes, turnout,
+         round, eligible_voters, number_voters, valid_votes, invalid_votes, turnout,
          winner_party, winner_votes, winner_voteshare)
 
 # Summary
