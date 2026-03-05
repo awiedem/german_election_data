@@ -284,6 +284,9 @@ by23_data <- by23_data |>
     turnout = valid_votes / eligible_voters,
     across(all_of(by23_partylist), ~ .x / valid_votes)
   ) |>
+  mutate(
+    other = 1 - rowSums(across(setdiff(by23_partylist, c("cdu", "csu"))), na.rm = TRUE)
+  ) |>
   ### Final Selecting (and Arranging) of Variables
   select(
     ags,
@@ -296,6 +299,7 @@ by23_data <- by23_data |>
     valid_votes,
     turnout,
     all_of(by23_partylist),
+    other,
     cdu_csu
   )
 
@@ -503,6 +507,9 @@ he23_data <- he23_data |>
     turnout = valid_votes / eligible_voters,
     across(all_of(he23_partylist), ~ .x / valid_votes)
   ) |>
+  mutate(
+    other = 1 - rowSums(across(setdiff(he23_partylist, c("cdu", "csu"))), na.rm = TRUE)
+  ) |>
   ### Final Selecting (and Arranging) of Variables
   select(
     ags,
@@ -515,6 +522,7 @@ he23_data <- he23_data |>
     valid_votes,
     turnout,
     all_of(he23_partylist),
+    other,
     cdu_csu
   )
 
@@ -694,6 +702,9 @@ ni22_data <- ni22_data |>
     turnout = valid_votes / eligible_voters,
     across(all_of(ni22_partylist), ~ .x / valid_votes)
   ) |>
+  mutate(
+    other = 1 - rowSums(across(setdiff(ni22_partylist, c("cdu", "csu"))), na.rm = TRUE)
+  ) |>
   ### Final Selecting (and Arranging) of Variables
   select(
     ags,
@@ -706,6 +717,7 @@ ni22_data <- ni22_data |>
     valid_votes,
     turnout,
     all_of(ni22_partylist),
+    other,
     cdu_csu
   )
 
@@ -806,6 +818,9 @@ sl22_data <- sl22_data |>
     turnout = valid_votes / eligible_voters,
     across(all_of(sl22_partylist), ~ .x / valid_votes)
   ) |>
+  mutate(
+    other = 1 - rowSums(across(setdiff(sl22_partylist, c("cdu", "csu"))), na.rm = TRUE)
+  ) |>
   select(
     ags,
     county,
@@ -817,6 +832,7 @@ sl22_data <- sl22_data |>
     valid_votes,
     turnout,
     all_of(sl22_partylist),
+    other,
     cdu_csu
   )
 
@@ -1096,6 +1112,9 @@ sh22_data <- sh22_data |>
     turnout = valid_votes / eligible_voters,
     across(all_of(sh22_partylist), ~ .x / valid_votes)
   ) |>
+  mutate(
+    other = 1 - rowSums(across(setdiff(sh22_partylist, c("cdu", "csu"))), na.rm = TRUE)
+  ) |>
   select(
     ags,
     county,
@@ -1107,6 +1126,7 @@ sh22_data <- sh22_data |>
     valid_votes,
     turnout,
     all_of(sh22_partylist),
+    other,
     cdu_csu
   )
 
@@ -1215,6 +1235,9 @@ nrw22_data <- nrw22_data |>
     turnout = valid_votes / eligible_voters,
     across(all_of(nrw22_partylist), ~ .x / valid_votes)
   ) |>
+  mutate(
+    other = 1 - rowSums(across(setdiff(nrw22_partylist, c("cdu", "csu"))), na.rm = TRUE)
+  ) |>
   select(
     ags,
     county,
@@ -1226,6 +1249,7 @@ nrw22_data <- nrw22_data |>
     valid_votes,
     turnout,
     all_of(nrw22_partylist),
+    other,
     cdu_csu
   )
 
@@ -1369,6 +1393,9 @@ hb23_data <- hb23_data |>
     turnout = valid_votes / eligible_voters,
     across(all_of(hb23_partylist), ~ .x / valid_votes)
   ) |>
+  mutate(
+    other = 1 - rowSums(across(setdiff(hb23_partylist, c("cdu", "csu"))), na.rm = TRUE)
+  ) |>
   select(
     ags,
     county,
@@ -1380,6 +1407,7 @@ hb23_data <- hb23_data |>
     valid_votes,
     turnout,
     all_of(hb23_partylist),
+    other,
     cdu_csu
   )
 
@@ -1496,6 +1524,9 @@ be23_data <- be23_data |>
     turnout = valid_votes / eligible_voters,
     across(all_of(be23_partylist), ~ .x / valid_votes)
   ) |>
+  mutate(
+    other = 1 - rowSums(across(setdiff(be23_partylist, c("cdu", "csu"))), na.rm = TRUE)
+  ) |>
   select(
     ags,
     county,
@@ -1507,6 +1538,7 @@ be23_data <- be23_data |>
     valid_votes,
     turnout,
     all_of(be23_partylist),
+    other,
     cdu_csu
   )
 
@@ -1668,6 +1700,9 @@ bb24_data <- bb24_data |>
     turnout = valid_votes / eligible_voters,
     across(all_of(bb24_partylist), ~ .x / valid_votes)
   ) |>
+  mutate(
+    other = 1 - rowSums(across(setdiff(bb24_partylist, c("cdu", "csu"))), na.rm = TRUE)
+  ) |>
   select(
     ags,
     county,
@@ -1679,6 +1714,7 @@ bb24_data <- bb24_data |>
     valid_votes,
     turnout,
     all_of(bb24_partylist),
+    other,
     cdu_csu
   )
 
@@ -1807,6 +1843,9 @@ sn24_data <- sn24_data |>
     turnout = valid_votes / eligible_voters,
     across(all_of(sn24_partylist), ~ .x / valid_votes)
   ) |>
+  mutate(
+    other = 1 - rowSums(across(setdiff(sn24_partylist, c("cdu", "csu"))), na.rm = TRUE)
+  ) |>
   select(
     ags,
     county,
@@ -1818,6 +1857,7 @@ sn24_data <- sn24_data |>
     valid_votes,
     turnout,
     all_of(sn24_partylist),
+    other,
     cdu_csu
   )
 
@@ -1981,6 +2021,9 @@ th24_data <- th24_data |>
     turnout = valid_votes / eligible_voters,
     across(all_of(th24_partylist), ~ .x / valid_votes)
   ) |>
+  mutate(
+    other = 1 - rowSums(across(setdiff(th24_partylist, c("cdu", "csu"))), na.rm = TRUE)
+  ) |>
   select(
     ags,
     county,
@@ -1992,6 +2035,7 @@ th24_data <- th24_data |>
     valid_votes,
     turnout,
     all_of(th24_partylist),
+    other,
     cdu_csu
   )
 
@@ -2090,6 +2134,7 @@ bw21_data <- bw21_raw |>
     ags, county, election_year, state, election_date,
     eligible_voters, number_voters, valid_votes, turnout,
     all_of(bw21_partylist),
+    other,
     cdu_csu
   )
 
@@ -2212,6 +2257,7 @@ st21_data <- st21_data |>
     ags, county, election_year, state, election_date,
     eligible_voters, number_voters, valid_votes, turnout,
     all_of(st21_partylist),
+    other,
     cdu_csu
   )
 
@@ -2318,10 +2364,14 @@ be21_data <- be21_data |>
     turnout = valid_votes / eligible_voters,
     across(all_of(be21_partylist), ~ .x / valid_votes)
   ) |>
+  mutate(
+    other = 1 - rowSums(across(setdiff(be21_partylist, c("cdu", "csu"))), na.rm = TRUE)
+  ) |>
   select(
     ags, county, election_year, state, election_date,
     eligible_voters, number_voters, valid_votes, turnout,
     all_of(be21_partylist),
+    other,
     cdu_csu
   )
 
@@ -2722,6 +2772,7 @@ mv21_final <- mv21_munis |>
     ags, county, election_year, state, election_date,
     eligible_voters, number_voters, valid_votes, turnout,
     all_of(mv21_partylist),
+    other,
     cdu_csu
   )
 
