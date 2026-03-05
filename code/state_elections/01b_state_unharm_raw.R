@@ -4136,6 +4136,75 @@ nrw_dates <- c(
 
 nrw_results <- list()
 
+## ---------- OCR: pre-1975 (Kreis level, from scanned PDFs, see 00_nrw_pre1975_extract.py) ----------
+nrw_pre75_path <- here(raw_path, "Nordrhein-Westfalen", "nrw_pre1975_kreis.csv")
+nrw_pre75_dates <- c("1962" = "1962-07-08", "1966" = "1966-07-10", "1970" = "1970-06-14")
+
+if (file.exists(nrw_pre75_path)) {
+  nrw_pre75 <- read.csv(nrw_pre75_path, colClasses = "character")
+
+  nrw_pre75_party_map <- c(
+    cdu = "cdu", spd = "spd", fdp = "fdp",
+    dkp = "dkp", npd = "npd", zentrum = "zentrum", uap = "uap", fsu = "fsu",
+    dg = "dg", dfu = "dfu", gdp = "gdp", parteilose = "parteilose"
+  )
+
+  for (ocr_yr in unique(nrw_pre75$election_year)) {
+    yr_data <- nrw_pre75[nrw_pre75$election_year == ocr_yr, ]
+    if (nrow(yr_data) == 0) next
+
+    ## Synthetic AGS: 050xx000 (RB "0" unused in NRW, so no collision)
+    ags_syn <- paste0("050", sprintf("%02d", seq_len(nrow(yr_data))), "000")
+
+    result <- tibble(
+      ags             = ags_syn,
+      eligible_voters = as.numeric(yr_data$eligible_voters),
+      number_voters   = as.numeric(yr_data$number_voters),
+      invalid_votes   = as.numeric(yr_data$invalid_votes),
+      valid_votes     = as.numeric(yr_data$valid_votes)
+    )
+
+    ## Clamp negative invalid_votes to NA (OCR artefacts)
+    result$invalid_votes[result$invalid_votes < 0] <- NA_real_
+
+    for (ocr_col in names(nrw_pre75_party_map)) {
+      std_name <- nrw_pre75_party_map[[ocr_col]]
+      if (ocr_col %in% names(yr_data)) {
+        votes <- as.numeric(yr_data[[ocr_col]])
+        votes[is.na(votes)] <- 0
+      } else {
+        votes <- rep(0, nrow(yr_data))
+      }
+      result[[paste0(std_name, "_n")]] <- votes
+      result[[std_name]] <- votes / result$valid_votes
+    }
+
+    mapped_n_cols <- paste0(unique(nrw_pre75_party_map), "_n")
+    mapped_n_cols <- mapped_n_cols[mapped_n_cols %in% names(result)]
+    result <- result |>
+      mutate(
+        other_n = valid_votes - rowSums(across(all_of(mapped_n_cols)), na.rm = TRUE),
+        other_n = pmax(other_n, 0, na.rm = TRUE),
+        other   = other_n / valid_votes
+      )
+
+    result <- result |>
+      mutate(
+        election_year = as.integer(ocr_yr),
+        state = "05",
+        election_date = as.Date(nrw_pre75_dates[ocr_yr]),
+        turnout = number_voters / eligible_voters,
+        cdu_csu = cdu
+      ) |>
+      select(-ends_with("_n"))
+
+    cat("NRW", ocr_yr, "(Kreis) ...", nrow(result), "Kreise,",
+        round(sum(result$valid_votes, na.rm = TRUE)), "VV\n")
+    nrw_results[[ocr_yr]] <- result
+  }
+}
+
+## ---------- XLSX: 1975-2022 (municipality level) ----------
 for (yr in names(nrw_dates)) {
   cat("NRW", yr, "...")
 

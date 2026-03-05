@@ -205,7 +205,7 @@ area_pop <- df_cw |>
   # Round
   mutate(
     area = round(area, digits = 2),
-    population = round(population, digits = 1)
+    population = round(population * 1000, digits = 0)  # crosswalk has pop in thousands
   ) |>
   ungroup()
 
@@ -224,8 +224,8 @@ ags21 <- read_excel(path = "data/crosswalks/raw/04_KreiseVorjahr.xlsx", sheet = 
   select(ags, election_year, area, population) |>
   # keep only if ags has 5 digits
   filter(nchar(ags) == 5) |>
-  # round area to two digits
-  mutate(area = as.numeric(area))
+  # ensure numeric types
+  mutate(area = as.numeric(area), population = as.numeric(population))
 
 # Create full df ----------------------------------------------------------
 

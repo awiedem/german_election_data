@@ -49,8 +49,8 @@ vote_meta_cols <- c(
 party_cols <- names(df)[which(names(df) == "CDU"):which(names(df) == "V-Partei³")]
 numeric_cols <- c(vote_meta_cols, party_cols)
 
-# Ensure numeric
-df <- df |> mutate(across(all_of(numeric_cols), as.numeric))
+# Ensure numeric (strip German thousands separators used in Saarland raw data)
+df <- df |> mutate(across(all_of(numeric_cols), ~ as.numeric(gsub("\\.", "", as.character(.x)))))
 
 
 # --- 3. Aggregate ballot districts by (ags, BWBez, BA) -----------------------
