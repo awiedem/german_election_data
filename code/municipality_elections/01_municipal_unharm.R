@@ -20504,4 +20504,13 @@ glimpse(kommunalwahlen_merge)
 test <- kommunalwahlen_merge %>%
   filter(ags == "07133080", election_year == "2019")
 
+
+# check number of munis in schleswig holstein per year
+
+kommunalwahlen_merge %>%
+  filter(state == "Schleswig-Holstein") %>%
+  group_by(election_year) %>%
+  summarise(n = n_distinct(ags))
+
+
 ### END
