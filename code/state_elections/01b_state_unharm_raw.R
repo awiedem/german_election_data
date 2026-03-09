@@ -4138,7 +4138,7 @@ nrw_results <- list()
 
 ## ---------- OCR: pre-1975 (Kreis level, from scanned PDFs, see 00_nrw_pre1975_extract.py) ----------
 nrw_pre75_path <- here(raw_path, "Nordrhein-Westfalen", "nrw_pre1975_kreis.csv")
-nrw_pre75_dates <- c("1962" = "1962-07-08", "1966" = "1966-07-10", "1970" = "1970-06-14")
+nrw_pre75_dates <- c("1958" = "1958-07-06", "1962" = "1962-07-08", "1966" = "1966-07-10", "1970" = "1970-06-14")
 
 if (file.exists(nrw_pre75_path)) {
   nrw_pre75 <- read.csv(nrw_pre75_path, colClasses = "character")
@@ -4146,7 +4146,8 @@ if (file.exists(nrw_pre75_path)) {
   nrw_pre75_party_map <- c(
     cdu = "cdu", spd = "spd", fdp = "fdp",
     dkp = "dkp", npd = "npd", zentrum = "zentrum", uap = "uap", fsu = "fsu",
-    dg = "dg", dfu = "dfu", gdp = "gdp", parteilose = "parteilose"
+    dg = "dg", dfu = "dfu", gdp = "gdp", parteilose = "parteilose",
+    bdd = "bdd", dp = "dp", drp = "drp", dsu = "dsu"
   )
 
   for (ocr_yr in unique(nrw_pre75$election_year)) {

@@ -1061,8 +1061,12 @@ def validate_row(row, parties):
     return issues
 
 
-def postprocess_row(row, parties):
-    """Auto-fix common OCR errors."""
+def postprocess_row(row, parties, trust_vv=False):
+    """Auto-fix common OCR errors.
+
+    trust_vv: if True, never replace VV with a smaller party_sum
+              (for Courier text-layer extraction where VV is reliable).
+    """
     vv = row.get("valid_votes", 0) or 0
     party_sum = sum(row.get(p, 0) or 0 for p in parties)
 
@@ -1083,7 +1087,10 @@ def postprocess_row(row, parties):
     new_sum = sum(row.get(p, 0) or 0 for p in parties)
     vv = row.get("valid_votes", 0) or 0
     if new_sum > 0 and abs(vv - new_sum) > max(vv * 0.05, 100):
-        row["valid_votes"] = new_sum
+        if trust_vv and new_sum < vv:
+            pass  # VV from separate page is reliable; parties underread
+        else:
+            row["valid_votes"] = new_sum
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -1275,7 +1282,44 @@ def extract_1962_page_side(words_df, col_defs, parties, n_rows, y_band=20):
         # Apply textlayer fixes
         tokens = [(l, textlayer_fix_numeric(t), w) for l, t, w in tokens]
 
+        # Split compound tokens where "." separates count from percentage
+        # e.g. "588.52,0" → "588" + "52,0"  or  "58,1.14" → "58,1" + "14"
+        # Only split when one side contains "," (German decimal = percentage).
+        split_tokens = []
+        for left, txt, width in tokens:
+            if "." in txt and "," in txt and re.search(r"\d\.\d", txt):
+                parts = txt.split(".", 1)
+                if len(parts) == 2 and parts[0] and parts[1]:
+                    frac = len(parts[0]) / len(txt)
+                    w1 = int(width * frac)
+                    w2 = width - w1
+                    split_tokens.append((left, parts[0], w1))
+                    split_tokens.append((left + w1, parts[1], w2))
+                    continue
+            split_tokens.append((left, txt, width))
+        tokens = split_tokens
+
         merged = merge_thousands(tokens, max_gap=40)
+
+        # Second pass: merge adjacent tokens with 2-digit second and
+        # very small gap (handles Courier text-layer misaligned spaces
+        # like "689"+"84" → "68984" or "177"+"18" → "17718")
+        merged2 = [list(merged[0])] if merged else []
+        for tok in merged[1:]:
+            prev = merged2[-1]
+            actual_gap = tok[0] - (prev[0] + prev[2])
+            prev_digits = re.sub(r"[^\d]", "", prev[1])
+            tok_digits = re.sub(r"[^\d]", "", tok[1])
+            if (prev_digits and 1 <= len(prev_digits) <= 3
+                    and len(tok_digits) == 2 and tok_digits.isdigit()
+                    and -5 <= actual_gap <= 5
+                    and not is_percentage(prev[1]) and not is_percentage(tok[1])
+                    and not is_dash(prev[1]) and not is_dash(tok[1])):
+                prev[1] = prev[1] + tok[1]
+                prev[2] = tok[0] + tok[2] - prev[0]
+            else:
+                merged2.append(list(tok))
+        merged = merged2
 
         # Assign to columns
         col_counts = {}
@@ -1383,7 +1427,7 @@ def extract_year_courier(year):
         if "invalid_votes" not in row and row.get("number_voters") and row.get("valid_votes"):
             row["invalid_votes"] = row["number_voters"] - row["valid_votes"]
 
-        postprocess_row(row, parties)
+        postprocess_row(row, parties, trust_vv=True)
         issues = validate_row(row, parties)
         if issues:
             row["_issues"] = "; ".join(issues)

@@ -124,6 +124,30 @@ normalise_party_cty <- function(x) {
     "einzelbewerber [summe]"        = "einzelbewerber",
     "eb (summe)"                    = "einzelbewerber",
 
+    # BB-specific (aggregated lists)
+    "cdu und andere"                    = "cdu",
+    "gr\u00fcne/b90 und andere"         = "gruene",
+    "gr\u00fcne/b 90 und andere"        = "gruene",
+    "gr\u00fcne/b90"                    = "gruene",
+    "gr\u00fcne/b 90"                   = "gruene",
+    "bvb/freie w\u00e4hler und andere"  = "bvb_fw",
+    "bvb / freie w\u00e4hler und andere" = "bvb_fw",
+    "bvb/50plus"                        = "bvb_fw",
+    "bv-bb (zusammenfassung)"           = "bvb_fw",
+    "bv/bbs/fb"                         = "bv_bbs_fb",
+    "bauern und andere"                 = "bauern",
+    "bauern"                            = "bauern",
+    "weitere w\u00e4hlergruppen"        = "weitere_wg",
+    "weitere listenvereinigungen"       = "weitere_lv",
+    "weitere politische vereinigungen"  = "weitere_pv",
+    "schill"                            = "schill",
+    "b\u00fcrger (zusammenfassung)"     = "buerger",
+    "andere"                            = "andere",
+    "freie sachsen"                     = "freie_sachsen",
+    "bsw"                               = "bsw",
+    "lausitzer allianz"                 = "lausitzer_allianz",
+    "aufbruch deutscher patrioten"      = "aufbruch_dt_patrioten",
+
     # BW-specific
     "wahlervereinigungen"         = "waehlervereinigungen",
     "w\u00e4hlervereinigungen"    = "waehlervereinigungen",
@@ -1031,12 +1055,299 @@ df_sn |> count(election_year) |> print()
 
 
 # =============================================================================
+# BRANDENBURG (BB)
+# =============================================================================
+
+cat("\n===== BRANDENBURG =====\n")
+
+bb_dir <- file.path(raw_dir, "Brandenburg")
+
+#' Parse BB XLSX files (2003-2019)
+#' All share: Stimmart (col 1), AGS (col 2), ballot-district level
+#' Column names used for matching (positions vary slightly between years)
+parse_bb_xlsx <- function(filepath, year) {
+  cat("  Reading BB", year, "...\n")
+
+  # Detect sheet name
+  sheets <- excel_sheets(filepath)
+  data_sheet <- if ("Ergebnis_1" %in% sheets) "Ergebnis_1" else "Ergebnis"
+
+  suppressMessages(
+    raw <- read_excel(filepath, sheet = data_sheet, col_names = FALSE, col_types = "text")
+  )
+
+  # Row 1 = headers
+  headers <- clean_header(unlist(raw[1, ]))
+
+  # Key column positions by name
+  stimmart_col <- which(headers == "Stimmart")[1]
+  ags_col <- which(headers == "AGS")[1]
+  name_col <- which(headers == "Gemeindename")[1]
+  wahlber_col <- which(grepl("Wahlberechtigte insgesamt", headers))[1]
+  waehler_col <- which(grepl("^W.hler$", headers))[1]
+  ungueltig_col <- which(grepl("Ung.ltige Stimmzettel", headers))[1]
+  gueltig_col <- which(grepl("G.ltige Stimmen", headers))[1]
+
+  # Party columns: everything after Gültige Stimmen
+  party_positions <- c()
+  party_names <- c()
+  for (i in (gueltig_col + 1):ncol(raw)) {
+    name <- headers[i]
+    if (is.na(name) || nchar(trimws(name)) == 0) next
+
+    clean_name <- trimws(name)
+
+    # Skip "in Prozent" columns
+    if (grepl("in Prozent", clean_name, ignore.case = TRUE)) next
+    if (grepl("^Stimmen nach", clean_name, ignore.case = TRUE)) next
+
+    # Handle EB (Einzelbewerber) — aggregate all individual EBs
+    if (grepl("^EB\\b|^Einzelbew", clean_name)) {
+      # Check if this is a summary column
+      if (grepl("Zusammenfassung|Einzelbewerbende|^Einzelbewerber$", clean_name)) {
+        party_positions <- c(party_positions, i)
+        party_names <- c(party_names, "einzelbewerber")
+      }
+      # Skip individual EB columns (EB Name)
+      next
+    }
+
+    norm <- normalise_party_cty(clean_name)
+    # Deduplicate: if name already exists, append suffix
+    if (norm %in% party_names) {
+      norm <- paste0(norm, "_2")
+    }
+    party_positions <- c(party_positions, i)
+    party_names <- c(party_names, norm)
+  }
+
+  # Build column map
+  col_map <- c(
+    stimmart = stimmart_col, ags = ags_col, ags_name = name_col,
+    eligible_voters = wahlber_col, number_voters = waehler_col,
+    invalid_votes = ungueltig_col, gueltige_stimmen = gueltig_col
+  )
+  party_map <- setNames(party_positions, party_names)
+  col_map <- c(col_map, party_map)
+
+  # Extract data (row 2 onward) — build df column by column to avoid name mangling
+  n_data <- nrow(raw) - 1L
+  df <- data.frame(row.names = seq_len(n_data), check.names = FALSE)
+  for (k in seq_along(col_map)) {
+    df[[names(col_map)[k]]] <- as.character(raw[[col_map[k]]])[2:nrow(raw)]
+  }
+  cat("    names[1:5]:", paste(names(df)[1:5], collapse=", "), "\n")
+
+  # Filter to Kreistag rows only
+  df <- df[!is.na(df[["stimmart"]]) & df[["stimmart"]] == "Kreistag", ]
+  df[["stimmart"]] <- NULL
+  cat("    after filter names[1:5]:", paste(names(df)[1:5], collapse=", "), "'ags'=", "ags" %in% names(df), "\n")
+
+  # Convert to numeric
+  all_numeric <- c("eligible_voters", "number_voters", "invalid_votes",
+                    "gueltige_stimmen", party_names)
+  for (col_name in all_numeric) {
+    v <- as.character(df[[col_name]])
+    v[v %in% c("x", "-", "")] <- NA_character_
+    df[[col_name]] <- suppressWarnings(as.numeric(v))
+  }
+  cat("    after numeric names[1:5]:", paste(names(df)[1:5], collapse=", "), "'ags'=", "ags" %in% names(df), "\n")
+
+  # Track all-NA parties per AGS
+  na_tracker <- list()
+  for (pc in party_names) {
+    na_tracker[[pc]] <- tapply(df[[pc]], df[["ags"]], function(x) all(is.na(x)))
+  }
+  cat("    after tapply OK\n")
+
+  # Aggregate ballot districts to municipality level
+  group_cols <- c("ags", "ags_name")
+  dt <- as.data.table(df)
+  cat("    dt names[1:5]:", paste(names(dt)[1:5], collapse=", "), "\n")
+  df_muni <- dt[, lapply(.SD, sum, na.rm = TRUE), by = group_cols, .SDcols = all_numeric]
+  df_muni <- as.data.frame(df_muni)
+
+  # Restore NA for no-candidacy parties
+  for (pc in party_names) {
+    no_cand_ags <- names(na_tracker[[pc]])[na_tracker[[pc]] == TRUE]
+    if (length(no_cand_ags) > 0) {
+      df_muni[[pc]][df_muni[["ags"]] %in% no_cand_ags] <- NA_real_
+    }
+  }
+
+  # Add metadata
+  df_muni$election_year <- as.integer(year)
+  df_muni$state <- "12"
+  df_muni$ags <- pad_zero_conditional(df_muni$ags, 7)
+  df_muni$county <- substr(df_muni$ags, 1, 5)
+
+  # Compute vote shares and turnout
+  df_muni$turnout <- ifelse(df_muni$eligible_voters > 0,
+                            df_muni$number_voters / df_muni$eligible_voters, NA_real_)
+  for (pc in party_names) {
+    df_muni[[pc]] <- ifelse(df_muni$gueltige_stimmen > 0,
+                            df_muni[[pc]] / df_muni$gueltige_stimmen, NA_real_)
+  }
+  names(df_muni)[names(df_muni) == "gueltige_stimmen"] <- "valid_votes"
+
+  cat("    ->", nrow(df_muni), "municipalities\n")
+  as_tibble(df_muni)
+}
+
+#' Parse BB 2024 XLSX (different format: ARS instead of AGS, aggregated party section)
+parse_bb_2024 <- function(filepath) {
+  cat("  Reading BB 2024...\n")
+
+  suppressMessages(
+    raw <- read_excel(filepath, sheet = "Brandenburg_KW_W",
+                      col_names = FALSE, col_types = "text")
+  )
+
+  # Row 1 = headers
+  headers <- clean_header(unlist(raw[1, ]))
+
+  # Key columns
+  ars_col <- which(headers == "ARS")[1]
+  name_col <- which(headers == "Gemeindename")[1]
+  wahlber_col <- which(headers == "Wahlberechtigte insgesamt")[1]
+  waehler_col <- which(grepl("^W.hlende$", headers))[1]
+  ungueltig_col <- which(headers == "Ungültige Stimmzettel")[1] # nolint
+  if (is.na(ungueltig_col)) ungueltig_col <- which(grepl("Ung.ltige Stimmzettel$", headers))[1]
+
+  # "Gültige Stimmen" — first occurrence is the absolute count
+  gueltig_col <- which(grepl("G.ltige Stimmen$", headers))[1]
+
+  # "Stimmen nach aggregierten Wahlvorschlägen" marker at col 29
+  # Aggregated party cols: 30-63 (every other = votes, skipping "in Prozent")
+  agg_marker <- which(grepl("aggregierten", headers))[1]
+  # Individual marker
+  indiv_marker <- which(grepl("Stimmen nach Wahlvorschl.gen$", headers))[1]
+
+  # Party cols: between agg_marker+1 and indiv_marker-1, skip "in Prozent"
+  party_positions <- c()
+  party_names <- c()
+  end_col <- if (!is.na(indiv_marker)) indiv_marker - 1 else ncol(raw)
+  for (i in (agg_marker + 1):end_col) {
+    name <- headers[i]
+    if (is.na(name) || nchar(trimws(name)) == 0) next
+    if (grepl("in Prozent", name, ignore.case = TRUE)) next
+
+    clean_name <- trimws(name)
+    if (grepl("Einzelbewerbende|^Einzelbewerber", clean_name)) {
+      party_positions <- c(party_positions, i)
+      party_names <- c(party_names, "einzelbewerber")
+    } else {
+      party_positions <- c(party_positions, i)
+      party_names <- c(party_names, normalise_party_cty(clean_name))
+    }
+  }
+
+  # Build column map
+  col_map <- c(
+    ars = ars_col, ags_name = name_col,
+    eligible_voters = wahlber_col, number_voters = waehler_col,
+    invalid_votes = ungueltig_col, gueltige_stimmen = gueltig_col
+  )
+  party_map <- setNames(party_positions, party_names)
+  col_map <- c(col_map, party_map)
+
+  # Extract data — build df column by column to avoid name mangling
+  n_data <- nrow(raw) - 1L
+  df <- data.frame(row.names = seq_len(n_data), check.names = FALSE)
+  for (k in seq_along(col_map)) {
+    df[[names(col_map)[k]]] <- as.character(raw[[col_map[k]]])[2:nrow(raw)]
+  }
+
+  # Construct AGS from first 8 chars of ARS
+  df$ags <- substr(df[["ars"]], 1, 8)
+  df$ars <- NULL
+
+  # Convert to numeric
+  all_numeric <- c("eligible_voters", "number_voters", "invalid_votes",
+                    "gueltige_stimmen", party_names)
+  for (col_name in all_numeric) {
+    v <- as.character(df[[col_name]])
+    v[v %in% c("x", "-", "")] <- NA_character_
+    df[[col_name]] <- suppressWarnings(as.numeric(v))
+  }
+
+  # Track all-NA parties per AGS
+  na_tracker <- list()
+  for (pc in party_names) {
+    na_tracker[[pc]] <- tapply(df[[pc]], df$ags, function(x) all(is.na(x)))
+  }
+
+  # Aggregate ballot districts to municipality level
+  group_cols <- c("ags", "ags_name")
+  dt <- as.data.table(df)
+  df_muni <- dt[, lapply(.SD, sum, na.rm = TRUE), by = group_cols, .SDcols = all_numeric]
+  df_muni <- as.data.frame(df_muni)
+
+  # Restore NA for no-candidacy parties
+  for (pc in party_names) {
+    no_cand_ags <- names(na_tracker[[pc]])[na_tracker[[pc]] == TRUE]
+    if (length(no_cand_ags) > 0) {
+      df_muni[[pc]][df_muni$ags %in% no_cand_ags] <- NA_real_
+    }
+  }
+
+  # Add metadata
+  df_muni$election_year <- 2024L
+  df_muni$state <- "12"
+  df_muni$ags <- pad_zero_conditional(df_muni$ags, 7)
+  df_muni$county <- substr(df_muni$ags, 1, 5)
+
+  # Compute vote shares and turnout
+  df_muni$turnout <- ifelse(df_muni$eligible_voters > 0,
+                            df_muni$number_voters / df_muni$eligible_voters, NA_real_)
+  for (pc in party_names) {
+    df_muni[[pc]] <- ifelse(df_muni$gueltige_stimmen > 0,
+                            df_muni[[pc]] / df_muni$gueltige_stimmen, NA_real_)
+  }
+  names(df_muni)[names(df_muni) == "gueltige_stimmen"] <- "valid_votes"
+
+  cat("    ->", nrow(df_muni), "municipalities\n")
+  as_tibble(df_muni)
+}
+
+# Process BB years
+bb_results <- list()
+
+bb_xlsx_files <- list(
+  list(year = 2003, file = "Brandenburg_2003_KTW.xlsx"),
+  list(year = 2008, file = "Brandenburg_2008_KTW.xlsx"),
+  list(year = 2014, file = "Brandenburg_2014_KTW.xlsx"),
+  list(year = 2019, file = "Brandenburg_2019_KTW.xlsx")
+)
+for (f in bb_xlsx_files) {
+  bb_results[[as.character(f$year)]] <- parse_bb_xlsx(
+    file.path(bb_dir, f$file), f$year
+  )
+}
+bb_results[["2024"]] <- parse_bb_2024(
+  file.path(bb_dir, "Brandenburg_2024_KTW.xlsx")
+)
+
+df_bb <- bind_rows(bb_results)
+df_bb <- df_bb |> mutate(ags = pad_zero_conditional(ags, 7))
+
+# Filter to valid municipality rows
+n_before <- nrow(df_bb)
+df_bb <- df_bb |> filter(nchar(ags) == 8 & eligible_voters > 0)
+cat("  Removed", n_before - nrow(df_bb), "non-municipality rows\n")
+
+cat("BB total:", nrow(df_bb), "rows x", ncol(df_bb), "cols\n")
+cat("BB years:", paste(sort(unique(df_bb$election_year)), collapse = ", "), "\n")
+df_bb |> count(election_year) |> print()
+
+
+# =============================================================================
 # Combine all states and write output
 # =============================================================================
 
 cat("\n===== COMBINING =====\n")
 
-df_all <- bind_rows(df_st, df_th, df_mv, df_sn)
+df_all <- bind_rows(df_st, df_th, df_mv, df_sn, df_bb)
 
 # Ensure AGS is padded
 df_all <- df_all |>

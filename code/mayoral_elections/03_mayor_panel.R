@@ -1,0 +1,693 @@
+### Build within-mayor panel from GERDA mayoral elections
+# Vincent Heddesheimer
+# March 2026
+#
+# Creates a mayor-level panel with unique person IDs, enabling mayor fixed
+# effects (person FE) estimation.
+#
+# Person identification:
+# - Bayern: "Tag des ersten Amtsantritt" groups consecutive terms
+# - Named states (NRW, RLP, NI, SL, SH): name-key matching
+# - Sachsen: partial name matching (~49% coverage)
+#
+# Outputs:
+# - mayor_panel.rds       — one row per person-election
+# - mayor_panel_annual.rds — one row per person-year (forward-filled)
+
+rm(list = ls())
+gc()
+
+# Load libraries
+pacman::p_load(
+  tidyverse,
+  readxl,
+  data.table,
+  lubridate,
+  conflicted,
+  here
+)
+
+conflict_prefer("filter", "dplyr")
+conflict_prefer("select", "dplyr")
+conflict_prefer("year", "lubridate")
+
+setwd(here::here())
+options(scipen = 999)
+
+# Helper function to pad AGS codes
+pad_zero_conditional <- function(x, n, pad = "0") {
+  x <- as.character(x)
+  x[nchar(x) < n] <- paste0(pad, x[nchar(x) < n])
+  return(x)
+}
+
+
+# ============================================================================
+# 1. LOAD DATA
+# ============================================================================
+
+cat("\n=== Loading data ===\n")
+
+cand <- read_rds("data/mayoral_elections/final/mayoral_candidates.rds") |>
+  as_tibble()
+cat("Loaded mayoral_candidates:", nrow(cand), "rows\n")
+
+# Filter to municipal mayor elections only
+valid_types <- c("Bürgermeisterwahl", "Oberbürgermeisterwahl")
+cand <- cand |> filter(election_type %in% valid_types)
+cat("After filtering to BM/OBM:", nrow(cand), "rows\n")
+
+
+# ============================================================================
+# 2. BAYERN — Person IDs from "Tag des ersten Amtsantritt"
+# ============================================================================
+
+cat("\n=== Processing Bayern: person IDs from Amtsantritt ===\n")
+
+bayern_raw <- read_excel(
+  "data/mayoral_elections/raw/bayern/20251114_Wahlen_seit_1945.xlsx",
+  sheet = "20251114_bewerberRBZ1-7"
+) |> as.data.table()
+
+# Build AGS (matching 01_mayoral_unharm.R exactly)
+bayern <- bayern_raw |>
+  filter(!is.na(Gemeindeschlüssel), !is.na(`Tag der Wahl`)) |>
+  mutate(
+    gemeindeschluessel_padded = str_pad(as.character(Gemeindeschlüssel),
+                                         width = 6, side = "left", pad = "0"),
+    ags = paste0("09", gemeindeschluessel_padded),
+    election_date = as.Date(`Tag der Wahl`),
+    election_year = year(election_date),
+    wahlart = as.character(Wahlart),
+    amtsantritt = as.Date(`Tag des ersten Amtsantritt`),
+    winner_party = `Wahlvorschlag Wahlgewinner`,
+    winner_votes = as.numeric(`gültige Stimmen Wahlgewinner`),
+    valid_votes = as.numeric(`Gültige Stimmen`),
+    eligible_voters = as.numeric(Stimmberechtigte),
+    number_voters = as.numeric(Wähler)
+  ) |>
+  filter(nchar(ags) == 8)
+
+# Exclude "ungültig" rows
+bayern <- bayern |>
+  filter(is.na(wahlart) | !grepl("ungültig", wahlart, ignore.case = TRUE))
+
+cat("Bayern after excluding ungültig:", nrow(bayern), "rows\n")
+
+# Build a row-level index to retrieve Bewerber columns later
+# First, replicate the same filter pipeline on raw data to get aligned rows
+bayern_filtered_raw <- bayern_raw |>
+  filter(!is.na(Gemeindeschlüssel), !is.na(`Tag der Wahl`)) |>
+  mutate(
+    gemeindeschluessel_padded = str_pad(as.character(Gemeindeschlüssel),
+                                         width = 6, side = "left", pad = "0"),
+    ags_tmp = paste0("09", gemeindeschluessel_padded),
+    wahlart_tmp = as.character(Wahlart)
+  ) |>
+  filter(nchar(ags_tmp) == 8) |>
+  filter(is.na(wahlart_tmp) | !grepl("ungültig", wahlart_tmp, ignore.case = TRUE))
+
+# Count candidates per row (winner + non-NA Bewerber 2-14)
+bewerber_vote_cols <- paste0("gültige Stimmen Bewerber ", 2:14)
+existing_bv_cols <- bewerber_vote_cols[bewerber_vote_cols %in% names(bayern_filtered_raw)]
+
+bayern$runner_up_votes_clean <- as.numeric(bayern_filtered_raw$`gültige Stimmen Bewerber 2`)
+bayern$n_candidates_raw <- 1L + rowSums(!is.na(
+  as.data.frame(bayern_filtered_raw)[, existing_bv_cols, drop = FALSE]
+))
+
+# Deduplicate election cycles: keep Stichwahl where available
+# Group elections in the same ags within 60 days
+bayern <- bayern |>
+  arrange(ags, election_date) |>
+  group_by(ags) |>
+  mutate(
+    date_gap = as.numeric(election_date - lag(election_date, default = election_date[1])),
+    cycle = cumsum(date_gap > 60)
+  ) |>
+  ungroup()
+
+# For each cycle: if Stichwahl exists, keep it; else keep the first round
+# But carry forward n_candidates from first round
+bayern_ncand <- bayern |>
+  group_by(ags, cycle) |>
+  summarise(
+    n_candidates_first = max(n_candidates_raw[wahlart != "Stichwahl" |
+                                                is.na(wahlart)],
+                              na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  mutate(n_candidates_first = ifelse(is.infinite(n_candidates_first),
+                                      NA_integer_,
+                                      as.integer(n_candidates_first)))
+
+bayern <- bayern |>
+  group_by(ags, cycle) |>
+  mutate(
+    has_stichwahl = any(wahlart == "Stichwahl", na.rm = TRUE),
+    is_final = case_when(
+      has_stichwahl & wahlart == "Stichwahl" ~ TRUE,
+      has_stichwahl & (wahlart != "Stichwahl" | is.na(wahlart)) ~ FALSE,
+      !has_stichwahl ~ TRUE
+    )
+  ) |>
+  ungroup() |>
+  filter(is_final) |>
+  left_join(bayern_ncand, by = c("ags", "cycle"))
+
+# Compute voteshare and margin
+bayern <- bayern |>
+  mutate(
+    winner_voteshare = ifelse(!is.na(valid_votes) & valid_votes > 0 &
+                                !is.na(winner_votes),
+                              winner_votes / valid_votes, NA_real_),
+    runner_up_voteshare = ifelse(!is.na(valid_votes) & valid_votes > 0 &
+                                   !is.na(runner_up_votes_clean),
+                                 runner_up_votes_clean / valid_votes, NA_real_),
+    winning_margin = winner_voteshare - coalesce(runner_up_voteshare, 0),
+    n_candidates = coalesce(n_candidates_first, n_candidates_raw)
+  )
+
+cat("Bayern after Stichwahl dedup:", nrow(bayern), "rows\n")
+
+# Assign person_id from Amtsantritt
+# Same (ags, amtsantritt) = same person
+bayern_persons <- bayern |>
+  filter(!is.na(amtsantritt)) |>
+  distinct(ags, amtsantritt) |>
+  arrange(ags, amtsantritt) |>
+  group_by(ags) |>
+  mutate(person_seq = row_number()) |>
+  ungroup() |>
+  mutate(person_id = sprintf("p_09_%05d", row_number()))
+
+bayern_panel <- bayern |>
+  left_join(bayern_persons, by = c("ags", "amtsantritt")) |>
+  arrange(ags, election_date) |>
+  mutate(
+    state = "09",
+    term_start_date = amtsantritt
+  ) |>
+  select(
+    person_id, ags, state,
+    election_year, election_date,
+    winner_party, winner_voteshare, winning_margin,
+    n_candidates, term_start_date
+  )
+
+cat("Bayern person-elections:", nrow(bayern_panel), "\n")
+cat("Bayern unique persons:", n_distinct(bayern_panel$person_id, na.rm = TRUE), "\n")
+cat("Bayern rows without person_id:", sum(is.na(bayern_panel$person_id)), "\n")
+
+
+# ============================================================================
+# 3. NAMED STATES — Person IDs from candidate names
+# ============================================================================
+
+cat("\n=== Processing named states: person IDs from names ===\n")
+
+# States with candidate names (excluding Bayern)
+named_states <- c("01", "03", "05", "07", "10", "14")
+
+winners_named <- cand |>
+  filter(state %in% named_states, is_winner == TRUE)
+
+cat("Winners in named states:", nrow(winners_named), "\n")
+
+# Compute winning margin from candidate data
+# Step 1: Get winner voteshare per election
+winner_vs_data <- cand |>
+  filter(state %in% named_states, is_winner == TRUE) |>
+  mutate(
+    winner_vs = case_when(
+      has_stichwahl & !is.na(candidate_voteshare_sw) ~ candidate_voteshare_sw,
+      TRUE ~ candidate_voteshare_hw
+    )
+  ) |>
+  select(ags, election_date, winner_vs, n_candidates_hw) |>
+  distinct(ags, election_date, .keep_all = TRUE)
+
+# Step 2: Get runner-up voteshare
+# For Stichwahl elections: runner-up is rank_sw == 2
+# For non-Stichwahl: runner-up is rank_hw == 2
+runner_up_sw <- cand |>
+  filter(state %in% named_states, has_stichwahl == TRUE,
+         !is.na(candidate_rank_sw), candidate_rank_sw == 2) |>
+  select(ags, election_date, runner_up_vs = candidate_voteshare_sw) |>
+  distinct(ags, election_date, .keep_all = TRUE)
+
+runner_up_hw <- cand |>
+  filter(state %in% named_states,
+         (has_stichwahl == FALSE | is.na(has_stichwahl)),
+         candidate_rank_hw == 2) |>
+  select(ags, election_date, runner_up_vs = candidate_voteshare_hw) |>
+  distinct(ags, election_date, .keep_all = TRUE)
+
+runner_up_data <- bind_rows(runner_up_sw, runner_up_hw) |>
+  distinct(ags, election_date, .keep_all = TRUE)
+
+# Combine
+margin_data <- winner_vs_data |>
+  left_join(runner_up_data, by = c("ags", "election_date")) |>
+  mutate(
+    winning_margin = pmax(winner_vs - coalesce(runner_up_vs, 0), 0),
+    n_candidates = as.integer(n_candidates_hw)
+  ) |>
+  select(ags, election_date, winning_margin, n_candidates)
+
+# Join margin and n_candidates to winners
+winners_named <- winners_named |>
+  left_join(
+    margin_data |> select(ags, election_date, winning_margin, n_candidates),
+    by = c("ags", "election_date")
+  ) |>
+  mutate(
+    # Effective winner voteshare (final round)
+    winner_voteshare = case_when(
+      has_stichwahl & !is.na(candidate_voteshare_sw) ~ candidate_voteshare_sw,
+      TRUE ~ candidate_voteshare_hw
+    )
+  )
+
+# Build name key for person matching
+winners_named <- winners_named |>
+  mutate(
+    name_key = case_when(
+      !is.na(candidate_last_name) & !is.na(candidate_first_name) ~
+        paste0(tolower(candidate_last_name), "_",
+               tolower(substr(candidate_first_name, 1, 1)), "_", state),
+      !is.na(candidate_last_name) ~
+        paste0(tolower(candidate_last_name), "__", state),
+      TRUE ~ NA_character_
+    )
+  )
+
+cat("Winners with name_key:", sum(!is.na(winners_named$name_key)), "\n")
+cat("Winners without name_key:", sum(is.na(winners_named$name_key)), "\n")
+
+# Assign person_id per (name_key, ags) combination
+named_persons <- winners_named |>
+  filter(!is.na(name_key)) |>
+  distinct(name_key, ags) |>
+  arrange(ags, name_key) |>
+  mutate(person_id = sprintf("p_%s_%05d",
+                              substr(ags, 1, 2),
+                              row_number()))
+
+# But we need state-specific numbering
+named_persons <- winners_named |>
+  filter(!is.na(name_key)) |>
+  distinct(name_key, ags, state) |>
+  arrange(state, ags, name_key) |>
+  group_by(state) |>
+  mutate(person_id = sprintf("p_%s_%05d", state[1], row_number())) |>
+  ungroup()
+
+winners_named <- winners_named |>
+  left_join(named_persons |> select(name_key, ags, person_id),
+            by = c("name_key", "ags"))
+
+# Build panel rows for named states
+named_panel <- winners_named |>
+  select(
+    person_id, ags, state, election_year, election_date,
+    winner_party = candidate_party,
+    winner_voteshare, winning_margin, n_candidates
+  ) |>
+  mutate(term_start_date = NA_Date_)
+
+cat("\nNamed states person-elections:", nrow(named_panel), "\n")
+cat("Named states unique persons:", n_distinct(named_panel$person_id, na.rm = TRUE), "\n")
+
+# By state:
+for (s in sort(unique(named_panel$state))) {
+  sub <- named_panel |> filter(state == s)
+  cat(sprintf("  State %s: %d elections, %d persons\n",
+              s, nrow(sub), n_distinct(sub$person_id, na.rm = TRUE)))
+}
+
+
+# ============================================================================
+# 4. COMBINE ALL STATES
+# ============================================================================
+
+cat("\n=== Combining all states ===\n")
+
+panel <- bind_rows(bayern_panel, named_panel) |>
+  arrange(state, ags, election_date)
+
+cat("Combined panel:", nrow(panel), "rows\n")
+cat("Unique persons:", n_distinct(panel$person_id, na.rm = TRUE), "\n")
+cat("Rows without person_id:", sum(is.na(panel$person_id)), "\n")
+
+
+# ============================================================================
+# 5. BUILD PANEL COLUMNS
+# ============================================================================
+
+cat("\n=== Building panel columns ===\n")
+
+# Remove rows without person_id and deduplicate
+panel <- panel |>
+  filter(!is.na(person_id)) |>
+  distinct(person_id, ags, election_date, .keep_all = TRUE)
+
+cat("After dedup:", nrow(panel), "rows\n")
+
+# Term number within each person in each municipality
+panel <- panel |>
+  arrange(person_id, ags, election_date) |>
+  group_by(person_id, ags) |>
+  mutate(
+    term_number = row_number(),
+    tenure_start = min(election_year),
+    years_in_office = election_year - tenure_start
+  ) |>
+  ungroup()
+
+# is_incumbent: term_number >= 2
+panel <- panel |>
+  mutate(is_incumbent = as.integer(term_number >= 2))
+
+# next_runs_again: does this person win the NEXT election in this ags?
+panel <- panel |>
+  arrange(ags, election_date) |>
+  group_by(ags) |>
+  mutate(
+    next_person_id = lead(person_id),
+    next_runs_again = case_when(
+      is.na(next_person_id) ~ NA_integer_,
+      next_person_id == person_id ~ 1L,
+      TRUE ~ 0L
+    )
+  ) |>
+  ungroup() |>
+  select(-next_person_id)
+
+# For Bayern: term_start_date is amtsantritt; for others: election_date of first term
+panel <- panel |>
+  group_by(person_id, ags) |>
+  mutate(
+    term_start_date = case_when(
+      !is.na(term_start_date) ~ term_start_date,  # Bayern: already set
+      TRUE ~ min(election_date)  # Others: first election date
+    )
+  ) |>
+  ungroup()
+
+
+# ============================================================================
+# 6. VALIDATE PERSON IDS
+# ============================================================================
+
+cat("\n=== Validation ===\n")
+
+# Check for implausibly long tenures (>30 years)
+long_tenures <- panel |>
+  group_by(person_id) |>
+  summarise(
+    tenure_span = max(election_year) - min(election_year),
+    n_terms = n(),
+    state = first(state),
+    ags = first(ags),
+    .groups = "drop"
+  ) |>
+  filter(tenure_span > 30)
+
+if (nrow(long_tenures) > 0) {
+  cat("WARNING: Implausibly long tenures (>30 years):", nrow(long_tenures), "\n")
+  print(long_tenures |> head(20))
+} else {
+  cat("No implausibly long tenures (>30 years) — OK\n")
+}
+
+# Check no person spans multiple states
+multi_state <- panel |>
+  group_by(person_id) |>
+  summarise(n_states = n_distinct(state), .groups = "drop") |>
+  filter(n_states > 1)
+
+if (nrow(multi_state) > 0) {
+  cat("WARNING: person_id spanning multiple states:", nrow(multi_state), "\n")
+} else {
+  cat("No person_id spans multiple states — OK\n")
+}
+
+
+# ============================================================================
+# 7. HARMONIZE TO 2021 BOUNDARIES
+# ============================================================================
+
+cat("\n=== Harmonizing to 2021 boundaries ===\n")
+
+# Crosswalk AGS stored as integers (leading zeros dropped). Pad to 8 digits
+# to match the 8-digit string AGS used in the mayoral pipeline.
+# For 1:N splits, keep only the dominant successor (highest pop_cw) so we
+# don't duplicate person-election rows.
+cw <- fread("data/crosswalks/final/ags_crosswalks.csv") |>
+  as_tibble() |>
+  mutate(
+    ags = str_pad(as.character(ags), width = 8, side = "left", pad = "0"),
+    ags_21 = str_pad(as.character(ags_21), width = 8, side = "left", pad = "0")
+  ) |>
+  group_by(ags, year) |>
+  slice_max(pop_cw, n = 1, with_ties = FALSE) |>
+  ungroup()
+
+# Assign crosswalk lookup year
+panel <- panel |>
+  mutate(
+    cw_year = case_when(
+      election_year >= 2021 ~ NA_integer_,
+      election_year >= 1990 ~ as.integer(election_year),
+      election_year < 1990  ~ 1990L
+    )
+  )
+
+# Post-2020: identity mapping
+panel_post2020 <- panel |>
+  filter(is.na(cw_year)) |>
+  mutate(ags_21 = ags)
+
+# Pre-2021: crosswalk lookup
+panel_pre2021 <- panel |>
+  filter(!is.na(cw_year)) |>
+  left_join(
+    cw |> select(ags, year, ags_21),
+    by = c("ags", "cw_year" = "year")
+  )
+
+# Handle unmatched: try year-1
+unmatched <- panel_pre2021 |> filter(is.na(ags_21))
+if (nrow(unmatched) > 0) {
+  matched <- panel_pre2021 |> filter(!is.na(ags_21))
+  unmatched_try <- unmatched |>
+    select(-ags_21) |>
+    mutate(cw_year_try = pmax(cw_year - 1L, 1990L)) |>
+    left_join(
+      cw |> select(ags, year, ags_21),
+      by = c("ags", "cw_year_try" = "year")
+    ) |>
+    select(-cw_year_try)
+
+  # Try year+1 for still unmatched
+  still_unmatched <- unmatched_try |> filter(is.na(ags_21))
+  if (nrow(still_unmatched) > 0) {
+    fixed_minus1 <- unmatched_try |> filter(!is.na(ags_21))
+    still_unmatched_try <- still_unmatched |>
+      select(-ags_21) |>
+      mutate(cw_year_try = pmin(cw_year + 1L, 2020L)) |>
+      left_join(
+        cw |> select(ags, year, ags_21),
+        by = c("ags", "cw_year_try" = "year")
+      ) |>
+      select(-cw_year_try)
+    panel_pre2021 <- bind_rows(matched, fixed_minus1, still_unmatched_try)
+  } else {
+    panel_pre2021 <- bind_rows(matched, unmatched_try)
+  }
+} # else all matched
+
+panel <- bind_rows(panel_pre2021, panel_post2020) |>
+  select(-cw_year)
+
+n_no_ags21 <- sum(is.na(panel$ags_21))
+cat("Rows without ags_21:", n_no_ags21, "\n")
+if (n_no_ags21 > 0) {
+  cat("Dropping", n_no_ags21, "rows without ags_21 mapping\n")
+  panel <- panel |> filter(!is.na(ags_21))
+}
+
+
+# ============================================================================
+# 8. WITHIN-MAYOR STATISTICS
+# ============================================================================
+
+cat("\n=== Computing within-mayor statistics ===\n")
+
+person_stats <- panel |>
+  group_by(person_id) |>
+  summarise(
+    n_terms = n(),
+    total_tenure_years = max(election_year) - min(election_year),
+    has_margin_variation = n_distinct(round(winning_margin, 4), na.rm = TRUE) > 1,
+    .groups = "drop"
+  )
+
+panel <- panel |>
+  left_join(person_stats, by = "person_id")
+
+
+# ============================================================================
+# 9. FINAL FORMATTING
+# ============================================================================
+
+panel <- panel |>
+  select(
+    person_id, ags, ags_21, state, election_year, election_date,
+    term_number, winner_party, winner_voteshare, winning_margin,
+    n_candidates, is_incumbent, next_runs_again,
+    tenure_start, years_in_office, term_start_date,
+    n_terms, total_tenure_years, has_margin_variation
+  ) |>
+  arrange(state, ags, election_date, person_id)
+
+
+# ============================================================================
+# 10. BUILD ANNUAL PANEL
+# ============================================================================
+
+cat("\n=== Building annual panel ===\n")
+
+# For each person-election, expand to all years of their term
+# Term runs from election_year to next_election_year - 1 (or last observed year)
+
+# Find next election year per ags (from ANY mayor, not just this person)
+all_elections_by_ags <- panel |>
+  select(ags, election_year) |>
+  distinct() |>
+  arrange(ags, election_year)
+
+panel <- panel |>
+  arrange(ags, election_date) |>
+  group_by(ags) |>
+  mutate(next_election_year = lead(election_year)) |>
+  ungroup()
+
+# For the last observed election, extend to a reasonable endpoint
+# Use 2025 as the maximum year
+max_year <- 2025L
+
+panel_annual <- panel |>
+  mutate(
+    term_end_year = case_when(
+      !is.na(next_election_year) ~ next_election_year - 1L,
+      TRUE ~ max_year
+    )
+  ) |>
+  # Expand: one row per year in the term
+  rowwise() |>
+  mutate(year = list(seq(election_year, term_end_year))) |>
+  unnest(year) |>
+  ungroup() |>
+  mutate(
+    years_since_election = year - election_year,
+    years_to_next_election = case_when(
+      !is.na(next_election_year) ~ next_election_year - year,
+      TRUE ~ NA_integer_
+    ),
+    term_length = case_when(
+      !is.na(next_election_year) ~ next_election_year - election_year,
+      TRUE ~ NA_integer_
+    ),
+    electoral_cycle_pos = case_when(
+      !is.na(term_length) & term_length > 0 ~
+        years_since_election / term_length,
+      TRUE ~ NA_real_
+    )
+  )
+
+# Select final columns for annual panel
+panel_annual <- panel_annual |>
+  select(
+    ags, ags_21, year, person_id, state, election_year, election_date,
+    term_number, winner_party, winner_voteshare, winning_margin,
+    n_candidates, is_incumbent, next_runs_again,
+    years_since_election, years_to_next_election,
+    electoral_cycle_pos, tenure_start, term_start_date
+  ) |>
+  arrange(ags, year, person_id)
+
+cat("Annual panel:", nrow(panel_annual), "rows\n")
+cat("Year range:", min(panel_annual$year), "-", max(panel_annual$year), "\n")
+
+
+# ============================================================================
+# 11. SUMMARY
+# ============================================================================
+
+cat("\n=== Mayor Panel Summary ===\n")
+cat("Total person-election observations:", nrow(panel), "\n")
+cat("Unique mayors (person_id):", n_distinct(panel$person_id), "\n\n")
+
+for (s in sort(unique(panel$state))) {
+  sub <- panel |> filter(state == s)
+  n_mayors <- n_distinct(sub$person_id)
+  n_multi <- sub |>
+    group_by(person_id) |>
+    filter(n() >= 2) |>
+    ungroup() |>
+    pull(person_id) |>
+    n_distinct()
+  state_name <- case_when(
+    s == "01" ~ "Schleswig-Holstein",
+    s == "03" ~ "Niedersachsen",
+    s == "05" ~ "NRW",
+    s == "07" ~ "Rheinland-Pfalz",
+    s == "09" ~ "Bayern",
+    s == "10" ~ "Saarland",
+    s == "14" ~ "Sachsen",
+    TRUE ~ s
+  )
+  cat(sprintf("  %s (%s): %d mayors (%d with 2+ terms)\n",
+              state_name, s, n_mayors, n_multi))
+}
+
+multi_term <- panel |>
+  group_by(person_id) |>
+  filter(n() >= 2) |>
+  ungroup()
+multi3 <- panel |>
+  group_by(person_id) |>
+  filter(n() >= 3) |>
+  ungroup()
+
+cat(sprintf("\nMayors with 2+ terms: %d (%.1f%%)\n",
+            n_distinct(multi_term$person_id),
+            100 * n_distinct(multi_term$person_id) / n_distinct(panel$person_id)))
+cat(sprintf("Mayors with 3+ terms: %d (%.1f%%)\n",
+            n_distinct(multi3$person_id),
+            100 * n_distinct(multi3$person_id) / n_distinct(panel$person_id)))
+cat(sprintf("Mean terms per mayor: %.2f\n",
+            nrow(panel) / n_distinct(panel$person_id)))
+
+cat(sprintf("\nAnnual panel: %d rows, %d unique ags, years %d-%d\n",
+            nrow(panel_annual), n_distinct(panel_annual$ags),
+            min(panel_annual$year), max(panel_annual$year)))
+
+
+# ============================================================================
+# 12. SAVE
+# ============================================================================
+
+cat("\n=== Saving ===\n")
+
+write_rds(panel, "data/mayoral_elections/final/mayor_panel.rds")
+fwrite(panel, "data/mayoral_elections/final/mayor_panel.csv")
+cat("Saved mayor_panel.{rds,csv}\n")
+
+write_rds(panel_annual, "data/mayoral_elections/final/mayor_panel_annual.rds")
+fwrite(panel_annual, "data/mayoral_elections/final/mayor_panel_annual.csv")
+cat("Saved mayor_panel_annual.{rds,csv}\n")
+
+cat("\n=== Done ===\n")
