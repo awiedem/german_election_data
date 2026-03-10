@@ -373,7 +373,7 @@ df_harm <- df_harm |>
 df_harm <- df_harm %>%
   mutate(
     total_vote_share = rowSums(
-      select(., cdu:other, -cdu_csu),
+      across(any_of(c("cdu", "csu", "spd", "gruene", "fdp", "linke_pds", "afd", "other"))),
       na.rm = TRUE
     ),
     total_vote_share = round(total_vote_share, 8),
