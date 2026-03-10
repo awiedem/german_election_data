@@ -285,7 +285,7 @@ by23_data <- by23_data |>
     across(all_of(by23_partylist), ~ .x / valid_votes)
   ) |>
   mutate(
-    other = 1 - rowSums(across(setdiff(by23_partylist, c("cdu", "csu"))), na.rm = TRUE)
+    other = 1 - rowSums(across(any_of(c("cdu_csu", "spd", "grune", "fdp", "linke_pds", "afd"))), na.rm = TRUE)
   ) |>
   ### Final Selecting (and Arranging) of Variables
   select(
@@ -508,7 +508,7 @@ he23_data <- he23_data |>
     across(all_of(he23_partylist), ~ .x / valid_votes)
   ) |>
   mutate(
-    other = 1 - rowSums(across(setdiff(he23_partylist, c("cdu", "csu"))), na.rm = TRUE)
+    other = 1 - rowSums(across(any_of(c("cdu_csu", "spd", "grune", "fdp", "linke_pds", "afd"))), na.rm = TRUE)
   ) |>
   ### Final Selecting (and Arranging) of Variables
   select(
@@ -703,7 +703,7 @@ ni22_data <- ni22_data |>
     across(all_of(ni22_partylist), ~ .x / valid_votes)
   ) |>
   mutate(
-    other = 1 - rowSums(across(setdiff(ni22_partylist, c("cdu", "csu"))), na.rm = TRUE)
+    other = 1 - rowSums(across(any_of(c("cdu_csu", "spd", "grune", "fdp", "linke_pds", "afd"))), na.rm = TRUE)
   ) |>
   ### Final Selecting (and Arranging) of Variables
   select(
@@ -819,7 +819,7 @@ sl22_data <- sl22_data |>
     across(all_of(sl22_partylist), ~ .x / valid_votes)
   ) |>
   mutate(
-    other = 1 - rowSums(across(setdiff(sl22_partylist, c("cdu", "csu"))), na.rm = TRUE)
+    other = 1 - rowSums(across(any_of(c("cdu_csu", "spd", "grune", "fdp", "linke_pds", "afd"))), na.rm = TRUE)
   ) |>
   select(
     ags,
@@ -1113,7 +1113,7 @@ sh22_data <- sh22_data |>
     across(all_of(sh22_partylist), ~ .x / valid_votes)
   ) |>
   mutate(
-    other = 1 - rowSums(across(setdiff(sh22_partylist, c("cdu", "csu"))), na.rm = TRUE)
+    other = 1 - rowSums(across(any_of(c("cdu_csu", "spd", "grune", "fdp", "linke_pds", "afd"))), na.rm = TRUE)
   ) |>
   select(
     ags,
@@ -1236,7 +1236,7 @@ nrw22_data <- nrw22_data |>
     across(all_of(nrw22_partylist), ~ .x / valid_votes)
   ) |>
   mutate(
-    other = 1 - rowSums(across(setdiff(nrw22_partylist, c("cdu", "csu"))), na.rm = TRUE)
+    other = 1 - rowSums(across(any_of(c("cdu_csu", "spd", "grune", "fdp", "linke_pds", "afd"))), na.rm = TRUE)
   ) |>
   select(
     ags,
@@ -1394,7 +1394,7 @@ hb23_data <- hb23_data |>
     across(all_of(hb23_partylist), ~ .x / valid_votes)
   ) |>
   mutate(
-    other = 1 - rowSums(across(setdiff(hb23_partylist, c("cdu", "csu"))), na.rm = TRUE)
+    other = 1 - rowSums(across(any_of(c("cdu_csu", "spd", "grune", "fdp", "linke_pds", "afd"))), na.rm = TRUE)
   ) |>
   select(
     ags,
@@ -1525,7 +1525,7 @@ be23_data <- be23_data |>
     across(all_of(be23_partylist), ~ .x / valid_votes)
   ) |>
   mutate(
-    other = 1 - rowSums(across(setdiff(be23_partylist, c("cdu", "csu"))), na.rm = TRUE)
+    other = 1 - rowSums(across(any_of(c("cdu_csu", "spd", "grune", "fdp", "linke_pds", "afd"))), na.rm = TRUE)
   ) |>
   select(
     ags,
@@ -1701,7 +1701,7 @@ bb24_data <- bb24_data |>
     across(all_of(bb24_partylist), ~ .x / valid_votes)
   ) |>
   mutate(
-    other = 1 - rowSums(across(setdiff(bb24_partylist, c("cdu", "csu"))), na.rm = TRUE)
+    other = 1 - rowSums(across(any_of(c("cdu_csu", "spd", "grune", "fdp", "linke_pds", "afd"))), na.rm = TRUE)
   ) |>
   select(
     ags,
@@ -1844,7 +1844,7 @@ sn24_data <- sn24_data |>
     across(all_of(sn24_partylist), ~ .x / valid_votes)
   ) |>
   mutate(
-    other = 1 - rowSums(across(setdiff(sn24_partylist, c("cdu", "csu"))), na.rm = TRUE)
+    other = 1 - rowSums(across(any_of(c("cdu_csu", "spd", "grune", "fdp", "linke_pds", "afd"))), na.rm = TRUE)
   ) |>
   select(
     ags,
@@ -2022,7 +2022,7 @@ th24_data <- th24_data |>
     across(all_of(th24_partylist), ~ .x / valid_votes)
   ) |>
   mutate(
-    other = 1 - rowSums(across(setdiff(th24_partylist, c("cdu", "csu"))), na.rm = TRUE)
+    other = 1 - rowSums(across(any_of(c("cdu_csu", "spd", "grune", "fdp", "linke_pds", "afd"))), na.rm = TRUE)
   ) |>
   select(
     ags,
@@ -2108,9 +2108,8 @@ bw21_data <- bw21_raw |>
     die_humanisten_n = .data[["Die Humanisten"]]
   ) |>
   mutate(
-    other_n = valid_votes - rowSums(across(c(cdu_n, spd_n, grune_n, fdp_n,
-      linke_n, afd_n, freie_wahler_n, odp_n, piraten_n, die_partei_n,
-      diebasis_n, volt_n, die_humanisten_n)), na.rm = TRUE),
+    other_n = valid_votes - rowSums(across(any_of(c("cdu_n", "spd_n", "grune_n",
+      "fdp_n", "linke_n", "afd_n"))), na.rm = TRUE),
     csu = as.numeric(NA),
     # Compute shares
     turnout = valid_votes / eligible_voters,
@@ -2232,9 +2231,8 @@ st21_data <- st21_data |>
     die_humanisten_n = ...50
   ) |>
   mutate(
-    other_n = valid_votes - rowSums(across(c(cdu_n, afd_n, linke_n, spd_n,
-      grune_n, fdp_n, freie_wahler_n, npd_n, tierschutzpartei_n,
-      die_partei_n, diebasis_n, piraten_n, die_humanisten_n)), na.rm = TRUE),
+    other_n = valid_votes - rowSums(across(any_of(c("cdu_n", "spd_n", "grune_n",
+      "fdp_n", "linke_n", "afd_n"))), na.rm = TRUE),
     csu = as.numeric(NA),
     turnout = valid_votes / eligible_voters,
     cdu = cdu_n / valid_votes,
@@ -2365,7 +2363,7 @@ be21_data <- be21_data |>
     across(all_of(be21_partylist), ~ .x / valid_votes)
   ) |>
   mutate(
-    other = 1 - rowSums(across(setdiff(be21_partylist, c("cdu", "csu"))), na.rm = TRUE)
+    other = 1 - rowSums(across(any_of(c("cdu_csu", "spd", "grune", "fdp", "linke_pds", "afd"))), na.rm = TRUE)
   ) |>
   select(
     ags, county, election_year, state, election_date,
@@ -2747,9 +2745,8 @@ mv21_final <- mv21_munis |>
     die_humanisten_n = ...28 + coalesce(brief_humanisten, 0)
   ) |>
   mutate(
-    other_n = valid_votes - rowSums(across(c(spd_n, afd_n, cdu_n, linke_n,
-      grune_n, fdp_n, npd_n, tierschutzpartei_n, die_partei_n,
-      freie_wahler_n, piraten_n, diebasis_n, die_humanisten_n)), na.rm = TRUE),
+    other_n = valid_votes - rowSums(across(any_of(c("cdu_n", "spd_n", "grune_n",
+      "fdp_n", "linke_n", "afd_n"))), na.rm = TRUE),
     csu = as.numeric(NA),
     turnout = valid_votes / eligible_voters,
     cdu = cdu_n / valid_votes,
@@ -2790,13 +2787,550 @@ cat("MV 2021 eligible voters:", mv21_totalvoters, "\n")
 cat("MV 2021 valid votes:", sum(mv21_final$valid_votes, na.rm = TRUE), "\n")
 cat("MV 2021 rows:", nrow(mv21_final), "\n")
 
+#### Hessen 2008 ####
+## Party List
+he08_partylist <- c(
+  "cdu",
+  "csu",
+  "spd",
+  "grune",
+  "fdp",
+  "linke_pds",
+  "freie_wahler",
+  "npd",
+  "piraten",
+  "tierschutzpartei",
+  "cdu_csu"
+)
+
+## Read Raw File
+# 5 header rows; row 6 = state total ("Land Hessen"); rows 7+ = municipalities
+# Landesstimmen: valid_votes=col 33, party cols 34-50
+he08_raw <- read_xlsx(
+  path = here(
+    path,
+    "Hessen/Hessen_1946-2018_Landtagswahl_Gemeindeebene .xlsx"
+  ),
+  sheet = "2008",
+  skip = 5,
+  col_names = FALSE,
+  col_types = "text"
+)
+
+## Clean Dataset
+# Row 1 = state total (Land Hessen); filter to rows with valid 6-digit GKZ
+he08_data <- he08_raw |>
+  filter(!is.na(...2) & str_detect(...2, "^[0-9]+$"))
+
+cat("HE 2008 municipality rows:", nrow(he08_data), "\n")
+
+# Column mapping:
+# col 2 = GKZ (6-digit), col 7 = eligible_voters (Insgesamt),
+# col 8 = number_voters (Wähler), col 33 = valid Landesstimmen
+# Landesstimmen party cols:
+# 34=CDU, 35=SPD, 36=GRÜNE, 37=FDP, 38=REP, 39=Tierschutz, 40=BüSo,
+# 41=PSG, 42=Volksabstimmung, 43=GRAUE, 44=DIE LINKE, 45=Die Violetten,
+# 46=FAMILIE, 47=FREIE WÄHLER, 48=NPD, 49=PIRATEN, 50=UB
+
+he08_numeric_cols <- c(7, 8, 33:50)
+he08_data <- he08_data |>
+  mutate(across(all_of(he08_numeric_cols),
+    ~ as.numeric(na_if(.x, "-"))))
+
+he08_data <- he08_data |>
+  transmute(
+    ags = paste0("06", sprintf("%06d", as.numeric(...2))),
+    county = substr(ags, 1, 5),
+    election_year = as.numeric(2008),
+    election_date = as.Date("2008-01-27"),
+    state = as.character("06"),
+    eligible_voters = ...7,
+    number_voters = ...8,
+    valid_votes = ...33,
+    cdu_n = ...34,
+    spd_n = ...35,
+    grune_n = ...36,
+    fdp_n = ...37,
+    linke_n = ...44,
+    freie_wahler_n = ...47,
+    npd_n = ...48,
+    piraten_n = ...49,
+    tierschutzpartei_n = ...39
+  ) |>
+  mutate(
+    other_n = valid_votes - rowSums(across(any_of(c("cdu_n", "spd_n", "grune_n",
+      "fdp_n", "linke_n"))), na.rm = TRUE),
+    csu = as.numeric(NA),
+    turnout = valid_votes / eligible_voters,
+    cdu = cdu_n / valid_votes,
+    spd = spd_n / valid_votes,
+    grune = grune_n / valid_votes,
+    fdp = fdp_n / valid_votes,
+    linke_pds = linke_n / valid_votes,
+    freie_wahler = freie_wahler_n / valid_votes,
+    npd = npd_n / valid_votes,
+    piraten = piraten_n / valid_votes,
+    tierschutzpartei = tierschutzpartei_n / valid_votes,
+    other = other_n / valid_votes,
+    cdu_csu = cdu
+  ) |>
+  select(
+    ags, county, election_year, state, election_date,
+    eligible_voters, number_voters, valid_votes, turnout,
+    all_of(he08_partylist),
+    other,
+    cdu_csu
+  )
+
+### Final Check
+he08_data |>
+  group_by(ags, election_year) |>
+  summarize(n = n()) |>
+  filter(n > 1)
+
+he08_totalvoters <- he08_data |>
+  summarize(total = sum(eligible_voters, na.rm = TRUE)) |>
+  pull(total)
+
+cat("HE 2008 eligible voters:", he08_totalvoters, "\n")
+cat("HE 2008 valid votes:", sum(he08_data$valid_votes, na.rm = TRUE), "\n")
+cat("HE 2008 rows:", nrow(he08_data), "\n")
+
+#### Schleswig-Holstein 2017 ####
+## Party List
+sh17_partylist <- c(
+  "cdu",
+  "csu",
+  "spd",
+  "grune",
+  "fdp",
+  "linke_pds",
+  "afd",
+  "piraten",
+  "freie_wahler",
+  "die_partei",
+  "cdu_csu"
+)
+
+## Read Raw File
+# Polling-station level data with separate Briefwahl rows
+# Row 1 = title, Row 2 = column headers -> skip = 2
+sh17_raw <- read_xlsx(
+  path = here(
+    path,
+    "Schleswig-Holstein/Schleswig-Holstein_2017_Landtag.xlsx"
+  ),
+  sheet = "2017",
+  skip = 2,
+  col_names = FALSE
+)
+
+## Assign column names
+colnames(sh17_raw)[1:6] <- c(
+  "kennziffer", "kreisname", "gemeindename", "wbz_name",
+  "amterschlussel", "amtername"
+)
+colnames(sh17_raw)[c(11, 12, 14, 17, 18)] <- c(
+  "ev_without_w", "ev_with_w", "eligible_voters",
+  "brief_voters", "number_voters"
+)
+colnames(sh17_raw)[c(35, 36)] <- c("invalid_zweit", "valid_zweit")
+colnames(sh17_raw)[37:49] <- c(
+  "cdu", "spd", "grune", "fdp", "piraten", "ssw",
+  "linke_pds", "familie", "freie_wahler", "afd", "lkr",
+  "die_partei", "z_sh"
+)
+
+## Convert to numeric
+sh17_raw <- sh17_raw |>
+  mutate(across(
+    c(
+      eligible_voters, ev_with_w, number_voters, valid_zweit,
+      cdu, spd, grune, fdp, piraten, ssw, linke_pds, familie,
+      freie_wahler, afd, lkr, die_partei, z_sh
+    ),
+    as.numeric
+  ))
+
+## Separate regular and Briefwahl rows
+# Digit 3 of kennziffer: 9 = Briefwahl, 0/1 = regular
+sh17_raw <- sh17_raw |>
+  mutate(is_brief = substr(kennziffer, 3, 3) == "9")
+
+sh17_regular <- sh17_raw |> filter(!is_brief)
+sh17_brief_gem <- sh17_raw |>
+  filter(is_brief & !is.na(gemeindename))
+sh17_brief_amt <- sh17_raw |>
+  filter(is_brief & is.na(gemeindename) & !is.na(amterschlussel))
+
+## Allocate Amt-level Briefwahl to municipalities
+sh17_party_cols <- c(
+  "cdu", "spd", "grune", "fdp", "piraten", "ssw",
+  "linke_pds", "familie", "freie_wahler", "afd", "lkr",
+  "die_partei", "z_sh"
+)
+
+# Aggregate Briefwahl by Amt
+sh17_amt_brief <- sh17_brief_amt |>
+  group_by(amterschlussel) |>
+  summarize(
+    across(
+      c(number_voters, valid_zweit, all_of(sh17_party_cols)),
+      ~ sum(.x, na.rm = TRUE)
+    ),
+    .groups = "drop"
+  )
+
+# Get municipality weights within each Amt (based on Wahlschein voters)
+sh17_gem_weights <- sh17_regular |>
+  filter(!is.na(gemeindename) & !is.na(amterschlussel)) |>
+  group_by(amterschlussel, kreisname, gemeindename) |>
+  summarize(ev_with_w = sum(ev_with_w, na.rm = TRUE), .groups = "drop") |>
+  group_by(amterschlussel) |>
+  mutate(weight = ev_with_w / sum(ev_with_w, na.rm = TRUE)) |>
+  ungroup()
+
+# Distribute Amt-level Briefwahl proportionally
+sh17_brief_alloc <- sh17_gem_weights |>
+  inner_join(sh17_amt_brief, by = "amterschlussel", suffix = c("_gem", "_brief")) |>
+  mutate(
+    across(
+      c(number_voters, valid_zweit, all_of(sh17_party_cols)),
+      ~ round(.x * weight)
+    )
+  ) |>
+  mutate(eligible_voters = 0) |>
+  select(
+    kreisname, gemeindename, eligible_voters, number_voters,
+    valid_zweit, all_of(sh17_party_cols)
+  )
+
+## Combine all rows and aggregate to municipality level
+sh17_select_cols <- c(
+  "kreisname", "gemeindename", "eligible_voters", "number_voters",
+  "valid_zweit", sh17_party_cols
+)
+
+sh17_combined <- bind_rows(
+  sh17_regular |> select(all_of(sh17_select_cols)),
+  sh17_brief_gem |> select(all_of(sh17_select_cols)),
+  sh17_brief_alloc
+) |>
+  filter(!is.na(gemeindename))
+
+sh17_data <- sh17_combined |>
+  group_by(kreisname, gemeindename) |>
+  summarize(
+    eligible_voters = sum(eligible_voters, na.rm = TRUE),
+    number_voters = sum(number_voters, na.rm = TRUE),
+    valid_votes = sum(valid_zweit, na.rm = TRUE),
+    across(all_of(sh17_party_cols), ~ sum(.x, na.rm = TRUE)),
+    .groups = "drop"
+  )
+
+## AGS Crosswalk
+# SH uses non-standard Kennziffer identifiers; need to map Gemeindename to standard AGS
+sh17_kreis_map <- tibble(
+  kreisname = c(
+    "Flensburg", "Kiel", "Lübeck", "Neumünster",
+    "Dithmarschen", "Herzogtum Lauenburg", "Nordfriesland", "Ostholstein",
+    "Pinneberg", "Plön", "Rendsburg-Eckernförde", "Schleswig-Flensburg",
+    "Segeberg", "Steinburg", "Stormarn"
+  ),
+  county_code = c(
+    "01001", "01002", "01003", "01004",
+    "01051", "01053", "01054", "01055",
+    "01056", "01057", "01058", "01059",
+    "01060", "01061", "01062"
+  )
+)
+
+# Load AGS reference from crosswalk for 2017
+sh17_ags_ref <- read_rds(
+  here("data/crosswalks/final/ags_1990_to_2023_crosswalk.rds")
+) |>
+  filter(startsWith(ags, "01") & year == 2017) |>
+  select(ags, ags_name) |>
+  distinct() |>
+  mutate(
+    county_code = substr(ags, 1, 5),
+    name_clean = str_trim(str_remove(ags_name, ",.*$"))
+  )
+
+# Match by county + cleaned name, then handle exceptions
+sh17_data <- sh17_data |>
+  left_join(sh17_kreis_map, by = "kreisname") |>
+  mutate(name_clean = str_trim(str_remove(gemeindename, ",.*$")))
+
+# Manual fixes for name mismatches before joining
+sh17_data <- sh17_data |>
+  mutate(
+    name_clean = case_when(
+      gemeindename == "Lauenburg/Elbe, Stadt" ~ "Lauenburg/ Elbe",
+      gemeindename == "Niendorf a. d. Stecknitz" ~ "Niendorf/ Stecknitz",
+      gemeindename == "Wentorf (Amt Sandesneben-Nusse)" ~ "Wentorf (Amt Sandesneben)",
+      gemeindename == "Ülsby" ~ "Uelsby",
+      gemeindename == "Alt-Mölln" ~ "Alt Mölln",
+      TRUE ~ name_clean
+    )
+  )
+
+# Handle Garding disambiguation (Kirchspiel vs Stadt in Nordfriesland)
+sh17_data <- sh17_data |>
+  mutate(
+    name_clean = case_when(
+      gemeindename == "Garding, Kirchspiel" ~ "Garding, Kirchspiel",
+      gemeindename == "Garding, Stadt" ~ "Garding, Stadt",
+      TRUE ~ name_clean
+    )
+  )
+
+sh17_ags_ref <- sh17_ags_ref |>
+  mutate(
+    name_clean = case_when(
+      ags_name %in% c("Garding, Kirchspiel", "Garding, Stadt") ~ ags_name,
+      TRUE ~ name_clean
+    )
+  )
+
+sh17_data <- sh17_data |>
+  left_join(
+    sh17_ags_ref |> select(ags, county_code, name_clean),
+    by = c("county_code", "name_clean")
+  )
+
+# Oldenbüttel/Tackesdorf: combined Wahlbezirk for two tiny municipalities;
+# Kennziffer 58119001 points to Oldenbüttel (01058119) — assign there
+sh17_data <- sh17_data |>
+  mutate(
+    ags = case_when(
+      gemeindename == "Oldenbüttel/Tackesdorf" ~ "01058119",
+      TRUE ~ ags
+    )
+  )
+
+# Check unmatched
+sh17_unmatched <- sh17_data |> filter(is.na(ags))
+if (nrow(sh17_unmatched) > 0) {
+  cat("SH 2017 unmatched municipalities:", nrow(sh17_unmatched), "\n")
+  print(sh17_unmatched |> select(kreisname, gemeindename, eligible_voters))
+}
+
+# Aggregate any duplicate AGS (municipalities that map to same AGS)
+sh17_data <- sh17_data |>
+  filter(!is.na(ags)) |>
+  group_by(ags) |>
+  summarize(
+    county = first(county_code),
+    eligible_voters = sum(eligible_voters, na.rm = TRUE),
+    number_voters = sum(number_voters, na.rm = TRUE),
+    valid_votes = sum(valid_votes, na.rm = TRUE),
+    across(all_of(sh17_party_cols), ~ sum(.x, na.rm = TRUE)),
+    .groups = "drop"
+  )
+
+## Construct final variables
+sh17_data <- sh17_data |>
+  mutate(
+    election_year = as.numeric(2017),
+    election_date = as.Date("2017-05-07"),
+    state = as.character("01"),
+    csu = as.numeric(NA),
+    cdu_csu = cdu
+  )
+
+## Calculations
+sh17_data <- sh17_data |>
+  mutate(
+    turnout = valid_votes / eligible_voters,
+    across(all_of(sh17_partylist), ~ .x / valid_votes)
+  ) |>
+  mutate(
+    other = 1 - rowSums(across(any_of(c("cdu_csu", "spd", "grune", "fdp", "linke_pds", "afd"))), na.rm = TRUE)
+  ) |>
+  select(
+    ags,
+    county,
+    election_year,
+    state,
+    election_date,
+    eligible_voters,
+    number_voters,
+    valid_votes,
+    turnout,
+    all_of(sh17_partylist),
+    other,
+    cdu_csu
+  )
+
+### Final Check
+sh17_data |>
+  group_by(ags, election_year) |>
+  summarize(n = n()) |>
+  filter(n > 1)
+
+sh17_totalvoters <- sh17_data |>
+  summarize(total = sum(eligible_voters, na.rm = TRUE)) |>
+  pull(total)
+
+cat("SH 2017 eligible voters:", sh17_totalvoters, "\n")
+cat("SH 2017 valid votes:", sum(sh17_data$valid_votes, na.rm = TRUE), "\n")
+cat("SH 2017 rows:", nrow(sh17_data), "\n")
+
+#### Rheinland-Pfalz 2021 ####
+## Party List
+rlp21_partylist <- c(
+  "cdu",
+  "csu",
+  "spd",
+  "grune",
+  "fdp",
+  "linke_pds",
+  "afd",
+  "freie_wahler",
+  "piraten",
+  "die_partei",
+  "tierschutzpartei",
+  "volt",
+  "odp",
+  "cdu_csu"
+)
+
+## Read Raw File
+# 8440 rows, 85 cols; Stimmbezirk-level with hierarchy
+# Col 1 = ID (13-digit), Col 2 = Stimmbezirk, Col 3 = Bezeichnung, Col 4 = GUW
+# Zweitstimmen: valid=col 52, parties at even cols 54,56,...,84
+# Admin: eligible_voters=col 6, number_voters=col 10
+rlp21_raw <- read_xlsx(
+  path = here(path, "Rheinland-Pfalz/LW_2021_GESAMT.xlsx"),
+  col_names = FALSE,
+  col_types = "text"
+) |>
+  slice(-1)  # Remove header row
+
+## Filter to Gemeinde-level totals
+# Stimmbezirk = "00000" and GUW = "G" gives pre-aggregated Gemeinde rows
+rlp21_gem <- rlp21_raw |>
+  filter(...2 == "00000" & ...4 == "G") |>
+  filter(!grepl("Landesergebnis|Bezirk [0-9]", ...3))
+
+cat("RLP 2021 Gemeinde-level rows:", nrow(rlp21_gem), "\n")
+
+## Separate kreisfreie Städte and non-kreisfreie municipalities
+# Kreisfreie: ID starts with "00", use only the state-level aggregate row
+# (not Wahlkreis-level splits where ID starts with non-"00")
+rlp21_kreisfrei <- rlp21_gem |>
+  filter(substr(...1, 1, 2) == "00" & grepl("Kreisfreie", ...3)) |>
+  mutate(ags = paste0("07", substr(...1, 4, 6), "000"))
+
+cat("RLP 2021 kreisfreie Städte:", nrow(rlp21_kreisfrei), "\n")
+
+# Non-kreisfreie: ID digits 1-2 != "00", digits 9-11 != "000", digits 12-13 == "00"
+# AGS = "07" + substr(id, 4, 6) [county] + substr(id, 9, 11) [municipality]
+rlp21_munis <- rlp21_gem |>
+  filter(
+    substr(...1, 1, 2) != "00",
+    substr(...1, 9, 11) != "000",
+    substr(...1, 12, 13) == "00"
+  ) |>
+  mutate(ags = paste0("07", substr(...1, 4, 6), substr(...1, 9, 11)))
+
+cat("RLP 2021 non-kreisfreie municipalities:", nrow(rlp21_munis), "\n")
+
+## Combine
+rlp21_data <- bind_rows(rlp21_kreisfrei, rlp21_munis)
+cat("RLP 2021 combined municipalities:", nrow(rlp21_data), "\n")
+
+## Convert numeric columns
+rlp21_numeric_cols <- c(6, 10, 52, seq(54, 84, by = 2))
+rlp21_data <- rlp21_data |>
+  mutate(across(all_of(rlp21_numeric_cols),
+    ~ as.numeric(na_if(.x, "-"))))
+
+## Aggregate by AGS (some municipalities split across Wahlkreise)
+rlp21_data <- rlp21_data |>
+  group_by(ags) |>
+  summarize(
+    eligible_voters = sum(...6, na.rm = TRUE),
+    number_voters = sum(...10, na.rm = TRUE),
+    valid_votes = sum(...52, na.rm = TRUE),
+    spd_n = sum(...54, na.rm = TRUE),
+    cdu_n = sum(...56, na.rm = TRUE),
+    afd_n = sum(...58, na.rm = TRUE),
+    fdp_n = sum(...60, na.rm = TRUE),
+    grune_n = sum(...62, na.rm = TRUE),
+    linke_n = sum(...64, na.rm = TRUE),
+    freie_wahler_n = sum(...66, na.rm = TRUE),
+    piraten_n = sum(...68, na.rm = TRUE),
+    odp_n = sum(...70, na.rm = TRUE),
+    klimaliste_n = sum(...72, na.rm = TRUE),
+    die_partei_n = sum(...74, na.rm = TRUE),
+    tierschutzpartei_n = sum(...76, na.rm = TRUE),
+    volt_n = sum(...78, na.rm = TRUE),
+    basisdemokratie_n = sum(...80, na.rm = TRUE),
+    dr_moritz_n = sum(...82, na.rm = TRUE),
+    siggi_n = sum(...84, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+cat("RLP 2021 after AGS aggregation:", nrow(rlp21_data), "\n")
+
+## Compute shares
+rlp21_data <- rlp21_data |>
+  mutate(
+    county = substr(ags, 1, 5),
+    election_year = as.numeric(2021),
+    election_date = as.Date("2021-03-14"),
+    state = as.character("07"),
+    other_n = valid_votes - rowSums(across(any_of(c("cdu_n", "spd_n", "grune_n",
+      "fdp_n", "linke_n", "afd_n"))), na.rm = TRUE),
+    csu = as.numeric(NA),
+    turnout = valid_votes / eligible_voters,
+    cdu = cdu_n / valid_votes,
+    spd = spd_n / valid_votes,
+    grune = grune_n / valid_votes,
+    fdp = fdp_n / valid_votes,
+    linke_pds = linke_n / valid_votes,
+    afd = afd_n / valid_votes,
+    freie_wahler = freie_wahler_n / valid_votes,
+    piraten = piraten_n / valid_votes,
+    odp = odp_n / valid_votes,
+    die_partei = die_partei_n / valid_votes,
+    tierschutzpartei = tierschutzpartei_n / valid_votes,
+    volt = volt_n / valid_votes,
+    other = other_n / valid_votes,
+    cdu_csu = cdu
+  ) |>
+  select(
+    ags, county, election_year, state, election_date,
+    eligible_voters, number_voters, valid_votes, turnout,
+    all_of(rlp21_partylist),
+    other,
+    cdu_csu
+  )
+
+### Final Check
+rlp21_data |>
+  group_by(ags, election_year) |>
+  summarize(n = n()) |>
+  filter(n > 1)
+
+rlp21_totalvoters <- rlp21_data |>
+  summarize(total = sum(eligible_voters, na.rm = TRUE)) |>
+  pull(total)
+
+cat("RLP 2021 eligible voters:", rlp21_totalvoters, "\n")
+cat("RLP 2021 valid votes:", sum(rlp21_data$valid_votes, na.rm = TRUE), "\n")
+cat("RLP 2021 rows:", nrow(rlp21_data), "\n")
+
 #### Bind and Write ####
 state2224 <- bind_rows(
   by23_data, he23_data, ni22_data,
   sl22_data, nrw22_data, sh22_data,
   hb23_data, be23_data,
   bb24_data, sn24_data, th24_data,
-  bw21_data, st21_data, be21_data, mv21_final
+  bw21_data, st21_data, be21_data, mv21_final,
+  he08_data, sh17_data, rlp21_data
 )
 
 # Change cdu / csu inconsistencies
