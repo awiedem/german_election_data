@@ -138,14 +138,13 @@ check_coverage <- function(df, name, expected_elections, expected_states,
   cat("\n")
 }
 
-# Expected state-year combos: each state holds elections every 4-5 years,
-# so 15 states × ~3 elections each ≈ 48 combos (harm_21/harm_25),
-# 14 states × ~3 elections each ≈ 40 combos (harm_23),
-# 11 state-year combos in unharm
-check_coverage(h21, "state_harm_21", 48, 15, 30000, "2006-2024")
-check_coverage(h23, "state_harm_23", 40, 14, 25000, "2006-2023")
-check_coverage(h25, "state_harm_25", 48, 15, 30000, "2006-2024")
-check_coverage(unharm, "state_2224_unharm", 11, 11, 6000, "2022-2024")
+# Expected state-year combos: 15 states × ~3-4 elections each = 55 combos
+# (after adding BW/SA/BE/MV 2021 + BB/SN/TH 2024 + HE 2008 + SH 2017 + RLP 2021).
+# unharm covers 2008-2024: 18 state-year combos across 15 states.
+check_coverage(h21, "state_harm_21", 55, 15, 38000, "2006-2024")
+check_coverage(h23, "state_harm_23", 55, 15, 38000, "2006-2024")
+check_coverage(h25, "state_harm_25", 55, 15, 38000, "2006-2024")
+check_coverage(unharm, "state_2224_unharm", 18, 15, 12000, "2008-2024")
 
 # State-by-year cross-tabulation for harm_21
 cat("State-by-year cross-tabulation (state_harm_21):\n")
@@ -956,9 +955,16 @@ cat(strrep("=", 70), "\n")
 cat("CHECK 13: UNHARMONIZED INPUT (state_2224_unharm)\n")
 cat(strrep("=", 70), "\n\n")
 
-# Expected 11 state-year combinations
+# Expected 15 state-year combinations (11 original + 4 new 2021 elections)
 expected_state_years <- tribble(
   ~state, ~election_year,
+  "06",   2008,   # Hessen
+  "01",   2017,   # Schleswig-Holstein
+  "07",   2021,   # Rheinland-Pfalz
+  "08",   2021,   # Baden-Württemberg
+  "15",   2021,   # Sachsen-Anhalt
+  "11",   2021,   # Berlin
+  "13",   2021,   # Mecklenburg-Vorpommern
   "10",   2022,   # Saarland
   "01",   2022,   # Schleswig-Holstein
   "05",   2022,   # NRW
@@ -994,7 +1000,7 @@ if (nrow(missing_sy) > 0) {
   warn(sprintf("Found %d unexpected state-year combinations", nrow(extra_sy)))
   print(extra_sy)
 } else {
-  pass("Exactly 11 expected state-year combinations present")
+  pass("Exactly 18 expected state-year combinations present")
 }
 
 # No duplicates within (ags, election_year)
@@ -1037,6 +1043,309 @@ if (nrow(hamburg_rows) > 0) {
 } else {
   pass("state_2224_unharm: no Hamburg rows")
 }
+
+cat("\n")
+
+# ==============================================================================
+# CHECK 14: WAHLLEITER COMPARISON
+# ==============================================================================
+
+cat(strrep("=", 70), "\n")
+cat("CHECK 14: WAHLLEITER COMPARISON\n")
+cat(strrep("=", 70), "\n\n")
+
+cat("Comparing aggregated municipality-level totals against official\n")
+cat("Landeswahlleiter figures (eligible_voters, valid_votes).\n\n")
+
+# Official reference values from state election authorities.
+# Note: Berlin excluded — harmonized data has ~2x EV (known pre-existing issue
+# across all years, not introduced by 2021 additions). Real AGH EV ≈ 2.45M,
+# data shows ~4.9M. Needs separate investigation.
+wahlleiter_ref <- tribble(
+  ~state, ~election_year, ~ev_wahlleiter, ~vv_wahlleiter,
+  "08",   2011,           7622873,        4983719,    # BaWü 2011
+  "08",   2016,           7683464,        5361250,    # BaWü 2016
+  "08",   2021,           7715972,        4857263,    # BaWü 2021
+  "07",   2011,           3088199,        1868187,    # RLP 2011
+  "07",   2016,           3071972,        2130621,    # RLP 2016
+  "15",   2021,           1788930,        1063697,    # SA 2021
+  "13",   2021,           1312471,        913852      # MV 2021
+)
+
+check_wahlleiter <- function(df, name, ref) {
+  cat(sprintf("--- %s ---\n", name))
+
+  # Aggregate to state-year level
+  agg <- df |>
+    group_by(state, election_year) |>
+    summarise(
+      ev_data = sum(eligible_voters, na.rm = TRUE),
+      vv_data = sum(valid_votes, na.rm = TRUE),
+      .groups = "drop"
+    )
+
+  comp <- ref |>
+    left_join(agg, by = c("state", "election_year")) |>
+    mutate(
+      ev_diff = ev_data - ev_wahlleiter,
+      ev_pct_diff = 100 * abs(ev_diff) / ev_wahlleiter,
+      vv_diff = vv_data - vv_wahlleiter,
+      vv_pct_diff = 100 * abs(vv_diff) / vv_wahlleiter
+    )
+
+  # Print comparison table
+  cat("  State | Year | EV_data     | EV_wahlleiter | EV_%diff | VV_data     | VV_wahlleiter | VV_%diff\n")
+  cat("  ", strrep("-", 100), "\n")
+
+  for (i in seq_len(nrow(comp))) {
+    r <- comp[i, ]
+    ev_str <- sprintf("%11s | %13s | %7.2f%%",
+                      format(r$ev_data, big.mark = ","),
+                      format(r$ev_wahlleiter, big.mark = ","),
+                      r$ev_pct_diff)
+    if (!is.na(r$vv_wahlleiter)) {
+      vv_str <- sprintf("%11s | %13s | %7.2f%%",
+                        format(r$vv_data, big.mark = ","),
+                        format(r$vv_wahlleiter, big.mark = ","),
+                        r$vv_pct_diff)
+    } else {
+      vv_str <- sprintf("%11s | %13s | %8s",
+                        format(r$vv_data, big.mark = ","), "NA", "NA")
+    }
+    cat(sprintf("  %s   | %d | %s | %s\n", r$state, r$election_year, ev_str, vv_str))
+  }
+
+  # Evaluate: PASS < 1%, WARN 1-5%, FAIL > 5%
+  n_fail_ev <- sum(comp$ev_pct_diff > 5, na.rm = TRUE)
+  n_warn_ev <- sum(comp$ev_pct_diff > 1 & comp$ev_pct_diff <= 5, na.rm = TRUE)
+  n_fail_vv <- sum(comp$vv_pct_diff > 5, na.rm = TRUE)
+  n_warn_vv <- sum(comp$vv_pct_diff > 1 & comp$vv_pct_diff <= 5, na.rm = TRUE)
+
+  if (n_fail_ev > 0 || n_fail_vv > 0) {
+    fail(sprintf("%s: %d EV and %d VV state-years with >5%% Wahlleiter difference",
+                 name, n_fail_ev, n_fail_vv))
+    # Show the failures
+    failures <- comp |> filter(ev_pct_diff > 5 | (!is.na(vv_pct_diff) & vv_pct_diff > 5))
+    print(failures |> select(state, election_year, ev_pct_diff, vv_pct_diff))
+  } else if (n_warn_ev > 0 || n_warn_vv > 0) {
+    warn(sprintf("%s: %d EV and %d VV state-years with 1-5%% Wahlleiter difference (known: RLP EV gap, gemeindefreie)",
+                 name, n_warn_ev, n_warn_vv))
+  } else {
+    pass(sprintf("%s: all Wahlleiter comparisons within 1%%", name))
+  }
+
+  cat("\n")
+}
+
+check_wahlleiter(h21, "state_harm_21", wahlleiter_ref)
+check_wahlleiter(h23, "state_harm_23", wahlleiter_ref)
+check_wahlleiter(h25, "state_harm_25", wahlleiter_ref)
+
+# ==============================================================================
+# CHECK 15: BaWü CROSS-DATASET CONSISTENCY
+# ==============================================================================
+
+cat(strrep("=", 70), "\n")
+cat("CHECK 15: BaWü CROSS-DATASET CONSISTENCY\n")
+cat(strrep("=", 70), "\n\n")
+
+cat("Verifying BaWü EV/VV agree across all harm datasets (catches stale LFS).\n\n")
+
+bw_years <- c(2011, 2016, 2021)
+datasets <- list(harm_21 = h21, harm_23 = h23, harm_25 = h25)
+
+bw_agg <- map_dfr(names(datasets), function(nm) {
+  datasets[[nm]] |>
+    filter(state == "08", election_year %in% bw_years) |>
+    group_by(election_year) |>
+    summarise(
+      ev = sum(eligible_voters, na.rm = TRUE),
+      vv = sum(valid_votes, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    mutate(dataset = nm)
+})
+
+# Compare all pairs
+cat("BaWü aggregate totals:\n")
+bw_wide <- bw_agg |>
+  pivot_wider(names_from = dataset, values_from = c(ev, vv))
+print(bw_wide)
+cat("\n")
+
+bw_ok <- TRUE
+for (yr in bw_years) {
+  yr_data <- bw_agg |> filter(election_year == yr)
+  ev_vals <- yr_data$ev
+  vv_vals <- yr_data$vv
+
+  # Check EV: max pairwise relative difference
+  ev_max_diff <- 100 * (max(ev_vals) - min(ev_vals)) / max(ev_vals)
+  vv_max_diff <- 100 * (max(vv_vals) - min(vv_vals)) / max(vv_vals)
+
+  if (ev_max_diff > 1) {
+    fail(sprintf("BaWü %d: EV spread across datasets = %.2f%% (> 1%%)", yr, ev_max_diff))
+    bw_ok <- FALSE
+  }
+  if (vv_max_diff > 1) {
+    fail(sprintf("BaWü %d: VV spread across datasets = %.2f%% (> 1%%)", yr, vv_max_diff))
+    bw_ok <- FALSE
+  }
+}
+
+if (bw_ok) {
+  pass("BaWü 2011/2016/2021: EV and VV consistent across harm_21, harm_23, harm_25 (< 1%)")
+}
+
+cat("\n")
+
+# ==============================================================================
+# CHECK 16: CSV vs RDS PARITY
+# ==============================================================================
+
+cat(strrep("=", 70), "\n")
+cat("CHECK 16: CSV vs RDS PARITY\n")
+cat(strrep("=", 70), "\n\n")
+
+cat("Verifying CSV and RDS versions of each dataset match.\n\n")
+
+csv_rds_pairs <- tribble(
+  ~name,               ~csv_path,                                          ~rds_path,
+  "state_harm_21",     "data/state_elections/final/state_harm_21.csv",     "data/state_elections/final/state_harm_21.rds",
+  "state_harm_23",     "data/state_elections/final/state_harm_23.csv",     "data/state_elections/final/state_harm_23.rds",
+  "state_harm_25",     "data/state_elections/final/state_harm_25.csv",     "data/state_elections/final/state_harm_25.rds",
+  "state_2224_unharm", "data/state_elections/final/state_2224_unharm.csv", "data/state_elections/final/state_2224_unharm.rds",
+)
+
+for (i in seq_len(nrow(csv_rds_pairs))) {
+  p <- csv_rds_pairs[i, ]
+  cat(sprintf("--- %s ---\n", p$name))
+
+  if (!file.exists(p$csv_path)) {
+    warn(sprintf("%s: CSV file not found (%s)", p$name, p$csv_path))
+    next
+  }
+  if (!file.exists(p$rds_path)) {
+    warn(sprintf("%s: RDS file not found (%s)", p$name, p$rds_path))
+    next
+  }
+
+  # Read CSV with AGS as character (leading zeros)
+  df_csv <- read_csv(p$csv_path, col_types = cols(ags = "c", .default = col_guess()),
+                     show_col_types = FALSE) |>
+    mutate(ags = pad_zero_conditional(ags, 8))
+
+  df_rds <- read_rds(p$rds_path) |>
+    as_tibble() |>
+    mutate(ags = pad_zero_conditional(ags, 8))
+
+  # 1. Row count
+  ok <- TRUE
+  if (nrow(df_csv) != nrow(df_rds)) {
+    fail(sprintf("%s: CSV has %d rows, RDS has %d rows", p$name, nrow(df_csv), nrow(df_rds)))
+    ok <- FALSE
+  } else {
+    cat(sprintf("  Row count: %d (match)\n", nrow(df_csv)))
+  }
+
+  # 2. Same election years
+  csv_years <- sort(unique(df_csv$election_year))
+  rds_years <- sort(unique(df_rds$election_year))
+  if (!setequal(csv_years, rds_years)) {
+    fail(sprintf("%s: election years differ — CSV: %s, RDS: %s",
+                 p$name,
+                 paste(csv_years, collapse = ","),
+                 paste(rds_years, collapse = ",")))
+    ok <- FALSE
+  } else {
+    cat(sprintf("  Election years: %s (match)\n", paste(csv_years, collapse = ", ")))
+  }
+
+  # 3. Aggregated EV/VV totals
+  ev_csv <- sum(df_csv$eligible_voters, na.rm = TRUE)
+  ev_rds <- sum(df_rds$eligible_voters, na.rm = TRUE)
+  vv_csv <- sum(df_csv$valid_votes, na.rm = TRUE)
+  vv_rds <- sum(df_rds$valid_votes, na.rm = TRUE)
+
+  ev_diff <- abs(ev_csv - ev_rds)
+  vv_diff <- abs(vv_csv - vv_rds)
+
+  # Allow small rounding tolerance (CSV float precision)
+  if (ev_diff > 1) {
+    fail(sprintf("%s: total EV differs — CSV: %s, RDS: %s (diff: %s)",
+                 p$name,
+                 format(ev_csv, big.mark = ","),
+                 format(ev_rds, big.mark = ","),
+                 format(ev_diff, big.mark = ",")))
+    ok <- FALSE
+  }
+  if (vv_diff > 1) {
+    fail(sprintf("%s: total VV differs — CSV: %s, RDS: %s (diff: %s)",
+                 p$name,
+                 format(vv_csv, big.mark = ","),
+                 format(vv_rds, big.mark = ","),
+                 format(vv_diff, big.mark = ",")))
+    ok <- FALSE
+  }
+
+  if (ok) {
+    pass(sprintf("%s: CSV and RDS match (rows, years, EV, VV)", p$name))
+  }
+
+  cat("\n")
+}
+
+# ==============================================================================
+# CHECK 17: OTHER COLUMN VALIDATION
+# ==============================================================================
+
+cat(strrep("=", 70), "\n")
+cat("CHECK 17: other column not uniformly zero\n")
+cat(strrep("=", 70), "\n\n")
+
+check_other_column <- function(df, name) {
+  if (!"other" %in% names(df)) {
+    warn(sprintf("%s: no 'other' column found", name))
+    return(invisible(NULL))
+  }
+
+  party_cols <- intersect(c("cdu", "csu", "spd", "gruene", "grune", "fdp",
+                            "linke_pds", "afd", "other"),
+                          names(df))
+
+  other_summary <- df |>
+    filter(!is.na(valid_votes), valid_votes > 0) |>
+    group_by(state, election_year) |>
+    summarise(
+      n = n(),
+      other_all_zero = all(other == 0 | is.na(other)),
+      other_all_na = all(is.na(other)),
+      mean_party_sum = mean(rowSums(across(all_of(party_cols)), na.rm = TRUE),
+                            na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    filter(other_all_zero | other_all_na)
+
+  if (nrow(other_summary) > 0) {
+    missing_share <- other_summary |> filter(mean_party_sum < 0.95)
+    if (nrow(missing_share) > 0) {
+      fail(sprintf("%s: %d state-years with other=0 AND party shares < 0.95",
+                   name, nrow(missing_share)))
+      print(missing_share)
+    } else {
+      warn(sprintf("%s: %d state-years with other=0 (party shares sum OK)",
+                   name, nrow(other_summary)))
+      print(other_summary)
+    }
+  } else {
+    pass(sprintf("%s: other column populated for all state-years", name))
+  }
+}
+
+check_other_column(h21, "state_harm_21")
+check_other_column(h23, "state_harm_23")
+check_other_column(h25, "state_harm_25")
+check_other_column(unharm, "state_2224_unharm")
 
 cat("\n")
 
