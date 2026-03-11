@@ -282,6 +282,7 @@ df_harm <- df_harm |>
       # 2006-2019 (from DESTATIS pipeline)
       election_year == 2006 & state_name == "Berlin" ~ ymd("2006-09-17"),
       election_year == 2008 & state_name == "Bavaria" ~ ymd("2008-09-28"),
+      election_year == 2008 & state_name == "Hesse" ~ ymd("2008-01-27"),
       election_year == 2008 & state_name == "Niedersachsen" ~ ymd("2008-01-27"),
       election_year == 2009 & state_name == "Brandenburg" ~ ymd("2009-09-27"),
       election_year == 2009 & state_name == "Hesse" ~ ymd("2009-01-18"),
@@ -309,6 +310,7 @@ df_harm <- df_harm |>
       election_year == 2016 & state_name == "Mecklenburg-Vorpommern" ~ ymd("2016-09-04"),
       election_year == 2016 & state_name == "Rhineland-Palatinate" ~ ymd("2016-03-13"),
       election_year == 2016 & state_name == "Saxony-Anhalt" ~ ymd("2016-03-13"),
+      election_year == 2017 & state_name == "Schleswig-Holstein" ~ ymd("2017-05-07"),
       election_year == 2017 & state_name == "Niedersachsen" ~ ymd("2017-10-15"),
       election_year == 2017 & state_name == "North Rhine-Westphalia" ~ ymd("2017-05-14"),
       election_year == 2017 & state_name == "Saarland" ~ ymd("2017-03-26"),
@@ -319,6 +321,7 @@ df_harm <- df_harm |>
       election_year == 2019 & state_name == "Thuringia" ~ ymd("2019-10-27"),
       # 2021 elections
       election_year == 2021 & state_name == "Baden-Württemberg" ~ ymd("2021-03-14"),
+      election_year == 2021 & state_name == "Rhineland-Palatinate" ~ ymd("2021-03-14"),
       election_year == 2021 & state_name == "Saxony-Anhalt" ~ ymd("2021-06-06"),
       election_year == 2021 & state_name == "Berlin" ~ ymd("2021-09-26"),
       election_year == 2021 & state_name == "Mecklenburg-Vorpommern" ~ ymd("2021-09-26"),
