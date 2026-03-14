@@ -45,7 +45,7 @@ Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2025.
 
 ## Datasets
 
-**Municipal elections** cover 1990-2021. **State elections** cover 2006-2024 (15 states; all except Hamburg, which lacks municipality-level data). **Federal elections** are available at the municipality level since 1980 and at the county level since 1953. **Mayoral elections** cover 7 states (Bayern, NRW, Saarland, Sachsen, Rheinland-Pfalz, Niedersachsen, Schleswig-Holstein), 1945-2025, with election-level and candidate-level datasets in both unharmonized and harmonized (2021 boundaries) versions. Raw data also exists for **county elections** (~10 states) and **European elections** (2024), but processing pipelines have not yet been built.
+**Municipal elections** cover 1990-2021. **State elections** cover 2006-2024 (15 states; all except Hamburg, which lacks municipality-level data). **Federal elections** are available at the municipality level since 1980 and at the county level since 1953. **Mayoral elections** cover 7 states (Bayern, NRW, Saarland, Sachsen, Rheinland-Pfalz, Niedersachsen, Schleswig-Holstein), 1945-2025, with election-level and candidate-level datasets in both unharmonized and harmonized (2021 boundaries) versions. A **mayor panel** tracks individual mayors across terms using unique person IDs, available as election-level and annual (forward-filled) panels for mayor fixed effects estimation. Raw data also exists for **county elections** (~10 states) and **European elections** (2024), but processing pipelines have not yet been built.
 
 | **Data**                  | **Level**            | **Period**       | **Harmonization** | **File Name**                |
 |---------------------------|----------------------|------------------|-------------------|------------------------------|
@@ -67,6 +67,10 @@ Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2025.
 | Mayoral Elections         | Municipality         | 1945-2025        | No                | `mayoral_unharm`             |
 | Mayoral Elections         | Municipality         | 1945-2025        | Yes (2021)        | `mayoral_harm`               |
 | Mayoral Elections         | Municipality (cand.) | 1945-2025        | No                | `mayoral_candidates`         |
+| Mayor Panel               | Person-election      | 1945-2025        | No                | `mayor_panel`                |
+| Mayor Panel               | Person-election      | 1945-2025        | Yes (2021)        | `mayor_panel_harm`           |
+| Mayor Panel               | Person-year          | 1945-2025        | No                | `mayor_panel_annual`         |
+| Mayor Panel               | Person-year          | 1945-2025        | Yes (2021)        | `mayor_panel_annual_harm`    |
 | Crosswalks                | Municipality         | 1990-2021        | --                | `ags_crosswalks`             |
 | Crosswalks                | Municipality         | 1990-2023        | --                | `ags_1990_to_2023_crosswalk` |
 | Crosswalks                | Municipality         | 1990-2025        | --                | `ags_1990_to_2025_crosswalk` |

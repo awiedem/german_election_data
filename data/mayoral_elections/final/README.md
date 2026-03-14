@@ -1,6 +1,6 @@
 # Mayoral Elections Data
 
-Three datasets covering mayoral elections in 7 German states (Bayern, Niedersachsen, Nordrhein-Westfalen, Rheinland-Pfalz, Saarland, Sachsen, Schleswig-Holstein), 1945--2025.
+Seven datasets covering mayoral elections in 7 German states (Bayern, Niedersachsen, Nordrhein-Westfalen, Rheinland-Pfalz, Saarland, Sachsen, Schleswig-Holstein), 1945--2025.
 
 ## Datasets
 
@@ -9,6 +9,10 @@ Three datasets covering mayoral elections in 7 German states (Bayern, Niedersach
 | `mayoral_unharm` | 41,436 | 16 | Election | One row per election-round (winner-level summary), original boundaries |
 | `mayoral_harm` | 38,667 | 23 | Election | Same as above, mapped to 2021 municipal boundaries |
 | `mayoral_candidates` | 85,160 | 32 | Candidate | One row per candidate per election cycle (wide format), original boundaries |
+| `mayor_panel` | 34,495 | 18 | Person-election | Within-mayor panel with person IDs, original boundaries |
+| `mayor_panel_harm` | 33,319 | 19 | Person-election | Same as above, mapped to 2021 municipal boundaries |
+| `mayor_panel_annual` | 185,112 | 18 | Person-year | Annual panel (forward-filled from elections), original boundaries |
+| `mayor_panel_annual_harm` | 179,011 | 19 | Person-year | Same as above, mapped to 2021 municipal boundaries |
 
 All files are available as `.rds` and `.csv`.
 
@@ -105,6 +109,78 @@ One row per candidate per election cycle. Companion to `mayoral_unharm` -- same 
 
 ---
 
+## 4. `mayor_panel` / `mayor_panel_harm` -- Within-Mayor Panel
+
+One row per person per election. Tracks individual mayors across multiple terms, enabling mayor fixed effects (person FE) estimation. The `_harm` version maps all AGS codes to 2021 municipal boundaries.
+
+**Person identification**:
+
+- **Bayern**: Groups consecutive terms via `Tag des ersten Amtsantritt` (same Amtsantritt date across elections = same person). No candidate names are available.
+- **Named states** (NRW, NI, RLP, SL, SH): Name-key matching using `tolower(last_name)_first_initial_state` within each municipality.
+- **Sachsen**: Partial name matching (~49% coverage); remaining winners get sequential IDs.
+
+**Columns**:
+
+| Column | Description |
+|---|---|
+| `person_id` | Unique mayor identifier (e.g., `p_09_00001` for Bayern, `p_05_mueller_k_05` for NRW) |
+| `ags` | 8-digit municipality code (original boundaries) |
+| `ags_21` | 8-digit municipality code mapped to 2021 boundaries (`_harm` only) |
+| `state` | 2-digit state code |
+| `election_year` | Year of the election |
+| `election_date` | Date of the decisive round (Stichwahl date if applicable) |
+| `term_number` | Sequential term count within (person, municipality), starting at 1 |
+| `winner_party` | Party of the winning candidate |
+| `winner_voteshare` | Vote share in the decisive round (0--1) |
+| `winning_margin` | Vote share difference between winner and runner-up (0--1) |
+| `n_candidates` | Number of candidates in the election |
+| `is_incumbent` | 1 if `term_number >= 2`, else 0 |
+| `next_runs_again` | 1 if this person wins the next election in this municipality, 0 if a different person wins, NA if no subsequent election observed |
+| `tenure_start` | Year of the mayor's first election in this municipality |
+| `years_in_office` | `election_year - tenure_start` |
+| `term_start_date` | Date of first taking office (Bayern: Amtsantritt; others: first election date) |
+| `n_terms` | Total number of terms observed for this person |
+| `total_tenure_years` | Year span from first to last election |
+| `has_margin_variation` | Whether winning margin varies across this person's terms (useful for FE feasibility) |
+
+**Coverage**: 14,452 unique mayors (unharm) / 13,971 (harm), spanning 34,495 / 33,319 person-elections.
+
+---
+
+## 5. `mayor_panel_annual` / `mayor_panel_annual_harm` -- Annual Mayor Panel
+
+One row per mayor per year. Forward-fills election-level data across the mayor's term, creating a balanced annual panel. The `_harm` version maps all AGS codes to 2021 boundaries.
+
+Each mayor-election is expanded from `election_year` to the year before the next election in that municipality (or 2025 if no subsequent election is observed).
+
+**Columns**:
+
+| Column | Description |
+|---|---|
+| `ags` | 8-digit municipality code (original boundaries) |
+| `ags_21` | 8-digit municipality code mapped to 2021 boundaries (`_harm` only) |
+| `year` | Calendar year |
+| `person_id` | Unique mayor identifier |
+| `state` | 2-digit state code |
+| `election_year` | Year of the election that started this term |
+| `election_date` | Date of the decisive round |
+| `term_number` | Term count within (person, municipality) |
+| `winner_party` | Party of the mayor (constant within term) |
+| `winner_voteshare` | Vote share in the decisive round (constant within term) |
+| `winning_margin` | Winner-runner-up margin (constant within term) |
+| `n_candidates` | Number of candidates (constant within term) |
+| `is_incumbent` | 1 if `term_number >= 2` |
+| `next_runs_again` | Whether this person wins the next election |
+| `years_since_election` | `year - election_year` |
+| `years_to_next_election` | Years until the next election in this municipality (NA if unknown) |
+| `electoral_cycle_pos` | Position in the electoral cycle, 0 (election year) to <1 (year before next election) |
+| `tenure_start` | Year of first election |
+| `term_start_date` | Date of first taking office |
+
+**Coverage**: 185,112 person-years (unharm) / 179,011 (harm), years 1945--2025.
+
+---
+
 ## Stichwahl (Runoff) Coverage
 
 | State | HW Elections | SW Elections | Detection Method |
@@ -121,15 +197,17 @@ One row per candidate per election cycle. Companion to `mayoral_unharm` -- same 
 
 ## Coverage by State
 
-| State | Code | Year Range | Unharm Rows | Source | Notes |
-|---|---|---|---|---|---|
-| Bayern | 09 | 1945--2025 | 34,824 | Excel (Bayerisches Landesamt) | Longest series; no candidate names |
-| Sachsen | 14 | 2001--2024 | 2,176 | Excel (Buergermeisteratlas) | VE rows = runoff-required (no winner) |
-| Nordrhein-Westfalen | 05 | 2009--2025 | 1,986 | Excel (IT.NRW) | BM + OB elections |
-| Rheinland-Pfalz | 07 | 1994--2025 | 1,147 | Excel (Stat. Landesamt) | Percentages only; 4 election types |
-| Niedersachsen | 03 | 2006--2025 | 1,186 | PDF extraction | 3 PDF formats across 9 election years |
-| Saarland | 10 | 2019--2025 | 72 | Excel | Includes gender |
-| Schleswig-Holstein | 01 | 2023--2025 | 45 | Web scraping (wahlen-sh.de) | Portal started late 2023 |
+| State | Code | Year Range | Unharm Rows | Panel Persons | Panel Elections | Source |
+|---|---|---|---|---|---|---|
+| Bayern | 09 | 1945--2025 | 34,824 | 12,246 | 31,383 | Excel (Bayerisches Landesamt) |
+| Sachsen | 14 | 2001--2024 | 2,176 | 447 | 524 | Excel (Buergermeisteratlas) |
+| Nordrhein-Westfalen | 05 | 2009--2025 | 1,986 | 1,007 | 1,639 | Excel (IT.NRW) |
+| Rheinland-Pfalz | 07 | 1994--2025 | 1,147 | 128 | 193 | Excel (Stat. Landesamt) |
+| Niedersachsen | 03 | 2006--2025 | 1,186 | 532 | 664 | PDF extraction |
+| Saarland | 10 | 2019--2025 | 72 | 57 | 57 | Excel |
+| Schleswig-Holstein | 01 | 2023--2025 | 45 | 35 | 35 | Web scraping (wahlen-sh.de) |
+
+**Note**: Panel person/election counts are from the unharmonized `mayor_panel`. The panel only includes Buergermeisterwahl and Oberbuergermeisterwahl (not Landratswahl, VG/SG-Buergermeisterwahl). Stichwahl-only records are collapsed into the parent election cycle. Bayern dominates with 74.7% of multi-term mayors.
 
 ---
 
@@ -146,5 +224,9 @@ One row per candidate per election cycle. Companion to `mayoral_unharm` -- same 
 **Sachsen year-boundary runoffs.** 2 elections where `election_year != year(election_date)` because the runoff crossed a calendar year (e.g., `election_year = 2008`, `election_date = 2009-01-11`).
 
 **Sachsen "Stichwahl" is not a 2-person runoff.** In Sachsen, when no candidate wins >50% in the first round (VE), a full re-election (EE) is held with all candidates, not a 2-person runoff. This means `n_candidates_sw` can be 3--6 for Sachsen elections.
+
+**Mayor panel: person identification is imperfect.** Bayern uses Amtsantritt dates, which correctly groups >99% of terms but cannot distinguish two different mayors with the same Amtsantritt date in the same municipality (extremely rare). Named states rely on name matching, which misses candidates without names in the data (1,384 elections, mostly Sachsen). 40 Bayern mayors show tenure spans >30 years, which are plausible given 6-year terms since 1945. One Bayern mayor has a 48-year span (10 terms).
+
+**Mayor panel: 176 duplicate-winner elections resolved.** In 169 municipality-years, two different persons were both marked as election winners (HW winner vs SW winner from separate data records). The panel keeps the person with the highest vote share, which correctly identifies the overall winner.
 
 For the full list of known issues including fixed bugs, see `docs/mayoral_elections_known_issues.md`.

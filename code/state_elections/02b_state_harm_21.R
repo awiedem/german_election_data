@@ -20,31 +20,15 @@ pacman::p_load(
 
 cat("Loading unharmonized state election data...\n")
 
-df_old <- read_rds("data/state_elections/final/state_unharm.rds") |>
+df <- read_rds("data/state_elections/final/state_unharm.rds") |>
   as_tibble() |>
+  filter(election_year >= 1990) |>
   mutate(
     ags = pad_zero_conditional(ags, 7),
     county = str_sub(ags, 1, 5),
     cdu = ifelse(state != "09" & (cdu == 0 | is.na(cdu)), cdu_csu, cdu),
     csu = ifelse(state == "09" & (csu == 0 | is.na(csu)), cdu_csu, csu)
   ) |>
-  rename(election_date = date)
-
-df_new <- read_rds("data/state_elections/final/state_2224_unharm.rds") |>
-  as_tibble() |>
-  mutate(
-    ags = pad_zero_conditional(ags, 7),
-    county = str_sub(ags, 1, 5),
-    cdu = ifelse(state != "09" & (cdu == 0 | is.na(cdu)), cdu_csu, cdu),
-    csu = ifelse(state == "09" & (csu == 0 | is.na(csu)), cdu_csu, csu)
-  ) |>
-  rename(gruene = grune)
-
-glimpse(df_old)
-glimpse(df_new)
-
-# Combine old and new data
-df <- bind_rows(df_new, df_old) |>
   arrange(ags, election_year)
 
 glimpse(df)
@@ -54,7 +38,8 @@ table(df$election_year)
 
 # Identify party variables by excluding metadata columns
 metadata_cols <- c("ags", "county", "election_year", "state", "election_date",
-                   "eligible_voters", "number_voters", "valid_votes")
+                   "eligible_voters", "number_voters", "valid_votes",
+                   "invalid_votes", "turnout")
 party_vars <- setdiff(names(df), metadata_cols)
 
 cat("Party variables found:", paste(party_vars, collapse = ", "), "\n")
@@ -91,15 +76,20 @@ df <- df |>
   group_by(ags, election_year, state) |>
   summarise(
     across(
-      c(eligible_voters, number_voters, valid_votes, all_of(party_vars)),
+      c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
       ~ sum(.x, na.rm = TRUE)
     ),
-    across(any_of(c("election_date", "county", "date")), first),
+    across(any_of(c("election_date", "county")), first),
     .groups = "drop"
   ) |>
   arrange(ags, election_year)
 
 glimpse(df)
+
+# Extract election_date lookup before harmonization (dates are lost in group_by)
+date_lookup <- df |>
+  distinct(state, election_year, election_date) |>
+  filter(!is.na(election_date))
 
 # Load crosswalks -----------------------------------------------------------
 
@@ -185,7 +175,7 @@ df_unmatched <- df_cw |> filter(is.na(ags_21))
 if (nrow(df_unmatched) > 0) {
   df_unmatched <- df_unmatched |>
     mutate(
-      year_cw = ifelse(election_year > 1990, pmin(election_year - 1, 2020), election_year)
+      year_cw = pmax(pmin(election_year - 1, 2020), 1990)
     ) |>
     select(-ags_21, -pop_cw, -area_cw) |>
     left_join(
@@ -220,14 +210,14 @@ votes <- df_cw |>
   group_by(ags_21, election_year) |>
   summarise(
     across(
-      c(eligible_voters, number_voters, valid_votes, all_of(party_vars)),
+      c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
       ~ sum(.x * pop_cw, na.rm = TRUE)
     ),
     .groups = "drop"
   ) |>
   mutate(
     across(
-      c(eligible_voters, number_voters, valid_votes, all_of(party_vars)),
+      c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
       ~ round(.x, digits = 0)
     )
   )
@@ -238,17 +228,9 @@ glimpse(votes)
 df_harm <- votes %>%
   mutate(
     across(all_of(party_vars), ~ ifelse(valid_votes > 0, .x / valid_votes, NA_real_)),
-    # Use number_voters/eligible_voters when number_voters is available (new data),
-    # otherwise keep the harmonized turnout share from across() (old data where
-    # number_voters was NA -> 0 after sum(na.rm=TRUE))
-    turnout = ifelse(number_voters > 0 & eligible_voters > 0,
-                     number_voters / eligible_voters,
-                     turnout)
+    turnout = ifelse(eligible_voters > 0, number_voters / eligible_voters, NA_real_)
   ) |>
   rename(ags = ags_21) |>
-  # Remove rows where ags is NA (municipalities created after 2020 that
-
-  # don't exist in 2021 boundaries — e.g. Thuringia mergers after 2020)
   filter(!is.na(ags)) |>
   mutate(
     ags = pad_zero_conditional(ags, 7),
@@ -261,71 +243,9 @@ df_harm <- votes %>%
 
 glimpse(df_harm)
 
-# Add election_date
+# Add election_date from lookup (extracted before harmonization)
 df_harm <- df_harm |>
-  mutate(
-    election_date = case_when(
-      # 2006-2019 (from DESTATIS pipeline)
-      election_year == 2006 & state_name == "Berlin" ~ ymd("2006-09-17"),
-      election_year == 2008 & state_name == "Bavaria" ~ ymd("2008-09-28"),
-      election_year == 2008 & state_name == "Hesse" ~ ymd("2008-01-27"),
-      election_year == 2008 & state_name == "Niedersachsen" ~ ymd("2008-01-27"),
-      election_year == 2009 & state_name == "Brandenburg" ~ ymd("2009-09-27"),
-      election_year == 2009 & state_name == "Hesse" ~ ymd("2009-01-18"),
-      election_year == 2009 & state_name == "Saarland" ~ ymd("2009-08-30"),
-      election_year == 2009 & state_name == "Saxony" ~ ymd("2009-08-30"),
-      election_year == 2009 & state_name == "Schleswig-Holstein" ~ ymd("2009-09-27"),
-      election_year == 2009 & state_name == "Thuringia" ~ ymd("2009-08-30"),
-      election_year == 2010 & state_name == "North Rhine-Westphalia" ~ ymd("2010-05-09"),
-      election_year == 2011 & state_name == "Baden-Württemberg" ~ ymd("2011-03-27"),
-      election_year == 2011 & state_name == "Berlin" ~ ymd("2011-09-18"),
-      election_year == 2011 & state_name == "Mecklenburg-Vorpommern" ~ ymd("2011-09-04"),
-      election_year == 2011 & state_name == "Rhineland-Palatinate" ~ ymd("2011-03-27"),
-      election_year == 2011 & state_name == "Saxony-Anhalt" ~ ymd("2011-03-20"),
-      election_year == 2012 & state_name == "Saarland" ~ ymd("2012-03-25"),
-      election_year == 2012 & state_name == "Schleswig-Holstein" ~ ymd("2012-05-06"),
-      election_year == 2012 & state_name == "North Rhine-Westphalia" ~ ymd("2012-05-13"),
-      election_year == 2013 & state_name == "Bavaria" ~ ymd("2013-09-15"),
-      election_year == 2013 & state_name == "Hesse" ~ ymd("2013-09-22"),
-      election_year == 2013 & state_name == "Niedersachsen" ~ ymd("2013-01-20"),
-      election_year == 2014 & state_name == "Brandenburg" ~ ymd("2014-09-14"),
-      election_year == 2014 & state_name == "Saxony" ~ ymd("2014-08-31"),
-      election_year == 2014 & state_name == "Thuringia" ~ ymd("2014-09-14"),
-      election_year == 2016 & state_name == "Baden-Württemberg" ~ ymd("2016-03-13"),
-      election_year == 2016 & state_name == "Berlin" ~ ymd("2016-09-18"),
-      election_year == 2016 & state_name == "Mecklenburg-Vorpommern" ~ ymd("2016-09-04"),
-      election_year == 2016 & state_name == "Rhineland-Palatinate" ~ ymd("2016-03-13"),
-      election_year == 2016 & state_name == "Saxony-Anhalt" ~ ymd("2016-03-13"),
-      election_year == 2017 & state_name == "Schleswig-Holstein" ~ ymd("2017-05-07"),
-      election_year == 2017 & state_name == "Niedersachsen" ~ ymd("2017-10-15"),
-      election_year == 2017 & state_name == "North Rhine-Westphalia" ~ ymd("2017-05-14"),
-      election_year == 2017 & state_name == "Saarland" ~ ymd("2017-03-26"),
-      election_year == 2018 & state_name == "Bavaria" ~ ymd("2018-10-14"),
-      election_year == 2018 & state_name == "Hesse" ~ ymd("2018-10-28"),
-      election_year == 2019 & state_name == "Brandenburg" ~ ymd("2019-09-01"),
-      election_year == 2019 & state_name == "Saxony" ~ ymd("2019-09-01"),
-      election_year == 2019 & state_name == "Thuringia" ~ ymd("2019-10-27"),
-      # 2021 elections
-      election_year == 2021 & state_name == "Baden-Württemberg" ~ ymd("2021-03-14"),
-      election_year == 2021 & state_name == "Rhineland-Palatinate" ~ ymd("2021-03-14"),
-      election_year == 2021 & state_name == "Saxony-Anhalt" ~ ymd("2021-06-06"),
-      election_year == 2021 & state_name == "Berlin" ~ ymd("2021-09-26"),
-      election_year == 2021 & state_name == "Mecklenburg-Vorpommern" ~ ymd("2021-09-26"),
-      # 2022-2024 (from manual pipeline)
-      election_year == 2022 & state_name == "Saarland" ~ ymd("2022-03-27"),
-      election_year == 2022 & state_name == "Schleswig-Holstein" ~ ymd("2022-05-08"),
-      election_year == 2022 & state_name == "North Rhine-Westphalia" ~ ymd("2022-05-15"),
-      election_year == 2022 & state_name == "Niedersachsen" ~ ymd("2022-10-09"),
-      election_year == 2023 & state_name == "Berlin" ~ ymd("2023-02-12"),
-      election_year == 2023 & state_name == "Bremen" ~ ymd("2023-05-14"),
-      election_year == 2023 & state_name == "Bavaria" ~ ymd("2023-10-08"),
-      election_year == 2023 & state_name == "Hesse" ~ ymd("2023-10-08"),
-      election_year == 2024 & state_name == "Saxony" ~ ymd("2024-09-01"),
-      election_year == 2024 & state_name == "Thuringia" ~ ymd("2024-09-01"),
-      election_year == 2024 & state_name == "Brandenburg" ~ ymd("2024-09-22"),
-      TRUE ~ NA_Date_
-    )
-  ) |>
+  left_join(date_lookup, by = c("state", "election_year")) |>
   relocate(election_date, .after = election_year)
 
 # Check for missing election dates

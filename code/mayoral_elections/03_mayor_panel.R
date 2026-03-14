@@ -10,9 +10,11 @@
 # - Named states (NRW, RLP, NI, SL, SH): name-key matching
 # - Sachsen: partial name matching (~49% coverage)
 #
-# Outputs:
-# - mayor_panel.rds       — one row per person-election
-# - mayor_panel_annual.rds — one row per person-year (forward-filled)
+# Outputs (both unharmonized + harmonized to 2021 boundaries):
+# - mayor_panel.rds             — one row per person-election (original AGS)
+# - mayor_panel_annual.rds      — one row per person-year (original AGS)
+# - mayor_panel_harm.rds        — one row per person-election (AGS 2021)
+# - mayor_panel_annual_harm.rds — one row per person-year (AGS 2021)
 
 rm(list = ls())
 gc()
@@ -348,11 +350,25 @@ cat("Rows without person_id:", sum(is.na(panel$person_id)), "\n")
 cat("\n=== Building panel columns ===\n")
 
 # Remove rows without person_id and deduplicate
+# When the same person has multiple elections in the same ags+year (HW + SW),
+# keep only the latest date (the final/decisive round).
 panel <- panel |>
   filter(!is.na(person_id)) |>
-  distinct(person_id, ags, election_date, .keep_all = TRUE)
+  distinct(person_id, ags, election_date, .keep_all = TRUE) |>
+  arrange(person_id, ags, election_year, desc(election_date)) |>
+  distinct(person_id, ags, election_year, .keep_all = TRUE)
 
-cat("After dedup:", nrow(panel), "rows\n")
+cat("After person-level dedup:", nrow(panel), "rows\n")
+
+# When multiple persons are both marked as winners in the same ags+year
+# (HW winner vs SW winner from separate records), keep only the one with
+# the highest voteshare — this correctly identifies the overall winner in
+# both cases: (a) HW-dated rows with SW data, (b) standalone SW records.
+n_before <- nrow(panel)
+panel <- panel |>
+  arrange(ags, election_year, desc(winner_voteshare)) |>
+  distinct(ags, election_year, .keep_all = TRUE)
+cat("After ags-year dedup:", nrow(panel), "(dropped", n_before - nrow(panel), "dup winners)\n")
 
 # Term number within each person in each municipality
 panel <- panel |>
@@ -432,6 +448,10 @@ if (nrow(multi_state) > 0) {
 } else {
   cat("No person_id spans multiple states — OK\n")
 }
+
+
+# Snapshot before crosswalk for unharmonized version
+panel_unharm <- panel
 
 
 # ============================================================================
@@ -519,119 +539,155 @@ if (n_no_ags21 > 0) {
 }
 
 
-# ============================================================================
-# 8. WITHIN-MAYOR STATISTICS
-# ============================================================================
-
-cat("\n=== Computing within-mayor statistics ===\n")
-
-person_stats <- panel |>
-  group_by(person_id) |>
-  summarise(
-    n_terms = n(),
-    total_tenure_years = max(election_year) - min(election_year),
-    has_margin_variation = n_distinct(round(winning_margin, 4), na.rm = TRUE) > 1,
-    .groups = "drop"
-  )
-
+# Recompute term_number after crosswalk may have dropped some rows
 panel <- panel |>
-  left_join(person_stats, by = "person_id")
-
-
-# ============================================================================
-# 9. FINAL FORMATTING
-# ============================================================================
-
-panel <- panel |>
-  select(
-    person_id, ags, ags_21, state, election_year, election_date,
-    term_number, winner_party, winner_voteshare, winning_margin,
-    n_candidates, is_incumbent, next_runs_again,
-    tenure_start, years_in_office, term_start_date,
-    n_terms, total_tenure_years, has_margin_variation
+  arrange(person_id, ags, election_date) |>
+  group_by(person_id, ags) |>
+  mutate(
+    term_number = row_number(),
+    tenure_start = min(election_year),
+    years_in_office = election_year - tenure_start,
+    is_incumbent = as.integer(term_number >= 2)
   ) |>
-  arrange(state, ags, election_date, person_id)
+  ungroup()
 
-
-# ============================================================================
-# 10. BUILD ANNUAL PANEL
-# ============================================================================
-
-cat("\n=== Building annual panel ===\n")
-
-# For each person-election, expand to all years of their term
-# Term runs from election_year to next_election_year - 1 (or last observed year)
-
-# Find next election year per ags (from ANY mayor, not just this person)
-all_elections_by_ags <- panel |>
-  select(ags, election_year) |>
-  distinct() |>
-  arrange(ags, election_year)
-
+# Recompute next_runs_again
 panel <- panel |>
   arrange(ags, election_date) |>
   group_by(ags) |>
-  mutate(next_election_year = lead(election_year)) |>
-  ungroup()
-
-# For the last observed election, extend to a reasonable endpoint
-# Use 2025 as the maximum year
-max_year <- 2025L
-
-panel_annual <- panel |>
   mutate(
-    term_end_year = case_when(
-      !is.na(next_election_year) ~ next_election_year - 1L,
-      TRUE ~ max_year
+    next_person_id = lead(person_id),
+    next_runs_again = case_when(
+      is.na(next_person_id) ~ NA_integer_,
+      next_person_id == person_id ~ 1L,
+      TRUE ~ 0L
     )
   ) |>
-  # Expand: one row per year in the term
-  rowwise() |>
-  mutate(year = list(seq(election_year, term_end_year))) |>
-  unnest(year) |>
   ungroup() |>
-  mutate(
-    years_since_election = year - election_year,
-    years_to_next_election = case_when(
-      !is.na(next_election_year) ~ next_election_year - year,
-      TRUE ~ NA_integer_
-    ),
-    term_length = case_when(
-      !is.na(next_election_year) ~ next_election_year - election_year,
-      TRUE ~ NA_integer_
-    ),
-    electoral_cycle_pos = case_when(
-      !is.na(term_length) & term_length > 0 ~
-        years_since_election / term_length,
-      TRUE ~ NA_real_
-    )
-  )
-
-# Select final columns for annual panel
-panel_annual <- panel_annual |>
-  select(
-    ags, ags_21, year, person_id, state, election_year, election_date,
-    term_number, winner_party, winner_voteshare, winning_margin,
-    n_candidates, is_incumbent, next_runs_again,
-    years_since_election, years_to_next_election,
-    electoral_cycle_pos, tenure_start, term_start_date
-  ) |>
-  arrange(ags, year, person_id)
-
-cat("Annual panel:", nrow(panel_annual), "rows\n")
-cat("Year range:", min(panel_annual$year), "-", max(panel_annual$year), "\n")
+  select(-next_person_id)
 
 
 # ============================================================================
-# 11. SUMMARY
+# 8. FINALIZE BOTH VERSIONS (UNHARMONIZED + HARMONIZED)
+# ============================================================================
+
+# Helper: compute within-mayor stats, format, and build annual panel
+finalize_panel <- function(p, version = "harm") {
+  has_ags_21 <- "ags_21" %in% names(p)
+
+  cat(sprintf("\n--- Finalizing %s panel ---\n", version))
+
+  # Within-mayor statistics
+  person_stats <- p |>
+    group_by(person_id) |>
+    summarise(
+      n_terms = n(),
+      total_tenure_years = max(election_year) - min(election_year),
+      has_margin_variation = n_distinct(round(winning_margin, 4), na.rm = TRUE) > 1,
+      .groups = "drop"
+    )
+  p <- p |> left_join(person_stats, by = "person_id")
+
+  # Final column selection
+  panel_cols <- c(
+    "person_id", "ags",
+    if (has_ags_21) "ags_21",
+    "state", "election_year", "election_date",
+    "term_number", "winner_party", "winner_voteshare", "winning_margin",
+    "n_candidates", "is_incumbent", "next_runs_again",
+    "tenure_start", "years_in_office", "term_start_date",
+    "n_terms", "total_tenure_years", "has_margin_variation"
+  )
+  p <- p |>
+    select(all_of(panel_cols)) |>
+    arrange(state, ags, election_date, person_id)
+
+  # Build annual panel
+  cat("  Building annual panel...\n")
+
+  p <- p |>
+    arrange(ags, election_date) |>
+    group_by(ags) |>
+    mutate(next_election_year = lead(election_year)) |>
+    ungroup()
+
+  max_year <- 2025L
+
+  p_annual <- p |>
+    mutate(
+      term_end_year = case_when(
+        !is.na(next_election_year) ~ pmax(next_election_year - 1L, election_year),
+        TRUE ~ max_year
+      )
+    ) |>
+    rowwise() |>
+    mutate(year = list(seq(election_year, term_end_year))) |>
+    unnest(year) |>
+    ungroup() |>
+    mutate(
+      years_since_election = year - election_year,
+      years_to_next_election = case_when(
+        !is.na(next_election_year) ~ next_election_year - year,
+        TRUE ~ NA_integer_
+      ),
+      term_length = case_when(
+        !is.na(next_election_year) ~ next_election_year - election_year,
+        TRUE ~ NA_integer_
+      ),
+      electoral_cycle_pos = case_when(
+        !is.na(term_length) & term_length > 0 ~
+          years_since_election / term_length,
+        TRUE ~ NA_real_
+      )
+    )
+
+  annual_cols <- c(
+    "ags",
+    if (has_ags_21) "ags_21",
+    "year", "person_id", "state", "election_year", "election_date",
+    "term_number", "winner_party", "winner_voteshare", "winning_margin",
+    "n_candidates", "is_incumbent", "next_runs_again",
+    "years_since_election", "years_to_next_election",
+    "electoral_cycle_pos", "tenure_start", "term_start_date"
+  )
+  p_annual <- p_annual |>
+    select(all_of(annual_cols)) |>
+    arrange(ags, year, person_id)
+
+  # Remove temp column from election-level panel
+  p <- p |> select(-next_election_year)
+
+  cat(sprintf("  Election panel: %d rows, %d persons\n",
+              nrow(p), n_distinct(p$person_id)))
+  cat(sprintf("  Annual panel: %d rows, years %d-%d\n",
+              nrow(p_annual), min(p_annual$year), max(p_annual$year)))
+
+  list(panel = p, annual = p_annual)
+}
+
+cat("\n=== Finalizing both versions ===\n")
+
+unharm <- finalize_panel(panel_unharm, version = "unharm")
+harm   <- finalize_panel(panel, version = "harm")
+
+
+# ============================================================================
+# 9. SUMMARY
 # ============================================================================
 
 cat("\n=== Mayor Panel Summary ===\n")
-cat("Total person-election observations:", nrow(panel), "\n")
-cat("Unique mayors (person_id):", n_distinct(panel$person_id), "\n\n")
+cat("Unharmonized (original boundaries):\n")
+cat(sprintf("  Election panel: %d rows, %d persons\n",
+            nrow(unharm$panel), n_distinct(unharm$panel$person_id)))
+cat(sprintf("  Annual panel: %d rows\n", nrow(unharm$annual)))
+cat("Harmonized (2021 boundaries):\n")
+cat(sprintf("  Election panel: %d rows, %d persons\n",
+            nrow(harm$panel), n_distinct(harm$panel$person_id)))
+cat(sprintf("  Annual panel: %d rows\n", nrow(harm$annual)))
 
-for (s in sort(unique(panel$state))) {
-  sub <- panel |> filter(state == s)
+cat("\nState breakdown (harmonized):\n")
+for (s in sort(unique(harm$panel$state))) {
+  sub <- harm$panel |> filter(state == s)
   n_mayors <- n_distinct(sub$person_id)
   n_multi <- sub |>
     group_by(person_id) |>
@@ -653,41 +709,29 @@ for (s in sort(unique(panel$state))) {
               state_name, s, n_mayors, n_multi))
 }
 
-multi_term <- panel |>
-  group_by(person_id) |>
-  filter(n() >= 2) |>
-  ungroup()
-multi3 <- panel |>
-  group_by(person_id) |>
-  filter(n() >= 3) |>
-  ungroup()
-
-cat(sprintf("\nMayors with 2+ terms: %d (%.1f%%)\n",
-            n_distinct(multi_term$person_id),
-            100 * n_distinct(multi_term$person_id) / n_distinct(panel$person_id)))
-cat(sprintf("Mayors with 3+ terms: %d (%.1f%%)\n",
-            n_distinct(multi3$person_id),
-            100 * n_distinct(multi3$person_id) / n_distinct(panel$person_id)))
-cat(sprintf("Mean terms per mayor: %.2f\n",
-            nrow(panel) / n_distinct(panel$person_id)))
-
-cat(sprintf("\nAnnual panel: %d rows, %d unique ags, years %d-%d\n",
-            nrow(panel_annual), n_distinct(panel_annual$ags),
-            min(panel_annual$year), max(panel_annual$year)))
-
 
 # ============================================================================
-# 12. SAVE
+# 10. SAVE
 # ============================================================================
 
 cat("\n=== Saving ===\n")
 
-write_rds(panel, "data/mayoral_elections/final/mayor_panel.rds")
-fwrite(panel, "data/mayoral_elections/final/mayor_panel.csv")
-cat("Saved mayor_panel.{rds,csv}\n")
+# Unharmonized (original boundaries)
+write_rds(unharm$panel, "data/mayoral_elections/final/mayor_panel.rds")
+fwrite(unharm$panel, "data/mayoral_elections/final/mayor_panel.csv")
+cat("Saved mayor_panel.{rds,csv} (unharmonized)\n")
 
-write_rds(panel_annual, "data/mayoral_elections/final/mayor_panel_annual.rds")
-fwrite(panel_annual, "data/mayoral_elections/final/mayor_panel_annual.csv")
-cat("Saved mayor_panel_annual.{rds,csv}\n")
+write_rds(unharm$annual, "data/mayoral_elections/final/mayor_panel_annual.rds")
+fwrite(unharm$annual, "data/mayoral_elections/final/mayor_panel_annual.csv")
+cat("Saved mayor_panel_annual.{rds,csv} (unharmonized)\n")
+
+# Harmonized (2021 boundaries)
+write_rds(harm$panel, "data/mayoral_elections/final/mayor_panel_harm.rds")
+fwrite(harm$panel, "data/mayoral_elections/final/mayor_panel_harm.csv")
+cat("Saved mayor_panel_harm.{rds,csv} (harmonized)\n")
+
+write_rds(harm$annual, "data/mayoral_elections/final/mayor_panel_annual_harm.rds")
+fwrite(harm$annual, "data/mayoral_elections/final/mayor_panel_annual_harm.csv")
+cat("Saved mayor_panel_annual_harm.{rds,csv} (harmonized)\n")
 
 cat("\n=== Done ===\n")

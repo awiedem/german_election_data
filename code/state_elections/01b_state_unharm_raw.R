@@ -1,12 +1,12 @@
 #### State Elections: Clean raw data (1990-2024) ####
-## Builds state_unharm_raw from raw files, replacing the DESTATIS API source.
+## Builds state_unharm from raw files, replacing the DESTATIS API source.
 ##
 ## This script reads municipality-level raw election data for all 16 German
 ## states (where machine-readable data is available) and produces a unified
 ## unharmonized dataset. It replaces 01_state_unharm.R (API-based, 2006-2019)
 ## and 03_state_2022-24.R (manual, 2022-2024) with a single source of truth.
 ##
-## Output: data/state_elections/final/state_unharm_raw.rds / .csv
+## Output: data/state_elections/final/state_unharm.rds / .csv
 ##
 ## Authors: Vincent Heddesheimer (with Claude Code assistance)
 ## Date: February 2026
@@ -38,11 +38,15 @@ normalise_party <- function(pname) {
   p_up <- toupper(p)
   # Major parties
   if (p_up == "CDU")                                    return("cdu")
+  if (grepl("CHRISTLICH.DEMOKRATISCHE UNION", p_up))    return("cdu")
   if (p_up == "CSU")                                    return("csu")
+  if (grepl("CHRISTLICH.SOZIALE UNION", p_up))          return("csu")
   if (p_up == "SPD")                                    return("spd")
+  if (grepl("SOZIALDEMOKRATISCHE PARTEI", p_up))        return("spd")
   if (grepl("^GR[UÜ]NE|^B[UÜ]NDNIS\\s*90.*GR|^DIE GR", p_up)) return("gruene")
   if (grepl("^FDP|^F[.]D[.]P", p_up))                  return("fdp")
   if (grepl("^FDP/DVP", p_up))                          return("fdp")
+  if (grepl("FREIE DEMOKRATISCHE PARTEI", p_up))        return("fdp")
   if (grepl("LINKE|^PDS|^LL.PDS|^DIE LINKE", p_up))    return("linke_pds")
   if (grepl("^AFD$|^AFD[[:space:]]", p_up))             return("afd")
   if (grepl("^BSW$|^BSW[[:space:]]|WAGENKNECHT", p_up)) return("bsw")
@@ -55,13 +59,15 @@ normalise_party <- function(pname) {
   if (grepl("HEIMAT$", p_up))                            return("npd")
   # Far left
   if (grepl("^DKP$", p_up))                              return("dkp")
+  if (grepl("DEUTSCHE KOMMUNISTISCHE PARTEI", p_up))     return("dkp")
   if (grepl("^MLPD$", p_up))                             return("mlpd")
   if (grepl("^SGP$", p_up))                              return("sgp")
   # Smaller parties (aligned with federal pipeline)
   if (grepl("^PIRATEN", p_up))                           return("piraten")
-  if (grepl("^FREIE W[AÄ]HLER|^FW$|^FWG$", p_up))      return("freie_wahler")
+  if (grepl("^FREIE W[AÄ]HLER|^FW$|^FWG", p_up))       return("freie_wahler")
   if (grepl("^BVB.*FREIE", p_up))                        return("freie_wahler")
   if (grepl("[OÖ]DP$|^[OÖ]DP[[:space:]]", p_up))        return("odp")
+  if (grepl("[OÖ]KOLOGISCH.DEMOKRATISCHE PARTEI", p_up)) return("odp")
   if (grepl("^DIE PARTEI$|^PARTEI$", p_up))              return("die_partei")
   if (grepl("TIERSCHUTZ.*ALLIANZ", p_up))                return("tierschutzallianz")
   if (grepl("TIERSCHUTZ.*HIER", p_up))                   return("tierschutz_hier")
@@ -92,10 +98,12 @@ normalise_party <- function(pname) {
   if (grepl("^AUFBRUCH", p_up))                            return("aufbruch")
   if (grepl("^BFB$|^B[UÜ]RGER F[UÜ]R", p_up))            return("bfb")
   if (grepl("^BGE$", p_up))                                return("bge")
+  if (grepl("^B[UÜ]SO$|B[UÜ]RGERRECHTSBEWEGUNG.SOLIDARIT", p_up)) return("bueso")
   if (grepl("^GESUNDHEITSFORSCHUNG", p_up))                 return("gesundheitsforschung")
   if (grepl("^MERA25", p_up))                              return("mera25")
   if (grepl("^PATRIOTEN", p_up))                            return("patrioten")
   if (grepl("^PBC$", p_up))                                return("pbc")
+  if (grepl("PARTEI BIBELTREUER CHRISTEN", p_up))          return("pbc")
   if (grepl("^PDV$|^PARTEI DER VERNUNFT", p_up))           return("partei_der_vernunft")
   if (grepl("^DSU$", p_up))                                return("dsu")
   if (grepl("^AB JETZT", p_up))                             return("ab_jetzt")
@@ -1665,7 +1673,7 @@ for (yr in names(bb_dates)) {
     result <- bind_rows(af_result, ag_final)
 
     ## --- Add kfS from existing API data ---
-    existing <- readRDS("data/state_elections/final/state_unharm.rds")
+    existing <- readRDS("data/state_elections/final/_old_regionalstatistik/state_unharm.rds")
     kfs_2014 <- existing |>
       filter(state == "12", election_year == 2014,
              ags %in% c("12051000", "12052000", "12053000", "12054000"))
@@ -5821,19 +5829,142 @@ cat("Bayern total:", nrow(all_states[["by"]]), "rows\n\n")
 
 
 ###############################################################################
+####                      Rheinland-Pfalz (07)                             ####
+###############################################################################
+## 2021 election from official state statistics office
+## Source: LW_2021_GESAMT.xlsx, sheet "LW_GESAMT_daten20210329_1228"
+## Format: 13-digit ID, GUW rows (G=Gesamt, U=Urnenwahl, W=Briefwahl)
+##   - Municipality rows: pos 9-11 != "000" AND pos 12-13 == "00" AND prefix != "000"
+##   - Kreisfreie Städte: prefix "000" with "Kreisfreie Stadt" in name
+##   - AGS = "07" + substr(ID, 4, 6) + substr(ID, 9, 11)
+## Landesstimme (Zweitstimme) in cols 50-85; Erststimme in cols 14-49
+
+cat("=== RHEINLAND-PFALZ ===\n")
+
+rp_raw_path <- file.path(raw_path, "Rheinland-Pfalz")
+
+rp_xlsx <- file.path(rp_raw_path, "LW_2021_GESAMT.xlsx")
+rp_raw <- read_excel(rp_xlsx, sheet = "LW_GESAMT_daten20210329_1228",
+                     col_names = FALSE, .name_repair = "minimal")
+
+rp_safe_num <- function(x) {
+  x <- as.character(x)
+  x[x == "-" | x == "" | x == "\u2013"] <- NA
+  suppressWarnings(as.numeric(x))
+}
+
+## --- Parse Landesstimme party columns from header (row 1) ---
+## Landesstimme party counts are in even columns 54, 56, ..., 84
+rp_header <- as.character(rp_raw[1, ])
+rp_parties <- list()
+for (ci in seq(54, 84, by = 2)) {
+  pname <- trimws(rp_header[ci])
+  if (is.na(pname) || pname == "" || pname == "%") next
+  if (grepl("^Gesamtsumme$|^Sonstige$|^Insgesamt$|^Gültige$|^ungültige$", pname, ignore.case = TRUE)) next
+  std <- normalise_party(pname)
+  rp_parties[[as.character(ci)]] <- std
+}
+cat("  Mapped", length(rp_parties), "Landesstimme party columns\n")
+
+## --- Extract data rows (row 2 onward, row 1 is header) ---
+rp_ids   <- as.character(rp_raw[[1]])[2:nrow(rp_raw)]
+rp_names <- as.character(rp_raw[[3]])[2:nrow(rp_raw)]
+rp_guw   <- as.character(rp_raw[[4]])[2:nrow(rp_raw)]
+rp_data  <- rp_raw[2:nrow(rp_raw), ]
+
+## --- Filter to G (Gesamt) rows only ---
+g_mask  <- rp_guw == "G"
+rp_ids   <- rp_ids[g_mask]
+rp_names <- rp_names[g_mask]
+rp_data  <- rp_data[g_mask, ]
+
+## --- Select municipality-level rows ---
+## Municipalities: pos 9-11 != "000" AND pos 12-13 == "00" AND prefix != "000"
+muni_mask <- substr(rp_ids, 9, 11) != "000" &
+             substr(rp_ids, 12, 13) == "00" &
+             substr(rp_ids, 1, 3) != "000"
+## Kreisfreie Städte: prefix "000", name contains "Kreisfreie Stadt"
+kfs_mask <- substr(rp_ids, 1, 3) == "000" &
+            grepl("Kreisfreie Stadt", rp_names)
+row_mask <- muni_mask | kfs_mask
+
+rp_ids   <- rp_ids[row_mask]
+rp_names <- rp_names[row_mask]
+rp_data  <- rp_data[row_mask, ]
+
+cat("  Selected", sum(muni_mask[row_mask | TRUE][1:length(row_mask)]), "municipality +",
+    sum(kfs_mask[row_mask | TRUE][1:length(row_mask)]), "kreisfreie Stadt rows\n")
+
+## --- Compute AGS ---
+rp_ags <- paste0("07", substr(rp_ids, 4, 6), substr(rp_ids, 9, 11))
+
+## --- Extract vote metadata (Landesstimme) ---
+eligible_v <- rp_safe_num(rp_data[[6]])   # Wahlberechtigte
+voters     <- rp_safe_num(rp_data[[10]])  # Wähler
+invalid_v  <- rp_safe_num(rp_data[[50]])  # ungültige Zweitstimmen
+valid_v    <- rp_safe_num(rp_data[[52]])  # Gültige Zweitstimmen
+
+result <- tibble(
+  ags             = rp_ags,
+  election_year   = 2021L,
+  state           = "07",
+  election_date   = as.Date("2021-03-14"),
+  eligible_voters = eligible_v,
+  number_voters   = voters,
+  valid_votes     = valid_v,
+  invalid_votes   = invalid_v
+)
+
+## --- Extract party vote counts ---
+mapped_sum <- rep(0, nrow(result))
+party_names_seen <- c()
+for (ci_str in names(rp_parties)) {
+  ci  <- as.integer(ci_str)
+  std <- rp_parties[[ci_str]]
+  v   <- rp_safe_num(rp_data[[ci]])
+  col_n <- paste0(std, "_n")
+  if (col_n %in% names(result)) {
+    result[[col_n]] <- ifelse(is.na(result[[col_n]]), 0, result[[col_n]]) +
+                       ifelse(is.na(v), 0, v)
+  } else {
+    result[[col_n]] <- ifelse(is.na(v), 0, v)
+  }
+  mapped_sum <- mapped_sum + ifelse(is.na(v), 0, v)
+  party_names_seen <- c(party_names_seen, std)
+}
+party_names_seen <- unique(party_names_seen)
+result$other_n <- pmax(valid_v - mapped_sum, 0, na.rm = TRUE)
+
+result <- result |> filter(!is.na(ags))
+
+## --- Convert to vote shares ---
+result <- result |> mutate(turnout = ifelse(eligible_voters > 0, number_voters / eligible_voters, NA_real_))
+for (std_name in c(party_names_seen, "other")) {
+  result[[std_name]] <- result[[paste0(std_name, "_n")]] / result$valid_votes
+}
+result$cdu_csu <- result$cdu
+result <- result |> select(-ends_with("_n"))
+
+cat("RP 2021:", nrow(result), "munis\n")
+
+all_states[["rp"]] <- standardise(result)
+cat("Rheinland-Pfalz total:", nrow(all_states[["rp"]]), "rows\n\n")
+
+
+###############################################################################
 ####                     FINAL: Bind and write                             ####
 ###############################################################################
 
-state_unharm_raw <- bind_rows(all_states)
+state_unharm <- bind_rows(all_states)
 
 # Drop rows with no valid votes (gemeindefreie Gebiete, empty municipalities)
-n_before <- nrow(state_unharm_raw)
-state_unharm_raw <- state_unharm_raw |>
+n_before <- nrow(state_unharm)
+state_unharm <- state_unharm |>
   filter(!is.na(valid_votes) & valid_votes > 0)
-cat(sprintf("Dropped %d rows with valid_votes == 0 or NA\n", n_before - nrow(state_unharm_raw)))
+cat(sprintf("Dropped %d rows with valid_votes == 0 or NA\n", n_before - nrow(state_unharm)))
 
 # CDU/CSU consistency: ensure cdu_csu exists and is correct
-state_unharm_raw <- state_unharm_raw |>
+state_unharm <- state_unharm |>
   mutate(
     cdu_csu = case_when(
       state == "09" ~ csu,       # Bavaria: CSU only
@@ -5843,15 +5974,15 @@ state_unharm_raw <- state_unharm_raw |>
   )
 
 # Standardise column ordering: meta_cols, sorted party cols, other, cdu_csu
-state_unharm_raw <- standardise(state_unharm_raw)
+state_unharm <- standardise(state_unharm)
 
 cat("\n=== Final dataset ===\n")
-cat("Total rows:", nrow(state_unharm_raw), "\n")
-cat("Number of party columns:", sum(!names(state_unharm_raw) %in% c(meta_cols, "other", "cdu_csu")), "\n")
+cat("Total rows:", nrow(state_unharm), "\n")
+cat("Number of party columns:", sum(!names(state_unharm) %in% c(meta_cols, "other", "cdu_csu")), "\n")
 cat("State-year combinations:\n")
-print(table(state_unharm_raw$state, state_unharm_raw$election_year))
+print(table(state_unharm$state, state_unharm$election_year))
 
 # Write output
-fwrite(state_unharm_raw, "data/state_elections/final/state_unharm_raw.csv")
-write_rds(state_unharm_raw, "data/state_elections/final/state_unharm_raw.rds")
-cat("Written to data/state_elections/final/state_unharm_raw.{csv,rds}\n")
+fwrite(state_unharm, "data/state_elections/final/state_unharm.csv")
+write_rds(state_unharm, "data/state_elections/final/state_unharm.rds")
+cat("Written to data/state_elections/final/state_unharm.{csv,rds}\n")
