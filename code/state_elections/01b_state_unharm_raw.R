@@ -251,6 +251,7 @@ for (yr in names(th_dates)) {
   all_party_names <- unique(r6[!is.na(r6) & !r6 %in% admin_labels])
 
   party_votes <- list()
+  party_col_map <- list()   # std_name → vector of column indices (for K-row extraction)
   for (pname in all_party_names) {
     positions <- which(r6 == pname)
     col_idx <- NA
@@ -275,6 +276,7 @@ for (yr in names(th_dates)) {
     }
     if (!is.na(col_idx)) {
       std_name <- normalise_party(pname)
+      party_col_map[[std_name]] <- c(party_col_map[[std_name]], col_idx)
       # If duplicate normalised name, aggregate
       if (std_name %in% names(party_votes)) {
         existing <- party_votes[[std_name]]
@@ -288,9 +290,11 @@ for (yr in names(th_dates)) {
     }
   }
 
-  ## --- Build result ---
+  ## --- Build result (pre-aggregation, one row per G entry) ---
+  wkr_vec <- as.character(df[[cnames[3]]])   # Wahlkreisnr for Briefwahl allocation
   result <- tibble(
     ags = ags_vec,
+    wkr = wkr_vec,
     election_year = as.integer(yr),
     state = "16",
     election_date = as.Date(th_dates[yr]),
@@ -314,9 +318,69 @@ for (yr in names(th_dates)) {
   }
   result$other_n <- pmax(valid - mapped_sum, 0, na.rm = TRUE)
 
-  ## --- Aggregate duplicate AGS (kreisfreie Städte split across Wahlkreise) ---
+  ## --- Allocate Briefwahl from Wahlkreis (K) to Gemeinde (G) level ---
+  ## Some municipalities lack their own Briefwahlbezirk, so G-level data
+  ## excludes centrally-counted postal votes.  K (Wahlkreis) rows contain
+  ## full totals.  Proportionally distribute the residual per Wahlkreis.
   count_cols <- c(paste0(names(party_votes), "_n"), "other_n")
+  kdf <- raw |> filter(.data[[cnames[2]]] == "K")
+  if (nrow(kdf) > 0) {
+    k_wkr <- as.character(kdf[[cnames[3]]])
+
+    ## Extract K-level party counts using same column mapping
+    k_party <- list()
+    for (std_name in names(party_col_map)) {
+      k_vals <- rep(0, nrow(kdf))
+      for (cidx in party_col_map[[std_name]]) {
+        v <- as.numeric(na_if(kdf[[cnames[cidx]]], "-"))
+        v[is.na(v)] <- 0
+        k_vals <- k_vals + v
+      }
+      k_party[[std_name]] <- k_vals
+    }
+    k_valid   <- as.numeric(na_if(kdf[[cnames[ls_gueltig_col]]], "-"))
+    k_invalid <- as.numeric(na_if(kdf[[cnames[ls_ungueltig_col]]], "-"))
+    k_voters  <- as.numeric(na_if(kdf[[cnames[wahler_col]]], "-"))
+
+    for (ki in seq_along(k_wkr)) {
+      g_idx <- which(result$wkr == k_wkr[ki])
+      if (length(g_idx) == 0) next
+      g_vv <- sum(result$valid_votes[g_idx], na.rm = TRUE)
+      if (g_vv == 0) next
+      w <- result$valid_votes[g_idx] / g_vv   # proportional weights
+
+      ## valid_votes
+      vv_r <- k_valid[ki] - g_vv
+      if (!is.na(vv_r) && vv_r > 0)
+        result$valid_votes[g_idx] <- result$valid_votes[g_idx] + vv_r * w
+      ## invalid_votes
+      iv_r <- k_invalid[ki] - sum(result$invalid_votes[g_idx], na.rm = TRUE)
+      if (!is.na(iv_r) && iv_r > 0)
+        result$invalid_votes[g_idx] <- result$invalid_votes[g_idx] + iv_r * w
+      ## number_voters
+      nv_r <- k_voters[ki] - sum(result$number_voters[g_idx], na.rm = TRUE)
+      if (!is.na(nv_r) && nv_r > 0)
+        result$number_voters[g_idx] <- result$number_voters[g_idx] + nv_r * w
+      ## party counts
+      for (std_name in names(k_party)) {
+        col_n <- paste0(std_name, "_n")
+        p_r <- k_party[[std_name]][ki] - sum(result[[col_n]][g_idx], na.rm = TRUE)
+        if (!is.na(p_r) && p_r > 0)
+          result[[col_n]][g_idx] <- result[[col_n]][g_idx] + p_r * w
+      }
+      ## other_n
+      k_mapped <- 0
+      for (std_name in names(k_party)) k_mapped <- k_mapped + k_party[[std_name]][ki]
+      k_other <- max(k_valid[ki] - k_mapped, 0)
+      o_r <- k_other - sum(result$other_n[g_idx], na.rm = TRUE)
+      if (!is.na(o_r) && o_r > 0)
+        result$other_n[g_idx] <- result$other_n[g_idx] + o_r * w
+    }
+  }
+
+  ## --- Aggregate duplicate AGS (kreisfreie Städte split across Wahlkreise) ---
   result <- result |>
+    select(-wkr) |>
     group_by(ags) |>
     summarise(
       election_year = first(election_year),
@@ -1144,8 +1208,9 @@ for (yr in names(bb_dates)) {
     cnames <- names(d_ref)
     r5 <- as.character(d_ref[5, ])
 
-    ## Collect all Z+Anz municipality data across all 44 sheets
+    ## Collect all Z+Anz municipality data + Briefwahl across all 44 sheets
     all_bb04 <- list()
+    all_brief <- list()
 
     for (wk in sprintf("Tab5-Wk%02d", 1:44)) {
       d <- read_excel(fpath, sheet = wk, col_names = FALSE, col_types = "text")
@@ -1154,6 +1219,13 @@ for (yr in names(bb_dates)) {
       ## and col4 with numeric Gem code
       id_rows <- which(!is.na(d[[cnames[3]]]) & grepl("^\\d+$", d[[cnames[3]]]) &
                          !is.na(d[[cnames[4]]]) & grepl("^\\d+$", d[[cnames[4]]]))
+
+      ## Exclude Amt-level aggregate rows (col4 = "000") — these are not municipalities
+      amt_mask <- d[[cnames[4]]][id_rows] == "000"
+      if (any(amt_mask)) {
+        cat("  Excluding", sum(amt_mask), "Amt-level rows (col4=000) from", wk, "\n")
+        id_rows <- id_rows[!amt_mask]
+      }
 
       for (id_r in id_rows) {
         kreis <- as.integer(d[[cnames[3]]][id_r])
@@ -1169,6 +1241,7 @@ for (yr in names(bb_dates)) {
             ## This is the Zweitstimmen absolute row
             row_data <- tibble(
               ags = ags,
+              wk_sheet = wk,
               eligible_voters = safe_num(d[[cnames[9]]][r]),
               number_voters   = NA_real_,  # "x" for Z rows
               invalid_votes   = safe_num(d[[cnames[11]]][r]),
@@ -1187,10 +1260,75 @@ for (yr in names(bb_dates)) {
           }
         }
       }
+
+      ## Capture Briefwahl Z+Anz row (identifier: col6 = "Briefwahl")
+      brief_id <- which(!is.na(d[[cnames[6]]]) & d[[cnames[6]]] == "Briefwahl")
+      if (length(brief_id) == 1) {
+        for (offset in 1:5) {
+          r <- brief_id + offset
+          if (r > nrow(d)) break
+          if (!is.na(d[[cnames[7]]][r]) && d[[cnames[7]]][r] == "Z" &&
+              !is.na(d[[cnames[8]]][r]) && d[[cnames[8]]][r] == "Anz.") {
+            brief_data <- tibble(
+              wk_sheet = wk,
+              brief_invalid = safe_num(d[[cnames[11]]][r]),
+              brief_valid   = safe_num(d[[cnames[12]]][r])
+            )
+            for (ci in 13:min(28, ncol(d))) {
+              pname <- r5[ci]
+              if (!is.na(pname)) {
+                brief_data[[paste0("brief_p_", ci)]] <- safe_num(d[[cnames[ci]]][r])
+              }
+            }
+            all_brief[[length(all_brief) + 1]] <- brief_data
+            break
+          }
+        }
+      }
     }
 
     result <- bind_rows(all_bb04)
+    brief_df <- bind_rows(all_brief)
     cat("  Raw Z+Anz rows:", nrow(result), "\n")
+    cat("  Briefwahl WK rows:", nrow(brief_df),
+        "total VV:", sum(brief_df$brief_valid, na.rm = TRUE), "\n")
+
+    ## Allocate Briefwahl to municipalities proportionally (by Urnenwahl VV)
+    wk_weights <- result |>
+      group_by(wk_sheet) |>
+      mutate(weight = valid_votes / sum(valid_votes, na.rm = TRUE)) |>
+      ungroup() |>
+      select(ags, wk_sheet, weight)
+
+    alloc <- wk_weights |>
+      inner_join(brief_df, by = "wk_sheet") |>
+      mutate(
+        alloc_invalid = round(brief_invalid * weight),
+        alloc_valid   = round(brief_valid * weight)
+      )
+    pcols_brief <- grep("^brief_p_", names(brief_df), value = TRUE)
+    for (bp in pcols_brief) {
+      acol <- sub("^brief_", "alloc_", bp)
+      alloc[[acol]] <- round(alloc[[bp]] * alloc$weight)
+    }
+
+    ## Add allocated Briefwahl to municipality Urnenwahl data
+    result <- result |>
+      left_join(alloc |> select(ags, wk_sheet, starts_with("alloc_")),
+                by = c("ags", "wk_sheet")) |>
+      mutate(
+        invalid_votes = invalid_votes + coalesce(alloc_invalid, 0),
+        valid_votes   = valid_votes + coalesce(alloc_valid, 0)
+      )
+    for (bp in pcols_brief) {
+      pcol <- sub("^brief_", "", bp)
+      acol <- sub("^brief_", "alloc_", bp)
+      if (pcol %in% names(result) && acol %in% names(result)) {
+        result[[pcol]] <- result[[pcol]] + coalesce(result[[acol]], 0)
+      }
+    }
+    result <- result |> select(-starts_with("alloc_"), -wk_sheet)
+    cat("  After Briefwahl allocation: VV =", sum(result$valid_votes, na.rm = TRUE), "\n")
 
     ## Get eligible voters from E+Anz rows (where eligible is not "x")
     ## Re-read to get E+Anz eligible voters by AGS
@@ -1199,6 +1337,7 @@ for (yr in names(bb_dates)) {
       d <- read_excel(fpath, sheet = wk, col_names = FALSE, col_types = "text")
       id_rows <- which(!is.na(d[[cnames[3]]]) & grepl("^\\d+$", d[[cnames[3]]]) &
                          !is.na(d[[cnames[4]]]) & grepl("^\\d+$", d[[cnames[4]]]))
+      id_rows <- id_rows[d[[cnames[4]]][id_rows] != "000"]  # exclude Amt rows
       for (id_r in id_rows) {
         kreis <- as.integer(d[[cnames[3]]][id_r])
         gem   <- as.integer(d[[cnames[4]]][id_r])
@@ -3681,6 +3820,21 @@ sl_ocr_path <- here(raw_path, "Saarland", "sl_1970_1975_ocr.csv")
 if (file.exists(sl_ocr_path)) {
   sl_ocr <- read.csv(sl_ocr_path, colClasses = "character")
 
+  ## OCR corrections: Mettlach (10042114) has column misalignment in source
+  ## (left-page extraction shifted WB→NV, GS→SPD, SPD→CDU; CDU value lost)
+  fix_m70 <- sl_ocr$ags == "10042114" & sl_ocr$election_year == "1970"
+  if (any(fix_m70)) {
+    sl_ocr[fix_m70, c("eligible_voters","number_voters","invalid_votes",
+                       "valid_votes","spd","cdu")] <-
+      list("9036", "7667", "104", "7563", "2862", "4172")
+  }
+  fix_m75 <- sl_ocr$ags == "10042114" & sl_ocr$election_year == "1975"
+  if (any(fix_m75)) {
+    sl_ocr[fix_m75, c("eligible_voters","number_voters","invalid_votes",
+                       "valid_votes","spd","cdu")] <-
+      list("9234", "8448", "95", "8353", "3535", "4220")
+  }
+
   sl_ocr_party_map <- c(
     spd = "spd", cdu = "cdu", fdp = "fdp",
     dkp = "dkp", npd = "npd", sonst = "sonst"
@@ -4146,16 +4300,31 @@ nrw_results <- list()
 
 ## ---------- OCR: pre-1975 (Kreis level, from scanned PDFs, see 00_nrw_pre1975_extract.py) ----------
 nrw_pre75_path <- here(raw_path, "Nordrhein-Westfalen", "nrw_pre1975_kreis.csv")
-nrw_pre75_dates <- c("1958" = "1958-07-06", "1962" = "1962-07-08", "1966" = "1966-07-10", "1970" = "1970-06-14")
+nrw_pre75_dates <- c("1950" = "1950-06-18", "1954" = "1954-06-27", "1958" = "1958-07-06", "1962" = "1962-07-08", "1966" = "1966-07-10", "1970" = "1970-06-14")
 
 if (file.exists(nrw_pre75_path)) {
   nrw_pre75 <- read.csv(nrw_pre75_path, colClasses = "character")
+
+  ## OCR corrections: left-page extraction failed for these rows,
+  ## putting WB(ohne) into NV and WB(mit) into IV; fix from source PDFs
+  fix_schl <- nrw_pre75$name == "Kreis Schleiden" & nrw_pre75$election_year == "1966"
+  if (any(fix_schl)) {
+    nrw_pre75[fix_schl, c("eligible_voters","number_voters","invalid_votes")] <-
+      list("40212", "34474", "774")
+  }
+  fix_bott <- nrw_pre75$name == "Bottrop" & nrw_pre75$election_year == "1970"
+  if (any(fix_bott)) {
+    nrw_pre75[fix_bott, c("eligible_voters","number_voters","invalid_votes")] <-
+      list("71776", "58078", "307")
+  }
 
   nrw_pre75_party_map <- c(
     cdu = "cdu", spd = "spd", fdp = "fdp",
     dkp = "dkp", npd = "npd", zentrum = "zentrum", uap = "uap", fsu = "fsu",
     dg = "dg", dfu = "dfu", gdp = "gdp", parteilose = "parteilose",
-    bdd = "bdd", dp = "dp", drp = "drp", dsu = "dsu"
+    bdd = "bdd", dp = "dp", drp = "drp", dsu = "dsu",
+    bhe = "bhe", kpd = "kpd",
+    rsf = "rsf", srp = "srp", csab = "csab", unabhaengige = "unabhaengige"
   )
 
   for (ocr_yr in unique(nrw_pre75$election_year)) {
@@ -5408,6 +5577,14 @@ by_safe_num <- function(x) {
 by_map_party <- function(pname) {
   p <- trimws(pname)
   p <- gsub("-\n", "", p)
+  ## Fix UTF-8 mojibake from Bayern 2018 XLSX (Latin-1 double-encoded)
+  p <- gsub("\u00c3\u0084|\u00c3\u201e", "\u00c4", p)   # Ã„ or Ã„ → Ä
+  p <- gsub("\u00c3\u0096|\u00c3\u2013", "\u00d6", p)   # Ã– → Ö
+  p <- gsub("\u00c3\u009c|\u00c3\u0153", "\u00dc", p)   # Ãœ → Ü
+  p <- gsub("\u00c3\u00a4", "\u00e4", p)                 # Ã¤ → ä
+  p <- gsub("\u00c3\u00b6", "\u00f6", p)                 # Ã¶ → ö
+  p <- gsub("\u00c3\u00bc", "\u00fc", p)                 # Ã¼ → ü
+  p <- gsub("\u00c3\u009f|\u00c3\u0178", "\u00df", p)   # ÃŸ → ß
   normalise_party(p)
 }
 
@@ -5962,6 +6139,29 @@ n_before <- nrow(state_unharm)
 state_unharm <- state_unharm |>
   filter(!is.na(valid_votes) & valid_votes > 0)
 cat(sprintf("Dropped %d rows with valid_votes == 0 or NA\n", n_before - nrow(state_unharm)))
+
+# Remove MV/ST Briefwahl-only entities (eligible_voters=0, but votes>0)
+# These are fictional administrative entities used for postal vote reporting
+brief_entity <- !is.na(state_unharm$eligible_voters) &
+  state_unharm$eligible_voters == 0 &
+  !is.na(state_unharm$valid_votes) & state_unharm$valid_votes > 0 &
+  state_unharm$state %in% c("13", "15")
+n_brief <- sum(brief_entity)
+if (n_brief > 0) {
+  cat(sprintf("Removing %d MV/ST Briefwahl-only entities (EV=0, VV>0)\n", n_brief))
+  state_unharm <- state_unharm[!brief_entity, ]
+}
+
+# Safety net: cap turnout at plausible range; set Inf/NaN to NA
+state_unharm <- state_unharm |>
+  mutate(
+    turnout = ifelse(is.finite(turnout), turnout, NA_real_),
+    turnout = ifelse(!is.na(turnout) & turnout > 1.5, NA_real_, turnout)
+  )
+n_bad_turnout <- sum(is.na(state_unharm$turnout) & !is.na(state_unharm$eligible_voters))
+if (n_bad_turnout > 0) {
+  cat(sprintf("Note: %d rows have NA turnout (non-finite or >150%%)\n", n_bad_turnout))
+}
 
 # CDU/CSU consistency: ensure cdu_csu exists and is correct
 state_unharm <- state_unharm |>

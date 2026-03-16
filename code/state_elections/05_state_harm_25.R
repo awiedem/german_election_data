@@ -205,6 +205,46 @@ if (nrow(df_unmatched) > 0) {
 
 df_cw <- bind_rows(df_matched, df_unmatched)
 
+## --- Fuzzy time matching: for still-unmatched AGS, find closest CW year ---
+still_unmatched <- df_cw |> filter(is.na(ags_25))
+if (nrow(still_unmatched) > 0) {
+  n_unmatched_ags <- n_distinct(still_unmatched$ags)
+  cat("Fuzzy time matching for", n_unmatched_ags, "unmatched AGS codes...\n")
+
+  df_already_matched <- df_cw |> filter(!is.na(ags_25))
+
+  # Step 1: find the closest CW year for each (ags, election_year)
+  unmatched_keys <- still_unmatched |> select(ags, election_year) |> distinct()
+  cw_available <- cw |> select(ags, election_year) |> distinct() |>
+    rename(cw_year = election_year)
+
+  best_cw_year <- unmatched_keys |>
+    left_join(cw_available, by = "ags", relationship = "many-to-many") |>
+    filter(!is.na(cw_year)) |>
+    mutate(year_dist = abs(cw_year - election_year) +
+             ifelse(cw_year < election_year, 0.001, 0)) |>
+    group_by(ags, election_year) |>
+    slice_min(year_dist, n = 1, with_ties = FALSE) |>
+    ungroup() |>
+    select(ags, election_year, cw_year)
+
+  # Step 2: join unmatched rows with the best CW year's crosswalk mappings
+  still_unmatched <- still_unmatched |>
+    select(-ags_25, -pop_cw, -area_cw) |>
+    left_join(best_cw_year, by = c("ags", "election_year")) |>
+    left_join(
+      cw |> select(ags, election_year, ags_25, pop_cw, area_cw) |>
+        rename(cw_year = election_year),
+      by = c("ags", "cw_year")
+    ) |>
+    select(-cw_year)
+
+  n_recovered <- sum(!is.na(still_unmatched$ags_25))
+  cat("  Recovered", n_recovered, "of", nrow(still_unmatched),
+      "rows via fuzzy time matching\n")
+  df_cw <- bind_rows(df_already_matched, still_unmatched)
+}
+
 glimpse(df_cw)
 
 # Check remaining unsuccessful merges
