@@ -238,7 +238,21 @@ normalise_party_cty <- function(x) {
     "gr\u00fcneuwv"               = "gruene_uwv",
     "oedpuwv"                     = "oedp_uwv",
     "\u00f6dpuwv"                 = "oedp_uwv",
-    "pdsuwv"                      = "pds_uwv"
+    "pdsuwv"                      = "pds_uwv",
+
+    # SH-specific
+    "ssw"                         = "ssw",
+    "s\u00fcdschleswigscher w\u00e4hlerverband" = "ssw",
+    "schill"                      = "schill",
+    "die b\u00fcrgerpartei"       = "die_buergerpartei",
+    "die b\u00fcrgerpartei e.v."  = "die_buergerpartei",
+    "demokraten"                  = "demokraten",
+    "verbraucherschutzpartei"     = "verbraucherschutz",
+    "naturgesetz"                 = "naturgesetz",
+    "flensburg w\u00e4hlen!"      = "flensburg_waehlen",
+    "flensburg wahlen!"           = "flensburg_waehlen",
+    "forum21"                     = "forum21",
+    "ezb"                         = "einzelbewerber"
   )
 
   # Try exact match first
@@ -1905,6 +1919,9 @@ parse_he_sheet <- function(filepath, sheet_name) {
                        "ZENTRUM", "Zentrum", "LIGA", "DIE BLAUEN",
                        "NATUR-GESETZ", "DHP", "CM", "APPD")
 
+    # Check row below party_row for WG sub-header indicators
+    sub_row <- if (party_row + 1 <= nrow(raw)) as.character(raw[party_row + 1, ]) else rep(NA, ncol(raw))
+
     for (i in all_positions) {
       raw_name <- trimws(party_vals[i])
       cleaned_name <- clean_header(raw_name)
@@ -1914,6 +1931,8 @@ parse_he_sheet <- function(filepath, sheet_name) {
       if (grepl("^W.hler$", cleaned_name, ignore.case = TRUE)) next
       # Skip "Insgesamt", "ins-gesamt" etc. but NOT "WG insgesamt"
       if (grepl("^insgesamt$|^ins[- ]?gesamt$|^son[- ]?stige$", cleaned_name, ignore.case = TRUE)) next
+      # Skip WG breakdown sub-headers: if row below has "WG \d" at this column
+      if (i <= length(sub_row) && !is.na(sub_row[i]) && grepl("^WG \\d|^WG\\d", trimws(sub_row[i]))) next
       if (grepl("^WG \\d|^WG\\d|^WG$", cleaned_name)) next  # Skip individual WG1, WG2, etc.
       if (i <= max(gkz_col + 1, 3)) next  # Skip early meta columns
 
@@ -2059,18 +2078,31 @@ if (file.exists(he_2021_csv)) {
       df_21$county <- substr(df_21$ags, 1, 5)
 
       # Party columns: skip *-Sitze, WG names, position-only cols
+      # Collect WG1/WG2/WG3 separately to sum into waehlergruppen
+      wg_sum <- rep(0, nrow(he21_data))
+      wg_any <- rep(FALSE, nrow(he21_data))
       for (i in seq_along(he21_headers)) {
         hdr <- trimws(he21_headers[i])
         if (is.na(hdr) || hdr == "") next
         if (grepl("Sitze|Lfd|GKZ|Gemeinde|Wahllokal|Wahlberechtigte|hler|darunter|ltige|Stimmzettel", hdr)) next
-        if (grepl("^WG\\d", hdr)) next
         if (i <= max(c(valid_col_21), na.rm = TRUE)) next
-        # This should be a party vote count column
-        pname <- normalise_party_cty(tolower(clean_header(hdr)))
         vals <- as.numeric(gsub("[^0-9]", "", he21_data[[i]]))
         if (all(is.na(vals) | vals == 0)) next
+        # Sum WG1/WG2/WG3 into waehlergruppen
+        if (grepl("^WG\\d", hdr)) {
+          wg_sum <- wg_sum + ifelse(is.na(vals), 0, vals)
+          wg_any <- wg_any | !is.na(vals)
+          next
+        }
+        pname <- normalise_party_cty(tolower(clean_header(hdr)))
         df_21[[pname]] <- ifelse(!is.na(df_21$valid_votes) & df_21$valid_votes > 0,
                                  vals / df_21$valid_votes, NA_real_)
+      }
+      # Add aggregated Wählergruppen
+      if (any(wg_any)) {
+        wg_sum[!wg_any] <- NA_real_
+        df_21[["waehlergruppen"]] <- ifelse(!is.na(df_21$valid_votes) & df_21$valid_votes > 0,
+                                            wg_sum / df_21$valid_votes, NA_real_)
       }
       df_21$turnout <- ifelse(!is.na(df_21$eligible_voters) & df_21$eligible_voters > 0,
                               df_21$number_voters / df_21$eligible_voters, NA_real_)
@@ -2331,6 +2363,403 @@ df_bw |> count(election_year) |> print()
 
 
 # =============================================================================
+# SCHLESWIG-HOLSTEIN (SH) — Wahlbezirk→Gemeinde, 1998–2023
+# =============================================================================
+
+cat("\n===== SCHLESWIG-HOLSTEIN =====\n")
+
+sh_dir <- file.path(raw_dir, "Schleswig-Holstein")
+
+# AGS conversion: stat code positions 1-5 → AGS = "010" + stat[1:5]
+sh_stat_to_ags <- function(stat_code) {
+  stat_code <- as.character(stat_code)
+  # 2003 has 7-digit codes (missing leading zero)
+  stat_code <- ifelse(nchar(stat_code) == 7, paste0("0", stat_code), stat_code)
+  paste0("010", substr(stat_code, 1, 5))
+}
+
+#' Aggregate SH Wahlbezirk data to municipality level
+sh_aggregate <- function(df, vote_cols) {
+  ags_list <- unique(df$ags)
+  result <- data.frame(row.names = seq_along(ags_list))
+  result$ags <- ags_list
+  result$ags_name <- df$ags_name[match(ags_list, df$ags)]
+
+  num_cols <- c("eligible_voters", "number_voters", "valid_votes", "invalid_votes", vote_cols)
+  num_cols <- intersect(num_cols, names(df))
+  for (nc in num_cols) {
+    vals <- tapply(df[[nc]], df$ags, function(x) {
+      if (all(is.na(x))) NA_real_ else sum(x, na.rm = TRUE)
+    })
+    result[[nc]] <- as.numeric(vals[result$ags])
+  }
+  result
+}
+
+#' Parse SH 1998/2003/2008 (no headers, fixed column positions)
+parse_sh_early <- function(filepath, year) {
+  cat("  Reading SH", year, "...\n")
+  suppressMessages(
+    raw <- read_excel(filepath, col_names = FALSE, col_types = "text")
+  )
+
+  # Party mappings (from Infodat documentation)
+  party_maps <- list(
+    "1998" = c("spd", "cdu", "gruene", "fdp", "ssw",
+               "oedp", "naturgesetz", "statt_partei", "waehlergruppen", "einzelbewerber"),
+    "2003" = c("spd", "cdu", "fdp", "gruene", "ssw",
+               "linke_pds", "die_buergerpartei", "schill", "waehlergruppen", "einzelbewerber"),
+    "2008" = c("cdu", "spd", "fdp", "gruene", "ssw", "npd",
+               "linke_pds", "demokraten", "verbraucherschutz", "zentrum",
+               "waehlergruppen", "einzelbewerber")
+  )
+  pmap <- party_maps[[as.character(year)]]
+
+  # Fixed column positions: cols 1-14 = metadata, 15-18 = EV, 19-22 = voters,
+  # 23 = invalid, 24 = valid, 25+ = party votes
+  stat_col <- 1
+  name_col <- 3  # Gemeinde name
+  ev_col <- 18   # Wahlberechtigte insgesamt (A)
+  voter_col <- 22  # Wähler insgesamt (B)
+  invalid_col <- 23  # ungültige Stimmen (C)
+  valid_col <- 24  # gültige Stimmen (D)
+  party_start <- 25
+
+  stat_codes <- as.character(raw[[stat_col]])
+  # Filter to valid data rows (8-digit or 7-digit stat codes)
+  valid_rows <- !is.na(stat_codes) & grepl("^\\d{7,8}$", stat_codes)
+  data <- raw[valid_rows, ]
+
+  df <- data.frame(
+    ags = sh_stat_to_ags(data[[stat_col]]),
+    ags_name = as.character(data[[name_col]]),
+    eligible_voters = as.numeric(as.character(data[[ev_col]])),
+    number_voters = as.numeric(as.character(data[[voter_col]])),
+    invalid_votes = as.numeric(as.character(data[[invalid_col]])),
+    valid_votes = as.numeric(as.character(data[[valid_col]])),
+    stringsAsFactors = FALSE
+  )
+
+  # Party votes
+  for (k in seq_along(pmap)) {
+    col_idx <- party_start + k - 1
+    if (col_idx > ncol(data)) break
+    vals <- as.character(data[[col_idx]])
+    vals[vals == "x" | vals == "-"] <- NA_character_
+    df[[pmap[k]]] <- as.numeric(vals)
+  }
+
+  # Aggregate to municipality
+  vote_cols <- pmap[pmap %in% names(df)]
+  agg <- sh_aggregate(df, vote_cols)
+
+  # Compute shares
+  for (pc in vote_cols) {
+    agg[[pc]] <- ifelse(!is.na(agg$valid_votes) & agg$valid_votes > 0,
+                        agg[[pc]] / agg$valid_votes, NA_real_)
+  }
+  agg$turnout <- ifelse(!is.na(agg$eligible_voters) & agg$eligible_voters > 0,
+                        agg$number_voters / agg$eligible_voters, NA_real_)
+  agg$county <- substr(agg$ags, 1, 5)
+  agg$state <- "01"
+  agg$election_year <- year
+
+  cat("    ->", nrow(agg), "Gemeinden\n")
+  as_tibble(agg)
+}
+
+#' Parse SH 2013 (XLSX with headers in row 1)
+parse_sh_2013 <- function(filepath) {
+  cat("  Reading SH 2013...\n")
+  suppressMessages(
+    raw <- read_excel(filepath, col_names = FALSE, col_types = "text")
+  )
+
+  # Row 1 = headers, row 2 = field codes, row 3+ = data
+  headers <- clean_header(as.character(raw[1, ]))
+  codes <- as.character(raw[2, ])
+  data <- raw[3:nrow(raw), ]
+
+  # Find key columns by field code
+  stat_col <- which(codes == "A1")[1] - 3  # stat code is a few cols before A1
+  # Actually, col 1 is stat. Kennziffer based on structure
+  stat_col <- 1
+  name_col <- 3  # Gemeinde
+
+  ev_col <- which(codes == "A")[1]
+  voter_col <- which(codes == "B")[1]
+  invalid_col <- which(codes == "C")[1]
+  valid_col <- which(codes == "D")[1]
+
+  # Party columns: D1, D2, ... from the field codes
+  d_cols <- grep("^D\\d+$", codes)
+  party_names_raw <- headers[d_cols]
+
+  stat_codes <- as.character(data[[stat_col]])
+  valid_rows <- !is.na(stat_codes) & grepl("^\\d{7,8}$", stat_codes)
+  data <- data[valid_rows, ]
+
+  df <- data.frame(
+    ags = sh_stat_to_ags(data[[stat_col]]),
+    ags_name = as.character(data[[name_col]]),
+    eligible_voters = as.numeric(as.character(data[[ev_col]])),
+    number_voters = as.numeric(as.character(data[[voter_col]])),
+    invalid_votes = as.numeric(as.character(data[[invalid_col]])),
+    valid_votes = as.numeric(as.character(data[[valid_col]])),
+    stringsAsFactors = FALSE
+  )
+
+  # Party votes
+  vote_col_names <- c()
+  for (k in seq_along(d_cols)) {
+    pname_raw <- party_names_raw[k]
+    if (is.na(pname_raw) || pname_raw == "") next
+    pname <- normalise_party_cty(tolower(pname_raw))
+    vals <- as.character(data[[d_cols[k]]])
+    vals[vals == "x" | vals == "-"] <- NA_character_
+    if (pname %in% names(df)) {
+      # Duplicate: individual candidate/group → sum into existing
+      old <- df[[pname]]
+      new <- as.numeric(vals)
+      df[[pname]] <- ifelse(is.na(old) & is.na(new), NA_real_,
+                            ifelse(is.na(old), 0, old) + ifelse(is.na(new), 0, new))
+    } else {
+      df[[pname]] <- as.numeric(vals)
+      vote_col_names <- c(vote_col_names, pname)
+    }
+  }
+
+  # Aggregate to municipality
+  agg <- sh_aggregate(df, vote_col_names)
+
+  for (pc in vote_col_names) {
+    agg[[pc]] <- ifelse(!is.na(agg$valid_votes) & agg$valid_votes > 0,
+                        agg[[pc]] / agg$valid_votes, NA_real_)
+  }
+  agg$turnout <- ifelse(!is.na(agg$eligible_voters) & agg$eligible_voters > 0,
+                        agg$number_voters / agg$eligible_voters, NA_real_)
+  agg$county <- substr(agg$ags, 1, 5)
+  agg$state <- "01"
+  agg$election_year <- 2013L
+
+  cat("    ->", nrow(agg), "Gemeinden\n")
+  as_tibble(agg)
+}
+
+#' Parse SH 2018 (XLSX with headers in row 4, data from row 7)
+parse_sh_2018 <- function(filepath) {
+  cat("  Reading SH 2018...\n")
+  suppressMessages(
+    raw <- read_excel(filepath, col_names = FALSE, col_types = "text")
+  )
+
+  # Row 4 = party names, row 6 = field codes, row 7+ = data
+  headers <- clean_header(as.character(raw[4, ]))
+  codes <- as.character(raw[6, ])
+  data <- raw[7:nrow(raw), ]
+
+  stat_col <- 1
+  name_col <- 3
+
+  ev_col <- which(codes == "A")[1]
+  voter_col <- which(codes == "B")[1]
+  invalid_col <- which(codes == "C")[1]
+  valid_col <- which(codes == "D")[1]
+
+  d_cols <- grep("^D\\d+$", codes)
+  party_names_raw <- headers[d_cols]
+
+  stat_codes <- as.character(data[[stat_col]])
+  valid_rows <- !is.na(stat_codes) & grepl("^\\d{7,8}$", stat_codes)
+  data <- data[valid_rows, ]
+
+  df <- data.frame(
+    ags = sh_stat_to_ags(data[[stat_col]]),
+    ags_name = as.character(data[[name_col]]),
+    eligible_voters = as.numeric(as.character(data[[ev_col]])),
+    number_voters = as.numeric(as.character(data[[voter_col]])),
+    invalid_votes = as.numeric(as.character(data[[invalid_col]])),
+    valid_votes = as.numeric(as.character(data[[valid_col]])),
+    stringsAsFactors = FALSE
+  )
+
+  vote_col_names <- c()
+  for (k in seq_along(d_cols)) {
+    pname_raw <- party_names_raw[k]
+    if (is.na(pname_raw) || pname_raw == "") next
+    pname <- normalise_party_cty(tolower(pname_raw))
+    vals <- as.character(data[[d_cols[k]]])
+    vals[vals == "x" | vals == "-"] <- NA_character_
+    if (pname %in% names(df)) {
+      old <- df[[pname]]
+      new <- as.numeric(vals)
+      df[[pname]] <- ifelse(is.na(old) & is.na(new), NA_real_,
+                            ifelse(is.na(old), 0, old) + ifelse(is.na(new), 0, new))
+    } else {
+      df[[pname]] <- as.numeric(vals)
+      vote_col_names <- c(vote_col_names, pname)
+    }
+  }
+
+  agg <- sh_aggregate(df, vote_col_names)
+
+  for (pc in vote_col_names) {
+    agg[[pc]] <- ifelse(!is.na(agg$valid_votes) & agg$valid_votes > 0,
+                        agg[[pc]] / agg$valid_votes, NA_real_)
+  }
+  agg$turnout <- ifelse(!is.na(agg$eligible_voters) & agg$eligible_voters > 0,
+                        agg$number_voters / agg$eligible_voters, NA_real_)
+  agg$county <- substr(agg$ags, 1, 5)
+  agg$state <- "01"
+  agg$election_year <- 2018L
+
+  cat("    ->", nrow(agg), "Gemeinden\n")
+  as_tibble(agg)
+}
+
+#' Parse SH 2023 (CSV with per-Kreis party mapping from Feldbezeichner)
+parse_sh_2023 <- function(csv_path, fb_path) {
+  cat("  Reading SH 2023...\n")
+
+  # Read Feldbezeichner: maps D-field codes to party names per Kreis
+  suppressMessages(
+    fb <- read_excel(fb_path, sheet = "Kreise")
+  )
+  # Forward-fill Kreis name and Regionalschlüssel
+  for (i in 2:nrow(fb)) {
+    if (is.na(fb$Kreis[i])) {
+      fb$Kreis[i] <- fb$Kreis[i - 1]
+      fb$Regionalschlüssel[i] <- fb$Regionalschlüssel[i - 1]
+    }
+  }
+  # Build per-Kreis mapping: list of (D-code → party_name)
+  fb$kreis_code <- sprintf("%05d", as.integer(fb$Regionalschlüssel))
+  fb$pname <- normalise_party_cty(tolower(trimws(fb$`Wahlvorschlag Kurzbezeichnung`)))
+
+  # Read CSV (Latin-1 encoding, semicolon-delimited)
+  csv_df <- read.csv2(csv_path, header = TRUE, stringsAsFactors = FALSE,
+                       fileEncoding = "latin1", na.strings = c("", "NA"))
+  headers <- names(csv_df)
+
+  # Key columns
+  stat_col <- which(headers == "Erfassungsgebietsnummer")[1]
+  ev_col <- which(grepl("Wahlberechtigte.gesamt", headers))[1]
+  voter_col <- which(grepl("Waehlende.gesamt", headers))[1]
+  invalid_col <- which(grepl("ungueltige", headers))[1]
+  valid_col <- which(grepl("gueltige", headers) & !grepl("ungueltige", headers))[1]
+
+  # D-field columns
+  d_col_indices <- grep("^D\\d+$", headers)
+  d_field_names <- headers[d_col_indices]
+
+  # Build base data frame
+  stat_codes <- as.character(csv_df[[stat_col]])
+  valid_rows <- !is.na(stat_codes) & grepl("^\\d{7,8}$", stat_codes)
+  data <- csv_df[valid_rows, ]
+
+  ags_vals <- sh_stat_to_ags(data[[stat_col]])
+  kreis_codes <- substr(ags_vals, 1, 5)
+  # Only keep Landkreise (01051-01062), not kreisfreie Städte (01001-01004)
+  is_landkreis <- kreis_codes %in% unique(fb$kreis_code)
+  data <- data[is_landkreis, ]
+  ags_vals <- ags_vals[is_landkreis]
+  kreis_codes <- kreis_codes[is_landkreis]
+
+  df <- data.frame(
+    ags = ags_vals,
+    ags_name = NA_character_,
+    kreis_code = kreis_codes,
+    eligible_voters = as.numeric(as.character(data[[ev_col]])),
+    number_voters = as.numeric(as.character(data[[voter_col]])),
+    invalid_votes = as.numeric(as.character(data[[invalid_col]])),
+    valid_votes = as.numeric(as.character(data[[valid_col]])),
+    stringsAsFactors = FALSE
+  )
+
+  # For each D-field, look up party name per Kreis and assign votes
+  all_pnames <- c()
+  for (dc in seq_along(d_col_indices)) {
+    d_field <- d_field_names[dc]
+    vals <- as.numeric(as.character(data[[d_col_indices[dc]]]))
+
+    # Look up party name for each row based on its Kreis
+    for (kr in unique(df$kreis_code)) {
+      kr_mask <- df$kreis_code == kr
+      fb_row <- fb[fb$kreis_code == kr & fb$Feld == d_field, ]
+      if (nrow(fb_row) == 0) next  # this D-field not used in this Kreis
+
+      pname <- fb_row$pname[1]
+      if (pname %in% names(df)) {
+        df[[pname]][kr_mask] <- ifelse(
+          is.na(df[[pname]][kr_mask]) & is.na(vals[kr_mask]), NA_real_,
+          ifelse(is.na(df[[pname]][kr_mask]), 0, df[[pname]][kr_mask]) +
+            ifelse(is.na(vals[kr_mask]), 0, vals[kr_mask])
+        )
+      } else {
+        df[[pname]] <- NA_real_
+        df[[pname]][kr_mask] <- vals[kr_mask]
+        all_pnames <- c(all_pnames, pname)
+      }
+    }
+  }
+  all_pnames <- unique(all_pnames)
+
+  # Aggregate to municipality
+  df$kreis_code <- NULL
+  agg <- sh_aggregate(df, all_pnames)
+
+  for (pc in all_pnames) {
+    if (pc %in% names(agg)) {
+      agg[[pc]] <- ifelse(!is.na(agg$valid_votes) & agg$valid_votes > 0,
+                          agg[[pc]] / agg$valid_votes, NA_real_)
+    }
+  }
+  agg$turnout <- ifelse(!is.na(agg$eligible_voters) & agg$eligible_voters > 0,
+                        agg$number_voters / agg$eligible_voters, NA_real_)
+  agg$county <- substr(agg$ags, 1, 5)
+  agg$state <- "01"
+  agg$election_year <- 2023L
+
+  cat("    ->", nrow(agg), "Gemeinden\n")
+  as_tibble(agg)
+}
+
+# Process SH files
+sh_results <- list()
+for (yr in c(1998, 2003)) {
+  sh_results[[as.character(yr)]] <- tryCatch(
+    parse_sh_early(file.path(sh_dir, paste0("Schleswig-Holstein_", yr, "_Kreistagswahl.xls")), yr),
+    error = function(e) { cat("  SH", yr, "ERROR:", conditionMessage(e), "\n"); NULL }
+  )
+}
+sh_results[["2008"]] <- tryCatch(
+  parse_sh_early(file.path(sh_dir, "Schleswig-Holstein_2008_Kreiswahl_Gemeindewahl.xls"), 2008),
+  error = function(e) { cat("  SH 2008 ERROR:", conditionMessage(e), "\n"); NULL }
+)
+sh_results[["2013"]] <- tryCatch(
+  parse_sh_2013(file.path(sh_dir, "Schleswig-Holstein_2013_Kreistagswahl.xlsx")),
+  error = function(e) { cat("  SH 2013 ERROR:", conditionMessage(e), "\n"); NULL }
+)
+sh_results[["2018"]] <- tryCatch(
+  parse_sh_2018(file.path(sh_dir, "Schleswig-Holstein_2018_Kreiswahl_Gemeindewahl.xlsx")),
+  error = function(e) { cat("  SH 2018 ERROR:", conditionMessage(e), "\n"); NULL }
+)
+sh_results[["2023"]] <- tryCatch(
+  parse_sh_2023(
+    file.path(sh_dir, "Schleswig-Holstein_2023_Kreiswahl_Gemeindewahl.csv"),
+    file.path(sh_dir, "Schleswig-Holstein_2023_Kreiswahl_Feldbezeichner.xlsx")
+  ),
+  error = function(e) { cat("  SH 2023 ERROR:", conditionMessage(e), "\n"); NULL }
+)
+
+sh_results <- sh_results[!sapply(sh_results, is.null)]
+df_sh <- bind_rows(sh_results)
+cat("SH total:", nrow(df_sh), "rows x", ncol(df_sh), "cols\n")
+cat("SH years:", paste(sort(unique(df_sh$election_year)), collapse = ", "), "\n")
+df_sh |> count(election_year) |> print()
+
+
+# =============================================================================
 # Combine all states and write output
 # =============================================================================
 
@@ -2342,6 +2771,7 @@ if (exists("df_by") && nrow(df_by) > 0) all_dfs <- c(all_dfs, list(df_by))
 if (exists("df_sl") && nrow(df_sl) > 0) all_dfs <- c(all_dfs, list(df_sl))
 if (exists("df_he") && nrow(df_he) > 0) all_dfs <- c(all_dfs, list(df_he))
 if (exists("df_bw") && nrow(df_bw) > 0) all_dfs <- c(all_dfs, list(df_bw))
+if (exists("df_sh") && nrow(df_sh) > 0) all_dfs <- c(all_dfs, list(df_sh))
 df_all <- bind_rows(all_dfs)
 
 # Ensure AGS, county, state are character with proper zero-padding

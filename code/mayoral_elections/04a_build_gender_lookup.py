@@ -85,6 +85,11 @@ RAW_OVERRIDES = {
     'Familie, Vaterland - Liste Henry Nitzsch" e. V.': None,
     'Familie, Vaterland - Liste Henry Nitzsche" e.V.': None,
     'M.E. "Marlies"': "w",
+    ', Andreas': "m",
+    'Dr, Hans-Christian': "m",
+    'Marcel "Bratwurst"': "m",
+    'Hubertus "Hubert vom Venn"': "m",
+    'Georg "Schorsch"': "m",
 }
 
 # Non-person name patterns
@@ -305,13 +310,13 @@ def main():
             results.append((raw_name, clean, gender_result, method))
             stats["classified"] += 1
 
-    # Step 4: Write output
+    # Step 4: Write output (pipe-delimited to avoid quoting issues with names
+    # containing double quotes, e.g. 'Marcel "Bratwurst"')
     os.makedirs(os.path.dirname(OUTPUT_CSV), exist_ok=True)
-    with open(OUTPUT_CSV, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["candidate_first_name", "name_clean", "gender", "method"])
-        for r in results:
-            writer.writerow(r)
+    with open(OUTPUT_CSV, "w") as f:
+        f.write("candidate_first_name|name_clean|gender|method\n")
+        for raw, clean, g, method in results:
+            f.write(f"{raw}|{clean}|{g or ''}|{method}\n")
 
     # Summary
     total = sum(stats.values())

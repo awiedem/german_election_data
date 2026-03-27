@@ -8,7 +8,7 @@ Seven datasets covering mayoral elections in 7 German states (Bayern, Niedersach
 |---|---|---|---|---|
 | `mayoral_unharm` | 41,436 | 16 | Election | One row per election-round (winner-level summary), original boundaries |
 | `mayoral_harm` | 38,667 | 23 | Election | Same as above, mapped to 2021 municipal boundaries |
-| `mayoral_candidates` | 85,160 | 32 | Candidate | One row per candidate per election cycle (wide format), original boundaries |
+| `mayoral_candidates` | 85,160 | 44 | Candidate | One row per candidate per election cycle (wide format), original boundaries, incl. candidate characteristics |
 | `mayor_panel` | 34,495 | 18 | Person-election | Within-mayor panel with person IDs, original boundaries |
 | `mayor_panel_harm` | 33,319 | 19 | Person-election | Same as above, mapped to 2021 municipal boundaries |
 | `mayor_panel_annual` | 185,112 | 18 | Person-year | Annual panel (forward-filled from elections), original boundaries |
@@ -80,7 +80,7 @@ One row per candidate per election cycle. Companion to `mayoral_unharm` -- same 
 | `candidate_name` | Full name (available for NRW, RLP, NI, SL, SN partial, SH) |
 | `candidate_last_name` | Last name |
 | `candidate_first_name` | First name |
-| `candidate_gender` | `"m"` / `"w"` (RLP and SL only) |
+| `candidate_gender` | `"m"` / `"w"` — raw (RLP, SL) or predicted via `gender-guesser` (all named states) |
 | `candidate_party` | Party or label (e.g., CSU, SPD, Parteilos, EB) |
 | `candidate_votes_hw` | Hauptwahl vote count (NA for RLP) |
 | `candidate_voteshare_hw` | Hauptwahl vote share (0--1) |
@@ -95,17 +95,34 @@ One row per candidate per election cycle. Companion to `mayoral_unharm` -- same 
 | `candidate_profession` | Profession (NI only) |
 | `office_type` | Office type (BY and SL only) |
 
+**Candidate characteristics columns** (added by `04_candidate_characteristics.R`):
+
+| Column | Description |
+|---|---|
+| `candidate_gender_source` | `"raw"` (from source data: RLP, SL) or `"predicted"` (from name classification) |
+| `candidate_gender_method` | Classification method: `raw`, `full_de`, `full_global`, `hyphen_first_de`, `hyphen_first_global`, `accent_norm_global`, `manual` |
+| `candidate_gender_prob` | Confidence score: 1.0 for raw, 0.99 for `full_de`/`manual`, 0.95 for `hyphen_first_de`, 0.90 for global matches |
+| `candidate_name_origin` | Fine-grained name origin: `"german"`, `"turkish"`, `"arabic"`, `"eastern_european"`, `"southern_european"` |
+| `candidate_name_origin_conf` | Confidence in origin classification (0.50--0.95) |
+| `candidate_name_origin_method` | Detection method: `"combined"`, `"surname_match"`, `"firstname_match"`, `"surname_pattern"`, `"default"` |
+| `candidate_migration_bg` | Binary migration background indicator: 0 = German-origin, 1 = likely non-German origin |
+| `candidate_migration_bg_prob` | Probability of migration background (continuous, 0--1) |
+| `candidate_local_surname` | Placeholder (NA) — awaiting telephone directory data |
+| `candidate_surname_county_share` | Placeholder (NA) |
+| `candidate_surname_n_counties` | Placeholder (NA) |
+| `candidate_surname_overrep_ratio` | Placeholder (NA) |
+
 **Field availability by state**:
 
-| State | Names | Gender | Birth Year | Profession | Candidate Votes |
-|---|---|---|---|---|---|
-| Bayern | -- | -- | -- | -- | Yes |
-| Niedersachsen | Yes | -- | Yes | Yes | Yes |
-| Nordrhein-Westfalen | Yes | -- | -- | -- | Yes |
-| Rheinland-Pfalz | Yes | Yes | -- | -- | -- (% only) |
-| Saarland | Yes | Yes | -- | -- | Yes |
-| Sachsen | Partial | -- | -- | -- | Yes |
-| Schleswig-Holstein | Yes | -- | -- | -- | Yes |
+| State | Names | Gender (raw) | Gender (predicted) | Migration bg | Birth Year | Profession | Candidate Votes |
+|---|---|---|---|---|---|---|---|
+| Bayern | -- | -- | -- | -- | -- | -- | Yes |
+| Niedersachsen | Yes | -- | Yes (99.9%) | Yes | Yes | Yes | Yes |
+| Nordrhein-Westfalen | Yes | -- | Yes (100%) | Yes | -- | -- | Yes |
+| Rheinland-Pfalz | Yes | Yes | Yes (100%) | Yes | -- | -- | -- (% only) |
+| Saarland | Yes | Yes | Yes (100%) | Yes | -- | -- | Yes |
+| Sachsen | Partial | -- | Yes (98.6%) | Yes | -- | -- | Yes |
+| Schleswig-Holstein | Yes | -- | Yes (100%) | Yes | -- | -- | Yes |
 
 ---
 

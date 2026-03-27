@@ -51,6 +51,9 @@ cand <- read_rds("data/mayoral_elections/final/mayoral_candidates.rds")
 cat(sprintf("Loaded %d candidates\n", nrow(cand)))
 
 # Strip any previously added enrichment columns (idempotent re-runs)
+# IMPORTANT: If enrichment columns exist, the candidate_gender column may contain
+# predicted values baked in from a prior run. We MUST re-run 01b first to get clean
+# base data, because re-reading the same enriched file does NOT recover the original.
 enrichment_cols <- c(
   "candidate_gender_source", "candidate_gender_prob", "candidate_gender_method",
   "candidate_name_origin", "candidate_name_origin_conf", "candidate_name_origin_method",
@@ -60,13 +63,11 @@ enrichment_cols <- c(
 )
 cols_to_drop <- intersect(enrichment_cols, names(cand))
 if (length(cols_to_drop) > 0) {
-  cat(sprintf("Stripping %d enrichment columns from prior run\n", length(cols_to_drop)))
-  cand <- cand |> select(-all_of(cols_to_drop))
-  # Reset predicted genders back to NA (keep only raw genders from source data)
-  if ("candidate_gender_source" %in% cols_to_drop) {
-    cand_orig <- read_rds("data/mayoral_elections/final/mayoral_candidates.rds")
-    cand$candidate_gender <- cand_orig$candidate_gender
-  }
+  cat("WARNING: Enrichment columns detected from prior run.\n")
+  cat("Re-running 01b_mayoral_candidates.R to get clean base data...\n")
+  source("code/mayoral_elections/01b_mayoral_candidates.R")
+  cand <- read_rds("data/mayoral_elections/final/mayoral_candidates.rds")
+  cat(sprintf("Reloaded %d candidates from clean base\n", nrow(cand)))
 }
 
 cat(sprintf("Existing raw gender coverage: %d / %d (%.1f%%)\n",
@@ -87,7 +88,7 @@ if (!file.exists(lookup_path)) {
   stop("Gender lookup not found at ", lookup_path,
        "\nRun code/mayoral_elections/04a_build_gender_lookup.py first.")
 }
-gender_lookup <- fread(lookup_path, colClasses = "character")
+gender_lookup <- fread(lookup_path, colClasses = "character", sep = "|")
 cat(sprintf("Loaded gender lookup: %d unique first names\n", nrow(gender_lookup)))
 cat(sprintf("  Classified: %d, Not classifiable: %d\n",
             sum(gender_lookup$gender %in% c("m", "w")),
