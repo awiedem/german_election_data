@@ -618,9 +618,11 @@ if (!is.null(rlp_ob)) {
 if (!is.null(rlp_vg)) {
   rlp_vg <- rlp_vg %>%
     mutate(
-      ags = paste0("07", str_pad(schluessel, width = 6, side = "left", pad = "0")),
+      schluessel_clean = gsub("\\s", "", schluessel),
+      ags = paste0("07", str_pad(schluessel_clean, width = 6, side = "left", pad = "0")),
       election_type = "VG-Bürgermeisterwahl"
-    )
+    ) %>%
+    select(-schluessel_clean)
 }
 
 # Vfr.Gemeinden: codes may have spaces (e.g. "231 00 134"), 8-10 chars

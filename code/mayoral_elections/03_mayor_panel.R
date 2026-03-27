@@ -411,6 +411,75 @@ panel <- panel |>
   ) |>
   ungroup()
 
+# --- Incumbency enrichment variables ---
+cat("\n  Adding incumbency enrichment variables...\n")
+
+# party_switch: did the winning party change from the previous election in this ags?
+# is_new_party_mayor: first time this party wins in this municipality (ever in data)
+panel <- panel |>
+  arrange(ags, election_date) |>
+  group_by(ags) |>
+  mutate(
+    prev_party = lag(winner_party),
+    party_switch = case_when(
+      is.na(prev_party) ~ NA_integer_,
+      prev_party == winner_party ~ 0L,
+      TRUE ~ 1L
+    )
+  ) |>
+  ungroup()
+
+# is_new_party_mayor: has this party EVER won before in this ags (within data)?
+panel <- panel |>
+  arrange(ags, election_date) |>
+  group_by(ags) |>
+  mutate(
+    is_new_party_mayor = as.integer(
+      !duplicated(paste(ags, winner_party)) &
+        !is.na(winner_party)
+    )
+  ) |>
+  ungroup()
+
+# margin_change: change in winning margin from previous election
+panel <- panel |>
+  arrange(ags, election_date) |>
+  group_by(ags) |>
+  mutate(
+    prev_margin = lag(winning_margin),
+    margin_change = case_when(
+      is.na(prev_margin) | is.na(winning_margin) ~ NA_real_,
+      TRUE ~ winning_margin - prev_margin
+    )
+  ) |>
+  ungroup() |>
+  select(-prev_party, -prev_margin)
+
+# consecutive_terms: number of consecutive terms by same person (resets if gap)
+panel <- panel |>
+  arrange(person_id, ags, election_date) |>
+  group_by(person_id, ags) |>
+  mutate(
+    prev_election_year = lag(election_year),
+    gap = case_when(
+      is.na(prev_election_year) ~ FALSE,
+      # Allow gaps up to max term length + 2 (e.g., 8 years for 6-year terms)
+      election_year - prev_election_year > 10 ~ TRUE,
+      TRUE ~ FALSE
+    ),
+    consec_group = cumsum(gap),
+    consecutive_terms = row_number()
+  ) |>
+  ungroup() |>
+  select(-prev_election_year, -gap, -consec_group)
+
+cat(sprintf("  party_switch: %d switches out of %d with data (%.1f%%)\n",
+            sum(panel$party_switch == 1L, na.rm = TRUE),
+            sum(!is.na(panel$party_switch)),
+            100 * mean(panel$party_switch == 1L, na.rm = TRUE)))
+cat(sprintf("  is_new_party_mayor: %d first-time party wins\n",
+            sum(panel$is_new_party_mayor == 1L, na.rm = TRUE)))
+
 
 # ============================================================================
 # 6. VALIDATE PERSON IDS
@@ -566,6 +635,45 @@ panel <- panel |>
   ungroup() |>
   select(-next_person_id)
 
+# Recompute enrichment variables after harmonization
+panel <- panel |>
+  arrange(ags, election_date) |>
+  group_by(ags) |>
+  mutate(
+    prev_party = lag(winner_party),
+    party_switch = case_when(
+      is.na(prev_party) ~ NA_integer_,
+      prev_party == winner_party ~ 0L,
+      TRUE ~ 1L
+    ),
+    is_new_party_mayor = as.integer(
+      !duplicated(paste(ags, winner_party)) & !is.na(winner_party)
+    ),
+    prev_margin = lag(winning_margin),
+    margin_change = case_when(
+      is.na(prev_margin) | is.na(winning_margin) ~ NA_real_,
+      TRUE ~ winning_margin - prev_margin
+    )
+  ) |>
+  ungroup() |>
+  select(-prev_party, -prev_margin)
+
+panel <- panel |>
+  arrange(person_id, ags, election_date) |>
+  group_by(person_id, ags) |>
+  mutate(
+    prev_ey = lag(election_year),
+    gap = case_when(
+      is.na(prev_ey) ~ FALSE,
+      election_year - prev_ey > 10 ~ TRUE,
+      TRUE ~ FALSE
+    ),
+    consec_group = cumsum(gap),
+    consecutive_terms = row_number()
+  ) |>
+  ungroup() |>
+  select(-prev_ey, -gap, -consec_group)
+
 
 # ============================================================================
 # 8. FINALIZE BOTH VERSIONS (UNHARMONIZED + HARMONIZED)
@@ -593,8 +701,10 @@ finalize_panel <- function(p, version = "harm") {
     "person_id", "ags",
     if (has_ags_21) "ags_21",
     "state", "election_year", "election_date",
-    "term_number", "winner_party", "winner_voteshare", "winning_margin",
+    "term_number", "consecutive_terms", "winner_party", "winner_voteshare",
+    "winning_margin", "margin_change",
     "n_candidates", "is_incumbent", "next_runs_again",
+    "party_switch", "is_new_party_mayor",
     "tenure_start", "years_in_office", "term_start_date",
     "n_terms", "total_tenure_years", "has_margin_variation"
   )

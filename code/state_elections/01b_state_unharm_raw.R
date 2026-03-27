@@ -1093,6 +1093,25 @@ for (yr in names(bb_dates)) {
     ocr_path <- here(raw_path, "Brandenburg", "bb_1994_ocr.csv")
     raw94 <- read.csv(ocr_path, colClasses = "character")
 
+    ## Fix OCR-misread AGS codes (single-digit errors in scanned PDF)
+    ## Verified against PDF pages and BBSR crosswalk/federal data
+    ocr_ags_fixes <- c(
+      "12063146" = "12063148",  # Ketzin, Stadt (PDF p138 confirms)
+      "12064226" = "12064228",  # Hoppegarten/Mü.
+      "12064246" = "12064248",  # Klein Neuendorf
+      "12065162" = "12065152",  # Kappe (EV=151 matches federal)
+      "12067025" = "12067028",  # Bahro
+      "12067045" = "12067048",  # Birkholz
+      "12068049" = "12068044",  # Bork/Lellichow (PDF p40 confirms)
+      "12068309" = "12068300",  # Luhme (federal EV=128 ≈ OCR 127)
+      "12073126" = "12073128"   # Eickstedt
+    )
+    fix_mask <- raw94$ags %in% names(ocr_ags_fixes)
+    if (any(fix_mask)) {
+      raw94$ags[fix_mask] <- ocr_ags_fixes[raw94$ags[fix_mask]]
+      cat("  Fixed", sum(fix_mask), "OCR-misread AGS codes in BB 1994\n")
+    }
+
     ## Map OCR column names to standard party names
     party_map <- c(
       spd = "spd", cdu = "cdu", pds = "linke_pds",
@@ -1220,10 +1239,12 @@ for (yr in names(bb_dates)) {
       id_rows <- which(!is.na(d[[cnames[3]]]) & grepl("^\\d+$", d[[cnames[3]]]) &
                          !is.na(d[[cnames[4]]]) & grepl("^\\d+$", d[[cnames[4]]]))
 
-      ## Exclude Amt-level aggregate rows (col4 = "000") — these are not municipalities
-      amt_mask <- d[[cnames[4]]][id_rows] == "000"
+      ## Exclude Amt-level aggregate rows (col4=000 AND col5!=00)
+      ## Keep kreisfreie Städte (col4=000 AND col5=00): Brandenburg, Cottbus, Frankfurt, Potsdam
+      amt_mask <- d[[cnames[4]]][id_rows] == "000" &
+                  !is.na(d[[cnames[5]]][id_rows]) & d[[cnames[5]]][id_rows] != "00"
       if (any(amt_mask)) {
-        cat("  Excluding", sum(amt_mask), "Amt-level rows (col4=000) from", wk, "\n")
+        cat("  Excluding", sum(amt_mask), "Amt-level rows from", wk, "\n")
         id_rows <- id_rows[!amt_mask]
       }
 
@@ -1337,7 +1358,9 @@ for (yr in names(bb_dates)) {
       d <- read_excel(fpath, sheet = wk, col_names = FALSE, col_types = "text")
       id_rows <- which(!is.na(d[[cnames[3]]]) & grepl("^\\d+$", d[[cnames[3]]]) &
                          !is.na(d[[cnames[4]]]) & grepl("^\\d+$", d[[cnames[4]]]))
-      id_rows <- id_rows[d[[cnames[4]]][id_rows] != "000"]  # exclude Amt rows
+      ## Exclude Amt rows but keep kfS (col4=000, col5=00)
+      id_rows <- id_rows[!(d[[cnames[4]]][id_rows] == "000" &
+                            !is.na(d[[cnames[5]]][id_rows]) & d[[cnames[5]]][id_rows] != "00")]
       for (id_r in id_rows) {
         kreis <- as.integer(d[[cnames[3]]][id_r])
         gem   <- as.integer(d[[cnames[4]]][id_r])
@@ -1502,7 +1525,10 @@ for (yr in names(bb_dates)) {
       r4 <- as.character(d[4, ])
 
       ## Party names in row 4, cols 5+ (cols 1-4 = Region, Eligible, Voters, Valid)
-      data_rows <- d[10:nrow(d), ]
+      ## Stop before the "%" section (percentages, not counts)
+      pct_row <- which(trimws(as.character(d[[cnames[2]]])) == "%")
+      last_row <- if (length(pct_row) > 0) min(pct_row) - 1 else nrow(d)
+      data_rows <- d[10:last_row, ]
       names_col <- trimws(data_rows[[cnames[1]]])
 
       ## Filter out county totals, Briefwahl, empty, and summary rows
@@ -4268,6 +4294,69 @@ result20$cdu_csu <- result20$cdu
 cat("EV=", eligible20, "valid=", valid20, "\n")
 hh_results[["2020"]] <- result20
 
+## ---------- 2025 (XLSX, city-wide Landesliste Gesamtstimmen) ----------
+## Source: BUE2025_e01_Landesliste.xlsx from Statistik Nord
+## Simple vertical layout: Merkmal (col 1), 2025 absolute (col 2), 2025 % (col 3)
+## Rows: Wahlberechtigte, Wählende, ungültige/gültige Stimmzettel, gültige Stimmen,
+##        then party names (SPD, CDU, ...) with Gesamtstimmen
+cat("HH 2025 ...")
+hh_f25 <- list.files(hh_raw_path, pattern = "2025.*Landesliste.*\\.xlsx$",
+                     full.names = TRUE, recursive = TRUE)
+if (length(hh_f25) == 0) hh_f25 <- list.files(hh_raw_path, pattern = "2025.*e01.*\\.xlsx$",
+                                                full.names = TRUE, recursive = TRUE)
+hh_raw25 <- read_excel(hh_f25[1], col_names = FALSE, .name_repair = "minimal")
+hh_labels25 <- trimws(as.character(hh_raw25[[1]]))
+hh_vals25   <- as.character(hh_raw25[[2]])
+
+# Extract metadata by matching labels
+hh_ev25 <- function(pattern) {
+  idx <- grep(pattern, hh_labels25, ignore.case = TRUE)
+  if (length(idx) > 0) return(hh_safe_num(hh_vals25[idx[1]]))
+  NA_real_
+}
+eligible25 <- hh_ev25("^Wahlberechtigte$")
+voters25   <- hh_ev25("^W.hlende")
+invalid25  <- hh_ev25("ung.ltige Stimmzettel")
+valid25    <- hh_ev25("^g.ltige Stimmen\\b")
+
+# Party rows: between "gültige Stimmen für" and the copyright line
+party_start <- grep("g.ltige Stimmen f.r", hh_labels25, ignore.case = TRUE)
+party_end   <- grep("^©|^Andere|^$", hh_labels25)
+party_end   <- min(party_end[party_end > party_start]) - 1
+
+mapped_votes25 <- list()
+for (ri in (party_start + 1):party_end) {
+  pname <- hh_labels25[ri]
+  pval  <- hh_safe_num(hh_vals25[ri])
+  if (is.na(pname) || pname == "" || is.na(pval)) next
+  if (grepl("^darunter|^davon", pname, ignore.case = TRUE)) next
+  std <- hh_map_party(pname)
+  if (!is.na(std)) {
+    if (std %in% names(mapped_votes25)) {
+      mapped_votes25[[std]] <- mapped_votes25[[std]] + pval
+    } else {
+      mapped_votes25[[std]] <- pval
+    }
+  }
+}
+mapped_sum25 <- sum(unlist(mapped_votes25), na.rm = TRUE)
+other25 <- max(valid25 - mapped_sum25, 0)
+
+result25 <- tibble(
+  ags = "02000000", election_year = 2025L, state = "02",
+  election_date = as.Date("2025-03-02"),
+  eligible_voters = eligible25, number_voters = voters25,
+  valid_votes = valid25, invalid_votes = invalid25,
+  turnout = voters25 / eligible25
+)
+for (std_name in names(mapped_votes25)) {
+  result25[[std_name]] <- mapped_votes25[[std_name]] / valid25
+}
+result25$other <- other25 / valid25
+result25$cdu_csu <- result25$cdu
+cat("EV=", eligible25, "valid=", valid25, "\n")
+hh_results[["2025"]] <- result25
+
 all_states[["hh"]] <- bind_rows(hh_results)
 cat("Hamburg total:", nrow(all_states[["hh"]]), "rows\n\n")
 
@@ -4300,7 +4389,7 @@ nrw_results <- list()
 
 ## ---------- OCR: pre-1975 (Kreis level, from scanned PDFs, see 00_nrw_pre1975_extract.py) ----------
 nrw_pre75_path <- here(raw_path, "Nordrhein-Westfalen", "nrw_pre1975_kreis.csv")
-nrw_pre75_dates <- c("1950" = "1950-06-18", "1954" = "1954-06-27", "1958" = "1958-07-06", "1962" = "1962-07-08", "1966" = "1966-07-10", "1970" = "1970-06-14")
+nrw_pre75_dates <- c("1947" = "1947-04-20", "1950" = "1950-06-18", "1954" = "1954-06-27", "1958" = "1958-07-06", "1962" = "1962-07-08", "1966" = "1966-07-10", "1970" = "1970-06-14")
 
 if (file.exists(nrw_pre75_path)) {
   nrw_pre75 <- read.csv(nrw_pre75_path, colClasses = "character")
@@ -4324,7 +4413,8 @@ if (file.exists(nrw_pre75_path)) {
     dg = "dg", dfu = "dfu", gdp = "gdp", parteilose = "parteilose",
     bdd = "bdd", dp = "dp", drp = "drp", dsu = "dsu",
     bhe = "bhe", kpd = "kpd",
-    rsf = "rsf", srp = "srp", csab = "csab", unabhaengige = "unabhaengige"
+    rsf = "rsf", srp = "srp", csab = "csab", unabhaengige = "unabhaengige",
+    rwvp = "rwvp"
   )
 
   for (ocr_yr in unique(nrw_pre75$election_year)) {
@@ -4814,6 +4904,16 @@ for (ki in which(ni_comp_keep)) {
 }
 
 all_states[["ni"]] <- bind_rows(ni_results)
+
+## Remove Samtgemeinde Sottrum aggregate row (03357406)
+## SG-level votes are separate from member Gemeinden; this AGS doesn't exist
+## in any crosswalk year and cannot be harmonized.
+sg_mask <- all_states[["ni"]]$ags == "03357406"
+if (any(sg_mask)) {
+  cat("  Removing", sum(sg_mask), "SG Sottrum rows (03357406)\n")
+  all_states[["ni"]] <- all_states[["ni"]][!sg_mask, ]
+}
+
 cat("Niedersachsen total:", nrow(all_states[["ni"]]), "rows\n\n")
 
 
@@ -4951,6 +5051,232 @@ hb_safe_num <- function(x) suppressWarnings(as.numeric(as.character(x)))
 hb_raw_path <- "data/state_elections/raw/Landtagswahlen/Bremen"
 hb_results <- list()
 
+## ---- 1946-1995 converted XLSX (percentages, no cell headers) ----
+## Source: Converted BIFF→XLSX files. Data is vote share percentages at Ortsteil
+## level. Column headers are stored as graphical objects, not cell values.
+## We use hardcoded party column assignments derived from the drawing XML.
+## Strategy: extract aggregate "Stadt Bremen" and "Bremerhaven" summary rows,
+## which already contain city-level totals (EV absolute, turnout %, party %).
+## Note: valid_votes and invalid_votes are NA (only percentages available).
+
+hb_pre99_config <- list(
+  "1946" = list(
+    date = "1946-10-13",
+    party_names = c("spd", "cdu", "bdv", "kpd", "unabhangige"),
+    main_pattern = "1946\\.xlsx$", bhv_pattern = NULL
+  ),
+  "1947" = list(
+    date = "1947-10-12",
+    party_names = c("spd", "cdu", "bdv", "kpd", "fdp", "dp", "rsf", "unabhangige"),
+    main_pattern = "1947\\.xlsx$", bhv_pattern = NULL
+  ),
+  "1951" = list(
+    date = "1951-10-07",
+    party_names = c("spd", "cdu", "fdp", "kpd", "dp", "bhe", "fsu", "srp", "wahlergemeinschaft"),
+    main_pattern = "1951\\.xlsx$", bhv_pattern = NULL
+  ),
+  "1955" = list(
+    date = "1955-10-09",
+    party_names = c("spd", "cdu", "fdp", "dp", "kpd", "other"),
+    main_pattern = "1955\\.xlsx$", bhv_pattern = NULL
+  ),
+  "1959" = list(
+    date = "1959-10-11",
+    party_names = c("spd", "cdu", "fdp", "dp", "drp", "other"),
+    main_pattern = "1959\\.xlsx$", bhv_pattern = NULL
+  ),
+  "1963" = list(
+    date = "1963-09-29",
+    party_names = c("spd", "cdu", "fdp", "dp", "dfu", "gdp"),
+    main_pattern = "1963\\.xlsx$", bhv_pattern = NULL
+  ),
+  "1967" = list(
+    date = "1967-10-01",
+    party_names = c("spd", "cdu", "fdp", "dp", "dfu", "npd"),
+    main_pattern = "1967\\.xlsx$", bhv_pattern = NULL
+  ),
+  "1971" = list(
+    date = "1971-10-10",
+    party_names = c("spd", "cdu", "fdp", "npd", "dkp"),
+    main_pattern = "1971\\.xlsx$", bhv_pattern = NULL
+  ),
+  "1975" = list(
+    date = "1975-10-12",
+    party_names = c("spd", "cdu", "fdp", "dkp", "npd", "other"),
+    main_pattern = "1975\\.xlsx$", bhv_pattern = NULL
+  ),
+  "1979" = list(
+    date = "1979-10-07",
+    party_names = c("spd", "cdu", "fdp", "gruene", "gruene", "dkp", "other"),
+    main_pattern = "1979\\.xlsx$", bhv_pattern = NULL
+  ),
+  "1983" = list(
+    date = "1983-09-25",
+    party_names = c("spd", "cdu", "fdp", "gruene", "gruene", "other"),
+    main_pattern = "1983\\.xlsx$", bhv_pattern = NULL
+  ),
+  "1987" = list(
+    date = "1987-09-13",
+    party_names = c("spd", "cdu", "gruene", "fdp", "liste_d", "other"),
+    main_pattern = "1987\\.xlsx$", bhv_pattern = NULL
+  ),
+  "1991" = list(
+    date = "1991-09-29",
+    party_names = c("spd", "cdu", "gruene", "fdp", "dvu", "rep", "other"),
+    main_pattern = "1991\\.xlsx$", bhv_pattern = NULL
+  ),
+  "1995" = list(
+    date = "1995-05-14",
+    ## "Sonstige" (col 9) includes DVU+AfB as subcategories ("darunter").
+    ## Mark "other" as _sonstige_incl to compute: other = Sonstige - DVU - AfB
+    party_names = c("spd", "cdu", "gruene", "fdp", "_sonstige_incl", "dvu", "afb"),
+    main_pattern = "1995_02\\.xlsx$",   # Stadt Bremen total is in _02 file
+    bhv_pattern = "1995 BHV\\.xlsx$"
+  )
+)
+
+for (yr in names(hb_pre99_config)) {
+  cfg <- hb_pre99_config[[yr]]
+  cat("HB", yr, "...")
+
+  ## --- Helper to extract aggregate row from an xlsx ---
+  hb_extract_aggregate <- function(fpath, search_pattern) {
+    raw <- read_excel(fpath, col_names = FALSE, .name_repair = "minimal")
+    labels <- as.character(raw[[2]])
+    # Find matching aggregate row
+    idx <- grep(search_pattern, labels, ignore.case = TRUE)
+    if (length(idx) == 0) return(NULL)
+    # Use the LAST match (city total is usually after subtotals)
+    row_idx <- idx[length(idx)]
+    vals <- as.character(raw[row_idx, ])
+    return(vals)
+  }
+
+  ## --- Read Stadt Bremen aggregate ---
+  hb_main <- list.files(hb_raw_path, pattern = cfg$main_pattern, full.names = TRUE)
+  if (length(hb_main) == 0) { cat("SKIP (no file)\n"); next }
+
+  hb_row <- hb_extract_aggregate(hb_main[1], "Stadt Bremen")
+  if (is.null(hb_row)) { cat("SKIP (no aggregate row)\n"); next }
+
+  hb_ev <- hb_safe_num(gsub(" ", "", hb_row[3]))    # EV (may have space in number)
+  hb_to <- hb_safe_num(gsub(",", ".", hb_row[4]))    # Turnout %
+  hb_voters <- round(hb_ev * hb_to / 100)
+
+  result_hb <- tibble(
+    ags = "04011000", election_year = as.integer(yr), state = "04",
+    election_date = as.Date(cfg$date),
+    eligible_voters = hb_ev, number_voters = hb_voters,
+    valid_votes = NA_real_, invalid_votes = NA_real_,
+    turnout = hb_to / 100
+  )
+
+  # Extract party percentages from cols 5+
+  sonstige_incl_pct <- 0
+  for (pi in seq_along(cfg$party_names)) {
+    col_idx <- 4 + pi
+    pname <- cfg$party_names[pi]
+    pval <- hb_safe_num(gsub(",", ".", gsub(" ", "", hb_row[col_idx])))
+    if (pname == "_sonstige_incl") {
+      # "Sonstige" that includes subcategories (e.g. DVU+AfB in 1995)
+      sonstige_incl_pct <- ifelse(is.na(pval), 0, pval)
+      next
+    }
+    if (is.na(pval) || pval == 0 || pname == "other") {
+      if (pname == "other") result_hb$other <- ifelse(is.na(pval), 0, pval / 100)
+      next
+    }
+    if (pname %in% names(result_hb)) {
+      result_hb[[pname]] <- result_hb[[pname]] + pval / 100
+    } else {
+      result_hb[[pname]] <- pval / 100
+    }
+  }
+  # If _sonstige_incl was used, compute other = sonstige - named subcategories
+  if (sonstige_incl_pct > 0) {
+    named_sub_pct <- sum(sapply(cfg$party_names, function(p) {
+      if (p %in% c("_sonstige_incl", "other") || !p %in% names(result_hb)) return(0)
+      # Only count subcategories that come AFTER _sonstige_incl in the config
+      si_pos <- which(cfg$party_names == "_sonstige_incl")
+      p_pos <- which(cfg$party_names == p)
+      if (any(p_pos > si_pos)) return(result_hb[[p]][1] * 100) else return(0)
+    }))
+    result_hb$other <- max(sonstige_incl_pct - named_sub_pct, 0) / 100
+  }
+  # Compute "other" if not explicitly provided
+  if (!"other" %in% names(result_hb)) {
+    existing_pcols <- intersect(cfg$party_names[!cfg$party_names %in% c("other", "_sonstige_incl")], names(result_hb))
+    party_sum <- if (length(existing_pcols) > 0) sum(unlist(result_hb[existing_pcols]), na.rm = TRUE) else 0
+    result_hb$other <- max(1 - party_sum, 0)
+  }
+  result_hb$cdu_csu <- result_hb$cdu
+  cat(sprintf(" HB:EV=%.0f", hb_ev))
+  hb_results[[paste0(yr, "_04011000")]] <- result_hb
+
+  ## --- Read Bremerhaven aggregate ---
+  if (!is.null(cfg$bhv_pattern)) {
+    bhv_file <- list.files(hb_raw_path, pattern = cfg$bhv_pattern, full.names = TRUE)
+    bhv_row <- if (length(bhv_file) > 0) {
+      hb_extract_aggregate(bhv_file[1], "Stadt Bremerhaven|Bremerhaven")
+    } else NULL
+  } else {
+    # BHV is in the main file (1947-1991)
+    bhv_row <- hb_extract_aggregate(hb_main[1], "Bremerhaven")
+  }
+
+  if (!is.null(bhv_row) && yr != "1946") {
+    bhv_ev <- hb_safe_num(gsub(" ", "", bhv_row[3]))
+    bhv_to <- hb_safe_num(gsub(",", ".", bhv_row[4]))
+    bhv_voters <- round(bhv_ev * bhv_to / 100)
+
+    result_bhv <- tibble(
+      ags = "04012000", election_year = as.integer(yr), state = "04",
+      election_date = as.Date(cfg$date),
+      eligible_voters = bhv_ev, number_voters = bhv_voters,
+      valid_votes = NA_real_, invalid_votes = NA_real_,
+      turnout = bhv_to / 100
+    )
+
+    sonstige_incl_pct_bhv <- 0
+    for (pi in seq_along(cfg$party_names)) {
+      col_idx <- 4 + pi
+      pname <- cfg$party_names[pi]
+      pval <- hb_safe_num(gsub(",", ".", gsub(" ", "", bhv_row[col_idx])))
+      if (pname == "_sonstige_incl") {
+        sonstige_incl_pct_bhv <- ifelse(is.na(pval), 0, pval)
+        next
+      }
+      if (is.na(pval) || pval == 0 || pname == "other") {
+        if (pname == "other") result_bhv$other <- ifelse(is.na(pval), 0, pval / 100)
+        next
+      }
+      if (pname %in% names(result_bhv)) {
+        result_bhv[[pname]] <- result_bhv[[pname]] + pval / 100
+      } else {
+        result_bhv[[pname]] <- pval / 100
+      }
+    }
+    if (sonstige_incl_pct_bhv > 0) {
+      named_sub_pct_bhv <- sum(sapply(cfg$party_names, function(p) {
+        if (p %in% c("_sonstige_incl", "other") || !p %in% names(result_bhv)) return(0)
+        si_pos <- which(cfg$party_names == "_sonstige_incl")
+        p_pos <- which(cfg$party_names == p)
+        if (any(p_pos > si_pos)) return(result_bhv[[p]][1] * 100) else return(0)
+      }))
+      result_bhv$other <- max(sonstige_incl_pct_bhv - named_sub_pct_bhv, 0) / 100
+    }
+    if (!"other" %in% names(result_bhv)) {
+      existing_pcols_bhv <- intersect(cfg$party_names[!cfg$party_names %in% c("other", "_sonstige_incl")], names(result_bhv))
+    party_sum <- if (length(existing_pcols_bhv) > 0) sum(unlist(result_bhv[existing_pcols_bhv]), na.rm = TRUE) else 0
+      result_bhv$other <- max(1 - party_sum, 0)
+    }
+    result_bhv$cdu_csu <- result_bhv$cdu
+    cat(sprintf(" BHV:EV=%.0f", bhv_ev))
+    hb_results[[paste0(yr, "_04012000")]] <- result_bhv
+  }
+  cat("\n")
+}
+
 ## ---- 2015 & 2019 CSV (5-vote Kumulieren) ----
 hb_csv_party_map <- list(
   "2015" = c(D1="spd", D2="gruene", D3="cdu", D4="linke_pds",
@@ -5006,6 +5332,48 @@ for (yr in c("2015", "2019")) {
   }
   cat("\n")
 }
+
+## ---- 2011 (5-vote system, data from official Faltblatt PDF) ----
+## Source: Statistisches Landesamt Bremen, Faltblatt Bürgerschaft 2011
+## No downloadable file available; wahlen-bremen.de returned 503.
+## Data extracted from PDF: EV, voters, invalid, gültige Stimmen (Gesamtstimmen),
+## and per-party Gesamtstimmen shares (L+P combined).
+## Amtsblatt: Bremen EV=408435, Wähler=232883, ungültig=7262, gültig=225621,
+##            gültige Stimmen=1115686
+##            Bremerhaven EV=85732, Wähler=41240, ungültig=1877, gültig=39363,
+##            gültige Stimmen=193669
+cat("HB 2011 ...")
+
+hb_2011_data <- list(
+  list(ags = "04011000", ev = 408435, voters = 232883, invalid = 7262,
+       valid_stimmen = 1115686,
+       parties = c(spd = 0.393, cdu = 0.204, gruene = 0.226,
+                   linke_pds = 0.058, fdp = 0.022, biw = 0.031)),
+  list(ags = "04012000", ev = 85732, voters = 41240, invalid = 1877,
+       valid_stimmen = 193669,
+       parties = c(spd = 0.343, cdu = 0.201, gruene = 0.218,
+                   linke_pds = 0.046, fdp = 0.031, biw = 0.071))
+)
+
+for (muni in hb_2011_data) {
+  result <- tibble(
+    ags = muni$ags, election_year = 2011L, state = "04",
+    election_date = as.Date("2011-05-22"),
+    eligible_voters = muni$ev, number_voters = muni$voters,
+    valid_votes = muni$valid_stimmen, invalid_votes = muni$invalid,
+    turnout = muni$voters / muni$ev
+  )
+  party_sum <- 0
+  for (pn in names(muni$parties)) {
+    result[[pn]] <- muni$parties[pn]
+    party_sum <- party_sum + muni$parties[pn]
+  }
+  result$other <- max(1 - party_sum, 0)
+  result$cdu_csu <- result$cdu
+  cat(sprintf(" %s:EV=%.0f", muni$ags, muni$ev))
+  hb_results[[paste0("2011_", muni$ags)]] <- result
+}
+cat("\n")
 
 ## ---- 1999, 2003, 2007 XLS (single vote, combined Bremen+BHV) ----
 ## Per-year column layout configs (columns differ by year)
@@ -5561,6 +5929,14 @@ cat("Schleswig-Holstein total:", nrow(all_states[["sh"]]), "rows\n\n")
 ##              Kreisfreie Staedte identified by X6X Kreis pattern.
 ##
 ## Note: Bavaria uses CSU instead of CDU. cdu_csu = csu for all BY rows.
+##
+## IMPORTANT: BY uses Gesamtstimmen (Erst+Zweit summed) as the basis for
+## proportional seat allocation and the 5% threshold. Unlike Bundestagswahlen,
+## Erststimmen of losing candidates are NOT discarded — they count toward party
+## totals. Therefore valid_votes = gültige_Erst + gültige_Zweit, and
+## invalid_votes = ungültige_Erst + ungültige_Zweit. Since each voter casts
+## 2 ballots: valid_votes + invalid_votes = number_voters × 2 (for 1950+).
+## Exception: 1946 was single-ballot (no Erst/Zweit split in source data).
 
 cat("=== BAYERN ===\n")
 
@@ -5663,7 +6039,13 @@ for (yr in by_early_years) {
     ifelse(is.na(fdp_v), 0, fdp_v)
   ))
   other_v <- pmax(valid_v - mapped_sum, 0, na.rm = TRUE)
-  invalid_v <- voters - valid_v
+  ## BY uses Gesamtstimmen (Erst+Zweit combined); each voter casts 2 ballots
+  ## (except 1946 which was single-ballot). invalid = total_ballots - valid.
+  if (yr == "1946") {
+    invalid_v <- voters - valid_v          # single ballot: 1 vote per voter
+  } else {
+    invalid_v <- voters * 2L - valid_v     # dual ballot: 2 votes per voter
+  }
 
   result <- tibble(
     ags            = ags_vec,
@@ -5831,6 +6213,7 @@ for (sa_info in stimmabgabe_files) {
     }
     other_v <- pmax(valid_v - mapped_sum, 0, na.rm = TRUE)
 
+    ## BY Gesamtstimmen: dual ballot, invalid = 2*voters - valid
     result <- tibble(
       ags            = ags_vec,
       election_year  = as.integer(yr),
@@ -5839,7 +6222,7 @@ for (sa_info in stimmabgabe_files) {
       eligible_voters = NA_real_,
       number_voters  = voters,
       valid_votes    = valid_v,
-      invalid_votes  = voters - valid_v,
+      invalid_votes  = voters * 2L - valid_v,
       turnout        = NA_real_
     )
 
@@ -6008,6 +6391,132 @@ cat("Bayern total:", nrow(all_states[["by"]]), "rows\n\n")
 ###############################################################################
 ####                      Rheinland-Pfalz (07)                             ####
 ###############################################################################
+
+cat("=== RHEINLAND-PFALZ ===\n")
+
+rp_raw_path <- file.path(raw_path, "Rheinland-Pfalz")
+
+rp_safe_num <- function(x) {
+  x <- as.character(x)
+  x[x == "-" | x == "" | x == "\u2013"] <- NA
+  suppressWarnings(as.numeric(x))
+}
+
+rp_results <- list()
+
+## ---------- 1979-2016 from LW_RLP_1979_2021.xlsx ----------
+## Source: Landeswahlleiter RLP, municipality-level Landesstimmen 1979-2021
+## Format: 12-digit AGS (col 1), name (col 2), Stichtag (col 3)
+##   - Party headers in row 3, sub-headers in row 4
+##   - Landesstimmen in even columns (4,6,...,106); WKS in odd (5,7,...,107)
+##   - Gesamtsumme LS in col 106 = valid_votes
+##   - Forward-fill needed: AGS appears only on first row of each municipality block
+##   - No eligible_voters/number_voters/invalid_votes in this file
+##   - We process 1979-2016 here; 2021 uses LW_2021_GESAMT.xlsx (has turnout data)
+## Note on WKS: RLP only had single vote before 1991; WKS=0 for 1979/1983/1987
+
+rp_multi_xlsx <- file.path(rp_raw_path, "LW_RLP_1979_2021.xlsx")
+rp_multi_raw <- read_excel(rp_multi_xlsx, col_names = FALSE, .name_repair = "minimal")
+
+## --- Parse Landesstimme party columns from row 3 ---
+## Even columns (4,6,8,...,104) are Landesstimmen
+rp_m_header <- as.character(rp_multi_raw[3, ])
+rp_m_parties <- list()
+for (ci in seq(4, 104, by = 2)) {
+  pname <- trimws(rp_m_header[ci])
+  if (is.na(pname) || pname == "" || pname == "Gesamtsumme") next
+  # Skip individual WKS-only candidates (names with commas or "parteilos/parteiunabhängig")
+  if (grepl(",", pname) || grepl("^partei(los|unabh)", pname, ignore.case = TRUE) ||
+      grepl("^SIGGI", pname, ignore.case = TRUE)) next
+  std <- normalise_party(pname)
+  rp_m_parties[[as.character(ci)]] <- std
+}
+cat("  1979-2016 file: mapped", length(rp_m_parties), "Landesstimme party columns\n")
+
+## --- Extract data rows (row 5 onward; rows 1-4 are title/headers) ---
+rp_m_ags12 <- as.character(rp_multi_raw[[1]])[5:nrow(rp_multi_raw)]
+rp_m_names <- as.character(rp_multi_raw[[2]])[5:nrow(rp_multi_raw)]
+rp_m_dates <- as.character(rp_multi_raw[[3]])[5:nrow(rp_multi_raw)]
+rp_m_data  <- rp_multi_raw[5:nrow(rp_multi_raw), ]
+
+## --- Forward-fill AGS and name ---
+for (i in seq_along(rp_m_ags12)) {
+  if (is.na(rp_m_ags12[i]) || rp_m_ags12[i] == "NA") {
+    if (i > 1) {
+      rp_m_ags12[i] <- rp_m_ags12[i - 1]
+      rp_m_names[i] <- rp_m_names[i - 1]
+    }
+  }
+}
+
+## --- Convert 12-digit AGS to 8-digit ---
+## Format: first 5 digits (state+kreis) + last 3 digits (gemeinde)
+rp_m_ags8 <- paste0(substr(rp_m_ags12, 1, 5), substr(rp_m_ags12, 10, 12))
+
+## --- Parse election dates ---
+rp_m_iso_dates <- as.Date(rp_m_dates, format = "%d.%m.%Y")
+rp_m_years <- as.integer(format(rp_m_iso_dates, "%Y"))
+
+## --- Gesamtsumme LS (col 106) = valid_votes ---
+rp_m_valid <- rp_safe_num(rp_m_data[[106]])
+
+## --- Process each election year (1979-2016 only) ---
+rp_target_years <- c(1979L, 1983L, 1987L, 1991L, 1996L, 2001L, 2006L, 2011L, 2016L)
+
+for (yr in rp_target_years) {
+  yr_mask <- rp_m_years == yr & !is.na(rp_m_years)
+  cat("  RP", yr, ":", sum(yr_mask), "rows\n")
+
+  yr_ags   <- rp_m_ags8[yr_mask]
+  yr_date  <- rp_m_iso_dates[yr_mask][1]
+  yr_valid <- rp_m_valid[yr_mask]
+  yr_data  <- rp_m_data[yr_mask, ]
+
+  result <- tibble(
+    ags             = yr_ags,
+    election_year   = yr,
+    state           = "07",
+    election_date   = yr_date,
+    eligible_voters = NA_real_,
+    number_voters   = NA_real_,
+    valid_votes     = yr_valid,
+    invalid_votes   = NA_real_
+  )
+
+  ## --- Extract party vote counts ---
+  mapped_sum <- rep(0, nrow(result))
+  party_names_seen <- c()
+  for (ci_str in names(rp_m_parties)) {
+    ci  <- as.integer(ci_str)
+    std <- rp_m_parties[[ci_str]]
+    v   <- rp_safe_num(yr_data[[ci]])
+    col_n <- paste0(std, "_n")
+    if (col_n %in% names(result)) {
+      result[[col_n]] <- ifelse(is.na(result[[col_n]]), 0, result[[col_n]]) +
+                         ifelse(is.na(v), 0, v)
+    } else {
+      result[[col_n]] <- ifelse(is.na(v), 0, v)
+    }
+    mapped_sum <- mapped_sum + ifelse(is.na(v), 0, v)
+    party_names_seen <- c(party_names_seen, std)
+  }
+  party_names_seen <- unique(party_names_seen)
+  result$other_n <- pmax(yr_valid - mapped_sum, 0, na.rm = TRUE)
+
+  result <- result |> filter(!is.na(ags))
+
+  ## --- Convert to vote shares ---
+  result <- result |> mutate(turnout = NA_real_)
+  for (std_name in c(party_names_seen, "other")) {
+    result[[std_name]] <- result[[paste0(std_name, "_n")]] / result$valid_votes
+  }
+  result$cdu_csu <- result$cdu
+  result <- result |> select(-ends_with("_n"))
+
+  rp_results[[as.character(yr)]] <- result
+}
+
+## ---------- 2021 from LW_2021_GESAMT.xlsx ----------
 ## 2021 election from official state statistics office
 ## Source: LW_2021_GESAMT.xlsx, sheet "LW_GESAMT_daten20210329_1228"
 ## Format: 13-digit ID, GUW rows (G=Gesamt, U=Urnenwahl, W=Briefwahl)
@@ -6016,19 +6525,9 @@ cat("Bayern total:", nrow(all_states[["by"]]), "rows\n\n")
 ##   - AGS = "07" + substr(ID, 4, 6) + substr(ID, 9, 11)
 ## Landesstimme (Zweitstimme) in cols 50-85; Erststimme in cols 14-49
 
-cat("=== RHEINLAND-PFALZ ===\n")
-
-rp_raw_path <- file.path(raw_path, "Rheinland-Pfalz")
-
 rp_xlsx <- file.path(rp_raw_path, "LW_2021_GESAMT.xlsx")
 rp_raw <- read_excel(rp_xlsx, sheet = "LW_GESAMT_daten20210329_1228",
                      col_names = FALSE, .name_repair = "minimal")
-
-rp_safe_num <- function(x) {
-  x <- as.character(x)
-  x[x == "-" | x == "" | x == "\u2013"] <- NA
-  suppressWarnings(as.numeric(x))
-}
 
 ## --- Parse Landesstimme party columns from header (row 1) ---
 ## Landesstimme party counts are in even columns 54, 56, ..., 84
@@ -6122,9 +6621,10 @@ for (std_name in c(party_names_seen, "other")) {
 result$cdu_csu <- result$cdu
 result <- result |> select(-ends_with("_n"))
 
-cat("RP 2021:", nrow(result), "munis\n")
+cat("  RP 2021:", nrow(result), "munis\n")
+rp_results[["2021"]] <- result
 
-all_states[["rp"]] <- standardise(result)
+all_states[["rp"]] <- standardise(bind_rows(rp_results))
 cat("Rheinland-Pfalz total:", nrow(all_states[["rp"]]), "rows\n\n")
 
 
@@ -6134,22 +6634,52 @@ cat("Rheinland-Pfalz total:", nrow(all_states[["rp"]]), "rows\n\n")
 
 state_unharm <- bind_rows(all_states)
 
-# Drop rows with no valid votes (gemeindefreie Gebiete, empty municipalities)
-n_before <- nrow(state_unharm)
-state_unharm <- state_unharm |>
-  filter(!is.na(valid_votes) & valid_votes > 0)
-cat(sprintf("Dropped %d rows with valid_votes == 0 or NA\n", n_before - nrow(state_unharm)))
+# Flag (but keep) rows with valid_votes == 0 (gemeindefreie Gebiete, empty municipalities)
+# These are real administrative units with persistent AGS codes — needed for balanced panels
+# Note: valid_votes = NA is kept unflagged (e.g. HB pre-1999, RP 1979-2016 where only pcts available)
+state_unharm$flag_no_valid_votes <- ifelse(
+  !is.na(state_unharm$valid_votes) & state_unharm$valid_votes == 0, 1L, 0L
+)
+cat(sprintf("Flagged %d rows with valid_votes == 0\n", sum(state_unharm$flag_no_valid_votes)))
 
-# Remove MV/ST Briefwahl-only entities (eligible_voters=0, but votes>0)
-# These are fictional administrative entities used for postal vote reporting
-brief_entity <- !is.na(state_unharm$eligible_voters) &
-  state_unharm$eligible_voters == 0 &
-  !is.na(state_unharm$valid_votes) & state_unharm$valid_votes > 0 &
-  state_unharm$state %in% c("13", "15")
-n_brief <- sum(brief_entity)
+# Flag (but keep) Briefwahl-only entities: eligible_voters=0 but votes>0
+# These are real municipalities with mail-in vote misallocation or source gaps
+# (e.g., BB 1990, SH 1983 garbled PDF, NRW 1966 major cities)
+state_unharm$flag_briefwahl_only <- ifelse(
+  !is.na(state_unharm$eligible_voters) & state_unharm$eligible_voters == 0 &
+  !is.na(state_unharm$valid_votes) & state_unharm$valid_votes > 0, 1L, 0L
+)
+n_brief <- sum(state_unharm$flag_briefwahl_only)
 if (n_brief > 0) {
-  cat(sprintf("Removing %d MV/ST Briefwahl-only entities (EV=0, VV>0)\n", n_brief))
-  state_unharm <- state_unharm[!brief_entity, ]
+  cat(sprintf("Flagged %d rows as Briefwahl-only entities (EV=0, VV>0)\n", n_brief))
+}
+
+# HE 1958/1962: number_voters not reported for non-kreisfreie municipalities
+# Source XLSX has empty Wähler column → recode 0 to NA (data unavailable, not zero)
+he_nv_fix <- state_unharm$state == "06" &
+  state_unharm$election_year %in% c(1958L, 1962L) &
+  !is.na(state_unharm$number_voters) & state_unharm$number_voters == 0
+if (any(he_nv_fix)) {
+  cat(sprintf("Recoding %d HE 1958/1962 number_voters from 0 to NA (source gap)\n", sum(he_nv_fix)))
+  state_unharm$number_voters[he_nv_fix] <- NA_real_
+  state_unharm$turnout[he_nv_fix] <- NA_real_
+}
+
+# Clamp negative invalid_votes to 0 (Briefwahl allocation rounding artifacts)
+n_neg_iv <- sum(state_unharm$invalid_votes < 0, na.rm = TRUE)
+if (n_neg_iv > 0) {
+  cat(sprintf("Clamping %d rows with negative invalid_votes to 0\n", n_neg_iv))
+  state_unharm$invalid_votes <- pmax(state_unharm$invalid_votes, 0, na.rm = TRUE)
+}
+
+# Flag turnout > 1 before capping (mirrors federal pipeline flag)
+state_unharm <- state_unharm |>
+  mutate(
+    flag_naive_turnout_above_1 = ifelse(!is.na(turnout) & is.finite(turnout) & turnout > 1, 1, 0)
+  )
+n_turnout_above_1 <- sum(state_unharm$flag_naive_turnout_above_1, na.rm = TRUE)
+if (n_turnout_above_1 > 0) {
+  cat(sprintf("Flagged %d rows with turnout > 1 (flag_naive_turnout_above_1)\n", n_turnout_above_1))
 }
 
 # Safety net: cap turnout at plausible range; set Inf/NaN to NA
@@ -6163,13 +6693,16 @@ if (n_bad_turnout > 0) {
   cat(sprintf("Note: %d rows have NA turnout (non-finite or >150%%)\n", n_bad_turnout))
 }
 
-# CDU/CSU consistency: ensure cdu_csu exists and is correct
+# CDU/CSU consistency: ensure cdu_csu = combined CDU+CSU family vote
+# Bayern uses CSU only; other states typically CDU only, but DSU (CSU sister)
+# ran in some East German states in 1990, so always sum both when present.
 state_unharm <- state_unharm |>
   mutate(
     cdu_csu = case_when(
-      state == "09" ~ csu,       # Bavaria: CSU only
-      !is.na(cdu)   ~ cdu,      # All others: CDU
-      TRUE           ~ cdu_csu   # Fallback
+      state == "09" ~ csu,                                        # Bavaria: CSU only
+      !is.na(cdu) & !is.na(csu) ~ cdu + csu,                     # Both present (e.g. MV 1990 DSU)
+      !is.na(cdu)   ~ cdu,                                        # CDU only
+      TRUE           ~ cdu_csu                                     # Fallback
     )
   )
 
@@ -6181,6 +6714,10 @@ cat("Total rows:", nrow(state_unharm), "\n")
 cat("Number of party columns:", sum(!names(state_unharm) %in% c(meta_cols, "other", "cdu_csu")), "\n")
 cat("State-year combinations:\n")
 print(table(state_unharm$state, state_unharm$election_year))
+
+# Replace Inf with NA (division by valid_votes=0 produces Inf shares)
+state_unharm <- state_unharm |>
+  mutate(across(where(is.numeric), ~ ifelse(is.infinite(.), NA_real_, .)))
 
 # Write output
 fwrite(state_unharm, "data/state_elections/final/state_unharm.csv")

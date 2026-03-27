@@ -2,7 +2,7 @@
 
 This document provides an exhaustive reference for the data processing pipelines in the GERDA (German Election Database) repository. It covers the general architecture, the crosswalk system, per-election-type walkthroughs, and a cross-pipeline comparison.
 
-**Last updated:** February 2026
+**Last updated:** March 2026
 
 ---
 
@@ -302,96 +302,64 @@ Follows the same approach as `02_federal_muni_harm_21.R` but:
 
 ### 5.1 Unharmonized
 
-**Script:** `code/state_elections/01_state_unharm.R`
-**Source:** DESTATIS GENESIS Regionalstatistik API via the `wiesbaden` R package.
+**Script:** `code/state_elections/01b_state_unharm_raw.R`
+**Sources:** Raw files from each state's statistical office in `data/state_elections/raw/Landtagswahlen/`. Formats include XLSX, XLS, CSV, and OCR-extracted CSVs from scanned PDFs.
 
-**Data retrieval:**
-- Requires a GENESIS API account (credentials stored externally)
-- Downloads table codes for each state election (Landtagswahlen) 2006–2019
-- Raw data in `data/state_elections/raw/Landtagswahlen/`
+This unified script processes all 16 German states (1946–2025), replacing the earlier `01_state_unharm.R` (GENESIS API) + `03_state_2022-24.R` (manual collection) approach. Each state has dedicated parsing logic handling heterogeneous source formats.
 
-**Key differences from federal pipeline:**
-- **Vote shares from source:** The API provides absolute votes and pre-computed statistics. Vote shares are computed as `party_value / valid_votes` (not `number_voters`).
-- **Turnout from source:** `turnout = WAHLSR_val / 100` (the API provides turnout as a percentage).
-- **No mail-in handling:** State election data does not have the joint mail-in district issue.
+**Why the pipeline was replaced:** The GENESIS Regionalstatistik API does not properly allocate Briefwahl (mail-in) votes from shared/pooled districts to individual municipalities. A systematic comparison of 27,503 overlapping municipality-year observations (2006–2019) found massive valid_votes undercounts in 5 eastern German states: SN (+10–17% recovery), MV (+7–19%), BB (+0.1–20%), TH (+4–6%), ST (+0–8%). In the worst cases, individual municipalities were missing up to 195% of their valid votes. See `data/state_elections/final/README.md` and `docs/state_pipeline_audit.md` for the full comparison.
 
-**Output:** `state_unharm.rds` / `state_unharm.csv`
+**Key features:**
+- **Party harmonization:** `normalise_party()` function maps 90+ raw party name patterns to standardized snake_case names aligned with the federal pipeline.
+- **~440 individual party columns:** All parties that ever ran in any state election are preserved as separate columns (vs only 8 major party groups in the old pipeline).
+- **Vote shares from source:** Computed as `party_votes / valid_votes` (not `number_voters`).
+- **Briefwahl properly allocated:** State raw data is pre-aggregated to municipalities with Briefwahl assigned to the correct municipality by the Landeswahlleiter.
+- **Bayern Gesamtstimmen:** BY uses combined Erst+Zweitstimme (both count for seat allocation). `valid_votes ≈ 2 × number_voters` for BY 1950+.
+- **OCR-extracted elections:** BB 1990/1994/1999, SH 1983, NRW 1947/1950, SL 1970/1975 were digitized from scanned PDFs. NRW 1947-1970 are county-level only (synthetic AGS `050xx000`, ~84 Kreise per year, aggregated from 150 WK for 1947/1950). The NRW source PDF contains three elections in interleaved rows (a=1947, b=1949 Bundestag, c=1950 Landtag); row identification uses party presence patterns.
+- **Percentage-only data:** HB 1946–1995 (converted BIFF→XLSX with graphical headers) and HB 2011 (hardcoded from official Faltblatt PDF) only have vote share percentages — `valid_votes`/`invalid_votes` are NA.
+- **RP 1979–2016:** Added from Landeswahlleiter file (`LW_RLP_1979_2021.xlsx`), Landesstimmen only, no turnout metadata. 2021 retains separate source with full turnout data. Note: source data is missing 5–6 municipalities for 1979–2001 (founded after 1979), causing 0.07–0.31% shortfall vs official Landesergebnisse. From 2006 onward, deviations are ≤0.16%; 2011/2016 match exactly.
+- **HH 2025:** Added from Statistik Nord Landesliste Gesamtstimmen (`BUE2025_e01_Landesliste.xlsx`).
+
+**Output:** `state_unharm.rds` / `state_unharm.csv` (~148,000 rows, ~450 columns, 16 states, ~70 election years)
 
 ### 5.2 Harmonization to 2021
 
-**Script:** `code/state_elections/02_state_harm.R`
+**Script:** `code/state_elections/02b_state_harm_21.R`
 
-**Critical difference from federal harmonization:**
+Harmonizes all state elections (1990–2025) to 2021 administrative boundaries using population-weighted crosswalks. Uses the weighted-sum-of-counts method (matching the federal pipeline):
+1. Imputes weight for rows with NA `valid_votes` (e.g., HB pre-1999 percentage-only data) from `number_voters` or `eligible_voters`
+2. Converts shares to counts: `party_share × valid_votes`
+3. Applies weighted sum: `sum(counts × pop_cw)`
+4. Reconverts to shares: `counts / valid_votes`
 
-This script uses **weighted mean of shares**, not weighted sum of counts:
-```r
-summarise(across(turnout:cdu_csu, ~ weighted.mean(.x, w = pop_cw * population, na.rm = TRUE)))
-```
+**AGS handling:**
+- Explicit corrections for DDR-era codes (ST 1990), Kreisreform renumbering (TH/SN 1994), and post-2021 mergers
+- Fuzzy time matching for AGS codes that exist in the crosswalk but not for the exact election year
+- Self-mapping for AGS codes that are already valid 2021 target codes (e.g., NI SpreadsheetML retroactive coding)
 
-This means party vote shares and turnout are averaged across source municipalities using population × crosswalk weight, rather than converting to counts, summing, and recomputing shares. This is a methodologically different approach that can produce slightly different results when source municipalities differ in size.
+**Derived columns:** `far_right`, `far_left`, `far_left_w_linke`, `total_vote_share`, `perc_total_votes_incogruence`, `flag_total_votes_incongruent`, `flag_unsuccessful_naive_merge`
 
-**Output:** `state_harm.rds` / `state_harm.csv`
+**Output:** `state_harm_21.rds` / `state_harm_21.csv` (~81,600 rows, ~462 columns)
 
-### 5.3 Special handling for 2022–2024 elections
-
-**Script:** `code/state_elections/03_state_2022-24.R`
-
-These elections postdate the GENESIS download window and were manually collected from each state's statistical office. The script handles 11 elections across 3 election years:
-
-| Year | States |
-|------|--------|
-| 2022 | Saarland, Schleswig-Holstein, Nordrhein-Westfalen, Niedersachsen |
-| 2023 | Bremen, Hessen, Bayern, Berlin |
-| 2024 | Brandenburg, Sachsen, Thüringen |
-
-Each state format requires dedicated parsing logic with state-specific challenges (see `docs/state_elections_known_issues.md` for details). New party tracked: **BSW** (Bündnis Sahra Wagenknecht), appearing from 2024 elections onward.
-
-**Output:** `state_2224_unharm.rds` / `state_2224_unharm.csv` (11 elections, ~6,405 rows, 35 columns). The older `state_2223_unharm.rds` (3 elections only) is retained for backward compatibility.
-
-### 5.4 Harmonization to 2023
+### 5.3 Harmonization to 2023
 
 **Script:** `code/state_elections/04_state_harm_23.R`
 
-**Important:** This script uses a **different method** than `02_state_harm.R`. Instead of weighted means, it:
-1. Converts shares to counts: `party * valid_votes`
-2. Applies weighted sum: `sum(.x * pop_cw)`
-3. Reconverts to shares: `party / total_votes`
+Same method as `02b_state_harm_21.R`, targeting 2023 boundaries using `ags_1990_to_2023_crosswalk.rds`. Includes the same AGS corrections, fuzzy time matching, self-mapping, weight imputation, and derived columns.
 
-This matches the federal pipeline approach and was likely adopted to fix the methodological inconsistency in the earlier `02_state_harm.R`. The 2023-targeted harmonization uses `ags_1990_to_2023_crosswalk.rds`.
+**Output:** `state_harm_23.rds` / `state_harm_23.csv` (~81,500 rows, ~462 columns)
 
-**Baseline covariates (population, area):** Computed for each target-year municipality using 2023 BBSR population data.
-
-**Output:** `state_harm_23.rds` / `state_harm_23.csv`
-
-### 5.5 Harmonization to 2021 (new method)
-
-**Script:** `code/state_elections/02b_state_harm_21.R`
-
-This script replaces the old `02_state_harm.R` for users who want 2021-boundary data with the corrected weighted-sum-of-counts method. It combines both input sources (`state_unharm.rds` for 2006–2019 and `state_2224_unharm.rds` for 2022–2024) and uses the original `ags_crosswalks.rds` (1990→2021).
-
-**Key differences from `02_state_harm.R`:**
-- Uses weighted sum of counts (matching the federal pipeline), not weighted mean of shares
-- Covers 2006–2024 (vs. 2006–2019 only)
-- Includes BSW column for 2024 elections
-- Includes turnout fix for pre-2022 data (where `number_voters` is absent from source)
-
-For elections after 2020, the crosswalk falls back to year=2020 (the latest available in `ags_crosswalks.rds`). Six AGS codes created after 2020 are not in any crosswalk year and are filtered out.
-
-**Output:** `state_harm_21.rds` / `state_harm_21.csv` (~33,286 rows, 44 columns, 15 elections, 15 states)
-
-### 5.6 Harmonization to 2025
+### 5.4 Harmonization to 2025
 
 **Script:** `code/state_elections/05_state_harm_25.R`
 
-Follows the same weighted-sum-of-counts approach as `04_state_harm_23.R` and `02b_state_harm_21.R`, but targets 2025 boundaries using `ags_1990_to_2025_crosswalk.rds` (chained from 1990→2021→2023→2025).
+Same method, targeting 2025 boundaries using `ags_1990_to_2025_crosswalk.rds` (chained 1990→2021→2023→2025).
 
-**Key details:**
-- Combines both input sources (`state_unharm.rds` + `state_2224_unharm.rds`)
-- Target column: `ags_25`
-- Covariates mapped from 2023→2025 via `crosswalk_ags_2023_to_2025.rds`; 2024 elections have NA covariates
-- Includes the same turnout fix as `02b_state_harm_21.R`
+**Output:** `state_harm_25.rds` / `state_harm_25.csv` (~81,400 rows, ~462 columns)
 
-**Output:** `state_harm_25.rds` / `state_harm_25.csv` (~33,189 rows, 44 columns, 15 elections, 15 states)
+### 5.5 Data quality documentation
+
+See `docs/state_pipeline_audit.md` for comprehensive documentation of known data quality issues, source data limitations, and all pipeline changes.
 
 ---
 
@@ -414,9 +382,9 @@ Municipal elections in Germany are organized at the state level, meaning each of
 
 **Output:** `municipal_unharm.rds` / `municipal_unharm.csv`
 
-### 6.2 Harmonized
+### 6.2 Harmonization to 2021 boundaries
 
-**Script:** `code/municipality_elections/02_municipal_harm.R` (653 lines)
+**Script:** `code/municipality_elections/02_municipal_harm.R`
 
 **Hybrid harmonization method:**
 
@@ -426,7 +394,21 @@ This script uses a mix of two approaches:
 
 This hybrid approach differs from both the federal pipeline (pure weighted sum of counts) and the state harm_21 pipeline (pure weighted mean of shares). It preserves the population-level voter counts while averaging the percentage-based party shares.
 
+**Post-2021 elections (2023, 2024, 2025):** These use a reverse crosswalk chain to map back to 2021 boundaries:
+1. Map 2023/2024 data → ags_25 via `ags_1990_to_2025_crosswalk.rds`
+2. Map 2025 data → ags_25 (identity, already in 2025 boundaries)
+3. Chain ags_25 → ags_23 → ags_21 using `crosswalk_ags_2023_to_2025.rds` (reversed) and `crosswalk_ags_2021_to_2023.rds`
+4. Multiply chained weights: `final_pop_cw = pop_cw_to_25 × pop_w_25_to_21`
+
 **Output:** `municipal_harm.rds` / `municipal_harm.csv`
+
+### 6.3 Harmonization to 2025 boundaries
+
+**Script:** `code/municipality_elections/03_municipal_harm_25.R`
+
+Same hybrid method as `02_municipal_harm.R`, targeting 2025 boundaries using `ags_1990_to_2025_crosswalk.rds`. For 2025 election data, no crosswalk is needed (identity mapping). Same AGS corrections as the 2021 script.
+
+**Output:** `municipal_harm_25.rds` / `municipal_harm_25.csv`
 
 ---
 
@@ -458,29 +440,47 @@ A `02_mayoral_harm.R` script has not yet been written.
 
 ## 8. County Elections (Kreistagswahlen)
 
-### Raw data inventory
+### Pipeline status
 
-Raw data exists in `data/county_elections/raw/` but **no processing code has been written**.
+Processing code exists in `code/county_elections/01_county_elec_unharm.R` (Stage 1 — unharm only). Work in progress; 5 of ~10 states implemented.
 
-**Available data by state:**
+**Script:** `01_county_elec_unharm.R`
+**Output:** `data/county_elections/final/county_elec_unharm.{rds,csv}`
 
-| State | Format | Files |
+### Implemented states
+
+| State | Code | Years | Format | Notes |
+|---|---|---|---|---|
+| Sachsen-Anhalt (ST) | 15 | 1994–2024 (8 elections) | Excel (.xlsx) + CSV (2024) | Multi-row headers; row 1 = party names |
+| Thüringen (TH) | 16 | 2004–2024 (6 elections) | Excel (.xlsx) | Two-row headers (party + Stimmart); "Kreistag" filter |
+| Mecklenburg-Vorpommern (MV) | 13 | 2014–2024 (3 elections) | XLSX (2014) + CSV (2019, 2024) | CSV: `Ausgabe=="A"` filter for absolute values; `x` → NA |
+| Sachsen (SN) | 14 | 1999–2024 (6 elections) | Excel (.xlsx) | Legacy (1999–2014) vs modern (2019+) format; **SN 2014 has party names in row 5 not row 4** |
+| Brandenburg (BB) | 12 | 2003–2024 (5 elections) | Excel (.xlsx) | Ballot-district level → municipality aggregation; **BB 2024 uses 12-digit ARS (not 8-digit AGS)** |
+
+### Architecture
+
+- **Party normalization**: `normalise_party_cty()` function maps raw party names to snake_case (separate from but similar to state election `normalise_party()`)
+- **NA vs zero tracking**: Per-party NA means "party did not field candidates in this municipality" (distinct from 0.0 = ran but got zero votes). Implemented via `tapply` NA-tracker before aggregation, restored after `sum(na.rm=TRUE)`
+- **Vote shares**: All party columns are shares (party_votes / valid_votes), not absolute counts. Absolute counts are in `eligible_voters`, `number_voters`, `valid_votes`, `invalid_votes`
+- **Deduplication**: When multiple raw party names normalize to the same label (e.g., BB 2003: "BV-BB (Zusammenfassung)" and "BV/BBS/FB" both → `bvb_fw`), a `_2` suffix is appended
+
+### Known pitfalls encountered
+
+- **Tibble name-mangling**: When `read_excel(col_names=FALSE)` produces `...N` column names, `names<-` / `colnames<-` / `setNames` on the resulting tibble or tibble-derived data.frame can silently append `....N` suffixes (e.g., `ags` → `ags....2`). This breaks `$` lookups and `data.table` `by=` operations. **Workaround**: build data frames column-by-column with `df[["name"]] <- vec` instead of bulk renaming
+- **Header-row shifts**: Some states change which Excel row contains party names between election years (SN 2014: row 5 instead of row 4). Always validate that the detected header row actually contains party names
+- **BB 2024 ARS→AGS**: Brandenburg 2024 switched from 8-digit AGS to 12-digit ARS (Amtlicher Regionalschlüssel). AGS = first 8 characters of ARS. Also uses an "aggregated party" section (cols 30–63) separate from individual candidate results (cols 65+)
+
+### Remaining states (not yet implemented)
+
+| State | Format | Notes |
 |---|---|---|
 | Baden-Württemberg (BW) | Excel (.xlsx) | 6 files |
 | Hessen (HE) | Excel (.xlsx) | 1 file |
-| Mecklenburg-Vorpommern (MV) | Excel (.xls/.xlsx) | 4 files |
 | Nordrhein-Westfalen (NRW) | ZIP archive | 1 archive |
 | Niedersachsen (NS) | ZIP archive | 1 archive |
 | Rheinland-Pfalz (RLP) | ZIP archive | 1 archive |
-| Saarland (SAR) | PDF | Files present |
-| Schleswig-Holstein (SH) | PDF | Files present |
-| Thüringen (TH) | ZIP archive | 1 archive |
-
-**Challenges for future processing:**
-- PDF-only data for some states (SAR, SH) will require OCR or manual transcription
-- Heterogeneous formats across states (similar to municipal elections)
-- County-level elections use proportional representation with varying list systems by state
-- No standardized schema exists across states
+| Saarland (SAR) | PDF | Requires OCR |
+| Schleswig-Holstein (SH) | PDF | Requires OCR |
 
 ---
 
@@ -506,15 +506,15 @@ The data structure (ballot districts with AGS identifiers) is similar to the fed
 |---|---|---|---|---|---|
 | **Raw data source** | Ballot-district CSVs/TXTs | County-level CSVs | GENESIS API | 16 state Excel/CSVs | State Excel/CSVs |
 | **Geographic unit** | Municipality (8-digit AGS) | County (5-digit) | Municipality (8-digit AGS) | Municipality (8-digit AGS) | Municipality (8-digit AGS) |
-| **Time span** | 1980–2025 | 1953–2021 | 2006–2024 | 1990–2021 | Varies by state |
+| **Time span** | 1980–2025 | 1953–2021 | 1946–2025 | 1990–2025 | Varies by state |
 | **Vote share denominator** | `number_voters`† | `number_voters`† | `valid_votes` | `valid_votes` | N/A (candidate-level) |
-| **Turnout formula** | `number_voters / eligible_voters_orig` | `number_voters / eligible_voters` | `WAHLSR_val / 100` (from API) | `number_voters / eligible_voters` | N/A |
+| **Turnout formula** | `number_voters / eligible_voters_orig` | `number_voters / eligible_voters` | `number_voters / eligible_voters` | `number_voters / eligible_voters` | N/A |
 | **Harm method** | Weighted sum of counts | Weighted sum of counts | Weighted mean of shares (02) / Weighted sum of counts (02b, 04, 05) | Hybrid: weighted sum (counts) + weighted mean (shares) | None |
-| **Target boundaries** | 2021 and 2025 | 2021 | 2021, 2023, and 2025 | 2021 | N/A |
+| **Target boundaries** | 2021 and 2025 | 2021 | 2021, 2023, and 2025 | 2021 and 2025 | N/A |
 | **Mail-in handling** | Yes (blocked_weight allocation) | No (included in county totals) | No | No | No |
 | **Manual AGS corrections** | ~17 cases | ~50 via year-shifting | Present | Present | N/A |
 | **Quality flags** | `flag_unsuccessful_naive_merge`, `flag_total_votes_incongruent`, `flag_naive_turnout_above_1` | `flag_unsuccessful_naive_merge` | Present | Zero-vote indicator flags | N/A |
-| **Pipeline completeness** | Complete (raw → harm_21, harm_25) | Complete (unharm → harm) | Complete (unharm → harm_21, harm_23, harm_25) | Complete (unharm → harm) | Partial (unharm only) |
+| **Pipeline completeness** | Complete (raw → harm_21, harm_25) | Complete (unharm → harm) | Complete (unharm → harm_21, harm_23, harm_25) | Complete (unharm → harm_21, harm_25) | Partial (unharm only) |
 
 † In the harmonized datasets, vote shares are recomputed as `party / total_votes` where `total_votes` = row sum of all party columns. This may differ slightly from `valid_votes` due to rounding during harmonization.
 
@@ -545,7 +545,7 @@ As of February 2026, the following data gaps remain.
 
 **County elections (Kreistagswahlen)** — Raw data for ~10 states in `data/county_elections/raw/` (Excel + PDF). No processing scripts or final datasets exist. RLP has the richest source (time-series file covering 2000+). Some archives (TH) appear empty. This is the largest remaining gap and would require designing a new pipeline from scratch with heterogeneous state-specific formats, similar to the municipal elections pipeline.
 
-**European elections 2024** — Clean ballot-district-level CSV in `data/european_elections/raw/ew24_wbz/` with 50+ party columns and accompanying documentation PDFs. Single election, well-structured data. Would need aggregation from ballot districts to municipality level, then boundary harmonization. Relatively straightforward compared to other gaps.
+**European elections 2024** — Clean ballot-district-level CSV in `data/european_elections/raw/ew24_wbz/` with 50+ party columns and accompanying documentation PDFs. Single election, well-structured data. Would need aggregation from ballot districts to municipality level, then boundary harmonization. Relatively straightforward compared to other gaps. (Note: an initial `european_muni_unharm`/`european_muni_harm` pipeline has been created but needs external validation.)
 
 ### Partially integrated
 
@@ -557,6 +557,4 @@ As of February 2026, the following data gaps remain.
 
 ### Could be extended
 
-**Federal county-level elections** — The county pipeline ends at 2021 (`btw2021kreis.csv`). BTW25 data exists at the municipality level and could be aggregated to county level.
-
-**Municipal elections** — Pipeline covers 1990–2021. No raw data for post-2021 municipal elections appears to be available yet.
+**Federal county-level elections** — The county pipeline ends at 2021 (`btw2021kreis.csv`). BTW25 data exists at the municipality level and could be aggregated to county level. (Note: an initial `federal_cty_unharm`/`federal_cty_harm` pipeline has been created but needs external validation.)

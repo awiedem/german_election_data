@@ -375,7 +375,7 @@ df25 <- df %>% # one row per 2025 AGS, votes already in counts
   filter(election_year == 2025) %>%
   left_join(cw_25_to_21, by = c("ags" = "ags_25")) %>%
   mutate(
-    ags_21 = as.numeric(ags_21),
+    ags_21 = as.character(ags_21),
   ) %>%
   rename(
     pop_cw = pop_w_25_21,
@@ -396,7 +396,7 @@ df25 %>%
 # check those that are not in 2021
 names(df25)
 df25 %>%
-  anti_join(df |> filter(election_year == 2021) |> mutate(ags = as.numeric(ags)), by = c("ags_21" = "ags")) %>%
+  anti_join(df |> filter(election_year == 2021), by = c("ags_21" = "ags")) %>%
   select(ags, election_year, ags_21, population, pop_cw, area, area_cw) %>%
   print(n = Inf)
 

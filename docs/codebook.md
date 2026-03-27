@@ -94,38 +94,75 @@ This dataset contains federal election results from 1990 to 2025 at the municipa
 
 ---
 
-## State Elections (Municipality Level, Harmonized)
+## State Elections (Municipality Level, Unharmonized)
 
-**File:** `data/state_elections/final/state_harm.rds` or `data/state_elections/final/state_harm.csv`
+**File:** `data/state_elections/final/state_unharm.rds` (or `.csv`)
 
-This dataset contains state election results (since mid-2000s) at the municipality level, harmonized to 2021 administrative boundaries.
+This dataset contains state election results from 1946 to 2024 at the municipality level, using each election year's original administrative boundaries. Covers all 16 German states with 126,989 rows and 439 columns (426 individual party columns).
 
 | Variable                        | Type      | Description                                                                                                                                    |
 | :------------------------------ | :-------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ags`                           | character | Municipality identifier (Amtlicher Gemeindeschlüssel).                                                                                          |
+| `ags`                           | character | Municipality identifier (8-digit AGS), using that year's boundaries.                                                                           |
 | `election_year`                 | numeric   | Year of the state election.                                                                                                                    |
-| `state`                         | character | State identifier (numeric code) of the state holding the election.                                                                             |
+| `state`                         | character | State identifier (2-digit code, e.g., "01"=SH, "09"=BY).                                                                                      |
+| `election_date`                 | Date      | Date of the election.                                                                                                                          |
+| `eligible_voters`               | numeric   | Number of eligible voters. NA for BY 1994–2013 (not in source) and HE 1958/62 non-kreisfreie municipalities.                                  |
+| `number_voters`                 | numeric   | Number of voters (people who cast ballots). NA for HE 1958/62 (source gap). For BY: in-person + Briefwahl voters (each casts 2 ballots).      |
+| `valid_votes`                   | numeric   | Number of valid votes. For BY 1950+: Gesamtstimmen (Erst+Zweit combined), so `valid_votes ≈ 2 × number_voters`.                               |
+| `invalid_votes`                 | numeric   | Number of invalid votes. For BY 1950+: `number_voters × 2 - valid_votes`. Clamped to ≥ 0.                                                     |
+| `turnout`                       | numeric   | Voter turnout (`number_voters / eligible_voters`). Capped at 1.5; values > 1.5 set to NA. NA where eligible_voters or number_voters missing.   |
+| `cdu`, `csu`, `spd`, ...        | numeric   | Vote share for each party (proportion of `valid_votes`, range 0–1). 426 individual party columns. NA means the party did not run in that state-year (zero-vote → NA recoding applied). |
+| `other`                         | numeric   | Residual vote share: `max(0, 1 - sum(all named parties))`.                                                                                     |
+| `cdu_csu`                       | numeric   | Combined CDU/CSU share. Equals `csu` in BY, `cdu` elsewhere.                                                                                  |
+| `flag_naive_turnout_above_1`    | numeric   | Flag (1/0): turnout > 1 before capping. Indicates Briefwahl allocation rounding or data quality issues.                                        |
+
+**Notes:**
+
+- **Bayern (BY)** uses Gesamtstimmen (Erst+Zweitstimme combined). Both ballots count equally for proportional seat allocation and the 5% threshold. Party vote shares are proportions of Gesamtstimmen. The identity `valid_votes + invalid_votes = number_voters × 2` holds for BY 1950+. The 1946 election was single-ballot.
+- **NRW 1947–1970**: County-level only (synthetic AGS `050xx000`). Cannot be harmonized; only in unharm.
+- **HH 1982**: Two elections (June + December) — both rows present, distinguished by `election_date`.
+
+## State Elections (Municipality Level, Harmonized)
+
+**Files:** `data/state_elections/final/state_harm_21.rds`, `state_harm_23.rds`, `state_harm_25.rds` (or `.csv`)
+
+State election results from 1990 to 2024 harmonized to fixed administrative boundaries (2021, 2023, or 2025) using population-weighted crosswalks. 67,393–67,613 rows, 451 columns.
+
+| Variable                        | Type      | Description                                                                                                                                    |
+| :------------------------------ | :-------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ags`                           | character | Municipality identifier, mapped to the target year's boundaries (ags_21, ags_23, or ags_25).                                                   |
+| `election_year`                 | numeric   | Year of the state election.                                                                                                                    |
+| `state`                         | character | State identifier (2-digit code).                                                                                                               |
 | `state_name`                    | character | Name of the state holding the election.                                                                                                        |
-| `eligible_voters`               | numeric   | Number of eligible voters (harmonized). Source: `WAHL01_val` from Regionalstatistik table `14*`.                                               |
-| `valid_votes`                   | numeric   | Number of valid votes cast (harmonized). Source: `WAHL04_val` from Regionalstatistik table `14*`.                                              |
-| `turnout`                       | numeric   | Voter turnout (%). Source: `WAHLSR_val` from Regionalstatistik table `14*`, divided by 100.                                                  |
-| `cdu`                           | numeric   | Vote share for CDU. Calculated as party votes / `valid_votes`.                                                                                 |
-| `csu`                           | numeric   | Vote share for CSU (non-missing only in Bavaria). Calculated as party votes / `valid_votes`.                                                   |
-| `spd`                           | numeric   | Vote share for SPD. Calculated as party votes / `valid_votes`.                                                                                 |
-| `gruene`                        | numeric   | Vote share for GRÜNE. Calculated as party votes / `valid_votes`.                                                                               |
-| `fdp`                           | numeric   | Vote share for FDP. Calculated as party votes / `valid_votes`.                                                                                 |
-| `linke_pds`                     | numeric   | Vote share for Die Linke (or predecessor PDS). Calculated as party votes / `valid_votes`.                                                        |
-| `afd`                           | numeric   | Vote share for AfD. Calculated as party votes / `valid_votes`.                                                                                 |
-| `other`                         | numeric   | Combined vote share for all parties not listed separately. Calculated as party votes / `valid_votes`.                                          |
-| `cdu_csu`                       | numeric   | Combined vote share for CDU/CSU. Calculated as party votes / `valid_votes`.                                                                    |
-| `flag_unsuccessful_naive_merge` | numeric   | Flag (1/0) indicating if the initial merge with crosswalk data failed. See `02_state_harm.R`.                                                  |
-| `flag_total_votes_incongruent`  | numeric   | Flag (1/0) indicating if the sum of reported party vote shares exceeded 1. See `02_state_harm.R`.                                              |
-| `total_vote_share`              | numeric   | Sum of all party vote shares (check variable, ideally close to 1).                                                                             |
+| `election_date`                 | Date      | Date of the election.                                                                                                                          |
+| `eligible_voters`               | numeric   | Number of eligible voters (harmonized via population-weighted crosswalk).                                                                      |
+| `number_voters`                 | numeric   | Number of voters (harmonized).                                                                                                                 |
+| `valid_votes`                   | numeric   | Number of valid votes cast (harmonized).                                                                                                       |
+| `invalid_votes`                 | numeric   | Number of invalid votes (harmonized).                                                                                                          |
+| `turnout`                       | numeric   | Voter turnout (`number_voters / eligible_voters`).                                                                                             |
+| `cdu`, `csu`, `spd`, ...        | numeric   | Vote share for each party (proportion of `valid_votes`). 426 individual party columns. NA = party did not participate in that state-year.       |
+| `other`                         | numeric   | Residual vote share for unlisted parties.                                                                                                      |
+| `cdu_csu`                       | numeric   | Combined CDU/CSU share. Equals `csu` in BY, `cdu` elsewhere.                                                                                  |
+| `far_right`                     | numeric   | Aggregated far-right vote share: sum of `afd`, `npd`, `rep`, `die_rechte`, `dvu`, `iii_weg`, `fap`, `ddd`, `dsu`, `die_heimat_heimat`, `die_republikaner_rep`. |
+| `far_left`                      | numeric   | Aggregated far-left vote share: sum of `dkp`, `kpd`, `mlpd`, `sgp`, `psg`, `kbw`.                                                             |
+| `far_left_w_linke`              | numeric   | Far-left including Linke/PDS: `far_left` + `linke_pds` + `pds`.                                                                               |
+| `total_vote_share`              | numeric   | Sum of all individual party vote shares (excluding derived columns). Quality check — ideally = 1.0.                                            |
+| `perc_total_votes_incogruence`  | numeric   | Continuous deviation: `total_vote_share - 1`. Positive = shares sum to > 1.                                                                   |
+| `flag_total_votes_incongruent`  | numeric   | Flag (1/0): `total_vote_share` outside [0.999, 1.001].                                                                                        |
+| `flag_unsuccessful_naive_merge` | numeric   | Flag (1/0): initial crosswalk merge failed (recovered via fuzzy time matching or self-mapping).                                                |
+| `ags_name_21`                   | character | Municipality name (2021 boundaries). Only in `state_harm_21`.                                                                                  |
+| `area_ags`                      | numeric   | Municipality area in km².                                                                                                                      |
+| `population_ags`                | numeric   | Municipality population (thousands).                                                                                                           |
+| `employees_ags`                 | numeric   | Number of employees subject to social insurance contributions.                                                                                 |
+| `pop_density_ags`               | numeric   | Population density (persons per km²).                                                                                                          |
 
 **Notes:**
 
 - Vote shares are proportions of `valid_votes`.
-- Harmonization refers to adjustments made to account for municipal boundary changes over time, mapping results onto consistent 2021 municipality definitions.
+- Harmonization uses population-weighted crosswalks from `data/crosswalks/`. Municipalities that merged are combined; municipalities that split have votes distributed proportionally by population.
+- Zero-vote → NA recoding: parties that received zero votes across all municipalities in a state-year are recoded from 0 to NA (distinguishes "did not participate" from "ran but got 0 votes").
+- BY Gesamtstimmen: `valid_votes ≈ 2 × number_voters` for BY. See unharmonized notes above.
+- See `docs/state_pipeline_audit.md` for detailed data quality documentation.
 
 ---
 

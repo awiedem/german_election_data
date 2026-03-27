@@ -235,9 +235,10 @@ df <- df %>%
   # Harmonize Grüne: Grüne + B90/Gr ran in 1990 elections
   mutate(
     gruene = rowSums(select(., `b90_gr`, gruene), na.rm = TRUE),
-    # Calculate CDU/CSU
-    cdu_csu = ifelse(csu > 0, csu, cdu),
-    # Get CDU & CSU votes for (non-)Bavarian municipalities if cdu is NA
+    # CDU/CSU combined: sum both when present (e.g. SL 1957 had both CDU+CSU)
+    cdu_csu = rowSums(across(c(cdu, csu)), na.rm = TRUE),
+    cdu_csu = ifelse(is.na(cdu) & is.na(csu), NA_real_, cdu_csu),
+    # Backfill CDU/CSU from combined column when missing
     cdu = ifelse(is.na(cdu) & state != "09" & !is.na(cdu_csu), cdu_csu, cdu),
     csu = ifelse(is.na(csu) & state == "09" & !is.na(cdu_csu), cdu_csu, csu)
   ) |>
@@ -321,7 +322,8 @@ df25 <- df25 |>
 # Harmonize CDU/CSU
 df25 <- df25 |>
   mutate(
-    cdu_csu = ifelse(csu > 0, csu, cdu),
+    cdu_csu = rowSums(across(c(cdu, csu)), na.rm = TRUE),
+    cdu_csu = ifelse(is.na(cdu) & is.na(csu), NA_real_, cdu_csu),
     cdu = ifelse(is.na(cdu) & state != "09" & !is.na(cdu_csu), cdu_csu, cdu),
     csu = ifelse(is.na(csu) & state == "09" & !is.na(cdu_csu), cdu_csu, csu)
   )
@@ -516,6 +518,14 @@ df <- df |>
 # clean names
 df <- df |>
   janitor::clean_names()
+
+# Flag (but keep) unattributable Briefwahl aggregate rows (e.g., 12999, 13999)
+# These have eligible_voters=0, are not real counties, and appear only in 1994/1998.
+# Users building balanced panels may want to filter them: filter(flag_briefwahl_agg == 0)
+df$flag_briefwahl_agg <- ifelse(
+  grepl("999$", df$ags) & !is.na(df$eligible_voters) & df$eligible_voters == 0, 1L, 0L
+)
+cat(sprintf("Flagged %d Briefwahl aggregate rows\n", sum(df$flag_briefwahl_agg)))
 
 names(df)
 

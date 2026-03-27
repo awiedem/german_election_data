@@ -84,7 +84,9 @@ cw_list <- excel_sheets(excel_file) %>%
 # Combine all dataframes into one
 cw_combined <- bind_rows(cw_combined, cw_list) |>
   relocate(year, .after = ags_name) |>
-  arrange(ags, year)
+  arrange(ags, year) |>
+  # ags_21 must be character to preserve leading zeros in harmonized output
+  mutate(ags_21 = sprintf("%08.0f", as.numeric(ags_21)))
 
 glimpse(cw_combined)
 
@@ -187,7 +189,7 @@ ags21 <- read_excel(path = "data/crosswalks/raw/31122021_Auszug_GV.xlsx", sheet 
   select(ags_21, ags_name_21, year, area, population) |>
   # ags_21, area, population to numeric
   mutate(
-    ags_21 = as.numeric(ags_21),
+    ags_21 = as.character(ags_21),
     area = as.numeric(area),
     population = as.numeric(population) / 1000
   ) |>
@@ -230,7 +232,7 @@ cw |>
 
 # remove these
 cw <- cw |>
-  filter(ags_21 != 7000999 & ags_21 != 10042999 & ags_21 != 13000999)
+  filter(ags_21 != "07000999" & ags_21 != "10042999" & ags_21 != "13000999")
 
 
 # Rename with suffix _ags to avoid confusion with county level covariates
