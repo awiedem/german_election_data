@@ -418,9 +418,10 @@ Same hybrid method as `02_municipal_harm.R`, targeting 2025 boundaries using `ag
 
 **Script:** `code/mayoral_elections/01_mayoral_unharm.R` (489 lines)
 
-**Coverage:** 6 states with varying completeness:
-- **Fully processed:** Bayern (BY), NRW, Saarland (SAR), Sachsen (SN), Rheinland-Pfalz (RLP), Niedersachsen (NS)
+**Coverage:** 7 states with varying completeness:
+- **Fully processed:** Bayern (BY), NRW, Saarland (SAR), Sachsen (SN), Rheinland-Pfalz (RLP), Niedersachsen (NS), Schleswig-Holstein (SH)
 - NS covers 2006–2025 (9 election years, 1,093 rows) using 3 PDF parsers: standard one-page-per-election (2011+), German-number format with full party names (2006), and tabular summary (2013)
+- SH covers 2023–2025 via web scraping (wahlen-sh.de)
 
 **Key characteristics:**
 - **Candidate-level data:** Unlike all other pipelines that track party vote shares, mayoral elections have candidate-level results (name, party affiliation, vote count, runoff status).
@@ -435,6 +436,33 @@ Mayoral elections pose unique harmonization challenges:
 - The relevant outcome variables (incumbent party, margin of victory, candidate characteristics) require different aggregation logic than vote counts.
 
 A `02_mayoral_harm.R` script has not yet been written.
+
+### 7.3 Candidate characteristics (Stage 4)
+
+**Scripts:**
+- `code/mayoral_elections/04a_build_gender_lookup.py` — builds gender lookup using Python `gender-guesser` package
+- `code/mayoral_elections/04_candidate_characteristics.R` — merges gender + migration background into candidates
+
+**Pipeline dependency chain:**
+```
+01b_mayoral_candidates.R  →  mayoral_candidates.rds (base data, 32 cols)
+                                    ↓
+04a_build_gender_lookup.py  →  gender_guesser_lookup.csv (2,311 unique names)
+                                    ↓
+04_candidate_characteristics.R  →  mayoral_candidates.rds (enriched, 44 cols)
+                                    + name_origin_lookup.rds
+```
+
+**Gender classification** uses `gender-guesser` (Jorg Michael's `nam_dict.txt`, ~70,000 names with country-specific gender codes). Classification cascade: Germany-specific → hyphenated-name fallback → global → accent-normalized → manual overrides (~90 entries). Raw gender from RLP/SL source data takes precedence. Lookup is pipe-delimited CSV to avoid quoting issues with names containing special characters.
+
+**Migration background** uses rule-based name-origin classification: Turkish (surname + firstname lists), Arabic (surname patterns + firstname lists), Eastern European (surname regex patterns), Southern European (surname regex patterns). Applied to unique (first_name, last_name) pairs and merged back.
+
+**Idempotency**: The script detects enrichment columns from prior runs and re-runs `01b_mayoral_candidates.R` via `source()` to get clean base data. This prevents predicted genders from cascading as "raw" on re-runs.
+
+**Validation results:**
+- Gender: 99.79% accuracy on 1,892 RLP ground-truth cases (F1 = 0.989), 100% on 171 SL cases
+- 100% coverage of named candidates (14,187 / 14,174)
+- Migration background: 255 / 14,859 (1.7%) flagged as non-German origin
 
 ---
 
@@ -549,9 +577,9 @@ As of February 2026, the following data gaps remain.
 
 ### Partially integrated
 
-**Mayoral elections — no harmonization** — All 6 states have `mayoral_unharm` (41,298 rows), but no `02_mayoral_harm.R` exists. Harmonization is conceptually harder here: candidate-level results don't aggregate across municipal mergers the way party vote shares do. Would require different aggregation logic (e.g., tracking incumbent party or margin of victory rather than raw vote sums).
+**Mayoral elections** — 7 states, `mayoral_unharm` (41,436 rows), `mayoral_harm` (38,667 rows mapped to 2021 boundaries), `mayoral_candidates` (85,160 rows with candidate characteristics). Stage 4 scripts (`04a_build_gender_lookup.py` + `04_candidate_characteristics.R`) add predicted gender and migration background for all named candidates.
 
-**Mayoral elections — Schleswig-Holstein** — Only a website URL (`wahlen-sh.de`) exists in `data/mayoral_elections/raw/sh/`. No actual data has been downloaded or processed.
+**Mayoral elections — Schleswig-Holstein** — Data scraped from `wahlen-sh.de`, covering 2023–2025 (45 elections, 110 candidates).
 
 **Mayoral elections — RLP data quality** — RLP provides percentages only (no absolute vote counts). All count columns are NA for the 1,147 RLP rows.
 

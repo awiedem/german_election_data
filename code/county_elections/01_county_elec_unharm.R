@@ -240,6 +240,30 @@ normalise_party_cty <- function(x) {
     "\u00f6dpuwv"                 = "oedp_uwv",
     "pdsuwv"                      = "pds_uwv",
 
+    # NI-specific
+    "b\u00fcndnis c"              = "buendnis_c",
+    "bundnis c"                   = "buendnis_c",
+    "die basis lv"                = "die_basis",
+    "tierschutz-partei"           = "tierschutz",
+    "tierschutz- partei"          = "tierschutz",
+    "partei d. vernunft"          = "partei_vernunft",
+    "pogo"                        = "pogo",
+    "sfp"                         = "sfp",
+    "nlp"                         = "nlp",
+    "agp"                         = "agp",
+    "mdu"                         = "mdu",
+    "dmd"                         = "dmd",
+    "diegede"                     = "diegede",
+    "deut"                        = "deut",
+    "die friesen"                 = "die_friesen",
+    "die haie"                    = "die_haie",
+    "die demokraten"              = "die_demokraten",
+    "dib"                         = "dib",
+    "big"                         = "big",
+    "eine welt"                   = "eine_welt",
+    "neue liberale"               = "neue_liberale",
+    "du."                         = "du",
+
     # SH-specific
     "ssw"                         = "ssw",
     "s\u00fcdschleswigscher w\u00e4hlerverband" = "ssw",
@@ -2634,7 +2658,7 @@ parse_sh_2023 <- function(csv_path, fb_path) {
   }
   # Build per-Kreis mapping: list of (D-code → party_name)
   fb$kreis_code <- sprintf("%05d", as.integer(fb$Regionalschlüssel))
-  fb$pname <- normalise_party_cty(tolower(trimws(fb$`Wahlvorschlag Kurzbezeichnung`)))
+  fb$pname <- sapply(tolower(trimws(fb$`Wahlvorschlag Kurzbezeichnung`)), normalise_party_cty, USE.NAMES = FALSE)
 
   # Read CSV (Latin-1 encoding, semicolon-delimited)
   csv_df <- read.csv2(csv_path, header = TRUE, stringsAsFactors = FALSE,
@@ -2760,6 +2784,267 @@ df_sh |> count(election_year) |> print()
 
 
 # =============================================================================
+# NIEDERSACHSEN (NI)
+# =============================================================================
+
+cat("\n===== NIEDERSACHSEN =====\n")
+ni_dir <- file.path(raw_dir, "Niedersachsen")
+
+# Helper: classify NI geographic entities — keep municipalities, skip aggregates
+# Keeps: Mitgliedsgemeinde (indented 6d), Einheitsgemeinde (non-indented 6d, suffix<400),
+#        kreisfreie Städte (3d, no 6d sub-entries)
+# Skips: Samtgemeinde (6d, suffix>=400), Kreise (3d with sub-entries), state/region (1d)
+ni_keep_entities <- function(entities, codes, code_lengths, is_indented) {
+  codes_6d <- codes[code_lengths == 6]
+  prefixes_3d <- unique(substr(codes_6d, 1, 3))
+  codes_3d <- codes[code_lengths == 3]
+  kreisfrei_3d <- codes_3d[!codes_3d %in% prefixes_3d]
+
+  keep <- rep(FALSE, length(entities))
+  for (i in seq_along(entities)) {
+    cl <- code_lengths[i]
+    cc <- codes[i]
+    if (cl == 6) {
+      suffix <- as.numeric(substr(cc, 4, 6))
+      if (is_indented[i]) keep[i] <- TRUE
+      else if (suffix < 400) keep[i] <- TRUE
+    } else if (cl == 3 && cc %in% kreisfrei_3d) {
+      keep[i] <- TRUE
+    }
+  }
+  keep
+}
+
+# Helper: construct 8-digit AGS from NI internal code
+ni_make_ags <- function(code) {
+  if (nchar(code) == 3) paste0("03", code, "000") else paste0("03", code)
+}
+
+# Party map for individual files (2001-2021): column position → party name
+# All individual XML files share the same 51-column layout
+ni_ktw_party_map <- c(
+  "4" = "CDU", "5" = "SPD", "6" = "GRÜNE", "7" = "FDP",
+  # Col 8 = Sonstige aggregate — skip
+  "9" = "AFD", "10" = "AGP", "11" = "ALFA", "12" = "BIG",
+  "13" = "Bündnis C", "14" = "CM", "15" = "DiB",
+  "16" = "die Basis LV", "17" = "Die Demokraten",
+  "18" = "Die Friesen", "19" = "DIE HAIE", "20" = "DMD",
+  "21" = "DieGeDe", "22" = "Die Linke", "23" = "Die Partei",
+  "24" = "DEUT", "25" = "DKP", "26" = "DP", "27" = "du.",
+  "28" = "EINE WELT", "29" = "Einzelbewerber", "30" = "FAMILIE",
+  "31" = "FREIE WÄHLER", "32" = "GRAUE", "33" = "LKR",
+  "34" = "MDU", "35" = "NLP", "36" = "NPD",
+  "37" = "Neue Liberale", "38" = "ödp",
+  "39" = "Partei d. Vernunft", "40" = "PBC", "41" = "Piraten",
+  "42" = "POGO", "43" = "REP", "44" = "Schill", "45" = "SFP",
+  "46" = "STATT Partei", "47" = "Tierschutz-Partei", "48" = "Volt",
+  "49" = "WASG", "50" = "Wählergruppen", "51" = "ZENTRUM"
+)
+
+# Parse individual NI KTW XML file (2001-2021)
+ni_ktw_parse_individual <- function(filepath, year) {
+  cat("  NI", year, "...")
+  lines <- readLines(filepath, warn = FALSE)
+
+  entity_idx <- grep('MergeAcross="51"', lines)
+
+  entities <- sapply(entity_idx, function(i) {
+    m <- regmatches(lines[i], gregexpr("<Data[^>]*>([^<]*)</Data>", lines[i]))[[1]]
+    if (length(m) == 0) return("")
+    sub("<Data[^>]*>", "", sub("</Data>", "", m[1]))
+  })
+
+  codes <- sub("\\s+.*", "", trimws(entities))
+  code_lengths <- nchar(codes)
+  is_indented <- grepl("^\\s", entities)
+  keep <- ni_keep_entities(entities, codes, code_lengths, is_indented)
+
+  extract_row_values <- function(eidx) {
+    search_end <- min(eidx + 10, length(lines))
+    hit <- grep("Anzahl</Data>", lines[(eidx + 1):search_end])
+    if (length(hit) == 0) return(rep(NA_real_, 51))
+    anzahl_line <- eidx + hit[1]
+    row_end <- anzahl_line - 1 +
+      grep("</Row>", lines[anzahl_line:min(anzahl_line + 60, length(lines))])[1]
+    row_block <- paste(lines[anzahl_line:row_end], collapse = "")
+    m <- regmatches(row_block, gregexpr("<Data[^>]*>([^<]*)</Data>", row_block))[[1]]
+    vals <- sub("<Data[^>]*>", "", sub("</Data>", "", m))
+    vals <- vals[-1]  # drop "Anzahl" label
+    suppressWarnings(as.numeric(vals))
+  }
+
+  results <- vector("list", sum(keep))
+  j <- 0
+  for (i in which(keep)) {
+    j <- j + 1
+    vals <- extract_row_values(entity_idx[i])
+    ags <- ni_make_ags(codes[i])
+    row_data <- data.frame(
+      ags = ags,
+      eligible_voters = vals[1], number_voters = vals[2], valid_votes = vals[3],
+      stringsAsFactors = FALSE
+    )
+    for (vi in names(ni_ktw_party_map)) {
+      idx <- as.integer(vi)
+      pname_raw <- ni_ktw_party_map[vi]
+      pname <- normalise_party_cty(tolower(pname_raw))
+      v <- if (idx <= length(vals)) vals[idx] else NA_real_
+      if (pname %in% names(row_data)) {
+        row_data[[pname]] <- row_data[[pname]] + ifelse(is.na(v), 0, v)
+      } else {
+        row_data[[pname]] <- v
+      }
+    }
+    results[[j]] <- row_data
+  }
+  df <- bind_rows(results)
+
+  df$invalid_votes <- df$number_voters - df$valid_votes
+
+  # Compute "other" as residual
+  party_cols <- intersect(names(df), unique(sapply(ni_ktw_party_map, function(p) normalise_party_cty(tolower(p)))))
+  party_cols <- setdiff(party_cols, c("other"))
+  mapped_sum <- rowSums(df[party_cols], na.rm = TRUE)
+  df$other <- pmax(df$valid_votes - mapped_sum, 0, na.rm = TRUE)
+
+  # Convert absolute votes to shares
+  all_pcols <- c(party_cols, "other")
+  for (pc in all_pcols) {
+    df[[pc]] <- ifelse(!is.na(df$valid_votes) & df$valid_votes > 0,
+                       df[[pc]] / df$valid_votes, NA_real_)
+  }
+
+  df$turnout <- ifelse(!is.na(df$eligible_voters) & df$eligible_voters > 0,
+                       df$number_voters / df$eligible_voters, NA_real_)
+  df$ags_name <- NA_character_
+  df$county <- substr(df$ags, 1, 5)
+  df$state <- "03"
+  df$election_year <- as.integer(year)
+
+  cat(sum(keep), "municipalities\n")
+  as_tibble(df)
+}
+
+# Parse NI compilation file (1981-1996, 4 elections)
+ni_ktw_parse_compilation <- function(filepath) {
+  cat("  NI compilation (1981-1996)...\n")
+  lines <- readLines(filepath, warn = FALSE)
+
+  merge_idx <- grep('MergeAcross="10"', lines)
+  merge_text <- sapply(merge_idx, function(i) {
+    m <- regmatches(lines[i], gregexpr("<Data[^>]*>([^<]*)</Data>", lines[i]))[[1]]
+    if (length(m) == 0) return("")
+    sub("<Data[^>]*>", "", sub("</Data>", "", m[1]))
+  })
+
+  is_geo <- !grepl("Stimmen|Anteile", merge_text)
+  geo_idx <- merge_idx[is_geo]
+  geo_names <- merge_text[is_geo]
+  stim_idx <- merge_idx[grepl("Stimmen", merge_text)]
+  antl_idx <- merge_idx[grepl("Anteile", merge_text)]
+
+  codes <- sub("\\s+.*", "", trimws(geo_names))
+  code_lengths <- nchar(codes)
+  is_indented <- grepl("^\\s", geo_names)
+  keep <- ni_keep_entities(geo_names, codes, code_lengths, is_indented)
+
+  cat("    Keeping", sum(keep), "of", length(geo_names), "entities\n")
+
+  all_results <- list()
+  for (ki in which(keep)) {
+    ags <- ni_make_ags(codes[ki])
+    stim_line <- stim_idx[ki]
+    antl_line <- antl_idx[ki]
+
+    block <- lines[(stim_line + 1):(antl_line - 1)]
+    row_starts <- grep("<Row>", block)
+
+    for (rs in row_starts) {
+      data_line <- stim_line + rs
+      row_end <- data_line - 1 +
+        grep("</Row>", lines[data_line:min(data_line + 20, length(lines))])[1]
+      if (is.na(row_end)) next
+      row_block <- paste(lines[data_line:row_end], collapse = "")
+      m <- regmatches(row_block,
+                      gregexpr("<Data[^>]*>([^<]*)</Data>", row_block))[[1]]
+      vals_raw <- sub("<Data[^>]*>", "", sub("</Data>", "", m))
+      label <- trimws(vals_raw[1])
+      vals_raw <- vals_raw[-1]
+      suppressWarnings(vals <- as.numeric(vals_raw))
+
+      if (!grepl("^KW", label)) next
+      date_part <- sub("^KW\\s+", "", label)
+      date_parts <- strsplit(trimws(date_part), "\\.")[[1]]
+      if (length(date_parts) != 3) next
+      year <- as.integer(date_parts[3])
+
+      ev <- vals[1]; nv <- vals[2]; vv <- vals[3]
+      cdu_v <- vals[4]; spd_v <- vals[5]; fdp_v <- vals[6]; gruene_v <- vals[7]
+      # vals[8] = Sonstige aggregate (skip — we compute other as residual)
+      # vals[9], vals[10] = ABG subcategories (almost always NA)
+      abg1_v <- if (length(vals) >= 9) vals[9] else NA_real_
+      abg2_v <- if (length(vals) >= 10) vals[10] else NA_real_
+
+      named_sum <- sum(c(cdu_v, spd_v, fdp_v, gruene_v, abg1_v, abg2_v), na.rm = TRUE)
+      other_v <- max(vv - named_sum, 0, na.rm = TRUE)
+
+      result <- data.frame(
+        ags = ags, ags_name = NA_character_,
+        eligible_voters = ev, number_voters = nv,
+        valid_votes = vv, invalid_votes = nv - vv,
+        cdu = cdu_v / vv, spd = spd_v / vv, fdp = fdp_v / vv,
+        gruene = gruene_v / vv,
+        waehlergruppen = ifelse(is.na(abg1_v), NA_real_, abg1_v / vv),
+        einzelbewerber = ifelse(is.na(abg2_v), NA_real_, abg2_v / vv),
+        other = ifelse(vv > 0, other_v / vv, NA_real_),
+        turnout = ifelse(!is.na(ev) & ev > 0, nv / ev, NA_real_),
+        county = substr(ags, 1, 5),
+        state = "03",
+        election_year = year,
+        stringsAsFactors = FALSE
+      )
+      all_results[[length(all_results) + 1]] <- result
+    }
+  }
+  df <- bind_rows(all_results)
+  for (yr in sort(unique(df$election_year))) {
+    cat("    ", yr, ":", sum(df$election_year == yr), "municipalities\n")
+  }
+  as_tibble(df)
+}
+
+# Process NI files
+ni_results <- list()
+
+# Individual files (2001-2021)
+for (yr in c(2001, 2006, 2011, 2016, 2021)) {
+  f <- file.path(ni_dir, paste0("Niedersachsen_", yr, "_Kreistagswahl.xml"))
+  ni_results[[as.character(yr)]] <- tryCatch(
+    ni_ktw_parse_individual(f, yr),
+    error = function(e) { cat("  NI", yr, "ERROR:", conditionMessage(e), "\n"); NULL }
+  )
+}
+
+# Compilation (1981-1996)
+comp_file <- file.path(ni_dir, "Niedersachsen_1981-1996_Kreistagswahl.xml")
+ni_comp <- tryCatch(
+  ni_ktw_parse_compilation(comp_file),
+  error = function(e) { cat("  NI compilation ERROR:", conditionMessage(e), "\n"); NULL }
+)
+if (!is.null(ni_comp)) {
+  for (yr in unique(ni_comp$election_year)) {
+    ni_results[[as.character(yr)]] <- ni_comp |> filter(election_year == yr)
+  }
+}
+
+ni_results <- ni_results[!sapply(ni_results, is.null)]
+df_ni <- bind_rows(ni_results)
+cat("NI total:", nrow(df_ni), "rows x", ncol(df_ni), "cols\n")
+cat("NI years:", paste(sort(unique(df_ni$election_year)), collapse = ", "), "\n")
+df_ni |> count(election_year) |> print()
+
+
+# =============================================================================
 # Combine all states and write output
 # =============================================================================
 
@@ -2772,6 +3057,7 @@ if (exists("df_sl") && nrow(df_sl) > 0) all_dfs <- c(all_dfs, list(df_sl))
 if (exists("df_he") && nrow(df_he) > 0) all_dfs <- c(all_dfs, list(df_he))
 if (exists("df_bw") && nrow(df_bw) > 0) all_dfs <- c(all_dfs, list(df_bw))
 if (exists("df_sh") && nrow(df_sh) > 0) all_dfs <- c(all_dfs, list(df_sh))
+if (exists("df_ni") && nrow(df_ni) > 0) all_dfs <- c(all_dfs, list(df_ni))
 df_all <- bind_rows(all_dfs)
 
 # Ensure AGS, county, state are character with proper zero-padding

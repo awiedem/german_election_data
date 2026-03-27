@@ -32,6 +32,8 @@ pacman::p_load(
 conflict_prefer("filter", "dplyr")
 conflict_prefer("select", "dplyr")
 conflict_prefer("year", "lubridate")
+conflict_prefer("lag", "dplyr")
+conflict_prefer("first", "dplyr")
 
 setwd(here::here())
 options(scipen = 999)
@@ -314,7 +316,13 @@ named_panel <- winners_named |>
   select(
     person_id, ags, state, election_year, election_date,
     winner_party = candidate_party,
-    winner_voteshare, winning_margin, n_candidates
+    winner_voteshare, winning_margin, n_candidates,
+    # Candidate characteristics (from 04_candidate_characteristics.R)
+    candidate_gender, candidate_gender_source, candidate_gender_prob,
+    candidate_gender_method,
+    candidate_migration_bg, candidate_migration_bg_prob,
+    candidate_name_origin, candidate_name_origin_conf,
+    candidate_name_origin_method
   ) |>
   mutate(term_start_date = NA_Date_)
 
@@ -706,7 +714,13 @@ finalize_panel <- function(p, version = "harm") {
     "n_candidates", "is_incumbent", "next_runs_again",
     "party_switch", "is_new_party_mayor",
     "tenure_start", "years_in_office", "term_start_date",
-    "n_terms", "total_tenure_years", "has_margin_variation"
+    "n_terms", "total_tenure_years", "has_margin_variation",
+    # Candidate characteristics
+    "candidate_gender", "candidate_gender_source", "candidate_gender_prob",
+    "candidate_gender_method",
+    "candidate_migration_bg", "candidate_migration_bg_prob",
+    "candidate_name_origin", "candidate_name_origin_conf",
+    "candidate_name_origin_method"
   )
   p <- p |>
     select(all_of(panel_cols)) |>
@@ -758,7 +772,13 @@ finalize_panel <- function(p, version = "harm") {
     "term_number", "winner_party", "winner_voteshare", "winning_margin",
     "n_candidates", "is_incumbent", "next_runs_again",
     "years_since_election", "years_to_next_election",
-    "electoral_cycle_pos", "tenure_start", "term_start_date"
+    "electoral_cycle_pos", "tenure_start", "term_start_date",
+    # Candidate characteristics (constant within term)
+    "candidate_gender", "candidate_gender_source", "candidate_gender_prob",
+    "candidate_gender_method",
+    "candidate_migration_bg", "candidate_migration_bg_prob",
+    "candidate_name_origin", "candidate_name_origin_conf",
+    "candidate_name_origin_method"
   )
   p_annual <- p_annual |>
     select(all_of(annual_cols)) |>

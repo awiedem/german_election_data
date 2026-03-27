@@ -30,6 +30,9 @@ header-includes:
 - [Federal Elections (Municipality Level, Harmonized)](#federal-elections-municipality-level-harmonized)
 - [State Elections (Municipality Level, Harmonized)](#state-elections-municipality-level-harmonized)
 - [Municipal Elections (Municipality Level, Harmonized)](#municipal-elections-municipality-level-harmonized)
+- [Mayoral Elections — Candidate-Level (`mayoral_candidates`)](#mayoral-elections--candidate-level)
+- [Mayor Panel (`mayor_panel` / `mayor_panel_harm`)](#mayor-panel-mayor_panel--mayor_panel_harm)
+- [Annual Mayor Panel (`mayor_panel_annual` / `mayor_panel_annual_harm`)](#annual-mayor-panel-mayor_panel_annual--mayor_panel_annual_harm)
 - [Municipality Covariates (Area, Population, Employment)](#municipality-covariates-area-population-employment)
 
 ---
@@ -222,6 +225,154 @@ This dataset provides yearly time-series data for basic municipality characteris
 
 - The dataset is a panel covering years from 1990 onwards.
 - Area, population, and employee data originate from official Gemeindeverzeichnis sources provided by BBSR.
+
+---
+
+## Mayoral Elections — Candidate-Level
+
+**File:** `data/mayoral_elections/final/mayoral_candidates.rds` or `data/mayoral_elections/final/mayoral_candidates.csv`
+
+This dataset contains candidate-level results for mayoral elections in 7 German states (Bayern, Niedersachsen, Nordrhein-Westfalen, Rheinland-Pfalz, Saarland, Sachsen, Schleswig-Holstein), 1945--2025. One row per candidate per election cycle (wide format, with both Hauptwahl and Stichwahl results in columns). Includes predicted candidate characteristics (gender, migration background).
+
+| Variable                          | Type      | Description                                                                                                          |
+| :-------------------------------- | :-------- | :------------------------------------------------------------------------------------------------------------------- |
+| `ags`                             | character | Municipality identifier (8-digit AGS), original boundaries.                                                          |
+| `ags_name`                        | character | Municipality name.                                                                                                   |
+| `state`                           | character | State identifier (2-digit code).                                                                                     |
+| `state_name`                      | character | State name.                                                                                                          |
+| `election_year`                   | numeric   | Year of the election cycle.                                                                                          |
+| `election_date`                   | Date      | Hauptwahl (first round) date.                                                                                        |
+| `election_date_sw`                | Date      | Stichwahl (runoff) date. NA if no runoff.                                                                            |
+| `election_type`                   | character | Type of election (`Buergermeisterwahl`, `Oberbuergermeisterwahl`, `Landratswahl`, `VG-Buergermeisterwahl`, `SG-Buergermeisterwahl`). |
+| `has_stichwahl`                   | logical   | TRUE if this election went to a runoff.                                                                              |
+| `eligible_voters`                 | numeric   | Number of eligible voters (Hauptwahl). NA for RLP (percentage-only data).                                            |
+| `number_voters`                   | numeric   | Number of voters (Hauptwahl). NA for RLP.                                                                            |
+| `valid_votes`                     | numeric   | Number of valid votes (Hauptwahl). NA for RLP.                                                                       |
+| `invalid_votes`                   | numeric   | Number of invalid votes (Hauptwahl). NA for RLP.                                                                     |
+| `turnout`                         | numeric   | Hauptwahl turnout as proportion (0--1).                                                                              |
+| `turnout_sw`                      | numeric   | Stichwahl turnout. NA if no runoff.                                                                                  |
+| `candidate_name`                  | character | Full candidate name. NA for Bayern (source data has no names).                                                       |
+| `candidate_last_name`             | character | Last name.                                                                                                           |
+| `candidate_first_name`            | character | First name.                                                                                                          |
+| `candidate_gender`                | character | Gender: `"m"` (male) or `"w"` (female). From raw data (RLP, SL) or predicted via `gender-guesser`.                  |
+| `candidate_party`                 | character | Party affiliation or label (e.g., CSU, SPD, Parteilos, EB).                                                         |
+| `candidate_votes_hw`              | numeric   | Hauptwahl vote count. NA for RLP.                                                                                    |
+| `candidate_voteshare_hw`          | numeric   | Hauptwahl vote share (0--1).                                                                                         |
+| `candidate_rank_hw`               | numeric   | Hauptwahl rank by votes (1 = most votes).                                                                            |
+| `n_candidates_hw`                 | numeric   | Number of candidates in the Hauptwahl.                                                                               |
+| `candidate_votes_sw`              | numeric   | Stichwahl vote count. NA if not in runoff.                                                                           |
+| `candidate_voteshare_sw`          | numeric   | Stichwahl vote share. NA if not in runoff.                                                                           |
+| `candidate_rank_sw`               | numeric   | Stichwahl rank. NA if not in runoff.                                                                                 |
+| `n_candidates_sw`                 | numeric   | Number of candidates in the Stichwahl.                                                                               |
+| `is_winner`                       | numeric   | 1 if the candidate won the election (HW outright or SW), 0 otherwise.                                               |
+| `candidate_birth_year`            | numeric   | Birth year. NI only.                                                                                                 |
+| `candidate_profession`            | character | Profession. NI only.                                                                                                 |
+| `office_type`                     | character | Office type. BY and SL only.                                                                                         |
+| `candidate_gender_source`         | character | Gender data source: `"raw"` (from election authority data) or `"predicted"` (from name classification).              |
+| `candidate_gender_method`         | character | Classification method: `raw`, `full_de` (Germany-specific match), `full_global`, `hyphen_first_de`, `hyphen_first_global`, `accent_norm_global`, `manual`. |
+| `candidate_gender_prob`           | numeric   | Confidence score for gender classification (0--1). 1.0 for raw data; 0.99 for `full_de`/`manual`; 0.95 for `hyphen_first_de`; 0.90 for global matches. |
+| `candidate_name_origin`           | character | Predicted name origin: `"german"`, `"turkish"`, `"arabic"`, `"eastern_european"`, `"southern_european"`.             |
+| `candidate_name_origin_conf`      | numeric   | Confidence in origin classification (0.50--0.95).                                                                    |
+| `candidate_name_origin_method`    | character | Detection method: `"combined"` (first+last match), `"surname_match"`, `"firstname_match"`, `"surname_pattern"`, `"default"`. |
+| `candidate_migration_bg`          | integer   | Binary migration background: 0 = German-origin name, 1 = likely non-German origin name.                             |
+| `candidate_migration_bg_prob`     | numeric   | Probability of migration background (continuous, 0--1).                                                              |
+| `candidate_local_surname`         | integer   | Placeholder (NA). Local surname rootedness — awaiting telephone directory data.                                      |
+| `candidate_surname_county_share`  | numeric   | Placeholder (NA). Share of surname occurrences in the focal county.                                                  |
+| `candidate_surname_n_counties`    | integer   | Placeholder (NA). Number of counties where this surname appears.                                                     |
+| `candidate_surname_overrep_ratio` | numeric   | Placeholder (NA). Ratio of observed/expected surname frequency in focal county.                                      |
+
+**Notes:**
+
+- **Gender classification** uses the Python `gender-guesser` package (Jorg Michael's `nam_dict.txt`, ~70,000 names with country-specific gender codes). Raw gender data from RLP and SL takes precedence over predictions. The lookup is pre-computed by `code/mayoral_elections/04a_build_gender_lookup.py`. Coverage: 100% of named candidates. Cross-validation accuracy: 99.79% against RLP raw data (F1 = 0.989), 100% against SL raw data.
+- **Migration background** is a probabilistic estimate based on name patterns (Turkish, Arabic, Eastern European, Southern European surname/firstname lists and regex patterns). It should not be interpreted as verified migration status. Coverage: all candidates with last names (14,859). Low-confidence classifications (conf < 0.80) are predominantly Eastern European surname endings.
+- **Local surname rootedness** columns are placeholders populated with NA values. Implementation is blocked on telephone directory data.
+- **Bayern** has no candidate names in the source data, so gender, migration background, and local surname columns are all NA for Bayern rows.
+
+---
+
+## Mayor Panel (`mayor_panel` / `mayor_panel_harm`)
+
+**Files:** `data/mayoral_elections/final/mayor_panel.rds` (or `.csv`), `data/mayoral_elections/final/mayor_panel_harm.rds`
+
+One row per person per election. Tracks individual mayors across multiple terms using unique person IDs. The `_harm` version maps AGS codes to 2021 municipal boundaries. Includes the same candidate characteristics columns as `mayoral_candidates` (gender, migration background), carried forward from the winning candidate.
+
+| Variable                          | Type      | Description                                                                                           |
+| :-------------------------------- | :-------- | :---------------------------------------------------------------------------------------------------- |
+| `person_id`                       | character | Unique mayor identifier (e.g., `p_09_00001` for Bayern, `p_05_00001` for NRW).                       |
+| `ags`                             | character | Municipality identifier (8-digit AGS), original boundaries.                                           |
+| `ags_21`                          | character | Municipality identifier mapped to 2021 boundaries (`_harm` only).                                     |
+| `state`                           | character | State identifier (2-digit code).                                                                      |
+| `election_year`                   | numeric   | Year of the election.                                                                                 |
+| `election_date`                   | Date      | Date of the decisive round (Stichwahl date if applicable).                                            |
+| `term_number`                     | numeric   | Sequential term count within (person, municipality), starting at 1.                                   |
+| `consecutive_terms`               | numeric   | Number of consecutive terms (resets if gap > 1 election cycle).                                       |
+| `winner_party`                    | character | Party of the winning candidate.                                                                       |
+| `winner_voteshare`                | numeric   | Vote share in the decisive round (0--1).                                                              |
+| `winning_margin`                  | numeric   | Vote share difference between winner and runner-up (0--1).                                            |
+| `margin_change`                   | numeric   | Change in winning margin from previous election.                                                      |
+| `n_candidates`                    | numeric   | Number of candidates in the election.                                                                 |
+| `is_incumbent`                    | numeric   | 1 if `term_number >= 2`, else 0.                                                                      |
+| `next_runs_again`                 | numeric   | 1 if this person wins the next election, 0 if different person wins, NA if no subsequent election.    |
+| `party_switch`                    | numeric   | 1 if the winning party changed from the previous election.                                            |
+| `is_new_party_mayor`              | numeric   | 1 if this is the first time this party wins in this municipality.                                     |
+| `tenure_start`                    | numeric   | Year of the mayor's first election in this municipality.                                              |
+| `years_in_office`                 | numeric   | `election_year - tenure_start`.                                                                       |
+| `term_start_date`                 | Date      | Date of first taking office (Bayern: Amtsantritt; others: first election date).                       |
+| `n_terms`                         | numeric   | Total number of terms observed for this person.                                                       |
+| `total_tenure_years`              | numeric   | Year span from first to last election.                                                                |
+| `has_margin_variation`            | logical   | Whether winning margin varies across this person's terms (useful for FE feasibility).                 |
+| `candidate_gender`                | character | Mayor's gender: `"m"` / `"w"`. From raw data or predicted. NA for Bayern.                            |
+| `candidate_gender_source`         | character | `"raw"` or `"predicted"`. NA for Bayern.                                                              |
+| `candidate_gender_prob`           | numeric   | Confidence score (0--1). See `mayoral_candidates` section for details.                                |
+| `candidate_gender_method`         | character | Classification method. See `mayoral_candidates` section for details.                                  |
+| `candidate_migration_bg`          | integer   | Binary migration background (0/1). NA for Bayern.                                                     |
+| `candidate_migration_bg_prob`     | numeric   | Probability of migration background (0--1).                                                           |
+| `candidate_name_origin`           | character | Fine-grained name origin category.                                                                    |
+| `candidate_name_origin_conf`      | numeric   | Confidence in origin classification (0.50--0.95).                                                     |
+| `candidate_name_origin_method`    | character | Detection method for origin classification.                                                           |
+
+**Coverage**: 14,452 unique mayors (unharm) / 13,971 (harm), spanning 34,495 / 33,319 person-elections. Candidate characteristics available for 3,089 person-elections (non-Bayern states).
+
+---
+
+## Annual Mayor Panel (`mayor_panel_annual` / `mayor_panel_annual_harm`)
+
+**Files:** `data/mayoral_elections/final/mayor_panel_annual.rds` (or `.csv`), `data/mayoral_elections/final/mayor_panel_annual_harm.rds`
+
+One row per mayor per year. Forward-fills election-level data across the mayor's term. The `_harm` version maps AGS codes to 2021 boundaries. Candidate characteristics (gender, migration background) are constant within each mayor-term.
+
+| Variable                          | Type      | Description                                                                                           |
+| :-------------------------------- | :-------- | :---------------------------------------------------------------------------------------------------- |
+| `ags`                             | character | Municipality identifier (8-digit AGS), original boundaries.                                           |
+| `ags_21`                          | character | Municipality identifier mapped to 2021 boundaries (`_harm` only).                                     |
+| `year`                            | numeric   | Calendar year.                                                                                        |
+| `person_id`                       | character | Unique mayor identifier.                                                                              |
+| `state`                           | character | State identifier (2-digit code).                                                                      |
+| `election_year`                   | numeric   | Year of the election that started this term.                                                          |
+| `election_date`                   | Date      | Date of the decisive round.                                                                           |
+| `term_number`                     | numeric   | Term count within (person, municipality).                                                             |
+| `winner_party`                    | character | Party of the mayor (constant within term).                                                            |
+| `winner_voteshare`                | numeric   | Vote share in the decisive round (constant within term).                                              |
+| `winning_margin`                  | numeric   | Winner-runner-up margin (constant within term).                                                       |
+| `n_candidates`                    | numeric   | Number of candidates (constant within term).                                                          |
+| `is_incumbent`                    | numeric   | 1 if `term_number >= 2`.                                                                              |
+| `next_runs_again`                 | numeric   | Whether this person wins the next election.                                                           |
+| `years_since_election`            | numeric   | `year - election_year`.                                                                               |
+| `years_to_next_election`          | numeric   | Years until the next election in this municipality (NA if unknown).                                   |
+| `electoral_cycle_pos`             | numeric   | Position in the electoral cycle, 0 (election year) to <1 (year before next election).                 |
+| `tenure_start`                    | numeric   | Year of first election.                                                                               |
+| `term_start_date`                 | Date      | Date of first taking office.                                                                          |
+| `candidate_gender`                | character | Mayor's gender (constant within term). NA for Bayern.                                                 |
+| `candidate_gender_source`         | character | `"raw"` or `"predicted"`.                                                                             |
+| `candidate_gender_prob`           | numeric   | Confidence score (0--1).                                                                              |
+| `candidate_gender_method`         | character | Classification method.                                                                                |
+| `candidate_migration_bg`          | integer   | Binary migration background (0/1, constant within term).                                              |
+| `candidate_migration_bg_prob`     | numeric   | Probability of migration background (0--1).                                                           |
+| `candidate_name_origin`           | character | Fine-grained name origin category.                                                                    |
+| `candidate_name_origin_conf`      | numeric   | Confidence in origin classification.                                                                  |
+| `candidate_name_origin_method`    | character | Detection method for origin classification.                                                           |
+
+**Coverage**: 185,112 person-years (unharm) / 179,011 (harm), years 1945--2025.
 
 ---
 

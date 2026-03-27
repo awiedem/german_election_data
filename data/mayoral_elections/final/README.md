@@ -9,10 +9,10 @@ Seven datasets covering mayoral elections in 7 German states (Bayern, Niedersach
 | `mayoral_unharm` | 41,436 | 16 | Election | One row per election-round (winner-level summary), original boundaries |
 | `mayoral_harm` | 38,667 | 23 | Election | Same as above, mapped to 2021 municipal boundaries |
 | `mayoral_candidates` | 85,160 | 44 | Candidate | One row per candidate per election cycle (wide format), original boundaries, incl. candidate characteristics |
-| `mayor_panel` | 34,495 | 18 | Person-election | Within-mayor panel with person IDs, original boundaries |
-| `mayor_panel_harm` | 33,319 | 19 | Person-election | Same as above, mapped to 2021 municipal boundaries |
-| `mayor_panel_annual` | 185,112 | 18 | Person-year | Annual panel (forward-filled from elections), original boundaries |
-| `mayor_panel_annual_harm` | 179,011 | 19 | Person-year | Same as above, mapped to 2021 municipal boundaries |
+| `mayor_panel` | 34,495 | 31 | Person-election | Within-mayor panel with person IDs, original boundaries |
+| `mayor_panel_harm` | 33,319 | 32 | Person-election | Same as above, mapped to 2021 municipal boundaries |
+| `mayor_panel_annual` | 185,112 | 27 | Person-year | Annual panel (forward-filled from elections), original boundaries |
+| `mayor_panel_annual_harm` | 179,011 | 28 | Person-year | Same as above, mapped to 2021 municipal boundaries |
 
 All files are available as `.rds` and `.csv`.
 
@@ -124,6 +124,40 @@ One row per candidate per election cycle. Companion to `mayoral_unharm` -- same 
 | Sachsen | Partial | -- | Yes (98.6%) | Yes | -- | -- | Yes |
 | Schleswig-Holstein | Yes | -- | Yes (100%) | Yes | -- | -- | Yes |
 
+### Gender Classification Method
+
+Gender is classified using the Python [`gender-guesser`](https://pypi.org/project/gender-guesser/) package (Jorg Michael's `nam_dict.txt`, ~70,000 names with country-specific gender codes). The lookup is pre-computed by `code/mayoral_elections/04a_build_gender_lookup.py` and merged in `04_candidate_characteristics.R`.
+
+**Classification pipeline** (in priority order):
+1. Raw gender from source data (RLP, SL) — takes precedence over predictions
+2. Germany-specific match (`get_gender(name, country="germany")`) — confidence 0.99
+3. Hyphenated name fallback (first component of hyphenated names) — confidence 0.95
+4. Global match (no country restriction) — confidence 0.90
+5. Accent-normalized fallback (strip diacritics) — confidence 0.90
+6. Manual overrides (~90 entries for typos, rare names, foreign names) — confidence 0.99
+
+**Coverage**: 14,187 / 14,174 named candidates (100%) have gender assigned. 2,129 from raw data, 12,058 predicted. Bayern candidates have no names in the source data and thus no gender. 53 entries without gender are non-person records (party names, place names, initials).
+
+**Validation**:
+- Cross-validation against RLP raw data: Accuracy = 0.9979, F1 (female) = 0.9887, Precision = 0.9887, Recall = 0.9887. 4 mismatches are errors in the raw data (verified manually).
+- Cross-validation against SL raw data: 171/171 (100%).
+- Cross-election consistency: 1 person with inconsistent gender across elections (raw data entry error in RLP).
+
+### Migration Background Classification
+
+Migration background is classified using a rule-based name-origin approach applied to both first and last names. This is a probabilistic estimate based solely on name patterns; it should not be interpreted as verified migration status.
+
+**Classification rules** (in priority order):
+1. **Turkish**: ~87 common Turkish surnames + ~80 Turkish first names. Combined match = 0.95 confidence; surname-only = 0.80; firstname-only = 0.60.
+2. **Arabic**: ~44 Arabic surname patterns (incl. `al-`, `el-`, `abd-` prefixes) + ~50 Arabic first names. Combined = 0.95; surname-only = 0.75; firstname-only = 0.55.
+3. **Eastern European**: Surname-ending patterns (e.g., `-owski`, `-enko`, `-escu` = 0.85; `-ski`, `-ovic`, `-ek` = 0.60).
+4. **Southern European**: Surname-ending patterns (e.g., `-opoulos`, `-elli`, `-etti` = 0.85).
+5. **German** (default): German surname patterns (`Sch-`, `-mann`, `-berg`, etc.) = 0.90; unmatched = 0.50.
+
+**Coverage**: 14,859 candidates with last names classified. 255 (1.7%) flagged as migration background. 121 low-confidence classifications (conf < 0.80), predominantly Eastern European surname endings.
+
+**Important caveats**: This method cannot detect naturalized Germans with German-sounding names, nor can it distinguish between recent migration and families that have been in Germany for generations. Some German-origin names match non-German patterns (e.g., "Zein" is both a German and Arabic surname). The low base rate (~1.7%) means even small false-positive rates produce a non-trivial share of misclassifications. Use the confidence scores for sensitivity analysis.
+
 ---
 
 ## 4. `mayor_panel` / `mayor_panel_harm` -- Within-Mayor Panel
@@ -159,8 +193,17 @@ One row per person per election. Tracks individual mayors across multiple terms,
 | `n_terms` | Total number of terms observed for this person |
 | `total_tenure_years` | Year span from first to last election |
 | `has_margin_variation` | Whether winning margin varies across this person's terms (useful for FE feasibility) |
+| `candidate_gender` | Mayor's gender: `"m"` / `"w"`. From raw data or predicted via `gender-guesser`. NA for Bayern. |
+| `candidate_gender_source` | `"raw"` or `"predicted"`. NA for Bayern. |
+| `candidate_gender_prob` | Confidence score (0--1). See `mayoral_candidates` for details. |
+| `candidate_gender_method` | Classification method. See `mayoral_candidates` for details. |
+| `candidate_migration_bg` | Binary migration background (0/1). NA for Bayern. |
+| `candidate_migration_bg_prob` | Probability of migration background (0--1). |
+| `candidate_name_origin` | Fine-grained name origin category. |
+| `candidate_name_origin_conf` | Confidence in origin classification (0.50--0.95). |
+| `candidate_name_origin_method` | Detection method for origin classification. |
 
-**Coverage**: 14,452 unique mayors (unharm) / 13,971 (harm), spanning 34,495 / 33,319 person-elections.
+**Coverage**: 14,452 unique mayors (unharm) / 13,971 (harm), spanning 34,495 / 33,319 person-elections. Candidate characteristics available for non-Bayern states (3,089 / 34,495 person-elections have gender; Bayern has no candidate names in source data).
 
 ---
 
@@ -193,8 +236,17 @@ Each mayor-election is expanded from `election_year` to the year before the next
 | `electoral_cycle_pos` | Position in the electoral cycle, 0 (election year) to <1 (year before next election) |
 | `tenure_start` | Year of first election |
 | `term_start_date` | Date of first taking office |
+| `candidate_gender` | Mayor's gender (constant within term). NA for Bayern. |
+| `candidate_gender_source` | `"raw"` or `"predicted"` |
+| `candidate_gender_prob` | Confidence score (0--1) |
+| `candidate_gender_method` | Classification method |
+| `candidate_migration_bg` | Binary migration background (0/1, constant within term) |
+| `candidate_migration_bg_prob` | Probability of migration background (0--1) |
+| `candidate_name_origin` | Fine-grained name origin category |
+| `candidate_name_origin_conf` | Confidence in origin classification |
+| `candidate_name_origin_method` | Detection method for origin classification |
 
-**Coverage**: 185,112 person-years (unharm) / 179,011 (harm), years 1945--2025.
+**Coverage**: 185,112 person-years (unharm) / 179,011 (harm), years 1945--2025. Candidate characteristics are forward-filled across the term (constant within each mayor-term).
 
 ---
 
