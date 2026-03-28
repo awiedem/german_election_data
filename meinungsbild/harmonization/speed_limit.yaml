@@ -1,0 +1,21 @@
+issue_id: speed_limit
+label_de: "Tempolimit"
+label_en: "Autobahn Speed Limit"
+description_de: "Sind Sie für ein generelles Tempolimit auf deutschen Autobahnen?"
+description_en: "Do you support a general speed limit on German highways?"
+direction: "higher = support speed limit"
+category: "climate_transport"
+
+sources:
+  politbarometer:
+    variable: null  # check if available
+    years: []
+    notes: "May not be regularly asked"
+
+  gles:
+    variable: null  # placeholder — verify
+    years: [2021]
+    question_de: "Tempolimit von 130 km/h auf Autobahnen"
+    response_scale: [1, 2, 3, 4, 5]
+    binary_coding: "y = 1 if response <= 2 (dafür)"
+    notes: "Check exact variable name in GLES codebook"
