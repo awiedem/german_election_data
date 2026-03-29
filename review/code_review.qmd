@@ -1,0 +1,100 @@
+---
+title: "GERDA Pipeline Code Review 2026"
+date: "2026-03-27"
+author:
+  - name: Maurice Baudet von Gersdorff
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    code-fold: true
+    theme: cosmo
+    embed-resources: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(dplyr)
+```
+
+# Methodology
+
+The review was conducted within a fixed time budget. The two largest scripts (`01b_state_unharm_raw.R`, ~6,200 lines; `01_municipal_unharm.R`, ~20,500 lines) were reviewed selectively; the remaining five are short enough to have been read in full.
+
+The workflow:
+
+1. **Manual code review.** Priority sections were read directly and concerns noted.
+2. **AI-assisted verdict check.** Each flagged concern was submitted to an AI (Claude, Anthropic). Where the AI considered an item not to be an issue, its reasoning and the referenced code passages were reviewed before dropping the flag.
+3. **Python cross-check.** The AI reimplemented the most critical R logic in Python to catch language-idiomatic differences — in particular R's default NA handling in aggregation functions (`review/python_checks.py`, results in `review/python_review_results.json`). All checks passed.
+
+Sections 2 and 3 of this report are the output of steps 1 and 2 above — confirmed bugs and one forward-looking fragility note. Section 4 is the output of step 3.
+
+**Scripts reviewed:**
+
+| Script | Scope |
+|--------|-------|
+| `code/state_elections/01b_state_unharm_raw.R` | Priority sections (normalise_party, Thüringen, Brandenburg, MV, final bind) |
+| `code/municipality_elections/01_municipal_unharm.R` | Priority sections (setup, Bayern, Brandenburg, RLP/SH, final output) |
+| `code/mayoral_elections/01_mayoral_unharm.R` | Full |
+| `code/crosswalks/01_ags_crosswalk.R` | Full |
+| `code/crosswalks/04_build_21_23_ags_crosswalks.R` | Full |
+| `code/crosswalks/05_build_23_25_ags_crosswalks.R` | Full |
+| `code/state_elections/02b_state_harm_21.R` | Full |
+
+---
+
+# Confirmed Issues
+
+## Duplicate party columns (`01b_state_unharm_raw.R`)
+
+`normalise_party()` converts unrecognized raw party names to snake_case without a mapping check or warning. Two confirmed duplicate pairs exist in `state_unharm.csv`:
+
+- `50_plus` (390 non-zero rows) and `50plus` (378 non-zero rows)
+- `ad_demokraten` (361 non-zero rows) and `addemokraten` (309 non-zero rows)
+
+In both cases, votes for the same party are split across two columns. No additional duplicate pairs were found among the 357 fallback-produced column names.
+
+## V-PARTEI³ routed to `tierschutz` (`01b_state_unharm_raw.R`, line 74)
+
+```r
+if (grepl("TIERSCHUTZ|^V-PARTEI", p_up)) return("tierschutz")   # line 74
+if (grepl("^V.PARTEI", p_up))            return("v_partei3")     # line 75 — unreachable for V-PARTEI³
+```
+
+The `|^V-PARTEI` branch on line 74 matches V-PARTEI³ (which starts with "V-PARTEI") before line 75 can fire. All V-PARTEI³ votes are silently accumulated in the `tierschutz` column. The column `v_partei3` does not exist in `state_unharm.csv`, and the 357-item fallback list contains no V-PARTEI³ variant — confirming the votes never reach the fallback path either. Fix: either swap lines 74 and 75, or remove `^V-PARTEI` from line 74's pattern.
+
+---
+
+# Items Requiring Further Review
+
+## `party_vars` dynamic detection (`02b_state_harm_21.R`, lines 40–51)
+
+`party_vars` is detected as all columns not in the hardcoded `metadata_cols` list. If a new metadata column is added to `state_unharm.csv` without also updating `metadata_cols`, it will be treated as a party variable, multiplied by `valid_votes`, and divided back — corrupting that column. Not a current bug, but a fragile pattern to watch when extending the pipeline.
+
+---
+
+# Automated Check Results
+
+```{r}
+#| label: tbl-checks
+#| tbl-cap: "Python automated check summary"
+tibble::tribble(
+  ~Check, ~Issues, ~Interpretation, ~Action,
+  "state_share_rowsum", "41", "Vote shares in state_unharm.csv deviate from 1.0 by >2 pp in 41 rows: Brandenburg (31), Thüringen (9), BW (1). Confined to specific state–year combinations; no systematic denominator error found.", "No action",
+  "municipal_share_rowsum", "0", "Clean", "—",
+  "cw_base_weightsums", "909", "35 Bavarian Gemeindefreie Gebiete (uninhabited administrative territories with zero population) each map to multiple 2021 targets with pop_cw=1.0 per target rather than 1/n. Because these units have no population they carry no weight in downstream aggregations.", "No action",
+  "cw_extended_weightsums", "93", "7 Bavarian Gemeindefreie Gebiete (pop=0) produce NaN extended weights: pop_w_23_25=0 → chain weight=0 → 0/0=NaN on rescaling. Same units as above; no population means no downstream impact.", "No action",
+  "briefwahl_proxy", "0", "Clean", "—",
+  "party_inventory", "357", "357 column names in state_unharm.csv were produced by the normalise_party() silent fallback. The two confirmed duplicate pairs (50_plus/50plus, ad_demokraten/addemokraten) are addressed in section 2. All remaining names represent legitimate small parties absent from the explicit mapping.", "See section 2",
+  "na_zero_distinction", "39,266", "39,266 state–party–year combinations in state_harm_21.csv have a zero value where the party may not have run. The dominant signal is AFD=0 before 2013. Storing non-participating parties as 0 rather than NA is confirmed intentional pipeline behavior.", "No action",
+  "harm_vote_conservation", "0", "Vote totals conserved through harmonization", "—",
+  "briefwahl_reimpl", "0", "Python re-implementation matches R output exactly for Thüringen 1994–2024", "—"
+) |>
+  knitr::kable(col.names = c("Check", "n flagged", "Interpretation", "Action"))
+```
+

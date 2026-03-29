@@ -35,3 +35,6 @@ docs/m_error_general.tex
 # Claude Code
 CLAUDE.md
 .claude/
+
+# Python virtual environment (review/)
+review/.venv/
