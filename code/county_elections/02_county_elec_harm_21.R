@@ -18,6 +18,7 @@ options(scipen = 999)
 pacman::p_load(
   "tidyverse",
   "data.table",
+  "readxl",
   "haschaR"
 )
 
@@ -79,8 +80,20 @@ df <- df |>
       ags == "16076094" & election_year == 2024 ~ "16076004",  # Berga-Wünschendorf → Berga/Elster
       # Sachsen post-2021 merger
       ags == "14522275" & election_year == 2024 ~ "14522450",  # Jahnatal → Ostrau
+      # Sachsen 2008: Tiefenbach dissolved into Döbeln (14522540)
+      ags == "14522560" & election_year == 2008 ~ "14522540",  # Tiefenbach → Döbeln
       # Sachsen-Anhalt 1994: Merzien post-Kreisreform code
       ags == "15159029" & election_year == 1994 ~ "15026310",  # Merzien
+      # Sachsen-Anhalt 2007: Zeppernick → Raguhn (15086140) via earlier merger
+      ags == "15086270" & election_year == 2007 ~ "15086140",  # Zeppernick → Raguhn
+      # Sachsen-Anhalt 2007: 7 municipalities merged into Bördeland (15089042)
+      ags == "15089040" & election_year == 2007 ~ "15089042",  # Biere → Bördeland
+      ags == "15089080" & election_year == 2007 ~ "15089042",  # Eggersdorf → Bördeland
+      ags == "15089085" & election_year == 2007 ~ "15089042",  # Eickendorf → Bördeland
+      ags == "15089160" & election_year == 2007 ~ "15089042",  # Großmühlingen → Bördeland
+      ags == "15089190" & election_year == 2007 ~ "15089042",  # Kleinmühlingen → Bördeland
+      ags == "15089335" & election_year == 2007 ~ "15089042",  # Welsleben → Bördeland
+      ags == "15089370" & election_year == 2007 ~ "15089042",  # Zens → Bördeland
       TRUE ~ ags
     )
   )
@@ -225,15 +238,16 @@ if (nrow(still_unmatched2) > 0) {
   }
 }
 
-# Report remaining failures
+# Report remaining failures — these should NOT exist after all corrections
 not_merged_final_muni <- df_cw |>
   filter(is.na(ags_21)) |>
   select(ags, election_year, state) |>
   distinct()
 if (nrow(not_merged_final_muni) > 0) {
-  cat("WARNING: Still have", nrow(not_merged_final_muni),
-      "unsuccessful municipality merges (will be dropped)\n")
-  print(not_merged_final_muni |> count(state), n = Inf)
+  cat("ERROR: Still have", nrow(not_merged_final_muni),
+      "unsuccessful municipality merges:\n")
+  print(not_merged_final_muni, n = Inf)
+  stop("Unmatched AGS found. Add AGS corrections or crosswalk entries before proceeding.")
 }
 
 df_cw <- df_cw |> filter(!is.na(ags_21))
@@ -340,8 +354,9 @@ if (nrow(still_unmatched_cty) > 0) {
 
 not_merged_cty_final <- df_cty_cw |> filter(is.na(county_code_21))
 if (nrow(not_merged_cty_final) > 0) {
-  cat("WARNING: Still have", nrow(not_merged_cty_final),
-      "unmatched county rows (will be dropped)\n")
+  cat("ERROR: Still have", nrow(not_merged_cty_final), "unmatched county rows:\n")
+  print(not_merged_cty_final |> select(county_code, election_year, state) |> distinct(), n = Inf)
+  stop("Unmatched county codes found. Add corrections before proceeding.")
 }
 
 df_cty_cw <- df_cty_cw |> filter(!is.na(county_code_21))
@@ -467,43 +482,137 @@ cat("\nDuplicate ags x election_year rows:",
 cat("Rows with incongruent total vote share:",
     sum(df_harm$flag_total_votes_incongruent, na.rm = TRUE), "\n")
 
-# Add covariates -----------------------------------------------------------
+# ==========================================================================
+# OUTPUT 1: Municipality-level only (exclude BW/BY county-level data)
+# ==========================================================================
 
-cat("Adding covariates...\n")
+cat("\n--- Output 1: Municipality-level ---\n")
 
-# Municipality-level covariates (for non-BW/BY rows)
+df_muni_out <- df_harm |> filter(!state %in% county_level_states)
+
+# Add municipality-level covariates
 area_pop <- read_rds("data/covars_municipality/final/ags_area_pop_emp.rds") |>
   rename(ags = ags_21) |>
   mutate(ags = pad_zero_conditional(ags, 7)) |>
   rename(election_year = year)
 
-df_final <- df_harm |>
+df_muni_out <- df_muni_out |>
   left_join_check_obs(area_pop, by = c("ags", "election_year"))
 
-# Save ----------------------------------------------------------------------
+cat("Municipality-level:", nrow(df_muni_out), "rows,",
+    n_distinct(df_muni_out$ags), "unique AGS,",
+    length(unique(df_muni_out$state)), "states\n")
 
-cat("Saving harmonized data...\n")
+fwrite(df_muni_out, "data/county_elections/final/county_elec_harm_21_muni.csv")
+write_rds(df_muni_out, "data/county_elections/final/county_elec_harm_21_muni.rds")
 
-fwrite(df_final, "data/county_elections/final/county_elec_harm_21.csv")
-write_rds(df_final, "data/county_elections/final/county_elec_harm_21.rds")
+# ==========================================================================
+# OUTPUT 2: County-level (aggregate municipalities to county, + BW/BY)
+# ==========================================================================
 
-cat("\nDone!\n")
-cat("Total observations:", nrow(df_final), "\n")
-cat("Election years:", paste(sort(unique(df_final$election_year)), collapse = ", "), "\n")
-cat("Number of unique AGS:", n_distinct(df_final$ags), "\n")
-cat("States:", paste(sort(unique(df_final$state)), collapse = ", "), "\n")
+cat("\n--- Output 2: County-level (aggregated) ---\n")
 
-# Sanity checks
-cat("\nSanity checks:\n")
-cat("  Duplicates:", sum(duplicated(df_final[, c("ags", "election_year")])), "\n")
-cat("  Turnout range:", round(range(df_final$turnout, na.rm = TRUE), 4), "\n")
+# Start from the harmonized vote COUNTS (before share conversion).
+# We need the count-space data to aggregate municipalities → county.
+# Re-derive from df_harm: multiply shares back by valid_votes.
+df_harm_counts <- df_harm |>
+  mutate(
+    across(all_of(party_vars), ~ ifelse(!is.na(.x), .x * valid_votes, NA_real_))
+  )
+
+# Aggregate municipality-level rows to county level
+# (BW/BY rows already are county-level — county == substr(ags, 1, 5))
+df_cty_agg <- df_harm_counts |>
+  group_by(county, election_year, state) |>
+  summarise(
+    across(
+      c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
+      ~ sum(.x, na.rm = TRUE)
+    ),
+    flag_unsuccessful_naive_merge = max(flag_unsuccessful_naive_merge, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  mutate(
+    across(
+      c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
+      ~ round(.x, digits = 0)
+    )
+  )
+
+# Convert counts back to shares
+df_cty_out <- df_cty_agg |>
+  mutate(
+    across(all_of(party_vars), ~ ifelse(valid_votes > 0, .x / valid_votes, NA_real_)),
+    turnout = ifelse(eligible_voters > 0, number_voters / eligible_voters, NA_real_),
+    # Use county code as the identifier (5-digit)
+    ags = paste0(county, "000")
+  ) |>
+  rename(county_code = county) |>
+  arrange(county_code, election_year)
+
+# Recompute derived columns and total_vote_share for county-level
+df_cty_out <- df_cty_out |>
+  mutate(
+    far_right = rowSums(across(any_of(far_right_cols)), na.rm = TRUE),
+    far_left = rowSums(across(any_of(far_left_cols)), na.rm = TRUE),
+    far_left_w_linke = rowSums(across(any_of(c("linke_pds", "pds"))),
+                                na.rm = TRUE) + far_left,
+    total_vote_share = round(rowSums(across(all_of(tvs_cols)), na.rm = TRUE), 8),
+    flag_total_votes_incongruent = ifelse(
+      total_vote_share > 1.001 | total_vote_share < 0.999, 1, 0),
+    perc_total_votes_incogruence = round(total_vote_share - 1, 6)
+  )
+
+# Add county-level covariates
+cty_area_pop <- read_excel(
+  path = "data/crosswalks/raw/04_KreiseVorjahr.xlsx", sheet = 2
+) |>
+  select(
+    county_code = `Kreisfreie Städte und Landkreise nach Fläche, Bevölkerung und Bevölkerungsdichte`,
+    area = `...5`,
+    population = `...6`
+  ) |>
+  slice(8:476) |>
+  filter(!is.na(county_code) & nchar(county_code) == 5) |>
+  mutate(area = as.numeric(area), population = as.numeric(population))
+
+df_cty_out <- df_cty_out |>
+  left_join(cty_area_pop, by = "county_code")
+
+cat("County-level:", nrow(df_cty_out), "rows,",
+    n_distinct(df_cty_out$county_code), "unique counties,",
+    length(unique(df_cty_out$state)), "states\n")
+
+fwrite(df_cty_out, "data/county_elections/final/county_elec_harm_21_cty.csv")
+write_rds(df_cty_out, "data/county_elections/final/county_elec_harm_21_cty.rds")
+
+# ==========================================================================
+# Summary
+# ==========================================================================
+
+cat("\n=== DONE ===\n")
+
+cat("\nMunicipality-level output:\n")
+cat("  File: county_elec_harm_21_muni.{rds,csv}\n")
+cat("  Rows:", nrow(df_muni_out), "\n")
+cat("  States:", paste(sort(unique(df_muni_out$state)), collapse = ", "), "\n")
+cat("  Duplicates:", sum(duplicated(df_muni_out[, c("ags", "election_year")])), "\n")
+
+cat("\nCounty-level output:\n")
+cat("  File: county_elec_harm_21_cty.{rds,csv}\n")
+cat("  Rows:", nrow(df_cty_out), "\n")
+cat("  States:", paste(sort(unique(df_cty_out$state)), collapse = ", "), "\n")
+cat("  Duplicates:", sum(duplicated(df_cty_out[, c("county_code", "election_year")])), "\n")
+
+cat("\nCounty-level sanity checks:\n")
+cat("  Turnout range:", round(range(df_cty_out$turnout, na.rm = TRUE), 4), "\n")
 cat("  Rows with total_vote_share > 1.05:",
-    sum(df_final$total_vote_share > 1.05, na.rm = TRUE), "\n")
+    sum(df_cty_out$total_vote_share > 1.05, na.rm = TRUE), "\n")
 cat("  Rows with total_vote_share < 0.95:",
-    sum(df_final$total_vote_share < 0.95, na.rm = TRUE), "\n")
+    sum(df_cty_out$total_vote_share < 0.95, na.rm = TRUE), "\n")
 
-cat("\nRows per state:\n")
-print(table(df_final$state))
+cat("\nCounty-level rows per state:\n")
+print(table(df_cty_out$state))
 
-cat("\nRows per election year:\n")
-print(table(df_final$election_year))
+cat("\nCounty-level rows per election year:\n")
+print(table(df_cty_out$election_year))

@@ -223,8 +223,12 @@ normalise_party_cty <- function(x) {
     "andere parteien"             = "other",
     "wahlervereinigungen"         = "waehlervereinigungen",
     "w\u00e4hlervereinigungen"    = "waehlervereinigungen",
+    "wahlervereinigungen soweit nicht nebenstehend genannt" = "waehlervereinigungen",
+    "w\u00e4hlervereinigungen soweit nicht nebenstehend genannt" = "waehlervereinigungen",
     "gemeinsame wahlvorschlage"   = "gemeinsame_wv",
     "gemeinsame wahlvorschl\u00e4ge" = "gemeinsame_wv",
+    "gemeinsame wahlvorschlage1)" = "gemeinsame_wv",
+    "gemeinsame wahlvorschl\u00e4ge1)" = "gemeinsame_wv",
     "gemeinsame"                  = "gemeinsame_wv",
     "fwv"                         = "fwv",
     "wv"                          = "wv",
@@ -2178,6 +2182,20 @@ if (file.exists(he_2021_csv)) {
 }
 
 df_he <- bind_rows(he_results)
+
+# Remove Landkreis aggregate rows (AGS ending in "000") where municipality-level
+# rows also exist for the same county. These are redundant sums.
+# kreisfreie Städte (no sub-municipality rows) are kept.
+he_county_codes <- substr(df_he$ags, 1, 5)
+he_is_agg <- substr(df_he$ags, 6, nchar(df_he$ags)) == "000" |
+             substr(df_he$ags, 6, nchar(df_he$ags)) == "000000"
+he_has_munis <- he_county_codes %in% unique(he_county_codes[!he_is_agg])
+n_he_agg <- sum(he_is_agg & he_has_munis)
+if (n_he_agg > 0) {
+  cat("  Removing", n_he_agg, "Landkreis aggregate rows (duplicates of municipality data)\n")
+  df_he <- df_he[!(he_is_agg & he_has_munis), ]
+}
+
 cat("HE total:", nrow(df_he), "rows x", ncol(df_he), "cols\n")
 cat("HE years:", paste(sort(unique(df_he$election_year)), collapse = ", "), "\n")
 df_he |> count(election_year) |> print()
@@ -2198,18 +2216,30 @@ parse_bw_format_b <- function(filepath, year) {
     raw <- read_excel(filepath, col_names = FALSE, col_types = "text")
   )
 
-  # Row 3 has party names (from col 10 onwards typically)
+  # Party names: row 3 for 2014+, row 5 for 2004/2009
   r3 <- clean_header(as.character(raw[3, ]))
+  excl_pat <- "Wahlberechtigte|W.hler|Stimmen|Einheit|Schl.ssel|Landkreis|Lfd|insgesamt|Ins-|zusammen|davon|Verteilung|Mehrheit|Verh.ltnis|^Parteien$|^Gemein"
 
-  # Find party positions: non-NA values in row 3 that are party names (after col 5)
   party_positions <- c()
   party_names <- c()
   for (i in 5:length(r3)) {
-    if (!is.na(r3[i]) && !grepl("Wahlberechtigte|W.hler|Stimmen|Einheit|Schl.ssel|Landkreis|Lfd|insgesamt|Ins-", r3[i])) {
+    if (!is.na(r3[i]) && !grepl(excl_pat, r3[i])) {
       party_positions <- c(party_positions, i)
       party_names <- c(party_names, r3[i])
     }
   }
+
+  # Fall back to row 5 if row 3 had no parties (2004/2009 format)
+  if (length(party_positions) == 0) {
+    r5 <- clean_header(as.character(raw[5, ]))
+    for (i in 5:length(r5)) {
+      if (!is.na(r5[i]) && !grepl(excl_pat, r5[i])) {
+        party_positions <- c(party_positions, i)
+        party_names <- c(party_names, r5[i])
+      }
+    }
+  }
+  cat("    Found", length(party_positions), "party columns\n")
 
   # Data rows: filter to Einheit == "Anzahl"
   # Find Einheit column
@@ -2252,30 +2282,32 @@ parse_bw_format_b <- function(filepath, year) {
     stringsAsFactors = FALSE
   )
 
-  # Find valid_votes, eligible_voters columns in row 2-3
+  # Eligible voters and number of voters from row 2 headers
   elig_col <- which(grepl("Wahlberechtigte", r2))[1]
   voter_col <- which(grepl("^W.hler$", r2))[1]
-  # Valid votes: look for "Gültige Stimmen" or just "Stimmen" after invalid
-  stimmen_cols <- which(grepl("Stimmen", r2))
-  valid_col <- NA
-  invalid_col <- NA
-  for (sc in stimmen_cols) {
-    lbl <- tolower(r2[sc])
-    if (grepl("ung.ltig", lbl)) invalid_col <- sc
-    else if (grepl("g.ltig", lbl) && is.na(valid_col)) valid_col <- sc
-  }
+  # Valid votes is always col 9 ("insgesamt") — already filtered to "Gültige Stimmen" + "Anzahl" rows
+  # Invalid votes is always col 7 ("Ungültige Stimmzettel")
+  valid_col <- 9
+  invalid_col <- 7
 
   df$eligible_voters <- if (!is.na(elig_col)) as.numeric(as.character(all_data[[elig_col]][keep])) else NA_real_
   df$number_voters <- if (!is.na(voter_col)) as.numeric(as.character(all_data[[voter_col]][keep])) else NA_real_
-  df$valid_votes <- if (!is.na(valid_col)) as.numeric(as.character(all_data[[valid_col]][keep])) else NA_real_
-  df$invalid_votes <- if (!is.na(invalid_col)) as.numeric(as.character(all_data[[invalid_col]][keep])) else NA_real_
+  df$valid_votes <- as.numeric(as.character(all_data[[valid_col]][keep]))
+  df$invalid_votes <- as.numeric(as.character(all_data[[invalid_col]][keep]))
 
-  # Party vote counts
+  # Party vote counts — sum duplicates (own-list + joint-list columns in 2004/2009)
   for (k in seq_along(party_positions)) {
     pname <- normalise_party_cty(tolower(trimws(party_names[k])))
     vals <- as.character(all_data[[party_positions[k]]][keep])
     vals[vals == "x" | vals == "-" | vals == "."] <- NA_character_
-    df[[pname]] <- as.numeric(vals)
+    new_vals <- as.numeric(vals)
+    if (pname %in% names(df)) {
+      # Sum with existing column (party appears under both Parteien and Gemeinsame Wahlvorschläge)
+      df[[pname]] <- ifelse(is.na(df[[pname]]), new_vals,
+                            ifelse(is.na(new_vals), df[[pname]], df[[pname]] + new_vals))
+    } else {
+      df[[pname]] <- new_vals
+    }
   }
 
   # Compute shares
@@ -2556,8 +2588,14 @@ parse_sh_2013 <- function(filepath) {
   invalid_col <- which(codes == "C")[1]
   valid_col <- which(codes == "D")[1]
 
-  # Party columns: D1, D2, ... from the field codes
+  # Party columns: D1, D2, ... from the field codes, or all columns after valid_votes
   d_cols <- grep("^D\\d+$", codes)
+  if (length(d_cols) == 0 && !is.na(valid_col)) {
+    # No D-coded party columns — fall back to all columns after the valid_votes column
+    d_cols <- (valid_col + 1):ncol(raw)
+    d_cols <- d_cols[!is.na(headers[d_cols]) & headers[d_cols] != ""]
+    cat("    No D-coded party columns; using", length(d_cols), "columns after valid_votes\n")
+  }
   party_names_raw <- headers[d_cols]
 
   stat_codes <- as.character(data[[stat_col]])
@@ -3084,6 +3122,16 @@ if (!is.null(ni_comp)) {
 
 ni_results <- ni_results[!sapply(ni_results, is.null)]
 df_ni <- bind_rows(ni_results)
+
+# Remove any Samtgemeinde aggregate rows that slipped through entity filtering
+# (suffix >= 400 in positions 6-8 of 8-digit AGS, e.g. 03357406)
+ni_suffix <- as.numeric(substr(df_ni$ags, 6, 8))
+ni_is_sg <- !is.na(ni_suffix) & ni_suffix >= 400 & nchar(df_ni$ags) == 8
+if (any(ni_is_sg)) {
+  cat("  Removing", sum(ni_is_sg), "Samtgemeinde aggregate rows\n")
+  df_ni <- df_ni[!ni_is_sg, ]
+}
+
 cat("NI total:", nrow(df_ni), "rows x", ncol(df_ni), "cols\n")
 cat("NI years:", paste(sort(unique(df_ni$election_year)), collapse = ", "), "\n")
 df_ni |> count(election_year) |> print()

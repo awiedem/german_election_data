@@ -55,7 +55,7 @@ normalise_party <- function(pname) {
   if (grepl("^REP$|^REPUBLIKANER", p_up))                return("rep")
   if (grepl("^DVU$", p_up))                              return("dvu")
   if (grepl("^III[.]|^DER III", p_up))                   return("iii_weg")
-  if (grepl("^DIE RECHTE", p_up))                        return("die_rechte")
+  if (grepl("^DIE.?RECHTE", p_up))                        return("die_rechte")
   if (grepl("HEIMAT$", p_up))                            return("npd")
   # Far left
   if (grepl("^DKP$", p_up))                              return("dkp")
@@ -68,10 +68,10 @@ normalise_party <- function(pname) {
   if (grepl("^BVB.*FREIE", p_up))                        return("freie_wahler")
   if (grepl("[OÖ]DP$|^[OÖ]DP[[:space:]]", p_up))        return("odp")
   if (grepl("[OÖ]KOLOGISCH.DEMOKRATISCHE PARTEI", p_up)) return("odp")
-  if (grepl("^DIE PARTEI$|^PARTEI$", p_up))              return("die_partei")
-  if (grepl("TIERSCHUTZ.*ALLIANZ", p_up))                return("tierschutzallianz")
+  if (grepl("^DIE.?PARTEI$|^PARTEI$", p_up))              return("die_partei")
+  if (grepl("TIER.?SCHUTZ.*ALLIANZ", p_up))              return("tierschutzallianz")
   if (grepl("TIERSCHUTZ.*HIER", p_up))                   return("tierschutz_hier")
-  if (grepl("TIERSCHUTZ|^V-PARTEI", p_up))               return("tierschutz")
+  if (grepl("TIERSCHUTZ", p_up))                          return("tierschutz")
   if (grepl("^V.PARTEI", p_up))                          return("v_partei3")
   if (grepl("^SSW$", p_up))                              return("ssw")
   if (grepl("^VOLT$", p_up))                             return("volt")
@@ -89,7 +89,7 @@ normalise_party <- function(pname) {
   if (grepl("^TEAM TODENHÖFER|^TEAM TODENH", p_up))       return("team_todenhofer")
   if (grepl("^HUMANISTEN|^DIE HUMANISTEN", p_up))          return("die_humanisten")
   if (grepl("^VIOLETTEN|^DIE VIOLETTEN", p_up))            return("violetten")
-  if (grepl("^VOLKSABSTIMMUNG", p_up))                     return("volksabstimmung")
+  if (grepl("^VOLKSAB.?STIMMUNG", p_up))                   return("volksabstimmung")
   if (grepl("^LKR$|^LIBERAL.KONSERVATIV", p_up))           return("lkr")
   if (grepl("^PRO DEUTSCHLAND|^PRO NRW|^PRO CHEMNITZ", p_up)) return("pro_deutschland")
   if (grepl("^RENTNER|^RRP", p_up))                        return("rentner")
@@ -99,7 +99,7 @@ normalise_party <- function(pname) {
   if (grepl("^BFB$|^B[UÜ]RGER F[UÜ]R", p_up))            return("bfb")
   if (grepl("^BGE$", p_up))                                return("bge")
   if (grepl("^B[UÜ]SO$|B[UÜ]RGERRECHTSBEWEGUNG.SOLIDARIT", p_up)) return("bueso")
-  if (grepl("^GESUNDHEITSFORSCHUNG", p_up))                 return("gesundheitsforschung")
+  if (grepl("GESUNDHEITS.*FORSCHUNG", p_up))                return("gesundheitsforschung")
   if (grepl("^MERA25", p_up))                              return("mera25")
   if (grepl("^PATRIOTEN", p_up))                            return("patrioten")
   if (grepl("^PBC$", p_up))                                return("pbc")
@@ -107,13 +107,18 @@ normalise_party <- function(pname) {
   if (grepl("^PDV$|^PARTEI DER VERNUNFT", p_up))           return("partei_der_vernunft")
   if (grepl("^DSU$", p_up))                                return("dsu")
   if (grepl("^AB JETZT", p_up))                             return("ab_jetzt")
-  if (grepl("^AD.DEMOKRATEN", p_up))                        return("ad_demokraten")
+  if (grepl("^AD.?DEMOKRATEN", p_up))                        return("ad_demokraten")
   if (grepl("^DIB$|^DEMOKRATIE IN BEWEGUNG", p_up))         return("dib")
   if (grepl("^DM$|^DEUTSCHE MITTE", p_up))                   return("dm")
   if (grepl("^MENSCHLICHE WELT", p_up))                      return("menschliche_welt")
   if (grepl("GARTENPARTEI", p_up))                            return("gartenpartei")
   if (grepl("^NATURGESETZ", p_up))                            return("naturgesetz")
   if (grepl("^DA$|^DEMOKRATIEALTERNATIVE", p_up))              return("da")
+  if (grepl("^50.?PLUS", p_up))                                return("50plus")
+  if (grepl("^GB.?BHE", p_up))                                 return("gb_bhe")
+  if (grepl("^B[UÜ]NDNIS.?DKP.?KPD", p_up))                   return("buendnis_dkp_kpd")
+  if (grepl("^OFFEN.*SIVE.*D", p_up))                          return("offensive_d")
+  if (grepl("^CHR.?L$", p_up))                                 return("chr_l")
   # Fallback: clean to snake_case
   cleaned <- tolower(p)
   cleaned <- gsub("[^a-z0-9äöüß]+", "_", cleaned)
@@ -1044,7 +1049,7 @@ for (yr in names(bb_dates)) {
     party_map <- c(
       spd = "spd", cdu = "cdu", pds_ll = "linke_pds",
       buendnis_90 = "buendnis_90", fdp = "fdp",
-      chrl = "chrl", dbu = "dbu", dfp = "dfp", dsu = "dsu",
+      chrl = "chr_l", dbu = "dbu", dfp = "dfp", dsu = "dsu",
       gruene = "gruene", rep = "rep", domowina = "domowina", npd = "npd"
     )
 
