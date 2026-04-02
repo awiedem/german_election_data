@@ -2,7 +2,12 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #1a1a2e;
+  --accent: #2563eb;
+  --accent-light: #dbeafe;
+  --surface: #f8fafc;
+  --border: #e2e8f0;
+  --muted: #64748b;
 }
 
 @theme inline {
@@ -12,15 +17,103 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+}
+
+/* Smooth transitions */
+* {
+  transition-property: background-color, border-color, color, opacity;
+  transition-duration: 150ms;
+  transition-timing-function: ease;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* MapLibre popup styling */
+.maplibregl-popup-content {
+  border-radius: 8px !important;
+  padding: 10px 14px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+  font-family: var(--font-geist-sans), system-ui, sans-serif !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.maplibregl-popup-tip {
+  border-top-color: #fff !important;
+}
+
+/* Prose typography for methodology page */
+.prose h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.prose h3 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-top: 1.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose p {
+  margin-bottom: 1rem;
+  line-height: 1.75;
+  color: #334155;
+}
+
+.prose ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.prose li {
+  margin-bottom: 0.5rem;
+  line-height: 1.65;
+  color: #334155;
+}
+
+.prose code {
+  background: #f1f5f9;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  color: #1e40af;
+}
+
+.prose a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prose a:hover {
+  color: #1d4ed8;
+}
+
+.prose strong {
+  font-weight: 600;
+  color: #0f172a;
 }

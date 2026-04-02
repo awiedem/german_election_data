@@ -55,7 +55,7 @@ cty_covars_latest <- cty_covars |>
 
 # ---- 3. INKAR socioeconomic indicators (county level) ----------------------
 inkar_path <- file.path(
-  gerda_root, "data", "covars_county", "final", "cty_inkar_harm2021.csv"
+  gerda_root, "data", "covars_county", "cty_inkar_harm2021.csv"
 )
 
 if (file.exists(inkar_path)) {
@@ -71,12 +71,19 @@ if (file.exists(inkar_path)) {
   )
   available_vars <- intersect(inkar_vars, names(inkar))
 
+  # INKAR uses 4-digit county codes; pad to 5-digit to match GERDA
+  inkar <- inkar |>
+    mutate(county_code = str_pad(as.character(county), 5, pad = "0"))
+
+  available_vars <- c("county_code", "year",
+                       intersect(inkar_vars[!inkar_vars %in% c("county_code_21", "year")],
+                                 names(inkar)))
+
   inkar_latest <- inkar |>
     select(all_of(available_vars)) |>
-    group_by(county_code_21) |>
+    group_by(county_code) |>
     filter(year == max(year)) |>
     ungroup() |>
-    rename(county_code = county_code_21) |>
     select(-year)
 } else {
   message("INKAR file not found at: ", inkar_path)
