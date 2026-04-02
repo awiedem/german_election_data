@@ -2,7 +2,7 @@
 
 This document provides an exhaustive reference for the data processing pipelines in the GERDA (German Election Database) repository. It covers the general architecture, the crosswalk system, per-election-type walkthroughs, and a cross-pipeline comparison.
 
-**Last updated:** March 2026
+**Last updated:** April 2026
 
 ---
 
@@ -514,35 +514,82 @@ Processing code exists in `code/county_elections/01_county_elec_unharm.R` (Stage
 
 ## 9. European Elections
 
-### Raw data inventory
+**Scripts:** `code/european_elections/01_european_muni_unharm.R`, `code/european_elections/02_european_muni_harm.R`
 
-Raw data for the 2024 European Parliament election exists in `data/european_elections/raw/ew24_wbz/` but **no processing code has been written**.
+**Coverage:** 2009, 2014, 2019, 2024 (all European Parliament elections since 2009)
 
-**Available files:**
-- `ew24_wbz_ergebnisse.csv` (~13 MB) — ballot-district-level results
-- `ew24_wbz_leitband.csv` — geographic reference file mapping ballot districts to municipalities
-- Supporting PDFs with variable definitions
+**Output:**
+- `data/european_elections/final/european_muni_unharm.{rds,csv}` — 44,722 rows × 87 columns (71 party columns)
+- `data/european_elections/final/european_muni_harm.{rds,csv}` — 42,986 rows × 90 columns (harmonized to 2021 boundaries)
 
-**Potential pipeline:**
-The data structure (ballot districts with AGS identifiers) is similar to the federal election raw data, so the federal municipality pipeline (`00_federal_muni_raw.R`) could serve as a template. However, European elections have different party lists and no Erst-/Zweitstimmen distinction.
+### Raw data
+
+Ballot-district-level results from the Bundeswahlleiter, one file per election year:
+
+| Year | File | Encoding | Separator | Skip rows |
+|------|------|----------|-----------|-----------|
+| 2009 | `ew09_wbz/EW09_Wbz_Ergebnisse_utf8.csv` | UTF-8 (converted from UTF-16) | TAB | 4 |
+| 2014 | `ew14_wbz/EW14_Wbz_Ergebnisse.csv` | UTF-8 BOM | ; | 4 |
+| 2019 | `ew19_wbz/ew19_wbz_ergebnisse.csv` | Latin-1 | ; | 4 |
+| 2024 | `ew24_wbz/ew24_wbz_ergebnisse.csv` | UTF-8 BOM | ; | 0 |
+
+### Stage 1 — `01_european_muni_unharm.R`
+
+Config-driven loop processes each year identically despite format differences:
+
+1. **Read raw data** with `fread(colClasses = "character")` to preserve German thousands separators (Saarland uses "." as thousands separator, e.g., "1.510" = 1,510).
+2. **Construct 8-digit AGS** from Land + Regierungsbezirk + Kreis + Gemeinde.
+3. **Remap Bezirksart (BA):** BA=6 (Sonderwahlbezirke) → BA=0, BA=8 (unspecified voters) → BA=0.
+4. **Filter NI Samtgemeinde aggregates** (Gemeinde suffix ≥ 400).
+5. **Distribute Gem=999 dummy rows:** Remap BA from 0 to 5 so they enter the shared Briefwahl pool and are distributed proportionally rather than kept as spurious municipalities.
+6. **Briefwahl (mail-in) allocation:** Same logic as the federal pipeline — municipalities with their own BA=5 rows sum all BA types; municipalities without own mail-in receive proportional shares from shared mail-in districts, weighted by eligible voters within each `(county, BWBez)` group.
+7. **Remove zero-voter municipalities** (gemeindefreie Gebiete with eligible_voters=0 and number_voters=0).
+8. **Normalise party names** via `normalise_party_eu()` (~90 mappings covering all raw party names across all 4 years).
+9. **Combine years**, fill missing party columns with 0, compute vote shares (`party / number_voters`) and turnout.
+
+**Key statistics per year:**
+
+| Year | Municipalities | Parties | Eligible voters | Turnout |
+|------|---------------|---------|-----------------|---------|
+| 2009 | 12,125 | 32 | 62,221,702 | 43.2% |
+| 2014 | 11,127 | 25 | 61,997,706 | 48.0% |
+| 2019 | 10,838 | 41 | 61,599,193 | 61.2% |
+| 2024 | 10,632 | 35 | 61,962,000 | 64.5% |
+
+### Stage 2 — `02_european_muni_harm.R`
+
+Harmonizes all years to 2021 municipality boundaries using population-weighted crosswalks:
+
+1. **Convert vote shares to counts** (`share × number_voters`), aggregate Berlin Bezirke per year.
+2. **Crosswalk year mapping:** 2009→2009, 2014→2014, 2019→2019, 2024→2020.
+3. **Join crosswalk** by `(ags, year)`. Year-1 fallback for unmatched AGS (splits matched/unmatched first per CLAUDE.md fallback pattern).
+4. **Identity codes** for AGS that exist unchanged in 2021 boundaries.
+5. **Manual merger mappings** for post-2020 mergers: Jahnatal (SN, 2 predecessors), Uder (TH, 11 predecessors), Berga-Wünschendorf (TH, 2 predecessors).
+6. **Weighted aggregation** by `(ags_21, election_year)`, recompute vote shares and turnout.
+
+**Harmonized municipality counts:** 10,787 (2009) / 10,785 (2014) / 10,783 (2019) / 10,631 (2024).
+
+### Vote share denominator
+
+European elections use `number_voters` as the vote share denominator, consistent with the federal pipeline. Party shares sum to approximately `valid_votes / number_voters` (< 1.0 due to invalid votes).
 
 ---
 
 ## 10. Cross-Pipeline Comparison Table
 
-| Feature | Federal (Muni) | Federal (County) | State | Municipal | Mayoral |
-|---|---|---|---|---|---|
-| **Raw data source** | Ballot-district CSVs/TXTs | County-level CSVs | GENESIS API | 16 state Excel/CSVs | State Excel/CSVs |
-| **Geographic unit** | Municipality (8-digit AGS) | County (5-digit) | Municipality (8-digit AGS) | Municipality (8-digit AGS) | Municipality (8-digit AGS) |
-| **Time span** | 1980–2025 | 1953–2021 | 1946–2025 | 1990–2025 | Varies by state |
-| **Vote share denominator** | `number_voters`† | `number_voters`† | `valid_votes` | `valid_votes` | N/A (candidate-level) |
-| **Turnout formula** | `number_voters / eligible_voters_orig` | `number_voters / eligible_voters` | `number_voters / eligible_voters` | `number_voters / eligible_voters` | N/A |
-| **Harm method** | Weighted sum of counts | Weighted sum of counts | Weighted mean of shares (02) / Weighted sum of counts (02b, 04, 05) | Hybrid: weighted sum (counts) + weighted mean (shares) | None |
-| **Target boundaries** | 2021 and 2025 | 2021 | 2021, 2023, and 2025 | 2021 and 2025 | N/A |
-| **Mail-in handling** | Yes (blocked_weight allocation) | No (included in county totals) | No | No | No |
-| **Manual AGS corrections** | ~17 cases | ~50 via year-shifting | Present | Present | N/A |
-| **Quality flags** | `flag_unsuccessful_naive_merge`, `flag_total_votes_incongruent`, `flag_naive_turnout_above_1` | `flag_unsuccessful_naive_merge` | Present | Zero-vote indicator flags | N/A |
-| **Pipeline completeness** | Complete (raw → harm_21, harm_25) | Complete (unharm → harm) | Complete (unharm → harm_21, harm_23, harm_25) | Complete (unharm → harm_21, harm_25) | Partial (unharm only) |
+| Feature | Federal (Muni) | Federal (County) | State | Municipal | Mayoral | European |
+|---|---|---|---|---|---|---|
+| **Raw data source** | Ballot-district CSVs/TXTs | County-level CSVs | GENESIS API | 16 state Excel/CSVs | State Excel/CSVs | Ballot-district CSVs |
+| **Geographic unit** | Municipality (8-digit AGS) | County (5-digit) | Municipality (8-digit AGS) | Municipality (8-digit AGS) | Municipality (8-digit AGS) | Municipality (8-digit AGS) |
+| **Time span** | 1980–2025 | 1953–2021 | 1946–2025 | 1990–2025 | Varies by state | 2009–2024 |
+| **Vote share denominator** | `number_voters`† | `number_voters`† | `valid_votes` | `valid_votes` | N/A (candidate-level) | `number_voters`† |
+| **Turnout formula** | `number_voters / eligible_voters_orig` | `number_voters / eligible_voters` | `number_voters / eligible_voters` | `number_voters / eligible_voters` | N/A | `number_voters / eligible_voters` |
+| **Harm method** | Weighted sum of counts | Weighted sum of counts | Weighted mean of shares (02) / Weighted sum of counts (02b, 04, 05) | Hybrid: weighted sum (counts) + weighted mean (shares) | None | Weighted sum of counts |
+| **Target boundaries** | 2021 and 2025 | 2021 | 2021, 2023, and 2025 | 2021 and 2025 | N/A | 2021 |
+| **Mail-in handling** | Yes (blocked_weight allocation) | No (included in county totals) | No | No | No | Yes (eligible-voter weighted allocation) |
+| **Manual AGS corrections** | ~17 cases | ~50 via year-shifting | Present | Present | N/A | ~15 cases (mergers + identity codes) |
+| **Quality flags** | `flag_unsuccessful_naive_merge`, `flag_total_votes_incongruent`, `flag_naive_turnout_above_1` | `flag_unsuccessful_naive_merge` | Present | Zero-vote indicator flags | N/A | `flag_turnout_above_1`, `flag_unsuccessful_naive_merge`, `flag_aggregated` |
+| **Pipeline completeness** | Complete (raw → harm_21, harm_25) | Complete (unharm → harm) | Complete (unharm → harm_21, harm_23, harm_25) | Complete (unharm → harm_21, harm_25) | Partial (unharm only) | Complete (unharm → harm_21) |
 
 † In the harmonized datasets, vote shares are recomputed as `party / total_votes` where `total_votes` = row sum of all party columns. This may differ slightly from `valid_votes` due to rounding during harmonization.
 
@@ -558,7 +605,7 @@ This is the most consequential divergence across pipelines:
 - **Municipal:** Hybrid approach — weighted sum for raw voter counts, weighted mean for party vote shares.
 
 **3. Mail-in vote allocation:**
-Only the federal municipality pipeline handles joint mail-in voting districts. This is because federal elections are the only type where ballot-district-level data with unassignable mail-in votes is the source format. County-level and state election data arrive with mail-in votes already allocated.
+The federal and European municipality pipelines handle joint mail-in voting districts. Both use ballot-district-level source data where shared Briefwahl districts must be allocated to individual municipalities. The federal pipeline uses a blocked-weight allocation method, while the European pipeline distributes proportionally by eligible voters within `(county, BWBez)` groups. County-level and state election data arrive with mail-in votes already allocated.
 
 **4. Party groupings:**
 The `far_right`, `far_left`, and `cdu_csu` composite variables are defined in the federal pipeline (`00_federal_muni_raw.R`) and reused in the county pipeline. State and municipal pipelines have their own party name mappings but follow the same categorization logic.
@@ -572,8 +619,6 @@ As of February 2026, the following data gaps remain.
 ### Not yet integrated (raw data exists, no processing code)
 
 **County elections (Kreistagswahlen)** — Raw data for ~10 states in `data/county_elections/raw/` (Excel + PDF). No processing scripts or final datasets exist. RLP has the richest source (time-series file covering 2000+). Some archives (TH) appear empty. This is the largest remaining gap and would require designing a new pipeline from scratch with heterogeneous state-specific formats, similar to the municipal elections pipeline.
-
-**European elections 2024** — Clean ballot-district-level CSV in `data/european_elections/raw/ew24_wbz/` with 50+ party columns and accompanying documentation PDFs. Single election, well-structured data. Would need aggregation from ballot districts to municipality level, then boundary harmonization. Relatively straightforward compared to other gaps. (Note: an initial `european_muni_unharm`/`european_muni_harm` pipeline has been created but needs external validation.)
 
 ### Partially integrated
 
