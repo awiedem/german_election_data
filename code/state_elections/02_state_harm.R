@@ -214,12 +214,21 @@ glimpse(df_cw)
 
 table(df_cw$election_year)
 
+# Identify party + turnout columns dynamically (everything after meta cols)
+meta_cols_harm <- c("ags", "election_year", "state", "election_date",
+                    "eligible_voters", "number_voters", "valid_votes",
+                    "invalid_votes")
+share_cols <- setdiff(names(df), c(meta_cols_harm, "id", "election_year_cw",
+                                    "ags_name"))
+# share_cols includes turnout, all party columns, other, cdu_csu
+
 # Harmonize with weighted_population average
 df_harm <- df_cw |>
   mutate(weights = pop_cw * population) |>
   group_by(ags_21, election_year) |>
-  summarise_at(
-    vars(turnout:cdu_csu), ~ weighted.mean(.x, weights, na.rm = TRUE)
+  summarise(
+    across(all_of(share_cols), ~ weighted.mean(.x, weights, na.rm = TRUE)),
+    .groups = "drop"
     ) |>
   rename(ags = ags_21) |>
   # state id (first two digits of ags)
@@ -335,8 +344,10 @@ df_harm %>%
 
 # Flag when total vote share > 1 ------------------------------------------
 
+# Party share columns = everything except meta cols, turnout, cdu_csu
+party_share_cols <- setdiff(share_cols, c("turnout", "cdu_csu"))
 df_harm <- df_harm %>%
-  mutate(total_vote_share = rowSums(select(., cdu:other), na.rm = TRUE),
+  mutate(total_vote_share = rowSums(select(., all_of(party_share_cols)), na.rm = TRUE),
          total_vote_share = round(total_vote_share, 8),
          flag_total_votes_incongruent = ifelse(total_vote_share > 1, 1, 0)
          )

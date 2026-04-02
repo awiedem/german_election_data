@@ -264,18 +264,112 @@ fwrite(state_elections, 'data/state_elections/final/state_unharm.csv')
 write_rds(state_elections, 'data/state_elections/final/state_unharm.rds')
 
 
+# Fix BaWü data from raw files -------------------------------------------
+# The GENESIS API reports only Urne (in-person) valid vote counts for
+# non-kreisfreie BaWü municipalities, missing Briefwahl (mail-in) votes.
+# This undercounts valid_votes by ~13% (2011) / ~17% (2016).
+# Fix: replace BaWü 2011/2016 data with raw file data that includes totals
+# (Urne + Briefwahl).
+#
+# This section can also be run standalone after loading state_unharm.rds:
+#   state_elections <- read_rds('data/state_elections/final/state_unharm.rds')
 
-# Inspect -----------------------------------------------------------------
+library(readxl)
 
-df <- read_rds('data/state_elections/final/state_unharm.rds')
+## --- BaWü 2011: from Excel, Z (total) rows ---
+xlsx_path <- "data/state_elections/raw/Landtagswahlen/Baden-Württemberg/2011 & früher/LW1956_bis_2021_Gemeindeergebnisse.xlsx"
+sheet_2011 <- excel_sheets(xlsx_path) |> str_subset("2011")
 
-# what's up with state == 01 in 2017?
-insp <- df |>
-  filter(state == '01', election_year == 2017) 
+raw_2011 <- read_excel(xlsx_path, sheet = sheet_2011, skip = 3, col_names = FALSE)
 
+bw_2011 <- raw_2011 |>
+  filter(...3 == "G", ...5 == "Z", str_detect(...6, "^Anza")) |>
+  transmute(
+    ags = paste0("08", str_pad(...2, 6, pad = "0")),
+    election_year = 2011,
+    state = "08",
+    date = as.Date("2011-03-27"),
+    eligible_voters = as.numeric(...7),
+    valid_votes = as.numeric(...10),
+    # Party vote counts (cols 11-30 in Excel)
+    cdu_n   = as.numeric(...11),
+    spd_n   = as.numeric(...12),
+    grn_n   = as.numeric(...13),
+    fdp_n   = as.numeric(...14),
+    linke_n = as.numeric(...20), # DIE LINKE
+    # No AfD in 2011
+    afd_n   = NA_real_
+  ) |>
+  mutate(
+    other_n = valid_votes - rowSums(across(c(cdu_n, spd_n, grn_n, fdp_n, linke_n)), na.rm = TRUE),
+    turnout = valid_votes / eligible_voters,
+    cdu       = cdu_n / valid_votes,
+    csu       = NA_real_,
+    spd       = spd_n / valid_votes,
+    gruene    = grn_n / valid_votes,
+    fdp       = fdp_n / valid_votes,
+    linke_pds = linke_n / valid_votes,
+    afd       = NA_real_,
+    other     = other_n / valid_votes,
+    cdu_csu   = cdu
+  ) |>
+  # Drop gemeindefreie Gebiete (99x codes: shared Briefwahl areas)
+  filter(!str_detect(ags, "99[0-9]$")) |>
+  select(ags, election_year, state, date, eligible_voters, valid_votes, turnout,
+         cdu, csu, spd, gruene, fdp, linke_pds, afd, other, cdu_csu)
 
-# whats up with BAvaria?
-insp <- df |>
-  filter(state == '09')
+cat("BaWü 2011 from raw files:", nrow(bw_2011), "municipalities,",
+    "valid_votes =", sum(bw_2011$valid_votes, na.rm = TRUE), "\n")
+
+## --- BaWü 2016: from CSV ---
+csv_2016 <- "data/state_elections/raw/Landtagswahlen/Baden-Württemberg/Baden-Württemberg_2016_Landtagswahl.csv"
+raw_2016 <- read_delim(csv_2016, delim = ";", show_col_types = FALSE,
+                       locale = locale(encoding = "latin1"))
+
+bw_2016 <- raw_2016 |>
+  mutate(ags = str_extract(Gemeinde, "^[0-9]+")) |>
+  transmute(
+    ags,
+    election_year = 2016,
+    state = "08",
+    date = as.Date("2016-03-13"),
+    eligible_voters = Wahlberechtigte,
+    valid_votes = `Gültige Stimmen`,
+    turnout = `Wähler(innen)` / Wahlberechtigte,
+    cdu       = CDU / `Gültige Stimmen`,
+    csu       = NA_real_,
+    spd       = SPD / `Gültige Stimmen`,
+    gruene    = .data[["GRÜNE"]] / `Gültige Stimmen`,
+    fdp       = FDP / `Gültige Stimmen`,
+    linke_pds = .data[["DIE LINKE"]] / `Gültige Stimmen`,
+    afd       = AfD / `Gültige Stimmen`,
+    other     = (valid_votes - CDU - SPD - .data[["GRÜNE"]] - FDP -
+                   .data[["DIE LINKE"]] - AfD) / `Gültige Stimmen`,
+    cdu_csu   = cdu
+  ) |>
+  # Drop gemeindefreie Gebiete (99x codes)
+  filter(!str_detect(ags, "99[0-9]$"))
+
+cat("BaWü 2016 from raw files:", nrow(bw_2016), "municipalities,",
+    "valid_votes =", sum(bw_2016$valid_votes, na.rm = TRUE), "\n")
+
+## --- Replace BaWü rows in state_elections ---
+state_elections <- state_elections |>
+  filter(!(state == "08" & election_year %in% c(2011, 2016))) |>
+  bind_rows(bw_2011, bw_2016) |>
+  arrange(ags, election_year)
+
+cat("After BaWü fix: BaWü eligible_voters =",
+    sum(state_elections$eligible_voters[state_elections$state == "08" &
+          state_elections$election_year == 2011], na.rm = TRUE),
+    "(2011),",
+    sum(state_elections$eligible_voters[state_elections$state == "08" &
+          state_elections$election_year == 2016], na.rm = TRUE),
+    "(2016)\n")
+
+## Re-save
+fwrite(state_elections, 'data/state_elections/final/state_unharm.csv')
+write_rds(state_elections, 'data/state_elections/final/state_unharm.rds')
+
 
 ### END

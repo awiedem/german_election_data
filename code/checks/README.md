@@ -44,6 +44,19 @@ This folder contains scripts to check data quality and diagnose issues in the Ge
   - Identifies missing population/area data in raw Excel files
   - Analyzes change types (law_short) with missing data
 
+### State Elections
+
+- **`checks_state_harm.R`**
+  - Validates `state_harm_21`, `state_harm_23`, `state_harm_25`, and `state_2224_unharm`
+  - 13 checks covering: coverage (states, years), turnout issues (NA, >1, =0), vote share deviations, party-specific issues (Bremen AfD, BSW, column naming), quality flags, and covariate gaps
+  - Cross-dataset comparisons (valid vote totals across harmonization targets)
+
+### Mayoral Elections
+
+- **`checks_mayoral_unharm.R`**
+  - Validates the `mayoral_unharm` dataset
+  - Checks coverage by state, AGS format, vote count consistency, and candidate-level data integrity
+
 ### Other Checks
 
 - **`checks_muni_incomplete_elections.R`** - Checks for incomplete election coverage

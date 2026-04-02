@@ -1,6 +1,6 @@
-### Check quality of new state election data (2022-2023) and harmonization
+### Check quality of new state election data (2022-2024 + supplementary) and harmonization
 # Vincent Heddesheimer
-# Date: 2025
+# Date: 2025, updated 2026
 
 rm(list = ls())
 
@@ -16,7 +16,7 @@ pacman::p_load(
 conflict_prefer("filter", "dplyr")
 
 cat("=", strrep("=", 70), "\n")
-cat("STATE ELECTIONS 2022-2023: DATA QUALITY CHECKS\n")
+cat("STATE ELECTIONS 2022-2024 (+ SUPPLEMENTARY): DATA QUALITY CHECKS\n")
 cat("=", strrep("=", 70), "\n\n")
 
 # Helper function to pad AGS
@@ -31,12 +31,12 @@ pad_zero_conditional <- function(x, n) {
 cat("Loading datasets...\n")
 
 # Unharmonized new data
-df_new_unharm <- read_rds("data/state_elections/final/state_2223_unharm.rds") |>
+df_new_unharm <- read_rds("data/state_elections/final/state_2224_unharm.rds") |>
   as_tibble() |>
   mutate(ags = pad_zero_conditional(ags, 7))
 
 # Harmonized datasets
-df_harm_21 <- read_rds("data/state_elections/final/state_harm.rds") |>
+df_harm_21 <- read_rds("data/state_elections/final/state_harm_21.rds") |>
   as_tibble() |>
   mutate(ags = pad_zero_conditional(ags, 7))
 
@@ -50,10 +50,13 @@ df_old_unharm <- read_rds("data/state_elections/final/state_unharm.rds") |>
   mutate(ags = pad_zero_conditional(ags, 7))
 
 cat("Loaded datasets:\n")
-cat("  - New unharmonized (2022-2023):", nrow(df_new_unharm), "rows\n")
+cat("  - New unharmonized (2022-2024+):", nrow(df_new_unharm), "rows\n")
 cat("  - Harmonized to 2021:", nrow(df_harm_21), "rows\n")
 cat("  - Harmonized to 2023:", nrow(df_harm_23), "rows\n")
 cat("  - Old unharmonized:", nrow(df_old_unharm), "rows\n\n")
+
+# Track which election years are in the new data (for filtering harm datasets later)
+new_election_years <- sort(unique(df_new_unharm$election_year))
 
 # Check 1: Coverage of new election years -------------------------------------
 
@@ -84,11 +87,18 @@ df_new_unharm %>%
   filter(ags == "09564000") |>
   glimpse()
 
-# Expected: Niedersachsen (03) in 2022, Bayern (09) and Hessen (06) in 2023
+# Expected: 18 state elections from raw-file pipeline
 expected_coverage <- tibble(
-  state = c("03", "06", "09"),
-  election_year = c(2022, 2023, 2023),
-  state_name = c("Niedersachsen", "Hessen", "Bayern")
+  state = c("01", "01", "03", "04", "05", "06", "06", "07",
+            "08", "09", "10", "11", "11", "12", "13", "14", "15", "16"),
+  election_year = c(2017, 2022, 2022, 2023, 2022, 2008, 2023, 2021,
+                    2021, 2023, 2022, 2021, 2023, 2024, 2021, 2024, 2021, 2024),
+  state_name = c("Schleswig-Holstein", "Schleswig-Holstein", "Niedersachsen",
+                 "Bremen", "Nordrhein-Westfalen", "Hessen", "Hessen",
+                 "Rheinland-Pfalz", "Baden-Wuerttemberg", "Bayern",
+                 "Saarland", "Berlin", "Berlin", "Brandenburg",
+                 "Mecklenburg-Vorpommern", "Sachsen", "Sachsen-Anhalt",
+                 "Thueringen")
 )
 
 cat("\nExpected coverage:\n")
@@ -223,14 +233,18 @@ check_vote_shares <- function(df, dataset_name, party_vars) {
 df_new_check <- check_vote_shares(df_new_unharm, "New unharmonized data", party_vars_new)
 
 
-# Check harmonized to 2023 (only new years)
+# Check harmonized to 2023 (only years from the new data)
 df_harm_23_new <- df_harm_23 |>
-  filter(election_year %in% c(2022, 2023))
+  filter(election_year %in% new_election_years)
+
+# Also create harm_21 subset for new years
+df_harm_21_new <- df_harm_21 |>
+  filter(election_year %in% new_election_years)
 
 if (nrow(df_harm_23_new) > 0 && length(party_vars_harm_23) > 0) {
-  df_harm_23_check <- check_vote_shares(df_harm_23_new, "Harmonized to 2023 (2022-2023)", party_vars_harm_23)
+  df_harm_23_check <- check_vote_shares(df_harm_23_new, "Harmonized to 2023 (new elections)", party_vars_harm_23)
 } else {
-  cat("Harmonized to 2023: No data for 2022-2023\n")
+  cat("Harmonized to 2023: No data for new elections\n")
 }
 
 # Check 3: Missing values ----------------------------------------------------
@@ -282,10 +296,10 @@ check_missing <- function(df, dataset_name, key_vars = c("eligible_voters", "val
 
 check_missing(df_new_unharm, "New unharmonized data")
 if (exists("df_harm_21_new") && nrow(df_harm_21_new) > 0) {
-  check_missing(df_harm_21_new, "Harmonized to 2021 (2022-2023)")
+  check_missing(df_harm_21_new, "Harmonized to 2021 (new elections)")
 }
 if (exists("df_harm_23_new") && nrow(df_harm_23_new) > 0) {
-  check_missing(df_harm_23_new, "Harmonized to 2023 (2022-2023)")
+  check_missing(df_harm_23_new, "Harmonized to 2023 (new elections)")
 }
 
 # Check 4: Municipality count stability --------------------------------------
@@ -347,7 +361,7 @@ if (exists("df_harm_21_new") && nrow(df_harm_21_new) > 0) {
 
   if (length(ref_count_21) > 0 && ref_count_21 > 0) {
     cat("Reference for harm_21: 2021 with", ref_count_21, "municipalities\n")
-    check_muni_stability(df_harm_21_new, "Harmonized to 2021 (2022-2023)")
+    check_muni_stability(df_harm_21_new, "Harmonized to 2021 (new elections)")
   }
 }
 
@@ -355,7 +369,7 @@ if (exists("df_harm_21_new") && nrow(df_harm_21_new) > 0) {
 if (exists("df_harm_23_new") && nrow(df_harm_23_new) > 0) {
   # For 2023, we'd expect the count to match 2023 reference
   # But we don't have a 2023 reference year in the data, so just report counts
-  check_muni_stability(df_harm_23_new, "Harmonized to 2023 (2022-2023)")
+  check_muni_stability(df_harm_23_new, "Harmonized to 2023 (new elections)")
 }
 
 # Check 5: Consistency between harmonization versions ------------------------
@@ -364,7 +378,7 @@ cat("\n", strrep("=", 70), "\n")
 cat("CHECK 5: CONSISTENCY BETWEEN HARMONIZATION VERSIONS\n")
 cat(strrep("=", 70), "\n\n")
 
-# Compare harm_21 and harm_23 for overlapping years (2022-2023)
+# Compare harm_21 and harm_23 for overlapping years (new elections)
 has_harm_21_new <- exists("df_harm_21_new") && !is.null(df_harm_21_new) && nrow(df_harm_21_new) > 0
 has_harm_23_new <- exists("df_harm_23_new") && !is.null(df_harm_23_new) && nrow(df_harm_23_new) > 0
 
@@ -413,13 +427,13 @@ if (has_harm_21_new && has_harm_23_new) {
   }
 } else {
   if (!has_harm_21_new) {
-    cat("Note: harm_21 does not yet contain 2022-2023 data\n")
+    cat("Note: harm_21 does not yet contain new elections data\n")
   }
   if (!has_harm_23_new) {
-    cat("Note: harm_23 does not contain 2022-2023 data\n")
+    cat("Note: harm_23 does not contain new elections data\n")
   }
   if (!has_harm_21_new && !has_harm_23_new) {
-    cat("Cannot compare harmonization versions - no harmonized data for 2022-2023\n")
+    cat("Cannot compare harmonization versions - no harmonized data for new elections\n")
   }
 }
 
@@ -495,10 +509,10 @@ check_votes_turnout <- function(df, dataset_name) {
 
 check_votes_turnout(df_new_unharm, "New unharmonized data")
 if (exists("df_harm_21_new") && nrow(df_harm_21_new) > 0) {
-  check_votes_turnout(df_harm_21_new, "Harmonized to 2021 (2022-2023)")
+  check_votes_turnout(df_harm_21_new, "Harmonized to 2021 (new elections)")
 }
 if (exists("df_harm_23_new") && nrow(df_harm_23_new) > 0) {
-  check_votes_turnout(df_harm_23_new, "Harmonized to 2023 (2022-2023)")
+  check_votes_turnout(df_harm_23_new, "Harmonized to 2023 (new elections)")
 }
 
 # Check 7: Large changes in vote shares (compared to previous elections) ------
@@ -542,7 +556,7 @@ check_vote_changes <- function(df, dataset_name, comparison_df = NULL) {
   # Use the full comparison dataset to calculate lag, then filter to new years
   # IMPORTANT: For harmonized data, we use the full harmonized dataset (e.g., df_harm_23)
   # which already contains all years harmonized to the same borders. We don't need to bind
-  # old and new data - we just use the full dataset and filter to 2022-2023 AFTER calculating lag().
+  # old and new data - we just use the full dataset and filter to new elections AFTER calculating lag().
   # This ensures we're comparing within the same harmonization scheme.
   # For unharmonized data, we combine old and new unharmonized data.
   
@@ -619,8 +633,8 @@ check_vote_changes <- function(df, dataset_name, comparison_df = NULL) {
     print(large_changes_summary)
 
     # Show all municipalities with large changes, organized by party
-    # Note: Changes are calculated by combining comparison data (all years) with new data (2022-2023),
-    # then using lag() on the full time series before filtering to 2022-2023.
+    # Note: Changes are calculated by combining comparison data (all years) with new data (new elections),
+    # then using lag() on the full time series before filtering to new elections.
     # For harmonized data, we use the full harmonized dataset to ensure consistent borders.
     
     # Get previous election year and previous value
@@ -644,7 +658,7 @@ check_vote_changes <- function(df, dataset_name, comparison_df = NULL) {
       group_by(ags) |>
       arrange(election_year) |>
       mutate(prev_election = lag(election_year)) |>
-      filter(election_year %in% c(2022, 2023)) |>
+      filter(election_year %in% new_election_years) |>
       select(ags, election_year, prev_election) |>
       ungroup()
     
@@ -680,7 +694,7 @@ check_vote_changes(df_new_unharm, "New unharmonized data")
 
 # Check harmonized to 2023
 if (exists("df_harm_23_new") && nrow(df_harm_23_new) > 0) {
-  check_vote_changes(df_harm_23_new, "Harmonized to 2023 (2022-2023)")
+  check_vote_changes(df_harm_23_new, "Harmonized to 2023 (new elections)")
 }
 
 # Check 8: Flags and data quality indicators ---------------------------------
@@ -737,10 +751,10 @@ check_flags <- function(df, dataset_name) {
 }
 
 if (exists("df_harm_21_new") && nrow(df_harm_21_new) > 0) {
-  check_flags(df_harm_21_new, "Harmonized to 2021 (2022-2023)")
+  check_flags(df_harm_21_new, "Harmonized to 2021 (new elections)")
 }
 if (exists("df_harm_23_new") && nrow(df_harm_23_new) > 0) {
-  check_flags(df_harm_23_new, "Harmonized to 2023 (2022-2023)")
+  check_flags(df_harm_23_new, "Harmonized to 2023 (new elections)")
 }
 
 # Check 9: Berlin, Hamburg, Bremen coverage ----------------------------------
@@ -794,9 +808,9 @@ cat("\n", strrep("=", 70), "\n")
 cat("SUMMARY\n")
 cat(strrep("=", 70), "\n\n")
 
-cat("New state election data (2022-2023) checks completed.\n")
+cat("New state election data (2022-2024 + supplementary) checks completed.\n")
 cat("Key findings:\n")
-cat("  - Coverage: Niedersachsen 2022, Hessen & Bayern 2023\n")
+cat("  - Coverage: 18 elections across 15 states (2008-2024)\n")
 cat("  - Check output above for specific issues\n\n")
 
 cat("=", strrep("=", 70), "\n")

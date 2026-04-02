@@ -8354,7 +8354,9 @@ sachsen_anhalt_2024_kommunalwahlen_data_sub$AGS_8dig <- sachsen_anhalt_2024_komm
 sachsen_anhalt_2024_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_2024_kommunalwahlen_data_sub$Name
 sachsen_anhalt_2024_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_anhalt_2024_kommunalwahlen_data_sub$`A - Wahlberechtigte`
 sachsen_anhalt_2024_kommunalwahlen_data_sub$Wähler <- sachsen_anhalt_2024_kommunalwahlen_data_sub$`B - Wähler`
-sachsen_anhalt_2024_kommunalwahlen_data_sub$GültigeStimmen <- sachsen_anhalt_2024_kommunalwahlen_data_sub$`C2 - Gültige Stimmzettel`
+# Use D - Gültige Stimmen (total valid votes), NOT C2 - Gültige Stimmzettel (ballot papers)
+# ST uses Kumulieren & Panaschieren: each voter has 3 votes, so total votes ≈ 3× ballots
+sachsen_anhalt_2024_kommunalwahlen_data_sub$GültigeStimmen <- sachsen_anhalt_2024_kommunalwahlen_data_sub$`D - Gültige Stimmen`
 
 sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_CDU <- as.numeric(
   sachsen_anhalt_2024_kommunalwahlen_data_sub$`D01 - CDU`
@@ -15222,7 +15224,9 @@ sachsen_2024_gemeinderatswahlen_data_sub$AGS_8dig <- sachsen_2024_gemeinderatswa
 sachsen_2024_gemeinderatswahlen_data_sub$Gebietsname <- sachsen_2024_gemeinderatswahlen_data_sub$gemeindename
 sachsen_2024_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_2024_gemeinderatswahlen_data_sub$wahlberechtigte
 sachsen_2024_gemeinderatswahlen_data_sub$Wähler <- sachsen_2024_gemeinderatswahlen_data_sub$waehler
-sachsen_2024_gemeinderatswahlen_data_sub$GültigeStimmen <- sachsen_2024_gemeinderatswahlen_data_sub$gueltige_stimmzettel
+# Use gueltige_stimmen (total valid votes), NOT gueltige_stimmzettel (ballot papers)
+# SN uses Kumulieren & Panaschieren: each voter has 3 votes, so total votes ≈ 3× ballots
+sachsen_2024_gemeinderatswahlen_data_sub$GültigeStimmen <- sachsen_2024_gemeinderatswahlen_data_sub$gueltige_stimmen
 
 sachsen_2024_gemeinderatswahlen_data_sub$abs_CDU <- sachsen_2024_gemeinderatswahlen_data_sub$cdu
 sachsen_2024_gemeinderatswahlen_data_sub$abs_SPD <- sachsen_2024_gemeinderatswahlen_data_sub$spd
@@ -20482,6 +20486,21 @@ kommunalwahlen_merge <- kommunalwahlen_merge %>%
   )
 
 
+# Ensure consistent types ----
+state_name_to_code <- c(
+  "Baden-Wuerttemberg" = "08", "Bayern" = "09", "Berlin" = "11",
+  "Brandenburg" = "12", "Bremen" = "04", "Hamburg" = "02",
+  "Hessen" = "06", "Mecklenburg-Vorpommern" = "13", "Niedersachsen" = "03",
+  "NRW" = "05", "RLP" = "07", "Saarland" = "10",
+  "Sachsen" = "14", "Sachsen-Anhalt" = "15", "Schleswig-Holstein" = "01",
+  "Thueringen" = "16"
+)
+kommunalwahlen_merge <- kommunalwahlen_merge |>
+  mutate(
+    state = state_name_to_code[state],
+    election_year = as.integer(election_year)
+  )
+
 # Save ----
 
 write_rds(
@@ -20503,5 +20522,14 @@ glimpse(kommunalwahlen_merge)
 
 test <- kommunalwahlen_merge %>%
   filter(ags == "07133080", election_year == "2019")
+
+
+# check number of munis in schleswig holstein per year
+
+kommunalwahlen_merge %>%
+  filter(state == "Schleswig-Holstein") %>%
+  group_by(election_year) %>%
+  summarise(n = n_distinct(ags))
+
 
 ### END

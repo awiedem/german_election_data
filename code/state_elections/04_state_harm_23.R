@@ -19,31 +19,15 @@ pacman::p_load(
 
 cat("Loading unharmonized state election data...\n")
 
-df_old <- read_rds("data/state_elections/final/state_unharm.rds") |>
+df <- read_rds("data/state_elections/final/state_unharm.rds") |>
   as_tibble() |>
+  filter(election_year >= 1990) |>
   mutate(
     ags = pad_zero_conditional(ags, 7),
     county = str_sub(ags, 1, 5),
     cdu = ifelse(state != "09" & (cdu == 0 | is.na(cdu)), cdu_csu, cdu),
     csu = ifelse(state == "09" & (csu == 0 | is.na(csu)), cdu_csu, csu)
   ) |>
-  rename(election_date = date)
-
-df_new <- read_rds("data/state_elections/final/state_2223_unharm.rds") |>
-  as_tibble() |>
-  mutate(
-    ags = pad_zero_conditional(ags, 7),
-    county = str_sub(ags, 1, 5),
-    cdu = ifelse(state != "09" & (cdu == 0 | is.na(cdu)), cdu_csu, cdu),
-    csu = ifelse(state == "09" & (csu == 0 | is.na(csu)), cdu_csu, csu)
-  ) |>
-  rename(gruene = grune)
-
-glimpse(df_old)
-glimpse(df_new)
-
-# Combine old and new data
-df <- bind_rows(df_new, df_old) |>
   arrange(ags, election_year)
 
 glimpse(df)
@@ -51,12 +35,28 @@ table(df$election_year)
 
 # Convert vote shares to vote counts ----------------------------------------
 
-# Identify party variables (exclude metadata and calculated variables)
-party_vars <- df |>
-  select(turnout:tierschutz, other) |>
-  names()
+# Identify party variables by excluding metadata columns
+metadata_cols <- c("ags", "county", "election_year", "state", "election_date",
+                   "eligible_voters", "number_voters", "valid_votes",
+                   "invalid_votes", "turnout", "flag_naive_turnout_above_1")
+party_vars <- setdiff(names(df), metadata_cols)
 
 cat("Party variables found:", paste(party_vars, collapse = ", "), "\n")
+
+# For rows with NA valid_votes (e.g. HB pre-1999 percentage-only data),
+# impute a weight from number_voters or eligible_voters so that the
+# share→count→share round-trip preserves the original percentages.
+n_na_vv <- sum(is.na(df$valid_votes))
+if (n_na_vv > 0) {
+  cat(sprintf("Imputing valid_votes weight for %d rows (using number_voters/eligible_voters)\n", n_na_vv))
+  df <- df |>
+    mutate(valid_votes = case_when(
+      !is.na(valid_votes) ~ valid_votes,
+      !is.na(number_voters) & number_voters > 0 ~ number_voters,
+      !is.na(eligible_voters) & eligible_voters > 0 ~ eligible_voters,
+      TRUE ~ 1
+    ))
+}
 
 # Convert vote shares to vote counts
 df <- df |>
@@ -81,6 +81,34 @@ df <- df |>
       ags == "07232502" & election_year == 2011 ~ "07232021", # Brimingen
       ags == "07232502" & election_year == 2016 ~ "07232021", # Brimingen (2016!)
       ags == "07235207" & election_year == 2011 ~ "07231207", # Trittenheim
+      # Eastern Germany AGS corrections (from federal harm scripts)
+      # Sachsen-Anhalt 1990: wrong 3rd digit in DDR-era encoding
+      ags == "15228170" & election_year == 1990 ~ "15028170", # Kleinheringen
+      ags == "15228280" & election_year == 1990 ~ "15028280", # Neidschütz
+      ags == "15228380" & election_year == 1990 ~ "15028380", # Wettaburg
+      ags == "15320590" & election_year == 1990 ~ "15020590", # Wedringen
+      ags == "15336010" & election_year == 1990 ~ "15036010", # Abbendorf
+      ags == "15336290" & election_year == 1990 ~ "15036290", # Holzhausen
+      ags == "15336660" & election_year == 1990 ~ "15036660", # Waddekath
+      # Thuringia 1994: AGS renumbered during Kreisreform
+      ags == "16063057" & election_year == 1994 ~ "16063094", # Moorgrund
+      ags == "16063047" & election_year == 1994 ~ "16016410", # Kupfersuhl
+      ags == "16063056" & election_year == 1994 ~ "16015420", # Möhra
+      ags == "16069022" & election_year == 1994 ~ "16023360", # Heßberg
+      ags == "16073098" & election_year == 1994 ~ "16033700", # Weißen
+      # Saxony 1994: Kreis renumbered
+      ags == "14082220" & election_year == 1994 ~ "14032270", # Krumbach
+      ags == "14085170" & election_year == 1994 ~ "14031310", # Naunhof
+      # Brandenburg 1990: kreisfreie Städte old encoding (060 suffix)
+      ags == "12003060" & election_year == 1990 ~ "12003000", # Eisenhüttenstadt
+      ags == "12006060" & election_year == 1990 ~ "12006000", # Schwedt/Oder
+      # Sachsen-Anhalt 1994: Merzien post-Kreisreform code → pre-reform
+      ags == "15159029" & election_year == 1994 ~ "15026310", # Merzien
+      # Sachsen 1994: Cunsdorf dissolved 1995 into Elsterberg (not in CW)
+      ags == "14045730" & election_year == 1994 ~ "14045610", # Cunsdorf → Elsterberg
+      # Post-2023 mergers: map to main constituent (geographic approximation)
+      ags == "16061119" & election_year == 2024 ~ "16061097", # Uder (merged 2024) → old Uder
+      ags == "16076094" & election_year == 2024 ~ "16076004", # Berga-Wünschendorf → Berga/Elster
       TRUE ~ ags
     )
   )
@@ -90,15 +118,20 @@ df <- df |>
   group_by(ags, election_year, state) |>
   summarise(
     across(
-      c(eligible_voters, number_voters, valid_votes, all_of(party_vars)),
+      c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
       ~ sum(.x, na.rm = TRUE)
     ),
-    across(any_of(c("election_date", "county", "date")), first),
+    across(any_of(c("election_date", "county")), first),
     .groups = "drop"
   ) |>
   arrange(ags, election_year)
 
 glimpse(df)
+
+# Extract election_date lookup before harmonization (dates are lost in group_by)
+date_lookup <- df |>
+  distinct(state, election_year, election_date) |>
+  filter(!is.na(election_date))
 
 # Load crosswalks -----------------------------------------------------------
 
@@ -191,30 +224,79 @@ df_cw <- df_cw_naive |>
 
 # For observations that didn't merge, try using year - 1 for crosswalk
 # This handles cases where municipalities merged right after an election
-df_cw <- df_cw |>
-  mutate(
-    year_cw = case_when(
-      is.na(ags_23) & election_year > 1990 ~ election_year - 1,
-      TRUE ~ election_year
+# NOTE: Only apply fallback join to unmatched rows to avoid duplicating
+# multi-target AGS (which map to >1 ags_23 with pop_cw weights)
+df_matched <- df_cw |> filter(!is.na(ags_23))
+df_unmatched <- df_cw |> filter(is.na(ags_23))
+
+if (nrow(df_unmatched) > 0) {
+  df_unmatched <- df_unmatched |>
+    mutate(
+      year_cw = pmax(pmin(election_year - 1, 2022), 1990)
+    ) |>
+    select(-ags_23, -pop_cw, -area_cw) |>
+    left_join(
+      cw |> select(ags, election_year, ags_23, pop_cw, area_cw) |>
+        rename(year_cw = election_year),
+      by = c("ags", "year_cw")
     )
-  )
+}
+
+df_cw <- bind_rows(df_matched, df_unmatched)
+
+## --- Fuzzy time matching: for still-unmatched AGS, find closest CW year ---
+still_unmatched <- df_cw |> filter(is.na(ags_23))
+if (nrow(still_unmatched) > 0) {
+  n_unmatched_ags <- n_distinct(still_unmatched$ags)
+  cat("Fuzzy time matching for", n_unmatched_ags, "unmatched AGS codes...\n")
+
+  df_already_matched <- df_cw |> filter(!is.na(ags_23))
+
+  unmatched_keys <- still_unmatched |> select(ags, election_year) |> distinct()
+  cw_available <- cw |> select(ags, election_year) |> distinct() |>
+    rename(cw_year = election_year)
+
+  best_cw_year <- unmatched_keys |>
+    left_join(cw_available, by = "ags", relationship = "many-to-many") |>
+    filter(!is.na(cw_year)) |>
+    mutate(year_dist = abs(cw_year - election_year) +
+             ifelse(cw_year < election_year, 0.001, 0)) |>
+    group_by(ags, election_year) |>
+    slice_min(year_dist, n = 1, with_ties = FALSE) |>
+    ungroup() |>
+    select(ags, election_year, cw_year)
+
+  still_unmatched <- still_unmatched |>
+    select(-ags_23, -pop_cw, -area_cw) |>
+    left_join(best_cw_year, by = c("ags", "election_year")) |>
+    left_join(
+      cw |> select(ags, election_year, ags_23, pop_cw, area_cw) |>
+        rename(cw_year = election_year),
+      by = c("ags", "cw_year")
+    ) |>
+    select(-cw_year)
+
+  n_recovered <- sum(!is.na(still_unmatched$ags_23))
+  cat("  Recovered", n_recovered, "of", nrow(still_unmatched),
+      "rows via fuzzy time matching\n")
+  df_cw <- bind_rows(df_already_matched, still_unmatched)
+}
+
+## --- Self-mapping: unmatched AGS that are already valid 2023 codes map to self ---
+still_unmatched2 <- df_cw |> filter(is.na(ags_23))
+if (nrow(still_unmatched2) > 0) {
+  valid_targets <- unique(cw$ags_23)
+  self_map <- still_unmatched2$ags %in% valid_targets
+  if (any(self_map)) {
+    cat("  Self-mapping", sum(self_map), "rows where AGS is already a valid ags_23\n")
+    still_unmatched2$ags_23[self_map] <- still_unmatched2$ags[self_map]
+    still_unmatched2$pop_cw[self_map] <- 1
+    still_unmatched2$area_cw[self_map] <- 1
+    df_cw <- bind_rows(df_cw |> filter(!is.na(ags_23)), still_unmatched2)
+  }
+}
 
 glimpse(df_cw)
-
-# Try merging again with adjusted year
-df_cw <- df_cw |>
-  left_join(
-    cw |>
-      select(ags, election_year, ags_23, pop_cw, area_cw) |>
-      rename(year_cw = election_year, pop_cw_alt = pop_cw, area_cw_alt = area_cw),
-    by = c("ags", "year_cw")
-  ) |>
-  mutate(
-    ags_23 = ifelse(is.na(ags_23.x), ags_23.y, ags_23.x),
-    pop_cw = ifelse(is.na(pop_cw), pop_cw_alt, pop_cw),
-    area_cw = ifelse(is.na(area_cw), area_cw_alt, area_cw)
-  ) |>
-  select(-ags_23.y, -pop_cw_alt, -area_cw_alt)
 
 # Check remaining unsuccessful merges
 not_merged_final <- df_cw |>
@@ -228,6 +310,9 @@ if (nrow(not_merged_final) > 0) {
 }
 
 
+# Filter out unmatched rows before harmonization
+df_cw <- df_cw |> filter(!is.na(ags_23))
+
 # Harmonize ----------------------------------------------------------------
 
 cat("Harmonizing to 2023 borders...\n")
@@ -237,14 +322,14 @@ votes <- df_cw |>
   group_by(ags_23, election_year) |>
   summarise(
     across(
-      c(eligible_voters, number_voters, valid_votes, all_of(party_vars)),
+      c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
       ~ sum(.x * pop_cw, na.rm = TRUE)
     ),
     .groups = "drop"
   ) |>
   mutate(
     across(
-      c(eligible_voters, number_voters, valid_votes, all_of(party_vars)),
+      c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
       ~ round(.x, digits = 0)
     )
   )
@@ -258,6 +343,7 @@ df_harm <- votes %>%
     turnout = ifelse(eligible_voters > 0, number_voters / eligible_voters, NA_real_)
   ) |>
   rename(ags = ags_23) |>
+  filter(!is.na(ags)) |>
   mutate(
     ags = pad_zero_conditional(ags, 7),
     state = substr(ags, 1, 2),
@@ -269,58 +355,10 @@ df_harm <- votes %>%
 
 glimpse(df_harm)
 
-# Add election_date
+# Add election_date from lookup (extracted before harmonization)
 df_harm <- df_harm |>
-  mutate(
-    election_date = case_when(
-      election_year == 2006 & state_name == "Berlin" ~ ymd("2006-09-17"),
-      election_year == 2008 & state_name == "Bavaria" ~ ymd("2008-09-28"),
-      election_year == 2008 & state_name == "Niedersachsen" ~ ymd("2008-01-27"),
-      election_year == 2009 & state_name == "Brandenburg" ~ ymd("2009-09-27"),
-      election_year == 2009 & state_name == "Hesse" ~ ymd("2009-01-18"),
-      election_year == 2009 & state_name == "Saarland" ~ ymd("2009-08-30"),
-      election_year == 2009 & state_name == "Saxony" ~ ymd("2009-08-30"),
-      election_year == 2009 & state_name == "Schleswig-Holstein" ~ ymd("2009-09-27"),
-      election_year == 2009 & state_name == "Thuringia" ~ ymd("2009-08-30"),
-      election_year == 2010 & state_name == "North Rhine-Westphalia" ~ ymd("2010-05-09"),
-      election_year == 2011 & state_name == "Baden-Württemberg" ~ ymd("2011-03-27"),
-      election_year == 2011 & state_name == "Berlin" ~ ymd("2011-09-18"),
-      election_year == 2011 & state_name == "Mecklenburg-Vorpommern" ~ ymd("2011-09-04"),
-      election_year == 2011 & state_name == "Rhineland-Palatinate" ~ ymd("2011-03-27"),
-      election_year == 2011 & state_name == "Saxony-Anhalt" ~ ymd("2011-03-20"),
-      election_year == 2012 & state_name == "Saarland" ~ ymd("2012-03-25"),
-      election_year == 2012 & state_name == "Schleswig-Holstein" ~ ymd("2012-05-06"),
-      election_year == 2012 & state_name == "North Rhine-Westphalia" ~ ymd("2012-05-13"),
-      election_year == 2013 & state_name == "Bavaria" ~ ymd("2013-09-15"),
-      election_year == 2013 & state_name == "Hesse" ~ ymd("2013-09-22"),
-      election_year == 2013 & state_name == "Niedersachsen" ~ ymd("2013-01-20"),
-      election_year == 2014 & state_name == "Brandenburg" ~ ymd("2014-09-14"),
-      election_year == 2014 & state_name == "Saxony" ~ ymd("2014-08-31"),
-      election_year == 2014 & state_name == "Thuringia" ~ ymd("2014-09-14"),
-      election_year == 2016 & state_name == "Baden-Württemberg" ~ ymd("2016-03-13"),
-      election_year == 2016 & state_name == "Berlin" ~ ymd("2016-09-18"),
-      election_year == 2016 & state_name == "Mecklenburg-Vorpommern" ~ ymd("2016-09-04"),
-      election_year == 2016 & state_name == "Rhineland-Palatinate" ~ ymd("2016-03-13"),
-      election_year == 2016 & state_name == "Saxony-Anhalt" ~ ymd("2016-03-13"),
-      election_year == 2017 & state_name == "Niedersachsen" ~ ymd("2017-10-15"),
-      election_year == 2017 & state_name == "North Rhine-Westphalia" ~ ymd("2017-05-14"),
-      election_year == 2017 & state_name == "Saarland" ~ ymd("2017-03-26"),
-      election_year == 2018 & state_name == "Bavaria" ~ ymd("2018-10-14"),
-      election_year == 2018 & state_name == "Hesse" ~ ymd("2018-10-28"),
-      election_year == 2019 & state_name == "Brandenburg" ~ ymd("2019-09-01"),
-      election_year == 2019 & state_name == "Saxony" ~ ymd("2019-09-01"),
-      election_year == 2019 & state_name == "Thuringia" ~ ymd("2019-10-27"),
-      election_year == 2022 & state_name == "Niedersachsen" ~ ymd("2022-10-09"),
-      election_year == 2023 & state_name == "Bavaria" ~ ymd("2023-10-08"),
-      election_year == 2023 & state_name == "Hesse" ~ ymd("2023-10-08"),
-      TRUE ~ NA_Date_
-    )
-  ) |>
+  left_join(date_lookup, by = c("state", "election_year")) |>
   relocate(election_date, .after = election_year)
-
-table(df_new$election_date)
-df_new |>
-  distinct(election_date, state)
 
 # Check for missing election dates
 if (df_harm |> filter(is.na(election_date)) |> nrow() > 0) {
@@ -352,15 +390,64 @@ df_harm <- df_harm |>
   ) |>
   select(-id)
 
-# Calculate total vote share and flag
-df_harm <- df_harm %>%
+# Zero-vote party → NA recoding
+derived_cols <- c("other", "cdu_csu", "far_right", "far_left", "far_left_w_linke")
+share_cols <- setdiff(party_vars, derived_cols)
+zero_party_lookup <- df_harm |>
+  group_by(state, election_year) |>
+  summarise(across(all_of(share_cols),
+                   ~ all(. == 0 | is.na(.), na.rm = FALSE),
+                   .names = "allzero__{.col}"),
+            .groups = "drop") |>
+  pivot_longer(starts_with("allzero__"),
+               names_to = "party", values_to = "all_zero",
+               names_prefix = "allzero__") |>
+  filter(all_zero)
+
+if (nrow(zero_party_lookup) > 0) {
+  df_long <- df_harm |>
+    mutate(.row_id = row_number()) |>
+    pivot_longer(cols = all_of(share_cols), names_to = "party",
+                 values_to = "vote_share") |>
+    left_join(zero_party_lookup, by = c("state", "election_year", "party")) |>
+    mutate(vote_share = if_else(!is.na(all_zero) & all_zero &
+                                  (vote_share == 0 | is.na(vote_share)),
+                                NA_real_, vote_share)) |>
+    select(-all_zero) |>
+    pivot_wider(names_from = "party", values_from = "vote_share")
+  df_harm <- df_long |> select(-.row_id) |> arrange(ags, election_year)
+  cat("Zero-vote → NA recoding applied\n")
+}
+
+# Pooled party columns
+far_right_cols <- intersect(
+  c("afd", "npd", "rep", "die_rechte", "dvu", "iii_weg", "fap", "ddd", "dsu",
+    "die_heimat_heimat", "die_republikaner_rep"),
+  names(df_harm))
+far_left_cols <- intersect(
+  c("dkp", "kpd", "mlpd", "sgp", "psg", "kbw"),
+  names(df_harm))
+
+cat("far_right cols:", paste(far_right_cols, collapse = ", "), "\n")
+cat("far_left cols:", paste(far_left_cols, collapse = ", "), "\n")
+
+df_harm <- df_harm |>
   mutate(
-    total_vote_share = rowSums(
-      select(., cdu:other, -cdu_csu),
-      na.rm = TRUE
-    ),
-    total_vote_share = round(total_vote_share, 8),
-    flag_total_votes_incongruent = ifelse(total_vote_share > 1, 1, 0)
+    far_right = rowSums(across(any_of(far_right_cols)), na.rm = TRUE),
+    far_left = rowSums(across(any_of(far_left_cols)), na.rm = TRUE),
+    far_left_w_linke = rowSums(across(any_of(c("linke_pds", "pds"))),
+                                na.rm = TRUE) + far_left
+  )
+
+# Total vote share: sum ALL individual party columns
+all_derived <- c("far_right", "far_left", "far_left_w_linke", "cdu_csu")
+tvs_cols <- setdiff(party_vars, all_derived)
+df_harm <- df_harm |>
+  mutate(
+    total_vote_share = round(rowSums(across(all_of(tvs_cols)), na.rm = TRUE), 8),
+    flag_total_votes_incongruent = ifelse(
+      total_vote_share > 1.001 | total_vote_share < 0.999, 1, 0),
+    perc_total_votes_incogruence = round(total_vote_share - 1, 6)
   )
 
 glimpse(df_harm)

@@ -31,3 +31,24 @@ docs/m_error_general.out
 docs/m_error_general.pdf
 docs/m_error_general.synctex.gz
 docs/m_error_general.tex
+
+# Claude Code
+CLAUDE.md
+.claude/
+
+# Python virtual environment (review/)
+review/.venv/
+
+# Meinungsbild raw survey data (restricted access)
+meinungsbild/data/raw/
+meinungsbild/data/harmonized/
+
+# Meinungsbild intermediate data (reproducible from pipeline)
+meinungsbild/data/covariates/
+meinungsbild/data/poststrat/
+meinungsbild/data/estimates/
+
+# Meinungsbild web build artifacts
+meinungsbild/web/node_modules/
+meinungsbild/web/.next/
+meinungsbild/web/next-env.d.ts

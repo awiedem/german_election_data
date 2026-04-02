@@ -423,6 +423,14 @@ full_cw <- bind_rows(
 ) %>%
     arrange(ags, year)
 
+## Rescale weights to sum to 1.0 per (ags, year) — mirrors 04_build script
+full_cw <- full_cw %>%
+    group_by(ags, year) %>%
+    mutate(
+        pop_cw  = pop_cw / sum(pop_cw),
+        area_cw = area_cw / sum(area_cw)
+    ) %>%
+    ungroup()
 
 write_rds(full_cw,
           "data/crosswalks/final/ags_1990_to_2025_crosswalk.rds",

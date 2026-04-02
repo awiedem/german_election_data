@@ -1,0 +1,34 @@
+# ============================================================
+# Meinungsbild .gitignore
+# ============================================================
+
+# ------ Survey microdata (RESTRICTED — never commit) ------
+# Raw GESIS downloads (Politbarometer, GLES, ALLBUS, Eurobarometer)
+data/raw/
+
+# Harmonized survey files (derived from restricted raw data)
+data/harmonized/
+
+# ------ Poststratification frames (can be re-downloaded) ------
+data/poststrat/
+
+# ------ Model estimates (large, reproducible) ------
+data/estimates/
+
+# ------ Web build artifacts ------
+web/node_modules/
+web/.next/
+web/out/
+web/.env*.local
+
+# ------ R artifacts ------
+*.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+renv/library/
+renv/staging/
+
+# ------ OS ------
+.DS_Store
+Thumbs.db

@@ -26,6 +26,62 @@ cw <- fread("data/crosswalks/final/ags_crosswalks.csv") |>
 #     weights = pop_cw * population
 #   )
 
+# Post-2021 crosswalks (for mapping 2023-2025 data to 2021 boundaries) -----
+cw_25_full <- read_rds("data/crosswalks/final/ags_1990_to_2025_crosswalk.rds") |>
+  mutate(ags = pad_zero_conditional(ags, 7))
+cw_2023_25 <- read_rds("data/crosswalks/final/crosswalk_ags_2023_to_2025.rds")
+cw_21_23   <- read_rds("data/crosswalks/final/crosswalk_ags_2021_to_2023.rds")
+
+# Build 2025 → 2021 crosswalk chain (following federal pipeline pattern)
+# Step 1: Invert 2023→2025 to get 2025→2023
+cw_25_to_23 <- cw_2023_25 %>%
+  transmute(
+    ags_25       = ags_25,
+    ags_23       = ags,
+    pop_w_25_23  = pop_cw,
+    area_w_25_23 = area_cw,
+    population   = population,
+    area         = area
+  )
+
+# Step 2: Invert 2021→2023 to get 2023→2021
+cw_23_to_21 <- cw_21_23 %>%
+  transmute(
+    ags_23       = ags_2023,
+    ags_21       = ags_2021,
+    pop_w_23_21  = w_pop,
+    area_w_23_21 = w_area
+  )
+
+# Handle 2023 codes missing from 2021 map (identity mapping, weight = 1)
+cw_23_to_21 <- bind_rows(
+  cw_23_to_21,
+  cw_25_to_23 %>%
+    anti_join(cw_23_to_21, by = "ags_23") %>%
+    transmute(
+      ags_23,
+      ags_21       = ags_23,
+      pop_w_23_21  = 1,
+      area_w_23_21 = 1
+    )
+)
+
+# Step 3: Chain 2025 → 2023 → 2021
+cw_25_to_21 <- cw_25_to_23 %>%
+  left_join(cw_23_to_21, by = "ags_23") %>%
+  mutate(
+    pop_w_25_21  = pop_w_25_23 * pop_w_23_21,
+    area_w_25_21 = area_w_25_23 * area_w_23_21
+  ) %>%
+  group_by(ags_25, ags_21) %>%
+  summarise(
+    pop_w_25_21  = sum(pop_w_25_21, na.rm = TRUE),
+    area_w_25_21 = sum(area_w_25_21, na.rm = TRUE),
+    population   = sum(population, na.rm = TRUE),
+    area         = sum(area, na.rm = TRUE),
+    .groups = "drop"
+  )
+
 # Merge with unharmonized election data -----------------------------------
 
 df <- readr::read_rds("data/municipal_elections/final/municipal_unharm.rds") |>
@@ -122,6 +178,7 @@ df <- df |>
       id == "05313000_2009" ~ "05334002", # Aachen
       id == "05313000_2014" ~ "05334002", # Aachen
       id == "05313000_2020" ~ "05334002", # Aachen
+      id == "05313000_2025" ~ "05334002", # Aachen
       id == "07140502_1994" ~ "07135050", # Lahr
       id == "07140502_1999" ~ "07135050", # Lahr
       id == "07140503_1994" ~ "07135063", # Mörsdorf
@@ -414,6 +471,130 @@ area_pop <- df_cw |>
   ungroup() |>
   rename(ags = ags_21, year = election_year)
 
+# Post-2021 harmonization (mapping to 2021 boundaries) --------------------
+
+# Get column names for party shares and flags
+share_cols <- names(df)[which(names(df) == "cdu_csu"):which(names(df) == "other")]
+flag_cols  <- names(df)[grepl("^replaced_", names(df))]
+
+# --- Map 2023/2024 data to ags_25 via ags_1990_to_2025_crosswalk ---
+df_post21_pre25 <- df |>
+  filter(election_year > 2021 & election_year < 2025) |>
+  left_join(
+    cw_25_full |> select(ags, year, ags_25, pop_cw, area_cw, population, area),
+    by = c("ags", "election_year" = "year")
+  ) |>
+  # Chain to ags_21
+  left_join(
+    cw_25_to_21 |> select(ags_25, ags_21, pop_w_25_21, area_w_25_21),
+    by = "ags_25"
+  ) |>
+  mutate(
+    final_pop_cw  = pop_cw * pop_w_25_21,
+    final_area_cw = area_cw * area_w_25_21
+  )
+
+# --- Map 2025 data directly via cw_25_to_21 ---
+df_post21_25 <- df |>
+  filter(election_year == 2025) |>
+  mutate(ags_25 = ags) |>
+  left_join(
+    cw_25_to_21,
+    by = "ags_25"
+  ) |>
+  mutate(
+    final_pop_cw  = pop_w_25_21,
+    final_area_cw = area_w_25_21
+  )
+
+# --- Combine all post-2021 data ---
+df_post21_cw <- bind_rows(df_post21_pre25, df_post21_25)
+
+# Check for unsuccessful merges in post-2021 data
+not_merged_post21 <- df_post21_cw |>
+  filter(is.na(ags_21)) |>
+  select(ags, ags_25, election_year) |>
+  distinct()
+cat("Post-2021 unsuccessful merges:", nrow(not_merged_post21), "\n")
+if (nrow(not_merged_post21) > 0) print(not_merged_post21, n = Inf)
+
+# Weighted sums for voter counts
+sums_post21 <- df_post21_cw |>
+  filter(!is.na(ags_21)) |>
+  mutate(ags_21 = as.character(ags_21)) |>
+  group_by(ags_21, election_year) |>
+  summarize_at(
+    vars(eligible_voters:valid_votes),
+    ~ sum(.x * final_pop_cw, na.rm = TRUE)
+  ) |>
+  ungroup() |>
+  mutate(turnout = number_voters / eligible_voters)
+
+# Get ags_name_21 from existing crosswalk
+ags_names_21 <- cw |>
+  mutate(ags_21 = as.character(ags_21)) |>
+  distinct(ags_21, ags_name_21)
+
+sums_post21 <- sums_post21 |>
+  mutate(ags_21 = as.character(ags_21)) |>
+  left_join(ags_names_21, by = "ags_21") |>
+  rename(ags = ags_21, year = election_year, ags_name = ags_name_21)
+
+# Weighted means for vote shares
+means_post21 <- df_post21_cw |>
+  filter(!is.na(ags_21)) |>
+  mutate(
+    ags_21 = as.character(ags_21),
+    across(all_of(share_cols), ~ ifelse(is.na(.), 0, .))
+  ) |>
+  group_by(ags_21, election_year) |>
+  summarize_at(
+    vars(all_of(share_cols)),
+    ~ weighted.mean(.x, w = final_pop_cw, na.rm = TRUE)
+  ) |>
+  rename(ags = ags_21, year = election_year) |>
+  ungroup() |>
+  mutate(across(all_of(share_cols), ~ ifelse(. == 0, NA, .)))
+
+# Flags
+flags_post21 <- df_post21_cw |>
+  filter(!is.na(ags_21)) |>
+  mutate(
+    ags_21 = as.character(ags_21),
+    flag_unsuccessful_naive_merge = 0
+  ) |>
+  group_by(ags_21, election_year) |>
+  summarize_at(
+    vars(all_of(flag_cols), flag_unsuccessful_naive_merge),
+    ~ max(.x, na.rm = TRUE)
+  ) |>
+  rename(ags = ags_21, year = election_year) |>
+  ungroup()
+
+# Area/population
+area_pop_post21 <- df_post21_cw |>
+  filter(!is.na(ags_21)) |>
+  mutate(ags_21 = as.character(ags_21)) |>
+  group_by(ags_21, election_year) |>
+  summarise(
+    area = sum(area * final_area_cw, na.rm = TRUE),
+    population = sum(population * final_pop_cw, na.rm = TRUE)
+  ) |>
+  mutate(
+    area = round(area, digits = 2),
+    population = round(population, digits = 1)
+  ) |>
+  ungroup() |>
+  rename(ags = ags_21, year = election_year)
+
+# Assemble post-2021 harmonized data
+df_harm_post21 <- sums_post21 |>
+  left_join_check_obs(means_post21, by = c("ags", "year")) |>
+  left_join_check_obs(flags_post21, by = c("ags", "year")) |>
+  left_join_check_obs(area_pop_post21, by = c("ags", "year")) |>
+  mutate(ags = as.numeric(ags))
+
+
 # Get population & area for 2021
 ags21 <- read_excel(path = "data/crosswalks/raw/31122021_Auszug_GV.xlsx", sheet = 2) |>
   select(
@@ -460,6 +641,8 @@ df_harm <- sums |>
     select(-c(ags_name.x, ags_name.y, ags_name_21, emp_cw, employees, year_cw, id)) |>
     rename(year = election_year) |>
     mutate(ags = as.numeric(ags))) |>
+  # Bind post-2021 harmonized data (2023, 2024, 2025 mapped to 2021 boundaries)
+  bind_rows(df_harm_post21) |>
   # Create state variable
   mutate(
     ags = pad_zero_conditional(ags, 7),
@@ -588,7 +771,7 @@ plot_df |>
     panel.grid.minor = element_blank(),
     legend.position = "none"
   ) +
-  scale_x_continuous(breaks = seq(1990, 2021, 5))
+  scale_x_continuous(breaks = seq(1990, 2025, 5))
 
 ggsave("output/figures/muni_elections.pdf", width = 7, height = 4)
 
@@ -641,7 +824,7 @@ afd_plot_data |>
     panel.grid.minor = element_blank(),
     legend.position = "none"
   ) +
-  scale_x_continuous(breaks = seq(1990, 2021, 5))
+  scale_x_continuous(breaks = seq(1990, 2025, 5))
 
 ggsave("output/figures/muni_elections_afd.pdf", width = 7, height = 4)
 
@@ -649,6 +832,15 @@ ggsave("output/figures/muni_elections_afd.pdf", width = 7, height = 4)
 #        filter(state_name == "Mecklenburg-Vorpommern", year == 2014, !is.na(afd)))
 
 
-move_plots_to_overleaf("code")
+# move_plots_to_overleaf("code")
+
+
+# check number of munis in schleswig holstein per year
+
+df_harm %>%
+  filter(state == "01") %>%
+  group_by(election_year) %>%
+  summarise(n = n_distinct(ags)) %>%
+  print(n = Inf)
 
 ### END

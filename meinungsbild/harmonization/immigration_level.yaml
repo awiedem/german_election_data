@@ -1,0 +1,32 @@
+issue_id: immigration_level
+label_de: "Zuwanderung"
+label_en: "Immigration Level"
+description_de: "Sollte die Zuwanderung nach Deutschland begrenzt werden?"
+description_en: "Should immigration to Germany be limited?"
+direction: "higher = more restrictive"
+category: "immigration"
+
+sources:
+  politbarometer:
+    variable: "v45"  # placeholder — verify against codebook
+    years: [2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023]
+    question_de: "Finden Sie, dass die Zahl der Zuwanderer zu hoch, gerade richtig oder zu niedrig ist?"
+    response_scale: [1, 2, 3]  # 1=zu hoch, 2=gerade richtig, 3=zu niedrig
+    binary_coding: "y = 1 if response == 1 (zu hoch)"
+    notes: "Wording consistent across years"
+
+  gles:
+    variable: "kp1_2280"  # placeholder — verify against codebook
+    years: [2013, 2017, 2021]
+    question_de: "Zuzugsmöglichkeiten für Ausländer: erleichtern oder einschränken?"
+    response_scale: [1, 2, 3, 4, 5]  # 1=erleichtern ... 5=einschränken
+    binary_coding: "y = 1 if response >= 4"
+    notes: "5-point scale; dichotomize at 4+"
+
+  allbus:
+    variable: "mp03"  # placeholder — verify against codebook
+    years: [2016, 2018, 2021]
+    question_de: "Zuzugsmöglichkeiten für Ausländer einschränken"
+    response_scale: [1, 2, 3, 4, 5, 6, 7]
+    binary_coding: "y = 1 if response >= 5"
+    notes: "7-point scale"
