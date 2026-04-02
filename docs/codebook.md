@@ -33,6 +33,7 @@ header-includes:
 - [Mayoral Elections — Candidate-Level (`mayoral_candidates`)](#mayoral-elections--candidate-level)
 - [Mayor Panel (`mayor_panel` / `mayor_panel_harm`)](#mayor-panel-mayor_panel--mayor_panel_harm)
 - [Annual Mayor Panel (`mayor_panel_annual` / `mayor_panel_annual_harm`)](#annual-mayor-panel-mayor_panel_annual--mayor_panel_annual_harm)
+- [European Elections (Municipality Level)](#european-elections-municipality-level)
 - [Municipality Covariates (Area, Population, Employment)](#municipality-covariates-area-population-employment)
 
 ---
@@ -202,6 +203,62 @@ This dataset contains municipal council (Stadtrat/Gemeinderat) election results 
 
 - Vote shares are proportions of `valid_votes` (calculated as `prop_*` variables in `01_municipal_unharm.R`).
 - `area` and `population` are sourced from official municipality registers (Gemeindeverzeichnisse); `area` is km², `population` is scaled to thousands.
+
+---
+
+## European Elections (Municipality Level)
+
+### Unharmonized
+
+**File:** `data/european_elections/final/european_muni_unharm.rds` (or `.csv`)
+
+This dataset contains European Parliament election results from 2009 to 2024 at the municipality level, using each election year's original administrative boundaries. 44,722 rows × 87 columns (71 party columns).
+
+| Variable                     | Type      | Description                                                                                                    |
+| :--------------------------- | :-------- | :------------------------------------------------------------------------------------------------------------- |
+| `ags`                        | character | Municipality identifier (8-digit AGS), using that year's boundaries.                                           |
+| `county`                     | character | County identifier (5-digit code).                                                                              |
+| `state`                      | character | State identifier (2-digit code).                                                                               |
+| `state_name`                 | character | State name in English.                                                                                         |
+| `election_year`              | integer   | Year of the European election (2009, 2014, 2019, 2024).                                                       |
+| `election_date`              | Date      | Date of the election.                                                                                          |
+| `eligible_voters`            | numeric   | Number of eligible voters.                                                                                     |
+| `number_voters`              | numeric   | Number of voters (including invalid ballots). Includes allocated mail-in votes.                                |
+| `valid_votes`                | numeric   | Number of valid votes cast.                                                                                    |
+| `invalid_votes`              | numeric   | Number of invalid votes cast.                                                                                  |
+| `voters_wo_sperrvermerk`     | numeric   | Eligible voters without Sperrvermerk (A1).                                                                     |
+| `voters_w_sperrvermerk`      | numeric   | Eligible voters with Sperrvermerk (A2, EU citizens).                                                           |
+| `voters_par24_2`             | numeric   | Voters registered under § 24(2) EuWO (A3, Germans abroad).                                                    |
+| `voters_w_wahlschein`        | numeric   | Voters with Wahlschein (absentee ballot certificate, B1).                                                      |
+| `turnout`                    | numeric   | Voter turnout (`number_voters / eligible_voters`). Capped at 1.                                                |
+| `cdu`, `spd`, `gruene`, ...  | numeric   | Vote share for each party (proportion of `number_voters`, range 0–1). 71 party columns across all 4 elections. 0 means the party ran but received no votes; parties that did not run in a given year are also 0.  |
+| `flag_turnout_above_1`       | integer   | Flag (1/0): turnout exceeded 1 before capping (Briefwahl allocation rounding artifact).                        |
+
+**Notes:**
+
+- Vote shares use `number_voters` as denominator, consistent with the federal pipeline. Party shares sum to approximately `valid_votes / number_voters` (< 1.0 due to invalid votes).
+- Berlin appears as 14 Bezirke rows per year (not aggregated in the unharm file).
+- Mail-in votes from shared Briefwahl districts (Ämter/Verbandsgemeinden) are allocated proportionally by eligible voters within each `(county, BWBez)` group.
+
+### Harmonized
+
+**File:** `data/european_elections/final/european_muni_harm.rds` (or `.csv`)
+
+This dataset contains the same European election results harmonized to 2021 municipality boundaries. 42,986 rows × 90 columns.
+
+All variables from the unharmonized version, plus:
+
+| Variable                        | Type    | Description                                                                                       |
+| :------------------------------ | :------ | :------------------------------------------------------------------------------------------------ |
+| `flag_unsuccessful_naive_merge` | integer | Flag (1/0): initial crosswalk merge failed; resolved via year-1 fallback, identity code, or manual mapping. |
+| `flag_aggregated`               | integer | Flag (1/0): municipality was aggregated from multiple predecessor municipalities.                 |
+| `n_predecessors`                | integer | Number of predecessor municipalities that were merged into this 2021 boundary.                    |
+
+**Notes:**
+
+- Berlin is aggregated to a single row (AGS 11000000) per year.
+- Harmonization converts shares → counts, applies population-weighted crosswalk aggregation, then recomputes shares.
+- Crosswalk year mapping: 2009→2009, 2014→2014, 2019→2019, 2024→2020.
 
 ---
 
