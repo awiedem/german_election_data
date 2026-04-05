@@ -1,0 +1,198 @@
+---
+title: "Methodology Notes — Meinungsbild"
+format:
+  html:
+    embed-resources: true
+---
+
+## Overview: What is MRP?
+
+Surveys tell us what people think, but they rarely include enough respondents to produce reliable estimates for small geographic areas like counties or electoral districts. A national survey of 10,000 people might have only 20 respondents in a given county, far too few to estimate local opinion directly.
+
+**Multilevel regression and poststratification (MRP)** addresses this by combining two steps. First, we fit a multilevel (hierarchical) model that relates individual survey responses to demographic characteristics (age, gender, education) and geographic context (county-level covariates like partisan composition). The multilevel structure allows the model to partially pool information across groups: a county with few respondents borrows strength from demographically similar counties and from the state it belongs to, rather than relying solely on its own sparse data. Second, we reweight the model's predictions using census data to match the actual demographic composition of each geographic unit. This is the "poststratification" step: it ensures that estimates reflect who actually lives in each place, not who happened to be surveyed.
+
+Meinungsbild applies MRP to estimate German public opinion on 43 policy issues at three geographic levels: 16 federal states (Bundesländer), 400 counties (Kreise), and 299 electoral districts (Wahlkreise). The model is estimated with `lme4::glmer()`.
+
+## Survey data
+
+### Sources
+
+We pool five German survey programs spanning 2009 to 2025, totaling approximately 118,000 respondents. Each source contributes something different:
+
+| Source | N | Years | Geographic depth | Role |
+|--------|--:|-------|------------------|------|
+| GLES Tracking (ZA6832) | 52,336 | 2009--2023 | Bundesland + Wahlkreis | Backbone: large N with fine geography over 14 years |
+| GLES Cross-Section 2025 (ZA10100) | 7,337 | 2025 | Bundesland + Wahlkreis | Most recent election cycle |
+| GLES RCS 2025 (ZA10101) | 8,561 | 2025 | Bundesland + Wahlkreis | Rolling cross-section around 2025 election |
+| GLES Cumulation (ZA6835) | 21,040 | 2009--2021 | Bundesland only | Temporal depth; lacks Wahlkreis but adds sample size |
+| ALLBUS (ZA8974) | 29,112 | 2023--2024 | Bundesland only | Different survey mode; recent attitudes |
+
+The GLES Tracking study provides geographic precision (respondents are located to their Wahlkreis), which is essential for the county- and district-level random effects. The ALLBUS and GLES Cumulation contribute additional respondents and temporal coverage, even though they only identify respondents at the state level. The model accommodates this: respondents without county or Wahlkreis identifiers still inform the demographic and state-level parameters.
+
+### Demographic harmonization
+
+Because the five surveys use different variable codings, we harmonize all demographics to a common scheme:
+
+- **Age**: 5 categories (18--29, 30--44, 45--59, 60--74, 75+), derived from birth year or reported age.
+- **Gender**: binary (male / not male). Coded from dataset-specific gender variables.
+- **Education**: 5 levels (no degree, Hauptschule, Realschule, Abitur, university). This requires careful mapping: the GLES studies use multiple encoding schemes for school qualifications, and university status is sometimes stored separately in vocational qualification variables. Where a respondent's school degree is listed as Abitur but their vocational qualifications indicate a university degree, we upgrade to university.
+
+### Issue coding
+
+Each of the 43 policy issues is converted to a binary outcome ($y \in \{0,1\}$) using an issue concordance table that maps raw survey variables to a common coding. For Likert-scale questions, the concordance specifies a threshold (e.g., "y = 1 if response $\geq$ 7 on a 1--11 scale"). For binary yes/no items, the mapping is direct. The concordance also records which survey datasets contain each issue, since not all issues appear in all surveys.
+
+The 43 issues span immigration policy, economic redistribution, energy and climate, security, social policy, and democratic attitudes.
+
+### Temporal structure
+
+Each respondent is assigned to a legislative period (Legislaturperiode) based on their interview date. The model includes a random intercept for legislative period, which absorbs temporal shifts in opinion that affect all respondents interviewed during the same Bundestag session (e.g., 19. BT: 2017--2021, 20. BT: 2021--2025). A random intercept for survey source separately absorbs persistent differences between survey programs (mode effects, house effects, sampling frame differences).
+
+## Poststratification frame
+
+The poststratification frame tells the model how many people of each demographic type live in each geographic unit. Without it, MRP cannot translate individual-level predictions into area-level estimates.
+
+We construct the frame from **Zensus 2022** cross-tabulations of age $\times$ sex $\times$ education at the county level. Each county is divided into 50 demographic cells: 5 age groups $\times$ 2 gender categories $\times$ 5 education levels. Across Germany's roughly 400 counties, this yields about 20,000 cells covering approximately 70 million adults.
+
+One complication: the Zensus publishes school-leaving qualifications (Schulabschluss) but not tertiary degrees at the county level in its cross-tabulations. To approximate the university category, we use a national-level Zensus estimate that about 55% of Abitur holders also hold a university degree, and apply this split uniformly across counties. This is an approximation; the true university share varies regionally. However, the model's state- and county-level random effects can absorb much of this variation, so the approximation is unlikely to introduce large bias.
+
+## Geographic covariates
+
+MRP models benefit from area-level covariates because they help the model predict opinion in places with few or no survey respondents. If a county has zero respondents, the model cannot estimate a county-specific random effect for it, but it can still generate predictions using the county's covariates (partisan composition, population density) together with the demographic cell structure.
+
+We include four county-level covariates, all standardized to mean zero and unit variance:
+
+- **AfD vote share** (`fed_afd_share_z`): from the most recent federal election. Proxies for right-wing populist sentiment and East/West divides.
+- **CDU/CSU vote share** (`fed_cdu_share_z`): captures mainstream conservative context.
+- **Voter turnout** (`fed_turnout_z`): reflects political engagement and mobilization patterns.
+- **Log population density** (`log_pop_density_z`): distinguishes urban from rural areas, which differ systematically on many policy attitudes.
+
+Election results come from GERDA (the German Election Database); population density comes from INKAR. All covariates are z-scored so that their coefficients are comparable in magnitude.
+
+We deliberately omit an East Germany indicator. It is highly collinear with AfD vote share ($r > 0.8$), and including both caused the model to attribute geographic variation to the fixed effects rather than letting the random effects capture it. Dropping the East dummy and retaining AfD share produced more stable estimates.
+
+## Model specification
+
+For each of the 43 binary issues, we fit a separate logistic multilevel model:
+
+```r
+y ~ male +
+    fed_afd_share_z + fed_cdu_share_z + fed_turnout_z + log_pop_density_z +
+    (1 | age_cat) + (1 | educ_label) +
+    (1 | educ_label:age_cat) + (1 | male:age_cat) + (1 | male:educ_label) +
+    (1 | survey_source) + (1 | legperiod) +
+    (1 | state_code) + (1 | county_code) + (1 | wkr_nr)
+```
+
+### Fixed effects
+
+The five fixed effects capture individual gender and area-level political context. Gender enters as a fixed effect because it has only two levels, too few for partial pooling to help. The four county-level covariates enter as fixed effects because we want them to have a consistent linear relationship with opinion across all areas; if they entered as random effects, their influence would be pooled toward zero.
+
+### Random effects
+
+Each `(1 | group)` term adds a varying intercept for that grouping variable. The key idea is **partial pooling**: the model estimates a group-specific deviation from the overall mean, but shrinks it toward zero in proportion to how little data that group has. A county with 3 respondents gets an intercept pulled heavily toward the state or national average; a county with 300 respondents gets an intercept that reflects its own data more closely.
+
+The random effects fall into three categories:
+
+**Demographic main effects and interactions.** Following Ghitza and Gelman (2013), we include varying intercepts for age, education, and all three pairwise interactions (education $\times$ age, gender $\times$ age, gender $\times$ education). These "deep interactions" allow the model to capture nonlinear demographic patterns: for instance, young men without a university degree may hold systematically different views than what a simple additive model of age + gender + education would predict. Goplerud (2024) shows that this deep interaction structure performs comparably to machine learning ensembles for MRP.
+
+**Survey design effects.** Random intercepts for `survey_source` (5 levels) and `legperiod` (4--5 levels) absorb systematic differences between survey programs and time periods. This prevents, say, the ALLBUS's higher proportion of older respondents from distorting the demographic intercepts.
+
+**Geographic hierarchy.** Random intercepts for state (16), county (~253 with respondents), and electoral district (~299) form a cross-classified geographic structure. Counties nest within states, but electoral districts (Wahlkreise) do not nest within counties: a Wahlkreis can span parts of multiple counties. The model handles this through cross-classification rather than strict nesting, estimating separate random effects for counties and Wahlkreise that are additive on the log-odds scale.
+
+### Adaptive formula
+
+Not all issues have respondents in all geographic units or all survey sources. If an issue appears in only one survey program, the `survey_source` random effect has just one level and cannot be estimated. The model-fitting code checks the number of observed levels for each random effect and drops any term with fewer than 2 levels (or fewer than 10 for county and Wahlkreis, where very sparse random effects can cause convergence problems).
+
+### Convergence
+
+The models are estimated with the BOBYQA optimizer and a Laplace approximation (`nAGQ = 0`) for speed. If the full model fails to converge, a fallback drops the Wahlkreis random effect (the most granular and often the most problematic) and re-estimates. Issues where both attempts fail are skipped.
+
+## Poststratification
+
+After fitting the model, we generate predicted probabilities for every cell in the poststratification frame: each combination of age, gender, education, and geographic unit. We then compute the area-level estimate as a population-weighted average:
+
+$$
+\hat{\theta}_g = \sum_j \frac{N_{jg}}{N_g} \times \Pr(y=1 \mid \text{demographics}_j, \text{geography}_g)
+$$
+
+Here $g$ indexes a geographic unit (county, state, or Wahlkreis), $j$ indexes the 50 demographic cells within that unit, $N_{jg}$ is the census count of people in cell $j$ of unit $g$, and $N_g = \sum_j N_{jg}$ is the total adult population. The predicted probability $\Pr(y=1)$ comes from the fitted model evaluated at the demographics and covariates of each cell.
+
+This reweighting is what makes MRP work for small areas. Even if a county's survey respondents are disproportionately old and male, the poststratification step corrects for this by weighting each demographic cell according to its true population share.
+
+### Three geographic levels
+
+- **Bundesländer** (16 federal states): the most reliable estimates, because each state aggregates many counties and has substantial survey coverage.
+- **Kreise** (400 counties): the finest resolution. This is the level at which the poststratification frame is defined and predictions are generated.
+- **Wahlkreise** (299 electoral districts): politically relevant (each elects one Bundestag member), but their boundaries do not align with county boundaries. Wahlkreis estimates are constructed by mapping county-level predictions to Wahlkreise using a population-weighted area crosswalk. Each county's demographic cells are split across overlapping Wahlkreise in proportion to area overlap, and the weighted average is taken.
+
+## Validation
+
+We validate the MRP estimates by comparing them to direct survey means at the Bundesland level, where sample sizes are large enough for direct estimation to be reasonably precise.
+
+### Bundesland-level performance
+
+- **Median correlation: $r$ = 0.899** across 43 issues. This means that for the typical issue, the MRP estimates track the rank ordering of states well: states where direct survey averages are high also have high MRP estimates, and vice versa.
+- **Median RMSE: 5.5 percentage points.** On a 0--100 scale, the typical MRP estimate is within about 5.5 points of the direct survey estimate. This is a reasonable level of accuracy given that the direct estimates themselves carry sampling error.
+
+Some issues perform markedly better: ukraine\_arms ($r$ = 0.993), rent\_control (0.992), taxes\_vs\_spending (0.988), and nuclear\_energy (0.981) show near-perfect state-level tracking. These tend to be issues with strong regional variation and large sample sizes.
+
+Six issues have correlations below 0.5: internet\_control, income\_reduce, econ\_current\_personal, mandatory\_service, fear\_war, and higher\_earners\_tax. These are flagged as low-confidence on the website. Low performance typically reflects either weak geographic variation (the issue divides people demographically but not regionally) or small sample sizes.
+
+### Face validity
+
+Beyond correlations, we check that the estimates relate to external covariates in expected directions. For instance, MRP estimates of support for immigration restriction should correlate positively with county-level AfD vote share; climate policy priority should correlate with Green party vote share; and democracy satisfaction should be lower in East German counties than West German ones. These checks confirm that the model is picking up substantively meaningful geographic patterns, not just noise.
+
+### Low-confidence flags
+
+Issues are flagged on the website if their Bundesland-level correlation falls below 0.5 or if the within-issue geographic variation is implausibly low (SD $<$ 1 percentage point across counties). Flagged issues remain visible but are marked to signal that the estimates should be interpreted with caution.
+
+## Geographic boundaries
+
+| Level | Source | File |
+|-------|--------|------|
+| Bundeslaender | VG250 (BKG) | `bundeslaender.geojson` |
+| Kreise | VG250 (BKG) | `kreise.geojson` |
+| Wahlkreise | Bundeswahlleiterin BTW 2025 boundaries (generalized, WGS84) | `wahlkreise.geojson` |
+
+Wahlkreis boundaries obtained from [bundeswahlleiterin.de](https://www.bundeswahlleiterin.de/bundestagswahlen/2025/wahlkreiseinteilung/downloads.html), simplified with `sf::st_simplify(dTolerance = 0.002)` for web performance.
+
+## Related projects
+
+Several other projects use MRP or similar methods to estimate subnational public opinion. Meinungsbild is, to our knowledge, the first to produce county-level (Kreis) opinion estimates for Germany across a broad range of policy issues with a public-facing interactive tool.
+
+**Public opinion mapping (multi-issue).** The closest comparators are US-based. [TrueViews](https://trueviews.org/) estimates policy preferences on many issues at the state and congressional district level, using CES and Nationscape data (over 1 million respondents). The [American Ideology Project](https://americanideologyproject.com/) (Tausanovitch and Warshaw) estimates ideology scores down to the zip code level using 18 surveys. Both are interactive tools but cover only the United States.
+
+**Climate opinion maps.** The Yale Program on Climate Change Communication produces MRP-based opinion maps for the [United States](https://climatecommunication.yale.edu/visualizations-data/ycom-us/) (county-level, ~3,000 units), the [United Kingdom](https://climatecommunication.yale.edu/visualizations-data/ycom-uk/) (local authority level), [Ireland](https://climatecommunication.yale.edu/visualizations-data/ireland-climate-opinion-maps/) (county level), and [India](https://climatecommunication.yale.edu/visualizations-data/ycomindia/) (district level). These are the most established public-facing MRP tools internationally, though they cover only climate attitudes.
+
+**Germany.** [YouGov](https://yougov.co.uk/international/articles/51394-first-yougov-mrp-model-of-the-2025-german-election-shows-gains-for-right) produced constituency-level (Wahlkreis) vote share estimates for the 2025 Bundestagswahl using MRP, correctly calling 91% of constituencies. Selb and Munzert (2011) estimated constituency-level party preferences using a Bayesian hierarchical model with spatial smoothing, though without a public tool. Neither project estimates general policy opinions.
+
+**United Kingdom.** MRP has become the standard method for UK constituency-level election forecasting, used by Ipsos, Focaldata, Survation, and Electoral Calculus, among others. These are primarily election prediction tools rather than general opinion mapping.
+
+**European MRP more broadly.** Leemann and Wasserfallen (2017) developed MrsP (MRP with synthetic poststratification), which relaxes the requirement for census cross-tabulations to marginal distributions only, making MRP feasible in countries without detailed census microdata. They validate it for Swiss cantons. EU-wide subnational opinion estimation using Eurobarometer data has been attempted at the NUTS 1/2 level (coarser than counties), with some work showing that BART with synthetic poststratification can outperform standard MRP in that setting.
+
+**Dynamic estimation.** Caughey and Warshaw (2015; book: *Dynamic Democracy*, 2022) extend MRP with a dynamic group-level IRT model that tracks latent opinion over time at the US state level. Meinungsbild currently produces cross-sectional estimates pooled across legislative periods rather than dynamic time series.
+
+## Key references
+
+1. Ghitza & Gelman (2013). "Deep Interactions MRP" — motivation for including all two-way demographic interactions
+2. Goplerud (2024). "Re-evaluating ML for MRP" — evidence that deep hierarchical models match ML ensemble approaches
+3. Gao et al. (2021). "Improving MRP with Structured Priors" — RW1 + BYM2 spatial structure (potential future extension)
+4. Selb & Munzert (2011). MRP for German Wahlkreise
+5. Warshaw & Rodden (2012). District-level MRP validation
+6. Leemann & Wasserfallen (2017). "Extending the Use and Prediction Precision of Subnational Public Opinion Estimation" — MrsP with synthetic poststratification
+7. Caughey & Warshaw (2015). "Dynamic Estimation of Latent Opinion Using a Hierarchical Group-Level IRT Model" — dynamic MRP
+8. Tausanovitch & Warshaw (2013). "Measuring Constituent Policy Preferences in Congress, State Legislatures, and Cities" — sub-state MRP
+
+## Pipeline scripts
+
+| Script | Purpose |
+|--------|---------|
+| `01_harmonize_all.R` | Pool 5 survey datasets, harmonize demographics and issues to common coding |
+| `02_build_poststrat_frame.R` | Build county-level poststratification frame (synthetic, from national proportions) |
+| `02b_download_zensus.R` | Download Zensus 2022 cross-tabs and build frame from actual census data |
+| `03_load_covariates.R` | Load federal election results and INKAR covariates for counties |
+| `03b_build_adjacency.R` | Build county adjacency matrix from VG250 shapefiles |
+| `04b_fit_all_lme4.R` | Fit lme4 models for all 43 issues, generate predictions, poststratify |
+| `04_fit_mrp.R` | Experimental: brms/Stan models with spatial priors (RW1 + BYM2) |
+| `07_export_estimates.R` | Export estimates to JSON (website) and CSV (download) |
+| `08_check_pipeline.R` | 135-check validation pipeline covering all stages |
