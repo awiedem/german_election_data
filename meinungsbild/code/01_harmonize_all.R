@@ -619,9 +619,13 @@ issue_rules <- concordance |>
 apply_binary_rule <- function(x, rule) {
   if (is.na(rule) || rule == "continuous") return(x)
 
-  # Parse rules like "y=1 if >= 7", "y=1 if <= 2", "y=1 if <= 5",
+  # Parse rules like "y=1 if >= 7", "y=1 if <= 2", "y=1 if == 322",
   # "y=1 if agree", "y=1 if support", "y=1 if oppose (recode)",
   # "y=1 if cannot cope", "y=1 if good"
+  if (str_detect(rule, "==\\s*\\d+")) {
+    val <- as.numeric(str_extract(rule, "\\d+$"))
+    return(as.integer(x == val))
+  }
   if (str_detect(rule, ">=\\s*\\d+")) {
     threshold <- as.numeric(str_extract(rule, "\\d+$"))
     return(as.integer(x >= threshold))
