@@ -195,6 +195,7 @@ All three approaches degraded the baseline (412 OK / 531 BAD). The original code
 | 2026-03-23 | Harm weight imputation | All 3 harm scripts: impute valid_votes from number_voters/eligible_voters when NA | 50 rows imputed; HB 1991/1995 now have proper party shares in harm |
 | 2026-03-24 | NRW 1947 OCR | Visual reading of 150 WK from scanned PDF → 84 Kreise via `00_nrw_1947_compile.py` | 8 parties; VV=5,028,892 exact; CDU+4/FDP-1/KPD+2/Z-5 scan residuals |
 | 2026-03-24 | NRW pre-1975 update | Merged 1947 into `nrw_pre1975_kreis.csv` (637 rows, 7 elections); added `rwvp` column and 1947 date to `01b` | County-level only, synthetic AGS, unharm only |
+| 2026-04-10 | HH 2020 Landesstimmen fix | Raw file `Hamburg_2020_Bürgerschaft.xlsx` contained Wahlkreislistenstimmen (district list votes); replaced with `Hamburg_2020_Landesliste.xlsx` from Statistik Nord containing Landesstimmen (state-wide list votes), consistent with 2011/2015/2025. Updated `01b` to use Gesamtstimmen column pattern. | SPD 39.2→39.2%, CDU 15.1→11.2%, Grüne 25.7→24.2%; valid_votes 4,016,871→4,062,376. Reported by Robert Stelzle (bundeslaendeR). |
 
 ---
 

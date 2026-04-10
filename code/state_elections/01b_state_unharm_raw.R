@@ -4247,9 +4247,12 @@ result15$cdu_csu <- result15$cdu
 cat("EV=", eligible15, "valid=", valid15, "\n")
 hh_results[["2015"]] <- result15
 
-## ---------- 2020 (XLSX, no Gesamt/Listen split) ----------
+## ---------- 2020 (XLSX, Landesliste Gesamtstimmen) ----------
+## NOTE: The original Hamburg_2020_Bürgerschaft.xlsx contained Wahlkreislistenstimmen
+## (district list votes). Seat allocation uses Landesstimmen, so we use the
+## Landesliste file instead, consistent with 2011/2015/2025.
 cat("HH 2020 ...")
-hh_f20 <- list.files(hh_raw_path, pattern = "2020.*\\.xlsx$",
+hh_f20 <- list.files(hh_raw_path, pattern = "2020.*Landesliste.*\\.xlsx$",
                      full.names = TRUE, recursive = TRUE)
 hh_raw20 <- read_excel(hh_f20, col_names = FALSE, .name_repair = "minimal")
 # Header in row 3, data from row 4
@@ -4257,23 +4260,23 @@ hh_h20 <- as.character(hh_raw20[3, ])
 hh_data20 <- hh_raw20[4:nrow(hh_raw20), ]
 
 # EV from non-Briefwahl rows only; votes from ALL rows
-# 2020 layout: col 6=EV, col 7=voters, col 10=invalid, col 12=valid stimmen
+# 2020 Landesliste layout: col 6=EV, col 7=voters, col 10=invalid, col 12=valid Gesamtstimmen
 ev20_all <- hh_safe_num(hh_data20[[6]])
 eligible20 <- sum(ev20_all[ev20_all > 0], na.rm = TRUE)
 voters20   <- sum(hh_safe_num(hh_data20[[7]]), na.rm = TRUE)
 invalid20  <- sum(hh_safe_num(hh_data20[[10]]), na.rm = TRUE)
 valid20    <- sum(hh_safe_num(hh_data20[[12]]), na.rm = TRUE)
 
-# Party columns: 13 onwards (single column per party)
-party_cols20 <- 13:ncol(hh_raw20)
-party_names20 <- hh_h20[party_cols20]
-party_std20 <- vapply(party_names20, hh_map_party, character(1), USE.NAMES = FALSE)
+# Filter for Gesamtstimmen columns only (4 cols per party: Gesamt/Listen/Person/HR)
+gesamt_cols20 <- which(grepl("Gesamtstimmen", hh_h20))
+gesamt_names20 <- hh_h20[gesamt_cols20]
+gesamt_std20 <- vapply(gesamt_names20, hh_map_party, character(1), USE.NAMES = FALSE)
 
 mapped_votes20 <- list()
-for (i in seq_along(party_cols20)) {
-  std <- party_std20[i]
+for (i in seq_along(gesamt_cols20)) {
+  std <- gesamt_std20[i]
   if (!is.na(std)) {
-    v <- sum(hh_safe_num(hh_data20[[party_cols20[i]]]), na.rm = TRUE)
+    v <- sum(hh_safe_num(hh_data20[[gesamt_cols20[i]]]), na.rm = TRUE)
     if (std %in% names(mapped_votes20)) {
       mapped_votes20[[std]] <- mapped_votes20[[std]] + v
     } else {
