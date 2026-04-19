@@ -38,7 +38,9 @@ table(df$election_year)
 # Identify party variables by excluding metadata columns
 metadata_cols <- c("ags", "county", "election_year", "state", "election_date",
                    "eligible_voters", "number_voters", "valid_votes",
-                   "invalid_votes", "turnout", "flag_naive_turnout_above_1")
+                   "invalid_votes", "turnout", "other", "cdu_csu",
+                   "flag_naive_turnout_above_1", "flag_no_valid_votes",
+                   "flag_briefwahl_only")
 party_vars <- setdiff(names(df), metadata_cols)
 
 cat("Party variables found:", paste(party_vars, collapse = ", "), "\n")
@@ -113,13 +115,19 @@ df <- df |>
     )
   )
 
+# NA-preserving sum: returns NA when ALL inputs are NA (sum(NA, na.rm=TRUE) → 0 in base R)
+sum_na <- function(x) {
+  if (all(is.na(x))) return(NA_real_)
+  sum(x, na.rm = TRUE)
+}
+
 # After correcting AGS codes, aggregate any duplicates
 df <- df |>
   group_by(ags, election_year, state) |>
   summarise(
     across(
       c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
-      ~ sum(.x, na.rm = TRUE)
+      ~ sum_na(.x)
     ),
     across(any_of(c("election_date", "county")), first),
     .groups = "drop"
@@ -317,13 +325,20 @@ df_cw <- df_cw |> filter(!is.na(ags_23))
 
 cat("Harmonizing to 2023 borders...\n")
 
+# Weighted sum that preserves NA when ALL source values are NA
+# (sum(NA * w, na.rm=TRUE) returns 0, but semantically it should be NA)
+wsum_na <- function(x, w) {
+  if (all(is.na(x))) return(NA_real_)
+  sum(x * w, na.rm = TRUE)
+}
+
 # Harmonize vote counts with weighted sum
 votes <- df_cw |>
   group_by(ags_23, election_year) |>
   summarise(
     across(
       c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
-      ~ sum(.x * pop_cw, na.rm = TRUE)
+      ~ wsum_na(.x, pop_cw)
     ),
     .groups = "drop"
   ) |>
@@ -340,7 +355,14 @@ glimpse(votes)
 df_harm <- votes %>%
   mutate(
     across(all_of(party_vars), ~ ifelse(valid_votes > 0, .x / valid_votes, NA_real_)),
-    turnout = ifelse(eligible_voters > 0, number_voters / eligible_voters, NA_real_)
+    turnout = ifelse(eligible_voters > 0, number_voters / eligible_voters, NA_real_),
+    # Flag and cap harmonized turnout (mirrors unharm safety net)
+    flag_harm_turnout_above_1 = ifelse(!is.na(turnout) & is.finite(turnout) & turnout > 1, 1L, 0L),
+    turnout = ifelse(is.finite(turnout), turnout, NA_real_),
+    turnout = ifelse(!is.na(turnout) & turnout > 1.5, NA_real_, turnout),
+    # Recompute derived columns after harmonization
+    other = pmax(1 - rowSums(across(all_of(party_vars)), na.rm = TRUE), 0),
+    cdu_csu = coalesce(cdu, 0) + coalesce(csu, 0)
   ) |>
   rename(ags = ags_23) |>
   filter(!is.na(ags)) |>
@@ -352,6 +374,14 @@ df_harm <- votes %>%
   relocate(state, .after = election_year) |>
   relocate(state_name, .after = state) |>
   arrange(ags, election_year)
+
+# Diagnostic: harmonized turnout flags
+n_flagged <- sum(df_harm$flag_harm_turnout_above_1, na.rm = TRUE)
+if (n_flagged > 0) {
+  cat(sprintf("WARNING: %d rows with harmonized turnout > 1 (flagged)\n", n_flagged))
+  n_capped <- sum(is.na(df_harm$turnout) & df_harm$flag_harm_turnout_above_1 == 1, na.rm = TRUE)
+  if (n_capped > 0) cat(sprintf("  Of these, %d rows had turnout > 1.5 → set to NA\n", n_capped))
+}
 
 glimpse(df_harm)
 
@@ -421,8 +451,7 @@ if (nrow(zero_party_lookup) > 0) {
 
 # Pooled party columns
 far_right_cols <- intersect(
-  c("afd", "npd", "rep", "die_rechte", "dvu", "iii_weg", "fap", "ddd", "dsu",
-    "die_heimat_heimat", "die_republikaner_rep"),
+  c("afd", "npd", "rep", "die_rechte", "dvu", "iii_weg", "fap", "ddd", "dsu"),
   names(df_harm))
 far_left_cols <- intersect(
   c("dkp", "kpd", "mlpd", "sgp", "psg", "kbw"),
@@ -435,19 +464,20 @@ df_harm <- df_harm |>
   mutate(
     far_right = rowSums(across(any_of(far_right_cols)), na.rm = TRUE),
     far_left = rowSums(across(any_of(far_left_cols)), na.rm = TRUE),
-    far_left_w_linke = rowSums(across(any_of(c("linke_pds", "pds"))),
+    far_left_w_linke = rowSums(across(any_of(c("linke_pds"))),
                                 na.rm = TRUE) + far_left
   )
 
-# Total vote share: sum ALL individual party columns
+# Total vote share: sum ALL individual party columns (excludes "other")
+# Note: total_vote_share < 1 means a non-trivial "other" residual, not data error
 all_derived <- c("far_right", "far_left", "far_left_w_linke", "cdu_csu")
 tvs_cols <- setdiff(party_vars, all_derived)
 df_harm <- df_harm |>
   mutate(
     total_vote_share = round(rowSums(across(all_of(tvs_cols)), na.rm = TRUE), 8),
-    flag_total_votes_incongruent = ifelse(
+    flag_other_party_residual = ifelse(
       total_vote_share > 1.001 | total_vote_share < 0.999, 1, 0),
-    perc_total_votes_incogruence = round(total_vote_share - 1, 6)
+    perc_total_votes_incongruence = round(total_vote_share - 1, 6)
   )
 
 glimpse(df_harm)

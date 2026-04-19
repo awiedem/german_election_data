@@ -45,6 +45,12 @@ CITY_PAGES = {}
 
 VERBOSE = False
 
+# DPI and coordinate scaling
+# All hardcoded pixel positions are in 300-DPI reference units.
+# Multiply by SCALE to get actual pixel positions at the chosen DPI.
+OCR_DPI = 300
+SCALE = OCR_DPI / 300
+
 
 # ---------------------------------------------------------------------------
 # OCR helpers
@@ -100,18 +106,87 @@ def parse_number(words, x_min, x_max):
 # Left page extraction (identifiers + totals)
 # ---------------------------------------------------------------------------
 
+def _try_strip_leading_digit(val):
+    """Try removing leading digit from an integer; return candidate or None."""
+    s = str(val)
+    if len(s) > 1:
+        return int(s[1:])
+    return None
+
+
+def _validate_and_correct_entry(entry):
+    """Validate and self-correct EV/NV/IV/VV consistency.
+
+    Detects OCR digit-concatenation artifacts (stray digit from adjacent column
+    prepended to a number) and attempts to fix them by stripping leading digits.
+    Sets values to None when self-correction fails.
+    """
+    ev = entry.get("eligible_voters")
+    nv = entry.get("number_voters")
+    iv = entry.get("invalid_votes") or 0
+    vv = entry.get("valid_votes")
+
+    corrected = False
+
+    # Self-correct VV: if VV >> NV, try removing leading digit
+    if vv and nv and vv > nv * 1.5 and nv > 0:
+        candidate = _try_strip_leading_digit(vv)
+        if candidate is not None and abs(candidate - (nv - iv)) <= max(3, nv * 0.05):
+            if VERBOSE:
+                print(f"        VV corrected: {vv} → {candidate} (stripped leading digit)")
+            entry["valid_votes"] = candidate
+            vv = candidate
+            corrected = True
+
+    # Self-correct NV: if NV >> EV, try removing leading digit
+    if nv and ev and ev > 0 and nv > ev * 1.15:
+        candidate = _try_strip_leading_digit(nv)
+        vv_check = entry.get("valid_votes") or 0
+        if candidate is not None and candidate <= ev * 1.05:
+            # Also check arithmetic: candidate - iv ≈ vv
+            if vv_check == 0 or abs(candidate - iv - vv_check) <= max(3, candidate * 0.05):
+                if VERBOSE:
+                    print(f"        NV corrected: {nv} → {candidate} (stripped leading digit)")
+                entry["number_voters"] = candidate
+                nv = candidate
+                corrected = True
+
+    # Self-correct EV: if EV seems too small (NV >> EV), try stripping leading digit from NV
+    # already handled above; also try the opposite: EV may have lost a digit
+    # (but we can't reconstruct missing digits, only strip extra ones)
+
+    # Final validation: if still inconsistent after correction, set to None
+    nv = entry.get("number_voters")
+    vv = entry.get("valid_votes")
+    ev = entry.get("eligible_voters")
+
+    if nv and ev and ev > 0 and nv > ev * 1.15:
+        if VERBOSE:
+            print(f"        NV invalidated: {nv} > EV*1.15 ({ev})")
+        entry["number_voters"] = None
+
+    if vv and nv and vv > nv * 1.5:
+        if VERBOSE:
+            print(f"        VV invalidated: {vv} > NV*1.5 ({nv})")
+        entry["valid_votes"] = None
+
+    return corrected
+
+
 def extract_left_page(df):
     """Extract municipality data from a left (even) page.
 
     Returns list of dicts with: ags, ags_y, eligible_voters, number_voters,
     invalid_votes, valid_votes.
     """
+    S = SCALE  # shorthand
+
     entries = []
     for _, row in df.iterrows():
         txt = row["text"]
         x = row["left"]
         y = row["top"]
-        if x < 350 and re.match(r"^12\d{6}$", txt):
+        if x < 350 * S and re.match(r"^12\d{6}$", txt):
             entries.append({"ags": txt, "ags_y": y})
 
     entries.sort(key=lambda e: e["ags_y"])
@@ -121,29 +196,30 @@ def extract_left_page(df):
 
         # E abs. row: "E" marker at x≈1080-1280 near ags_y
         e_abs_y = None
-        nearby = df[(df["top"] > ags_y - 25) & (df["top"] < ags_y + 30)]
+        nearby = df[(df["top"] > ags_y - 25 * S) & (df["top"] < ags_y + 30 * S)]
         for _, row in nearby.iterrows():
-            if row["text"] == "E" and 1080 < row["left"] < 1280:
+            if row["text"] == "E" and 1080 * S < row["left"] < 1280 * S:
                 e_abs_y = row["top"]
                 break
 
         if e_abs_y is not None:
-            e_row = df[(df["top"] > e_abs_y - 18) & (df["top"] < e_abs_y + 18)]
-            entry["eligible_voters"] = parse_number(e_row, 1300, 1575)
-            entry["number_voters"] = parse_number(e_row, 1590, 1870)
+            e_row = df[(df["top"] > e_abs_y - 18 * S) & (df["top"] < e_abs_y + 18 * S)]
+            # Tighter ranges with wider inter-column gaps to prevent cross-column pickup
+            entry["eligible_voters"] = parse_number(e_row, 1310 * S, 1560 * S)
+            entry["number_voters"] = parse_number(e_row, 1600 * S, 1860 * S)
 
         # Z abs. row: "Z" marker at x≈1080-1280, y ∈ [ags_y+35, ags_y+140]
         z_abs_y = None
-        z_search = df[(df["top"] > ags_y + 35) & (df["top"] < ags_y + 140)]
+        z_search = df[(df["top"] > ags_y + 35 * S) & (df["top"] < ags_y + 140 * S)]
         for _, row in z_search.iterrows():
-            if row["text"] == "Z" and 1080 < row["left"] < 1280:
+            if row["text"] == "Z" and 1080 * S < row["left"] < 1280 * S:
                 z_abs_y = row["top"]
                 break
 
         if z_abs_y is not None:
-            z_row = df[(df["top"] > z_abs_y - 18) & (df["top"] < z_abs_y + 18)]
-            entry["invalid_votes"] = parse_number(z_row, 1890, 2160)
-            entry["valid_votes"] = parse_number(z_row, 2170, 2450)
+            z_row = df[(df["top"] > z_abs_y - 18 * S) & (df["top"] < z_abs_y + 18 * S)]
+            entry["invalid_votes"] = parse_number(z_row, 1900 * S, 2150 * S)
+            entry["valid_votes"] = parse_number(z_row, 2190 * S, 2440 * S)
 
         # Impute VV from NV - IV if VV is missing but NV is available
         if entry.get("valid_votes") is None or entry.get("valid_votes") == 0:
@@ -152,6 +228,9 @@ def extract_left_page(df):
             if nv and nv > iv:
                 entry["valid_votes"] = nv - iv
 
+        # Validate and self-correct EV/NV/IV/VV consistency
+        _validate_and_correct_entry(entry)
+
     return entries
 
 
@@ -159,12 +238,14 @@ def extract_left_page(df):
 # Right page extraction (party percentages)
 # ---------------------------------------------------------------------------
 
-def find_pct_row_ys(df_right, y_min=500):
+def find_pct_row_ys(df_right, y_min=None):
     """Find y-positions of percentage rows on right page.
 
     Uses comma-containing values (NN,NN) to identify rows.
     Returns sorted list of cluster center y-positions.
     """
+    if y_min is None:
+        y_min = 500 * SCALE
     pct_ys = []
     for _, row in df_right.iterrows():
         if row["top"] < y_min:
@@ -178,7 +259,7 @@ def find_pct_row_ys(df_right, y_min=500):
     pct_ys.sort()
     clusters = [[pct_ys[0]]]
     for y in pct_ys[1:]:
-        if y - clusters[-1][-1] < 25:
+        if y - clusters[-1][-1] < 25 * SCALE:
             clusters[-1].append(y)
         else:
             clusters.append([y])
@@ -190,11 +271,13 @@ def find_pct_row_ys(df_right, y_min=500):
     return [sum(c) / len(c) for c in good]
 
 
-def extract_row_values(df_right, y_center, tolerance=15):
+def extract_row_values(df_right, y_center, tolerance=None):
     """Extract percentage and zero-marker values from a row at y_center.
 
     Returns sorted list of (x_center, value) pairs.
     """
+    if tolerance is None:
+        tolerance = 15 * SCALE
     row_words = df_right[
         (df_right["top"] > y_center - tolerance) &
         (df_right["top"] < y_center + tolerance)
@@ -217,12 +300,14 @@ def extract_row_values(df_right, y_center, tolerance=15):
     return sorted(results, key=lambda v: v[0])
 
 
-def assign_to_parties_by_position(values, col_positions, tolerance=60):
+def assign_to_parties_by_position(values, col_positions, tolerance=None):
     """Assign (x, pct) pairs to parties by nearest column position.
 
     Each value is matched to the nearest column within tolerance.
     Unmatched columns default to 0.0.
     """
+    if tolerance is None:
+        tolerance = 60 * SCALE
     result = {p: 0.0 for p in PARTY_ORDER}
     n = min(len(col_positions), len(PARTY_ORDER))
 
@@ -313,7 +398,7 @@ def process_page_pair(left_image, right_image, page_num, col_template=None):
     df_right = safe_ocr(right_image)
 
     # Table 5 detection
-    header = df_left[(df_left["top"] < 400) & (df_left["left"] < 1500)]
+    header = df_left[(df_left["top"] < 400 * SCALE) & (df_left["left"] < 1500 * SCALE)]
     header_text = " ".join(header.sort_values("left")["text"].values).lower()
     if "kreisfreien" in header_text or "wahlbezirken" in header_text:
         return [], col_template, True
@@ -454,7 +539,7 @@ def main():
 
         images = convert_from_path(
             str(PDF_PATH), first_page=left_page, last_page=right_page,
-            dpi=300, thread_count=2
+            dpi=OCR_DPI, thread_count=2
         )
 
         if len(images) < 2:
@@ -552,6 +637,25 @@ def main():
                   f"VV={agg['valid_votes']:,}, sum={ps:,}")
 
         all_records = non_kfs + list(kfs_agg.values())
+
+    # Count consistency issues in final records
+    n_nv_gt_ev = sum(1 for r in all_records
+                     if r.get("number_voters") and r.get("eligible_voters")
+                     and r["eligible_voters"] > 0
+                     and r["number_voters"] > r["eligible_voters"] * 1.15)
+    n_vv_gt_nv = sum(1 for r in all_records
+                     if r.get("valid_votes") and r.get("number_voters")
+                     and r["number_voters"] > 0
+                     and r["valid_votes"] > r["number_voters"] * 1.5)
+    n_nv_none = sum(1 for r in all_records if r.get("number_voters") is None)
+    n_vv_none = sum(1 for r in all_records
+                    if r.get("valid_votes") is None or r.get("valid_votes") == 0)
+
+    print(f"\nConsistency check:")
+    print(f"  NV > 1.15*EV: {n_nv_gt_ev} (should be 0)")
+    print(f"  VV > 1.5*NV:  {n_vv_gt_nv} (should be 0)")
+    print(f"  NV = None:     {n_nv_none}")
+    print(f"  VV = None/0:   {n_vv_none}")
 
     if bad_records:
         print(f"\nWARNING: {len(bad_records)} records failed vote arithmetic check:")

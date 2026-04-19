@@ -119,7 +119,7 @@ normalise_party <- function(pname) {
   if (grepl("^B[UÜ]NDNIS.?DKP.?KPD", p_up))                   return("buendnis_dkp_kpd")
   if (grepl("^OFFEN.*SIVE.*D", p_up))                          return("offensive_d")
   if (grepl("^CHR.?L$", p_up))                                 return("chr_l")
-  # Fallback: clean to snake_case
+  # Fallback: clean to snake_case (warn about potential collisions)
   cleaned <- tolower(p)
   cleaned <- gsub("[^a-z0-9äöüß]+", "_", cleaned)
   cleaned <- gsub("ä", "ae", cleaned)
@@ -128,6 +128,7 @@ normalise_party <- function(pname) {
   cleaned <- gsub("ß", "ss", cleaned)
   cleaned <- gsub("^_|_$", "", cleaned)
   cleaned <- gsub("_+", "_", cleaned)
+  message(sprintf("  normalise_party fallback: '%s' -> '%s' (add explicit mapping to avoid collisions)", p, cleaned))
   return(cleaned)
 }
 
@@ -2509,6 +2510,39 @@ for (yr in names(mv_dates)) {
         .groups = "drop"
       )
 
+    ## Briefwahl allocation: distribute Kreis-level Briefwahl to municipalities
+    ## Briefwahl WBZ aggregate to separate AGS codes (suffix "249") with EV=0
+    is_brief <- result$eligible_voters == 0 & substr(result$ags, 6, 8) == "249"
+    if (any(is_brief)) {
+      brief_rows <- result[is_brief, ]
+      real_rows <- result[!is_brief, ]
+      vote_cols <- c("number_voters", "invalid_votes", "valid_votes", count_cols)
+      vote_cols <- intersect(vote_cols, names(result))
+      for (i in seq_len(nrow(brief_rows))) {
+        kreis <- substr(brief_rows$ags[i], 1, 5)
+        rl_idx <- which(substr(real_rows$ags, 1, 5) == kreis)
+        if (length(rl_idx) == 0) next
+        ev <- real_rows$eligible_voters[rl_idx]
+        ev_sum <- sum(ev, na.rm = TRUE)
+        if (ev_sum == 0) next
+        weights <- ev / ev_sum
+        weights[is.na(weights)] <- 0
+        for (vc in vote_cols) {
+          brief_val <- brief_rows[[vc]][i]
+          if (is.na(brief_val) || brief_val == 0) next
+          real_rows[[vc]][rl_idx] <- real_rows[[vc]][rl_idx] + brief_val * weights
+        }
+      }
+      ## Cap voters at eligible after allocation
+      overcap <- !is.na(real_rows$number_voters) & !is.na(real_rows$eligible_voters) &
+        real_rows$eligible_voters > 0 & real_rows$number_voters > real_rows$eligible_voters
+      if (any(overcap)) {
+        real_rows$number_voters[overcap] <- real_rows$eligible_voters[overcap]
+      }
+      result <- real_rows
+      cat(sprintf(" (allocated %d Kreis-level Brief rows)", nrow(brief_rows)))
+    }
+
     ## Rename party columns to standard names
     for (pcol in names(pcol_map)) {
       std_name <- pcol_map[[pcol]]
@@ -2564,6 +2598,7 @@ for (yr in names(mv_dates)) {
 
     wbz <- tibble(
       ags = data_rows[[cnames[2]]],
+      wbz_nr = data_rows[[cnames[3]]],
       eligible_voters = safe_num(data_rows[[cnames[4]]]),
       number_voters   = safe_num(data_rows[[cnames[5]]]),
       invalid_votes   = safe_num(data_rows[[cnames[23]]]),
@@ -2581,8 +2616,16 @@ for (yr in names(mv_dates)) {
       pcol_map[[paste0("p_", i)]] <- normalise_party(pmap$names[i])
     }
 
+    ## Separate Briefwahl WBZ (AGS suffix "249", EV=0) BEFORE aggregation
+    ## In 2002, each Briefwahl WBZ corresponds to one Amt (117 WBZ = 117 Ämter).
+    ## WBZ numbers (911,912,...) map positionally to GV Amt VB codes within each Kreis.
     count_cols <- grep("^p_", names(wbz), value = TRUE)
-    result <- wbz |>
+    is_brief_wbz <- substr(wbz$ags, 6, 8) == "249" & (is.na(wbz$eligible_voters) | wbz$eligible_voters == 0)
+    brief_wbz <- wbz[is_brief_wbz, ]
+    real_wbz <- wbz[!is_brief_wbz, ]
+
+    ## Aggregate regular WBZ → Gemeinde
+    result <- real_wbz |>
       group_by(ags) |>
       summarise(
         eligible_voters = sum(eligible_voters, na.rm = TRUE),
@@ -2592,6 +2635,88 @@ for (yr in names(mv_dates)) {
         across(all_of(count_cols), ~ sum(.x, na.rm = TRUE)),
         .groups = "drop"
       )
+
+    ## Amt-level Briefwahl allocation using GV 2002
+    if (nrow(brief_wbz) > 0) {
+      mv_gv02 <- read_xlsx(
+        "data/covars_municipality/raw/municipality_sizes/31122002_Auszug_GV.xlsx",
+        sheet = 2, col_types = "text", skip = 4
+      )
+      ## Ämter (Satzart=50, Land=13, VB != 0000)
+      mv02_amts <- mv_gv02[mv_gv02[[1]] == "50" & !is.na(mv_gv02[[1]]) &
+                            mv_gv02[[3]] == "13" & !is.na(mv_gv02[[3]]) &
+                            mv_gv02[[6]] != "0000", ]
+      ## Member Gemeinden (Satzart=60, Land=13, VB != 0000)
+      mv02_gems <- mv_gv02[mv_gv02[[1]] == "60" & !is.na(mv_gv02[[1]]) &
+                            mv_gv02[[3]] == "13" & !is.na(mv_gv02[[3]]) &
+                            mv_gv02[[6]] != "0000", ]
+      gem_to_amt <- data.frame(
+        gem_ags = paste0("130", mv02_gems[[5]], mv02_gems[[7]]),
+        amt_vb = mv02_gems[[6]],
+        amt_kreis = mv02_gems[[5]],
+        stringsAsFactors = FALSE
+      )
+
+      ## Build WBZ→Amt mapping: within each Kreis, sort Brief WBZ by number and
+      ## Ämter by VB code — they align positionally (verified: WBZ 911↔VB xx11, etc.)
+      ## Aggregate Brief WBZ per (kreis, wbz_nr) first (some WBZ appear once already)
+      brief_agg <- brief_wbz |>
+        mutate(kreis = substr(ags, 4, 5)) |>
+        group_by(kreis, wbz_nr) |>
+        summarise(across(c(number_voters, invalid_votes, valid_votes, all_of(count_cols)),
+                         ~ sum(.x, na.rm = TRUE)), .groups = "drop") |>
+        arrange(kreis, wbz_nr)
+
+      vote_cols <- c("number_voters", "invalid_votes", "valid_votes", count_cols)
+      n_allocated <- 0
+      for (kr in unique(brief_agg$kreis)) {
+        br_kr <- brief_agg[brief_agg$kreis == kr, ]
+        kr_amts <- mv02_amts[mv02_amts[[5]] == kr, ]
+        kr_amts <- kr_amts[order(kr_amts[[6]]), ]  # sort by VB
+        if (nrow(br_kr) != nrow(kr_amts)) {
+          cat(sprintf("  WARNING: Kreis %s Brief WBZ (%d) != Ämter (%d), falling back to Kreis-level\n",
+                      kr, nrow(br_kr), nrow(kr_amts)))
+          ## Fallback: allocate all Brief WBZ in this Kreis to entire Kreis
+          rl_idx <- which(substr(result$ags, 4, 5) == kr)
+          if (length(rl_idx) == 0) next
+          ev <- result$eligible_voters[rl_idx]
+          ev_sum <- sum(ev, na.rm = TRUE)
+          if (ev_sum == 0) next
+          weights <- ev / ev_sum; weights[is.na(weights)] <- 0
+          for (vc in vote_cols) {
+            brief_total <- sum(br_kr[[vc]], na.rm = TRUE)
+            if (brief_total == 0) next
+            result[[vc]][rl_idx] <- result[[vc]][rl_idx] + brief_total * weights
+          }
+          n_allocated <- n_allocated + nrow(br_kr)
+          next
+        }
+        ## Positional matching: i-th Brief WBZ → i-th Amt (sorted by VB)
+        for (j in seq_len(nrow(br_kr))) {
+          amt_vb <- kr_amts[[6]][j]
+          members <- gem_to_amt[gem_to_amt$amt_vb == amt_vb & gem_to_amt$amt_kreis == kr, ]
+          rl_idx <- which(result$ags %in% members$gem_ags)
+          if (length(rl_idx) == 0) next
+          ev <- result$eligible_voters[rl_idx]
+          ev_sum <- sum(ev, na.rm = TRUE)
+          if (ev_sum == 0) next
+          weights <- ev / ev_sum; weights[is.na(weights)] <- 0
+          for (vc in vote_cols) {
+            brief_val <- br_kr[[vc]][j]
+            if (is.na(brief_val) || brief_val == 0) next
+            result[[vc]][rl_idx] <- result[[vc]][rl_idx] + brief_val * weights
+          }
+          n_allocated <- n_allocated + 1
+        }
+      }
+      ## Cap voters at eligible
+      overcap <- !is.na(result$number_voters) & !is.na(result$eligible_voters) &
+        result$eligible_voters > 0 & result$number_voters > result$eligible_voters
+      if (any(overcap)) {
+        result$number_voters[overcap] <- result$eligible_voters[overcap]
+      }
+      cat(sprintf(" (allocated %d Amt-level Brief WBZ via GV 2002)", n_allocated))
+    }
 
     for (pcol in names(pcol_map)) {
       std_name <- pcol_map[[pcol]]
@@ -2680,6 +2805,43 @@ for (yr in names(mv_dates)) {
     ## Filter to valid AGS
     result <- result |> filter(grepl("^13", ags) & nchar(ags) == 8)
 
+    ## Briefwahl allocation: distribute Amt-level Briefwahl votes to municipalities
+    ## The "Amt" column maps each AGS to its Amt, allowing proper allocation.
+    amt_vec <- as.integer(zs06$Amt[match(result$ags, as.character(zs06$Gemeinde))])
+    result$amt <- amt_vec
+    is_brief <- result$eligible_voters == 0 & !is.na(result$valid_votes) & result$valid_votes > 0
+    brief_rows <- result[is_brief, ]
+    real_rows  <- result[!is_brief, ]
+
+    if (nrow(brief_rows) > 0) {
+      mapped_n_cols <- paste0(names(party_votes), "_n")
+      vote_cols <- c("number_voters", "invalid_votes", "valid_votes", mapped_n_cols)
+      vote_cols <- intersect(vote_cols, names(result))
+      for (amt_id in unique(brief_rows$amt)) {
+        if (is.na(amt_id)) next
+        br <- brief_rows[brief_rows$amt == amt_id & !is.na(brief_rows$amt), ]
+        rl <- real_rows[real_rows$amt == amt_id & !is.na(real_rows$amt), ]
+        if (nrow(rl) == 0) next
+        weights <- rl$eligible_voters / sum(rl$eligible_voters, na.rm = TRUE)
+        weights[is.na(weights)] <- 0
+        for (vc in vote_cols) {
+          brief_total <- sum(br[[vc]], na.rm = TRUE)
+          idx <- which(real_rows$amt == amt_id & !is.na(real_rows$amt))
+          real_rows[[vc]][idx] <- real_rows[[vc]][idx] + brief_total * weights
+        }
+      }
+      # Cap voters at eligible after allocation
+      overcap <- !is.na(real_rows$number_voters) & !is.na(real_rows$eligible_voters) &
+        real_rows$eligible_voters > 0 & real_rows$number_voters > real_rows$eligible_voters
+      if (any(overcap)) {
+        real_rows$number_voters[overcap] <- real_rows$eligible_voters[overcap]
+      }
+      result <- real_rows
+      cat(sprintf(" (allocated %d Brief rows across %d Ämter)",
+                  nrow(brief_rows), length(unique(brief_rows$amt))))
+    }
+    result <- result |> select(-amt)
+
     mapped_n_cols <- paste0(names(party_votes), "_n")
     result$other_n <- result$valid_votes -
       rowSums(result[, mapped_n_cols], na.rm = TRUE)
@@ -2729,6 +2891,97 @@ for (yr in names(mv_dates)) {
       ci <- pmap$cols[i]
       result[[paste0("p_", i)]] <- safe_num(data_rows[[cnames[ci]]])
     }
+
+    ## Briefwahl allocation: distribute Amt-level Briefwahl to member municipalities
+    ## Briefwahl rows have EV=0 and AGS suffix 751-767; names start with "Briefwahl"
+    result$mv_name <- data_rows[[cnames[4]]]
+    p_cols <- grep("^p_", names(result), value = TRUE)
+    is_brief <- result$eligible_voters == 0 &
+      grepl("^Briefwahl", result$mv_name, ignore.case = TRUE)
+    if (any(is_brief)) {
+      ## Read GV 2013 for post-Kreisreform Amt→Gemeinde mapping
+      mv_gv13 <- read_xlsx(
+        "data/covars_municipality/raw/municipality_sizes/31122013_Auszug_GV.xlsx",
+        sheet = 2, col_types = "text", skip = 4
+      )
+      gv_cn <- names(mv_gv13)
+      ## Ämter (Satzart=50, Land=13, VB starts with "5")
+      mv_amts <- mv_gv13[mv_gv13[[1]] == "50" & !is.na(mv_gv13[[1]]) &
+                          mv_gv13[[3]] == "13" & !is.na(mv_gv13[[3]]) &
+                          grepl("^5", mv_gv13[[6]]), ]
+      amt_lookup <- data.frame(
+        amt_vb = mv_amts[[6]],
+        amt_kreis = mv_amts[[5]],
+        amt_name = trimws(mv_amts[[8]]),
+        stringsAsFactors = FALSE
+      )
+      ## Member municipalities (Satzart=60, Land=13, VB starts with "5")
+      mv_gems <- mv_gv13[mv_gv13[[1]] == "60" & !is.na(mv_gv13[[1]]) &
+                          mv_gv13[[3]] == "13" & !is.na(mv_gv13[[3]]) &
+                          grepl("^5", mv_gv13[[6]]), ]
+      gem_to_amt <- data.frame(
+        gem_ags = paste0("130", mv_gems[[5]], mv_gems[[7]]),
+        amt_vb = mv_gems[[6]],
+        amt_kreis = mv_gems[[5]],
+        stringsAsFactors = FALSE
+      )
+
+      brief_rows <- result[is_brief, ]
+      real_rows <- result[!is_brief, ]
+      ## Parse Amt name from "Briefwahl {Amt name}"
+      brief_rows$parsed_amt <- trimws(gsub("^Briefwahl\\s+", "", brief_rows$mv_name))
+
+      vote_cols <- c("number_voters", "invalid_votes", "valid_votes", p_cols)
+      vote_cols <- intersect(vote_cols, names(result))
+
+      n_allocated <- 0
+      for (i in seq_len(nrow(brief_rows))) {
+        bname <- brief_rows$parsed_amt[i]
+        bkreis <- substr(brief_rows$ags[i], 4, 5)  # 2-digit Kreis within AGS
+        ## Match to Amt: exact name + same Kreis
+        amt_match <- amt_lookup[amt_lookup$amt_name == bname &
+                                amt_lookup$amt_kreis == bkreis, ]
+        if (nrow(amt_match) == 0) {
+          ## Fuzzy match within same Kreis
+          kreis_amts <- amt_lookup[amt_lookup$amt_kreis == bkreis, ]
+          if (nrow(kreis_amts) > 0) {
+            dists <- adist(bname, kreis_amts$amt_name, ignore.case = TRUE)
+            best <- which.min(dists)
+            if (dists[best] <= 5) amt_match <- kreis_amts[best, ]
+          }
+        }
+        if (nrow(amt_match) == 0) {
+          cat(sprintf("  WARNING: MV 2011 Brief '%s' unmatched\n", bname))
+          next
+        }
+        ## Find member municipalities of this Amt
+        members <- gem_to_amt[gem_to_amt$amt_vb == amt_match$amt_vb[1] &
+                              gem_to_amt$amt_kreis == amt_match$amt_kreis[1], ]
+        rl_idx <- which(real_rows$ags %in% members$gem_ags)
+        if (length(rl_idx) == 0) next
+        ev <- real_rows$eligible_voters[rl_idx]
+        ev_sum <- sum(ev, na.rm = TRUE)
+        if (ev_sum == 0) next
+        weights <- ev / ev_sum
+        weights[is.na(weights)] <- 0
+        for (vc in vote_cols) {
+          brief_val <- brief_rows[[vc]][i]
+          if (is.na(brief_val) || brief_val == 0) next
+          real_rows[[vc]][rl_idx] <- real_rows[[vc]][rl_idx] + brief_val * weights
+        }
+        n_allocated <- n_allocated + 1
+      }
+      ## Cap voters at eligible after allocation
+      overcap <- !is.na(real_rows$number_voters) & !is.na(real_rows$eligible_voters) &
+        real_rows$eligible_voters > 0 & real_rows$number_voters > real_rows$eligible_voters
+      if (any(overcap)) {
+        real_rows$number_voters[overcap] <- real_rows$eligible_voters[overcap]
+      }
+      result <- real_rows
+      cat(sprintf(" (allocated %d/%d Amt-level Brief rows via GV 2013)",
+                  n_allocated, nrow(brief_rows)))
+    }
+    result <- result |> select(-mv_name)
 
     ## Map ALL parties using normalise_party
     pcol_map <- list()
@@ -5663,7 +5916,7 @@ for (yr in c("2012", "2017", "2022")) {
       kr_brief <- brief_rows |> filter(kreis == kr)
       kr_real  <- real_rows  |> filter(kreis == kr)
       if (nrow(kr_real) == 0) next
-      weights <- kr_real$valid_v / sum(kr_real$valid_v, na.rm = TRUE)
+      weights <- kr_real$eligible / sum(kr_real$eligible, na.rm = TRUE)
       weights[is.na(weights)] <- 0
       for (vc in vote_cols) {
         brief_total <- sum(kr_brief[[vc]], na.rm = TRUE)
@@ -5673,6 +5926,14 @@ for (yr in c("2012", "2017", "2022")) {
     }
     agg_muni <- real_rows
     cat(sprintf(" (allocated %d Brief rows)", nrow(brief_rows)))
+    # Cap voters at eligible after Briefwahl allocation:
+    # proportional allocation can overshoot for small municipalities
+    overcap <- !is.na(agg_muni$voters) & !is.na(agg_muni$eligible) &
+      agg_muni$eligible > 0 & agg_muni$voters > agg_muni$eligible
+    if (any(overcap)) {
+      cat(sprintf(" (%d munis capped: voters > eligible)", sum(overcap)))
+      agg_muni$voters[overcap] <- agg_muni$eligible[overcap]
+    }
   }
   agg_muni <- agg_muni |> select(-gem3, -kreis)
 
@@ -6642,6 +6903,16 @@ cat("Rheinland-Pfalz total:", nrow(all_states[["rp"]]), "rows\n\n")
 
 state_unharm <- bind_rows(all_states)
 
+# Remove HE county-level aggregate rows that coexist with their constituent municipalities
+# 06439000 (Schwalm-Eder 1946, VV=57) and 06535000 (Werra-Meissner 1958, VV=0)
+# are gemeindefreie Gebiete/county aggregates mixed with municipality-level data
+he_agg_rows <- state_unharm$ags %in% c("06439000", "06535000")
+if (any(he_agg_rows)) {
+  cat(sprintf("Removing %d HE county-aggregate rows (AGS 06439000, 06535000)\n",
+              sum(he_agg_rows)))
+  state_unharm <- state_unharm[!he_agg_rows, ]
+}
+
 # Flag (but keep) rows with valid_votes == 0 (gemeindefreie Gebiete, empty municipalities)
 # These are real administrative units with persistent AGS codes — needed for balanced panels
 # Note: valid_votes = NA is kept unflagged (e.g. HB pre-1999, RP 1979-2016 where only pcts available)
@@ -6660,6 +6931,15 @@ state_unharm$flag_briefwahl_only <- ifelse(
 n_brief <- sum(state_unharm$flag_briefwahl_only)
 if (n_brief > 0) {
   cat(sprintf("Flagged %d rows as Briefwahl-only entities (EV=0, VV>0)\n", n_brief))
+  # Neutralize Briefwahl-only rows: EV/NV are not meaningful (EV=0 is source artifact,
+  # e.g. MV Amt-level Briefwahl aggregates). VV and party columns are preserved so that
+  # vote shares remain correct after harmonization. na.rm=TRUE in harm scripts'
+  # weighted sum naturally skips NA EV/NV, preventing turnout inflation.
+  idx_brief <- state_unharm$flag_briefwahl_only == 1
+  state_unharm$eligible_voters[idx_brief] <- NA_real_
+  state_unharm$number_voters[idx_brief] <- NA_real_
+  state_unharm$turnout[idx_brief] <- NA_real_
+  cat(sprintf("Set EV/NV/turnout to NA for %d Briefwahl-only rows\n", sum(idx_brief)))
 }
 
 # HE 1958/1962: number_voters not reported for non-kreisfreie municipalities
@@ -6726,6 +7006,20 @@ print(table(state_unharm$state, state_unharm$election_year))
 # Replace Inf with NA (division by valid_votes=0 produces Inf shares)
 state_unharm <- state_unharm |>
   mutate(across(where(is.numeric), ~ ifelse(is.infinite(.), NA_real_, .)))
+
+# Drop always-zero party columns (party existed in raw data but never had votes)
+party_cols_all <- setdiff(names(state_unharm), c(meta_cols, "other", "cdu_csu",
+  "flag_naive_turnout_above_1", "flag_no_valid_votes", "flag_briefwahl_only"))
+always_zero <- sapply(party_cols_all, function(col) {
+  all(state_unharm[[col]] == 0 | is.na(state_unharm[[col]]), na.rm = FALSE)
+})
+if (any(always_zero)) {
+  drop_cols <- names(which(always_zero))
+  cat(sprintf("Dropping %d always-zero party columns: %s\n",
+              length(drop_cols), paste(head(drop_cols, 10), collapse = ", ")))
+  if (length(drop_cols) > 10) cat(sprintf("  ... and %d more\n", length(drop_cols) - 10))
+  state_unharm <- state_unharm |> select(-all_of(drop_cols))
+}
 
 # Write output
 fwrite(state_unharm, "data/state_elections/final/state_unharm.csv")
