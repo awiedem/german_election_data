@@ -123,6 +123,7 @@ This dataset contains state election results from 1946 to 2024 at the municipali
 **Notes:**
 
 - **Bayern (BY)** uses Gesamtstimmen (Erst+Zweitstimme combined). Both ballots count equally for proportional seat allocation and the 5% threshold. Party vote shares are proportions of Gesamtstimmen. The identity `valid_votes + invalid_votes = number_voters × 2` holds for BY 1950+. The 1946 election was single-ballot.
+- **Hamburg (HH) 2011+ and Bremen (HB) 2011+** use a 5-vote personalized-list system (Kumulieren/Panaschieren): each voter casts 5 Landesstimmen, which can be cumulated on one candidate or split across candidates and lists. GERDA reports party shares as proportions of cast Landesstimmen, so `valid_votes ≈ 5 × number_voters`. Shares sum to 1 within a municipality and are comparable across HH (or HB) municipalities, but the per-voter denominator differs from single-ballot states. Earlier HH/HB elections used a single-vote system.
 - **NRW 1947–1970**: County-level only (synthetic AGS `050xx000`). Cannot be harmonized; only in unharm.
 - **HH 1982**: Two elections (June + December) — both rows present, distinguished by `election_date`.
 
@@ -203,6 +204,7 @@ This dataset contains municipal council (Stadtrat/Gemeinderat) election results 
 
 - Vote shares are proportions of `valid_votes` (calculated as `prop_*` variables in `01_municipal_unharm.R`).
 - `area` and `population` are sourced from official municipality registers (Gemeindeverzeichnisse); `area` is km², `population` is scaled to thousands.
+- **Kumulieren and Panaschieren.** Municipal council elections in Baden-Württemberg, Bayern, Hessen, Rheinland-Pfalz, Mecklenburg-Vorpommern, Schleswig-Holstein, Saarland, Sachsen, Sachsen-Anhalt, Thüringen, Brandenburg, Bremen and Niedersachsen allow voters to cumulate votes on a single candidate (Kumulieren) and to split votes across lists (Panaschieren). Each voter casts multiple votes equal to the number of council seats, so `valid_votes` counts cast individual votes (Stimmen), not ballots, and the ratio `valid_votes / number_voters` reflects seat-count × cumulation behavior rather than a ballot count. Party shares (`cdu_csu`, `spd`, …) are proportions of these cast individual votes and sum to 1 within a municipality. They are directly comparable across municipalities within a state but not to single-vote systems (NRW is the main exception, where each voter casts one list vote). State-specific rules (e.g., up-to-3 cumulation in BW vs. up-to-5 in HE/RP) affect the realized `valid_votes / number_voters` ratio but not the share interpretation.
 
 ---
 

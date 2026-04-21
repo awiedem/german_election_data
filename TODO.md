@@ -74,7 +74,7 @@ Cross-validation against `bundeslaendeR` (Stelzle) identifies six state × party
 
 **Still outstanding:**
 - [ ] **RLP mayoral elections**: only percentages (no absolute vote counts) due to source data limitations — would need original Excel/PDF sources with counts
-- [ ] **SH mayoral elections**: `00_sh_scrape.R` exists but scraping status / inclusion in `mayoral_unharm` needs verification
+- [x] ✅ **SH mayoral elections**: `00_sh_scrape.R` has been run; output files exist at `data/mayoral_elections/raw/sh/sh_mayoral_scraped.{rds,csv}`; SH mayoral data integrated into `mayoral_unharm` (45 rows, years 2023–2025). Coverage is limited to 2023+ because `wahlen-sh.de` does not publish historical bulk data.
 - [ ] **Municipal 2024 missing states**: currently have BW, SL, BB, MV, SN, ST, TH. Missing **HE, NI, NRW, RLP, SH** for 2024. Some of these may not have held 2024 Gemeinderatswahlen.
   - **RLP 2024 specifically**: raw data not yet in repo. The Oct 2025 Gemeinderatswahlen zip covers BW, SL, SN, ST, TH but not RLP. Maurice Baudet von Gersdorff (email) was reaching out to the RLP statistical office. Blocked on data acquisition.
   - Note: RLP **mayoral** (Direktwahlen) 1994–2024 was delivered (Dec 2025 file) and is in `mayoral_unharm` (16 RLP mayoral elections in 2024).
@@ -113,7 +113,7 @@ Audited 2026-04-22 against current state of the data.
   - SH raw files are named `sh_gemeindewahlen_YYYY.xlsx`; loaded via `01_municipal_unharm.R` as `sh_YYYY_gemeinderatswahlen_data`. Years 1994, 1998, 2003, 2008, 2013, 2018, 2023 match the SH Kommunalwahl schedule. Confirmed Gemeinderatswahlen.
   - ST raw file `sachsen-anhalt_1994_to_2019.xlsx` has sheets "1994", "1999", "2001-2004", "2005-2010", "2014-2015", "2019". Main Kommunalwahl years (1994, 1999, 2004, 2009, 2014, 2019, 2024) have normal row counts (218–1,289). Non-standard years (2005–2008, 2010) have only 2–18 rows each — these are special elections for individual newly-formed municipalities after the 2007–2010 Gemeindereform, not Kreistagswahlen. The drop from 1,121 rows (2004) to 190 (2009) to 218 (2014+) reflects the real municipal consolidation.
 - [x] ✅ **Population scale.** Already documented as thousands in `docs/codebook.md` (Berlin `population_ags = 3,677.472` = 3.68M people). The Google Doc note "in 100s" was incorrect.
-- [ ] **Kumulieren/Panaschieren documentation gap** (Andreas). Paper mentions NRW and Sachsen electoral systems but not Hessen, Baden-Württemberg, Bayern, Bremen, Hamburg. Document how GERDA treats vote counts from Kumulieren/Panaschieren states — specifically which denominator is used for `valid_votes` and how party shares are computed for these states.
+- [x] ✅ **Kumulieren/Panaschieren documentation gap** (Andreas). Added notes to `docs/codebook.md`: HH/HB 2011+ 5-vote state elections (near the BY Gesamtstimmen note) and a municipal-elections note covering BW/BY/HE/RP/MV/SH/SL and others — clarifying that `valid_votes` counts cast individual votes, party shares are proportions of these, and NRW is the single-vote exception.
 - [ ] **Parquet export** (Sascha). Nice-to-have for smaller file sizes and faster downloads. No `.parquet` files in `data/` currently.
 - [ ] **Link to external datasets.** Cornelius's dataset, Julian Voss's 1949 dataset — future integration opportunity.
 - [ ] **Dissemination workflow.** Send a post via PolMeth / EPSA mailing lists when GERDA is updated with new elections.
