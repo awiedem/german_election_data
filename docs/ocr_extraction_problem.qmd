@@ -1,0 +1,69 @@
+---
+title: "Extracting Municipality-Level Election Results from Scanned PDFs"
+subtitle: "Problem Description"
+date: 2026-04-12
+format: html
+---
+
+## The data problem
+
+GERDA includes municipality-level state election results going back to the 1980s and 1990s. For recent elections, raw data is available in structured digital formats (CSV, Excel, API). For three older elections, the only source is scanned PDF volumes published by state statistical offices:
+
+- **Brandenburg 1994** Landtagswahl (466 pages, image scan, no text layer)
+- **Brandenburg 1990** Landtagswahl (447 pages, image scan with partial text layer)
+- **Schleswig-Holstein 1983** Landtagswahl (116 pages, text-layer PDF)
+
+These PDFs contain municipality-level vote counts in dense tabular layouts. The tables are typeset on facing-page spreads: a left page with municipality identifiers and aggregate vote statistics, and one or more right pages with per-party vote columns. Each volume contains roughly 1,000--1,700 municipality records.
+
+Current extractions from these PDFs, produced by custom Tesseract OCR and pdfplumber scripts, show vote share deviations of 1--4 percentage points when aggregated to the state level and compared against official totals from the Bundeswahlleiter. Cross-validation against the `bundeslaendeR` R package (Stelzle 2025) confirms these deviations. The errors are large enough to affect substantive analysis of party-level vote shares in these states and years.
+
+## Why extraction is hard
+
+The extraction problem has three layers, each progressively harder.
+
+### Layer 1: Character recognition
+
+The scanned PDFs (Brandenburg 1990 and 1994) require optical character recognition. Modern OCR engines (Tesseract 5, PaddleOCR) read individual digits with high accuracy on these documents, typically above 99% per character at 300--400 DPI with appropriate binarization. Character recognition is largely a solved problem for these typewriter-font tables. It is not the binding constraint.
+
+### Layer 2: Column assignment
+
+The tables have 14--15 party columns on the right page, printed in a tight grid with minimal spacing. After OCR produces a set of recognized characters with approximate spatial positions, each character must be assigned to the correct column. Small errors in spatial position --- a few pixels of skew, a slightly wider digit, a merged pair of adjacent numbers --- cause a vote count to be attributed to the wrong party.
+
+Column assignment errors are the primary source of extraction errors in the existing Tesseract-based pipeline. They produce errors that are invisible at the individual-character level but devastating at the cell level. A digit "3" read correctly but placed in the CDU column instead of the SPD column creates no OCR error but a large data error.
+
+### Layer 3: Row identification (the binding constraint)
+
+The Brandenburg election volumes report both Erststimmen (first votes, for constituency candidates) and Zweitstimmen (second votes, for party lists) on the same pages. Each municipality occupies four rows:
+
+1. Erststimmen absolute values
+2. Erststimmen percentages
+3. Zweitstimmen absolute values
+4. Zweitstimmen percentages
+
+GERDA needs Zweitstimmen only. The extraction must identify which of the four rows contains the Zweitstimmen data and ignore the Erststimmen rows.
+
+This is hard because:
+
+- **The rows have no labels on the right page.** The left page marks rows with "LT94 E abs." and "LT94 Z abs.", but the right page shows only numbers. There is no text on the right page that distinguishes an Erststimmen row from a Zweitstimmen row.
+
+- **Erststimmen and Zweitstimmen percentage rows are structurally identical.** Both are rows of decimal numbers that sum to approximately 100%. No syntactic feature distinguishes them.
+
+- **The four-row pattern is not perfectly regular.** Wahlkreis subtotal rows, page headers, and kreisfreie Stadt sub-area rows interrupt the four-row cycle on some pages. Any extraction strategy that relies on counting "every fourth row" fails on these pages.
+
+- **For 22% of municipalities, the Erststimmen and Zweitstimmen gueltige Stimmen (valid votes) are identical.** This means even if the left page is read correctly and provides both the E and Z valid vote totals, the two values cannot be used to disambiguate rows on the right page for roughly one in five municipalities.
+
+- **The problem spans two physical pages.** The municipality identifier is on the left page; the party vote data is on the right page. Any extraction system must correctly match row $k$ on the left page to row $k$ on the right page across hundreds of municipalities per PDF, without any explicit cross-reference between the pages.
+
+### The result
+
+Extraction pipelines that achieve near-perfect accuracy on the left page (municipality names, voter counts, valid votes) consistently fail on the right page party-vote columns. We have tested:
+
+- Tesseract OCR with position-based column detection
+- Tesseract with digit-whitelist preprocessing and percentage-row selection
+- GPT-5.4-mini and GPT-4.1-mini vision models (single page and page pairs)
+- Gemini 2.5 Flash with structured JSON output and valid-vote context
+- Hybrid approaches combining vision models (left page) with Tesseract (right page)
+
+All approaches achieve valid-vote accuracy within 0.1% of official totals. All approaches produce party-level errors of 2--8 percentage points on at least one major party when aggregated to the state level. The error is consistently directional: parties that perform differently in Erststimmen versus Zweitstimmen (notably SPD and PDS in Brandenburg) show the largest deviations, confirming that the dominant error mode is Erststimmen/Zweitstimmen row confusion rather than digit misrecognition.
+
+The Schleswig-Holstein 1983 PDF does not have the Erst/Zweitstimmen problem (single-vote system) but has a separate issue: municipality-level data excludes Briefwahl (mail-in votes) entirely, which are available only as a state-level aggregate.

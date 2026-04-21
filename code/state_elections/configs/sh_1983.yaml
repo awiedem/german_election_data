@@ -1,0 +1,96 @@
+election: "Schleswig-Holstein 1983 Landtagswahl"
+vote_type: "Zweitstimmen"
+
+pdf_path: "data/state_elections/raw/Landtagswahlen/Schleswig-Holstein/Schleswig-Holstein_1983_Landtagswahl.pdf"
+output_csv: "data/state_elections/raw/Landtagswahlen/Schleswig-Holstein/sh_1983_extracted.csv"
+responses_dir: "data/state_elections/raw/Landtagswahlen/Schleswig-Holstein/sh_1983_vision_responses"
+
+# Table 6: municipality results. Left page (even) has metadata, right page (odd) has vote columns.
+# Pages 18-116. Each municipality has 2 rows (absolute + percentage).
+page_range: [18, 116]
+page_layout: "left_even_right_odd"  # pairs: (18,19), (20,21), ...
+
+# Party columns in order as they appear on the right page
+party_columns:
+  cdu: "CDU"
+  spd: "SPD"
+  fdp: "FDP"
+  ssw: "SSW"
+  dkp: "DKP"
+  dgl: "DGL"
+  gruene: "GR"
+  fp: "FP"
+  fsu: "FSU"
+  einzelbewerber: "Einzelbewerber"
+
+csv_party_columns: [cdu, spd, fdp, ssw, dkp, dgl, gruene, fp, fsu, einzelbewerber]
+vote_mode: "abs"  # right page returns absolute vote counts directly
+
+# SH 1983: left page has NR (Kreis+Gemeinde code), NAME, Wahlberechtigte (3 cols), Wähler (2 cols), ungültige
+# Right page has: gültige Stimmen, CDU, SPD, FDP, SSW, DKP, DGL, GR, FP, FSU, Einzelbewerber
+# Each municipality = 2 rows (absolute + percentage). No Erst/Zweitstimmen distinction (single-vote system).
+# The NR codes are 2-digit Kreis + 3-digit Gemeinde (e.g., "51 001" = Kreis 51, Gemeinde 001)
+
+left_prompt: |
+  Extract municipality election metadata from this German election results page (Schleswig-Holstein 1983).
+
+  This is Table 6 "WAHLERGEBNISSE IN DEN GEMEINDEN". Each municipality has 2 rows:
+  - Row 1: absolute values
+  - Row 2: percentages (skip)
+
+  The columns are: NR (format "KK GGG" = Kreis code + Gemeinde code), NAME,
+  WAHLBERECHTIGTE (INSGESAMT, OHNE WAHLSCHEINVERM., MIT), WAEHLER (INSGESAMT, MIT WAHLSCH.),
+  UNGUELTIGE STIMMEN.
+
+  For kreisfreie Städte (NR like "01 000", "02 000", etc.), the code format is "KK 000".
+  For regular municipalities, the code is "KK GGG" (e.g., "51 001").
+
+  Extract from each municipality: the NR code (as a 5-digit string "KKGGG"),
+  the NAME, WAHLBERECHTIGTE INSGESAMT (first number), WAEHLER INSGESAMT,
+  and UNGUELTIGE STIMMEN. All from the absolute row only.
+
+  Return JSON array: [{"nr": "51001", "name": "ALBERSDORF", "wahlberechtigte": 2588,
+  "waehler": 1998, "ungueltige": 4}, ...]
+  All values integers. JSON only.
+
+right_prompt: |
+  Extract municipality vote data from this German election results page (Schleswig-Holstein 1983).
+
+  Columns: GUELTIGE STIMMEN, CDU, SPD, FDP, SSW, DKP, DGL, GR (Grüne), FP, FSU, EINZELBEWERBER.
+
+  There are {n} municipalities, each with 2 rows (absolute + percentage).
+  Extract ONLY the absolute row (row 1) for each municipality.
+
+  "*" before a number means that party won the most votes (ignore the asterisk, just read the number).
+  "-" = 0, empty = 0.
+
+  Return {n} JSON objects: [{{"gueltige": int, "cdu": int, "spd": int, "fdp": int, "ssw": int,
+  "dkp": int, "dgl": int, "gruene": int, "fp": int, "fsu": int, "einzelbewerber": int}}, ...]
+  JSON only.
+
+# AGS construction: "01" + KK (3-digit padded) + GGG → 8-digit AGS
+# e.g., NR "51 001" → AGS "01051001"
+ags_prefix: "01"
+ags_from_nr: true  # construct AGS from NR field: "01" + nr.zfill(5) padded to 8 digits
+
+# No kreisfreie Städte aggregation needed (they appear as single rows)
+valid_kreise: ["01001", "01002", "01003", "01004",
+               "01051", "01052", "01053", "01054", "01055", "01056",
+               "01057", "01058", "01059", "01060", "01061", "01062"]
+
+# Official totals (INSGESAMT from PDF p.13, includes Briefwahl)
+# Urnenwahl = ZUSAMMEN row: valid=1,502,477
+# Briefwahl: valid=159,995
+# Since we add Briefwahl separately in R code, validate against Urnenwahl only
+official_totals:
+  valid_votes: 1502477
+  cdu: 729026
+  spd: 669816
+  fdp: 31993
+  ssw: 19869
+  dkp: 1888
+  dgl: 1300
+  gruene: 48100
+  fp: 333
+  fsu: 8
+  einzelbewerber: 144

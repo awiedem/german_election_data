@@ -1,6 +1,6 @@
 # State Elections Pipeline: February 2026 Update
 
-This document records all changes made to the state elections pipeline in February 2026. For data quality details and known issues in the resulting datasets, see [state_elections_known_issues.md](state_elections_known_issues.md).
+This document records all changes made to the state elections pipeline in February 2026. For data quality details and known issues in the resulting datasets, see [TODO.md](../TODO.md) at the repo root.
 
 ## 1. Election Coverage Expansion
 

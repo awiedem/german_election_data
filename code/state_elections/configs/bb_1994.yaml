@@ -1,0 +1,89 @@
+election: "Brandenburg 1994 Landtagswahl"
+vote_type: "Zweitstimmen"
+
+pdf_path: "data/state_elections/raw/Landtagswahlen/Brandenburg/Brandenburg_1994_Landtagswahl.pdf"
+output_csv: "data/state_elections/raw/Landtagswahlen/Brandenburg/bb_1994_ocr.csv"
+responses_dir: "data/state_elections/raw/Landtagswahlen/Brandenburg/bb_1994_vision_responses"
+
+# Page layout: right page (odd) has party columns, left page (even) has metadata
+page_range: [17, 407]
+page_layout: "right_odd_left_even"  # pairs: (17,18), (19,20), ...
+
+# Party columns in order as they appear on the right page
+party_columns:
+  spd: "SPD"
+  cdu: "CDU"
+  fdp: "F.D.P."
+  bfwg: "BFWG"
+  gruene_b90: "GRÜNE/B90"
+  buerger: "Bürger"
+  dsu: "DSU"
+  graue: "GRAUE"
+  rep: "REP"
+  kpd: "KPD"
+  odp: "ÖDP"
+  pds: "PDS"
+  uwvb: "UWVB"
+  eb: "EB"
+
+# CSV output column order
+csv_party_columns: [spd, cdu, fdp, bfwg, gruene_b90, buerger, dsu, graue, rep, kpd, odp, pds, uwvb, eb]
+vote_mode: "pct"  # right page returns percentages, compute votes from pct × gültige
+
+# Left page prompt template
+left_prompt: |
+  Extract municipality election metadata from this German election results page.
+
+  Each municipality block has 4 lines:
+  - Line 1: 8-digit code, name, "LT94 E abs." then Wahlberechtigte, Wähler, ungültige_E, gültige_E
+  - Line 2: percentages (skip)
+  - Line 3: "LT94 Z abs." then ungültige_Z, gültige_Z
+  - Line 4: percentages (skip)
+
+  Extract for each municipality:
+  - gemeindeschluessel: 8-digit code from line 1
+  - name: municipality name
+  - wahlberechtigte: from line 1
+  - waehler: from line 1
+  - ungueltige_e: from E abs line (line 1)
+  - gueltige_e: from E abs line (line 1)
+  - ungueltige_z: from Z abs line (line 3)
+  - gueltige_z: from Z abs line (line 3)
+
+  Return JSON array. All values integers. JSON only.
+
+# Right page prompt template ({n} will be substituted)
+right_prompt: |
+  This image shows party vote data from Brandenburg 1994 Landtagswahl.
+  Party columns: SPD, CDU, F.D.P., BFWG, GRÜNE/B90, Bürger, DSU, GRAUE, REP, KPD, ÖDP, PDS, UWVB, EB, Sonstige.
+  {n} municipalities, 4 rows each (E abs, E%, Z abs, Z%). Extract the Zweitstimmen percentage row (row 4) only.
+  Municipalities in order:
+  {muni_list}
+  Verify: percentages × Zweitstimmen gültig / 100 should approximately sum to the Zweitstimmen gültig value.
+  "x"=0, "-"=0. Commas=decimal.
+
+# AGS validation
+valid_kreise: ["12051", "12052", "12053", "12054",
+               "12060", "12061", "12062", "12063", "12064", "12065",
+               "12066", "12067", "12068", "12069", "12070", "12071",
+               "12072", "12073"]
+kreisfreie_staedte: ["12051", "12052", "12053", "12054"]
+
+# Official Urnenwahl Zweitstimmen (total minus Briefwahl)
+# Total from PDF p.10, Briefwahl from PDF p.11
+official_totals:
+  valid_votes: 1001516
+  spd: 544772
+  cdu: 189206
+  fdp: 21986
+  bfwg: 2295
+  gruene_b90: 28835
+  buerger: 9690
+  dsu: 1850
+  graue: 2870
+  rep: 11744
+  kpd: 0
+  odp: 1249
+  pds: 183153
+  uwvb: 3866
+  eb: 0

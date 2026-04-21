@@ -1,0 +1,96 @@
+election: "Brandenburg 1990 Landtagswahl"
+vote_type: "Zweitstimmen"
+
+pdf_path: "data/state_elections/raw/Landtagswahlen/Brandenburg/Brandenburg_1990_Landtagswahl.pdf"
+output_csv: "data/state_elections/raw/Landtagswahlen/Brandenburg/bb_1990_extracted.csv"
+responses_dir: "data/state_elections/raw/Landtagswahlen/Brandenburg/bb_1990_vision_responses"
+
+# 4-page spreads. Pages 16-447.
+# Page 4n+0 (16,20,24,...): metadata left — Wahlkreis, Stimmbezirk, Wahlberechtigte, CDU Erststimmen,
+#                           Abgegebene Stimmen (insgesamt, ungültige, gültige)
+# Page 4n+1 (17,21,25,...): main parties right — SPD, CDU, PDS-LL, Bü.90, F.D.P., CHR.L.
+# Page 4n+2 (18,22,26,...): secondary parties right — DBU, DFP, DSU, Grüne, REP + Stimmbezirk codes
+# Page 4n+3 (19,23,27,...): minor parties — Domow., NPD, Übrige, Sonstige (+ metadata?)
+#
+# Each Stimmbezirk has 2 rows: 1=Erststimmen, 2=Zweitstimmen. Extract row 2 only.
+# Stimmbezirk codes like "020862/008" → DDR municipality code / Stimmbezirk number
+# Must aggregate from Stimmbezirk to municipality level.
+page_range: [16, 447]
+page_layout: "four_page_spread"  # groups of 4: (16,17,18,19), (20,21,22,23), ...
+
+# Party columns across pages 17 and 18
+party_columns:
+  spd: "SPD"
+  cdu: "CDU"
+  pds_ll: "PDS-LL"
+  buendnis_90: "Bü. 90"
+  fdp: "F.D.P."
+  chrl: "CHR.L."
+  dbu: "DBU"
+  dfp: "DFP"
+  dsu: "DSU"
+  gruene: "Grüne"
+  rep: "REP"
+
+csv_party_columns: [spd, cdu, pds_ll, buendnis_90, fdp, chrl, dbu, dfp, dsu, gruene, rep]
+
+# BB 1990 is complex: 4 pages per spread, Stimmbezirk-level data, DDR codes.
+# The vision model handles this by processing all 4 pages together (or in pairs).
+# For the metadata page (page 4n+0), the Stimmbezirk code column and Wahlberechtigte are key.
+# For party pages (4n+1, 4n+2), the party vote columns alternate absolute/percentage rows.
+
+left_prompt: |
+  Extract Stimmbezirk-level election metadata from this Brandenburg 1990 election results page.
+
+  This page shows: Wahlkreis name, Stimmbezirk codes (format "NNNNNN/NNN" like "020862/008"),
+  Wahlberechtigte, and voting statistics columns.
+
+  Each Stimmbezirk has 2 rows: row "1" = Erststimmen, row "2" = Zweitstimmen.
+  Extract ONLY the Zweitstimmen row (row 2) for each Stimmbezirk.
+
+  The Stimmbezirk code column shows the full code on the right side.
+  The columns include: Wahlberechtigte (eligible voters), Abgegebene Stimmen insgesamt (total votes cast),
+  ungültige (invalid), gültige (valid).
+
+  Skip any rows with code "000000/999" (Briefwahl aggregates).
+
+  Return JSON array: [{"stimmbezirk": "020862/008", "wahlberechtigte": 733,
+  "abgegebene": 423, "ungueltige": 16, "gueltige": 407}, ...]
+  All values integers. JSON only.
+
+right_prompt: |
+  Extract Zweitstimmen party votes from this Brandenburg 1990 election results page.
+
+  This page shows party vote columns. Each Stimmbezirk has 2 rows: row 1 (Erststimmen) and row 2 (Zweitstimmen).
+  Extract ONLY row 2 (Zweitstimmen) for each Stimmbezirk.
+
+  There are {n} Stimmbezirke on this page.
+  Columns on this page: {columns}
+
+  "x" = 0, "-" = 0, "X" = 0.
+  Return the percentage values from the Zweitstimmen row.
+
+  Return {n} JSON objects with _pct keys for each party column.
+  JSON only.
+
+# DDR code to AGS mapping (from existing extraction script)
+# Stimmbezirk code format: first 6 digits = DDR municipality code
+# Must be mapped to 1990 AGS via lookup table in post-processing
+ddr_to_ags_mapping: true
+
+# Official Urnenwahl Zweitstimmen (from PDF Table 1.2, excluding Briefwahl)
+# Total Zweitstimmen: valid=1,249,804 (Urnenwahl only — Briefwahl separate)
+# Note: these are approximate; the exact Urnenwahl total needs verification
+official_totals:
+  valid_votes: 1249804
+  spd: 447248
+  cdu: 353781
+  pds_ll: 312082
+  buendnis_90: 22068
+  fdp: 40420
+  chrl: 0
+  dbu: 1448
+  dfp: 1360
+  dsu: 21464
+  gruene: 13581
+  rep: 26289
