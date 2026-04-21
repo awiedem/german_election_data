@@ -1,0 +1,31 @@
+theme: jekyll-theme-primer
+
+# GitHub Pages serves only README.md as the landing page.
+# Everything below is excluded from the Jekyll build because it is not
+# authored for Jekyll — in particular, files under docs/ and review/ use
+# Quarto frontmatter (including inline R like `r Sys.Date()`) that breaks
+# the Liquid parser.
+exclude:
+  - docs/
+  - review/
+  - code/
+  - data/
+  - output/
+  - gerda/
+  - meinungsbild/
+  - .venv/
+  - node_modules/
+  - "*.qmd"
+  - "*.ipynb"
+  - CLAUDE.md
+  - TODO.md
+  - LICENSE
+  - Dockerfile
+  - Makefile
+  - "*.Rproj"
+  - ".Rprofile"
+  - ".Rhistory"
+  - "*.sh"
+  - "*.py"
+  - "*.R"
+  - partyfacts-mapping.csv
