@@ -52,3 +52,9 @@ meinungsbild/data/estimates/
 meinungsbild/web/node_modules/
 meinungsbild/web/.next/
 meinungsbild/web/next-env.d.ts
+
+# OCR vision model API responses (large, not useful to version)
+data/state_elections/raw/Landtagswahlen/Brandenburg/bb_1994_vision_responses/
+
+# R transient output
+Rplots.pdf

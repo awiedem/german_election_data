@@ -441,6 +441,14 @@ df_harm <- df_harm |>
 
 glimpse(df_harm)
 
+## Add state_name and relocate metadata to the front
+df_harm <- df_harm |>
+  mutate(state_name = haschaR::state_id_to_names(substr(as.character(ags), 1, 2))) |>
+  dplyr::relocate(dplyr::any_of(c(
+    "ags", "election_year", "election_date",
+    "ags_name", "state_name", "state"
+  )))
+
 ## save
 fwrite(df_harm, "data/municipal_elections/final/municipal_harm_25.csv")
 write_rds(df_harm, "data/municipal_elections/final/municipal_harm_25.rds")

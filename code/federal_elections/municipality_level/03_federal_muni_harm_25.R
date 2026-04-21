@@ -42,6 +42,9 @@ df <- read_rds("data/federal_elections/municipality_level/final/federal_muni_unh
   as_tibble() |>
   # remove population & area that were used for weighting multi mail-in districts
   dplyr::select(-c(pop, area)) |>
+  # drop ags_name/state_name from unharm to avoid conflict with crosswalk's ags_name;
+  # these are re-added at the end from the crosswalk
+  dplyr::select(-any_of(c("ags_name", "state_name"))) |>
   # dplyr::filter years before 1990: no crosswalks available
   dplyr::filter(election_year >= 1990) |>
   arrange(ags, election_year)
@@ -575,6 +578,34 @@ df_harm <- df_harm |>
     flag_naive_turnout_above_1:perc_total_votes_incogruence,
     area_cw:population
   )
+
+
+# Add metadata columns: election_date, ags_name, state_name -----------------
+# For harm_25, ags_name comes from the 2021 crosswalk (ags_name_21 column)
+
+fed_date_lookup <- read_rds(
+  "data/federal_elections/municipality_level/final/federal_muni_unharm.rds"
+) |>
+  dplyr::distinct(election_year, election_date)
+
+# Build AGS -> ags_name lookup. Do it in base R to avoid any NSE issues with
+# column symbols leaking into outer scope.
+.cw_raw <- read_rds("data/crosswalks/final/ags_crosswalks.rds")
+.cw_df  <- data.frame(
+  ags      = as.character(.cw_raw$ags_21),
+  ags_name = .cw_raw$ags_name_21,
+  stringsAsFactors = FALSE
+)
+.cw_df <- .cw_df[!is.na(.cw_df$ags_name), ]
+.cw_df <- .cw_df[!duplicated(.cw_df$ags), ]
+ags_name_lookup <- tibble::as_tibble(.cw_df)
+rm(.cw_raw, .cw_df)
+
+df_harm <- df_harm |>
+  dplyr::left_join(fed_date_lookup, by = "election_year", relationship = "many-to-one") |>
+  dplyr::left_join(ags_name_lookup, by = "ags", relationship = "many-to-one") |>
+  dplyr::mutate(state_name = haschaR::state_id_to_names(substr(ags, 1, 2))) |>
+  dplyr::relocate(ags, election_year, election_date, ags_name, state_name, state)
 
 
 # Save --------------------------------------------------------------------

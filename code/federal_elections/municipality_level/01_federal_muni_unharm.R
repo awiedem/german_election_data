@@ -2241,7 +2241,7 @@ mailin_df[13,2] <- nrow(mailin25)
 
 # Load population data
 pop25 <- read_excel(
-  "data/covars_municipality/raw/municipality_sizes/AuszugGV4QAktuell.xlsx",
+  "data/covars_municipality/raw/municipality_sizes/AuszugGV4QAktuell_2024.xlsx",
   sheet = 2,
   col_types = "numeric"
 ) |>
@@ -2706,10 +2706,27 @@ if (df |> filter(is.na(election_date)) |> nrow() > 0) {
 
 # Relocate
 df <- df |>
-  select(ags:turnout_wo_mailin, 
-         cdu:zentrum, 
+  select(ags:turnout_wo_mailin,
+         cdu:zentrum,
          cdu_csu:far_left_w_linke,
          flag_naive_turnout_above_1)
+
+# Add ags_name and state_name ---------------------------------------------
+.cw_raw <- read_rds("data/crosswalks/final/ags_crosswalks.rds")
+.cw_df  <- data.frame(
+  ags      = as.character(.cw_raw$ags_21),
+  ags_name = .cw_raw$ags_name_21,
+  stringsAsFactors = FALSE
+)
+.cw_df <- .cw_df[!is.na(.cw_df$ags_name), ]
+.cw_df <- .cw_df[!duplicated(.cw_df$ags), ]
+ags21_name_lookup <- tibble::as_tibble(.cw_df)
+rm(.cw_raw, .cw_df)
+
+df <- df |>
+  dplyr::left_join(ags21_name_lookup, by = "ags", relationship = "many-to-one") |>
+  dplyr::mutate(state_name = haschaR::state_id_to_names(substr(ags, 1, 2))) |>
+  dplyr::relocate(ags, election_year, election_date, ags_name, state_name, state)
 
 # Diagnosis ---------------------------------------------------------------
 

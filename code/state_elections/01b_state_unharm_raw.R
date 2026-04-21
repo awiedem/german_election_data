@@ -7021,6 +7021,20 @@ if (any(always_zero)) {
   state_unharm <- state_unharm |> select(-all_of(drop_cols))
 }
 
+# Relocate: move flag_* and perc_total_votes_incongruence to the front
+# so data-quality flags are visible near the metadata (requested in GitHub #7).
+front_meta <- intersect(
+  c("ags", "election_year", "election_date", "state", "state_name",
+    "ags_name_21", "ags_name",
+    "eligible_voters", "number_voters", "valid_votes", "invalid_votes",
+    "turnout"),
+  names(state_unharm)
+)
+front_flags <- grep("^flag_|^perc_total_votes", names(state_unharm), value = TRUE)
+other_cols  <- setdiff(names(state_unharm), c(front_meta, front_flags))
+state_unharm <- state_unharm |>
+  dplyr::relocate(dplyr::all_of(c(front_meta, front_flags, other_cols)))
+
 # Write output
 fwrite(state_unharm, "data/state_elections/final/state_unharm.csv")
 write_rds(state_unharm, "data/state_elections/final/state_unharm.rds")

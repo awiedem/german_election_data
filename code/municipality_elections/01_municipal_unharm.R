@@ -20501,6 +20501,14 @@ kommunalwahlen_merge <- kommunalwahlen_merge |>
     election_year = as.integer(election_year)
   )
 
+# Add state_name and relocate metadata to the front ---------------------
+kommunalwahlen_merge <- kommunalwahlen_merge |>
+  mutate(state_name = haschaR::state_id_to_names(substr(as.character(ags), 1, 2))) |>
+  dplyr::relocate(dplyr::any_of(c(
+    "ags", "election_year", "election_date",
+    "ags_name", "state_name", "state"
+  )))
+
 # Save ----
 
 write_rds(

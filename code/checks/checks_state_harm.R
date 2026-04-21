@@ -67,21 +67,18 @@ cat("=", strrep("=", 70), "\n\n")
 
 cat("Loading datasets...\n")
 
-h21 <- read_rds("data/state_elections/final/state_harm_21.rds") |>
-  as_tibble() |>
-  mutate(ags = pad_zero_conditional(ags, 8))
+load_if_exists <- function(path) {
+  if (!file.exists(path)) {
+    warning(sprintf("File not found, skipping: %s", path), call. = FALSE)
+    return(NULL)
+  }
+  read_rds(path) |> as_tibble() |> mutate(ags = pad_zero_conditional(ags, 8))
+}
 
-h23 <- read_rds("data/state_elections/final/state_harm_23.rds") |>
-  as_tibble() |>
-  mutate(ags = pad_zero_conditional(ags, 8))
-
-h25 <- read_rds("data/state_elections/final/state_harm_25.rds") |>
-  as_tibble() |>
-  mutate(ags = pad_zero_conditional(ags, 8))
-
-unharm <- read_rds("data/state_elections/final/state_2224_unharm.rds") |>
-  as_tibble() |>
-  mutate(ags = pad_zero_conditional(ags, 8))
+h21    <- load_if_exists("data/state_elections/final/state_harm_21.rds")
+h23    <- load_if_exists("data/state_elections/final/state_harm_23.rds")
+h25    <- load_if_exists("data/state_elections/final/state_harm_25.rds")
+unharm <- load_if_exists("data/state_elections/final/state_2224_unharm.rds")
 
 cat(sprintf("  state_harm_21:     %d rows x %d cols\n", nrow(h21), ncol(h21)))
 cat(sprintf("  state_harm_23:     %d rows x %d cols\n", nrow(h23), ncol(h23)))
@@ -144,7 +141,7 @@ check_coverage <- function(df, name, expected_elections, expected_states,
 check_coverage(h21, "state_harm_21", 55, 15, 38000, "2006-2024")
 check_coverage(h23, "state_harm_23", 55, 15, 38000, "2006-2024")
 check_coverage(h25, "state_harm_25", 55, 15, 38000, "2006-2024")
-check_coverage(unharm, "state_2224_unharm", 18, 15, 12000, "2008-2024")
+if (!is.null(unharm)) check_coverage(unharm, "state_2224_unharm", 18, 15, 12000, "2008-2024")
 
 # State-by-year cross-tabulation for harm_21
 cat("State-by-year cross-tabulation (state_harm_21):\n")
@@ -203,7 +200,7 @@ check_ags <- function(df, name) {
 check_ags(h21, "state_harm_21")
 check_ags(h23, "state_harm_23")
 check_ags(h25, "state_harm_25")
-check_ags(unharm, "state_2224_unharm")
+if (!is.null(unharm)) check_ags(unharm, "state_2224_unharm")
 
 # ==============================================================================
 # CHECK 3: VOTE SHARE VALIDITY
@@ -274,29 +271,31 @@ check_vote_shares(h23, "state_harm_23")
 check_vote_shares(h25, "state_harm_25")
 
 # For unharm, party shares don't have total_vote_share — compute row sums
-cat("--- state_2224_unharm ---\n")
-party_vars_u <- get_party_vars(unharm)
-cat(sprintf("  Party columns (%d): %s\n", length(party_vars_u),
-            paste(party_vars_u, collapse = ", ")))
+if (!is.null(unharm)) {
+  cat("--- state_2224_unharm ---\n")
+  party_vars_u <- get_party_vars(unharm)
+  cat(sprintf("  Party columns (%d): %s\n", length(party_vars_u),
+              paste(party_vars_u, collapse = ", ")))
 
-n_neg_u <- 0
-n_over_u <- 0
-for (pv in party_vars_u) {
-  vals <- unharm[[pv]]
-  n_neg_pv <- sum(vals < 0, na.rm = TRUE)
-  n_over_pv <- sum(vals > 1, na.rm = TRUE)
-  if (n_neg_pv > 0) cat(sprintf("  !! %s has %d negative values\n", pv, n_neg_pv))
-  if (n_over_pv > 0) cat(sprintf("  !! %s has %d values > 1\n", pv, n_over_pv))
-  n_neg_u <- n_neg_u + n_neg_pv
-  n_over_u <- n_over_u + n_over_pv
-}
+  n_neg_u <- 0
+  n_over_u <- 0
+  for (pv in party_vars_u) {
+    vals <- unharm[[pv]]
+    n_neg_pv <- sum(vals < 0, na.rm = TRUE)
+    n_over_pv <- sum(vals > 1, na.rm = TRUE)
+    if (n_neg_pv > 0) cat(sprintf("  !! %s has %d negative values\n", pv, n_neg_pv))
+    if (n_over_pv > 0) cat(sprintf("  !! %s has %d values > 1\n", pv, n_over_pv))
+    n_neg_u <- n_neg_u + n_neg_pv
+    n_over_u <- n_over_u + n_over_pv
+  }
 
-if (n_neg_u > 0) fail(sprintf("state_2224_unharm: %d negative party share values", n_neg_u))
-if (n_over_u > 0) warn(sprintf("state_2224_unharm: %d party share values > 1", n_over_u))
-if (n_neg_u == 0 && n_over_u == 0) {
-  pass("state_2224_unharm: all party shares in [0, 1]")
+  if (n_neg_u > 0) fail(sprintf("state_2224_unharm: %d negative party share values", n_neg_u))
+  if (n_over_u > 0) warn(sprintf("state_2224_unharm: %d party share values > 1", n_over_u))
+  if (n_neg_u == 0 && n_over_u == 0) {
+    pass("state_2224_unharm: all party shares in [0, 1]")
+  }
+  cat("\n")
 }
-cat("\n")
 
 # ==============================================================================
 # CHECK 4: TURNOUT VALIDITY
@@ -386,7 +385,7 @@ check_turnout <- function(df, name) {
 check_turnout(h21, "state_harm_21")
 check_turnout(h23, "state_harm_23")
 check_turnout(h25, "state_harm_25")
-check_turnout(unharm, "state_2224_unharm")
+if (!is.null(unharm)) check_turnout(unharm, "state_2224_unharm")
 
 # ==============================================================================
 # CHECK 5: CROSS-DATASET CONSISTENCY
@@ -576,7 +575,7 @@ check_cdu_csu <- function(df, name) {
 check_cdu_csu(h21, "state_harm_21")
 check_cdu_csu(h23, "state_harm_23")
 check_cdu_csu(h25, "state_harm_25")
-check_cdu_csu(unharm, "state_2224_unharm")
+if (!is.null(unharm)) check_cdu_csu(unharm, "state_2224_unharm")
 
 # ==============================================================================
 # CHECK 8: PARTY TIMELINE
@@ -650,7 +649,7 @@ check_party_timeline <- function(df, name) {
 check_party_timeline(h21, "state_harm_21")
 check_party_timeline(h23, "state_harm_23")
 check_party_timeline(h25, "state_harm_25")
-check_party_timeline(unharm, "state_2224_unharm")
+if (!is.null(unharm)) check_party_timeline(unharm, "state_2224_unharm")
 
 # ==============================================================================
 # CHECK 9: KNOWN ENTITY SPOT-CHECKS
@@ -853,7 +852,7 @@ check_flags <- function(df, name) {
 check_flags(h21, "state_harm_21")
 check_flags(h23, "state_harm_23")
 check_flags(h25, "state_harm_25")
-check_flags(unharm, "state_2224_unharm")
+if (!is.null(unharm)) check_flags(unharm, "state_2224_unharm")
 
 # ==============================================================================
 # CHECK 12: COVARIATE COVERAGE
@@ -945,11 +944,17 @@ check_covariates <- function(df, name) {
 check_covariates(h21, "state_harm_21")
 check_covariates(h23, "state_harm_23")
 check_covariates(h25, "state_harm_25")
-check_covariates(unharm, "state_2224_unharm")
+if (!is.null(unharm)) check_covariates(unharm, "state_2224_unharm")
 
 # ==============================================================================
 # CHECK 13: UNHARMONIZED INPUT
 # ==============================================================================
+
+if (is.null(unharm)) {
+  cat(strrep("=", 70), "\n")
+  cat("CHECK 13: UNHARMONIZED INPUT (state_2224_unharm) — SKIPPED (file not found)\n")
+  cat(strrep("=", 70), "\n\n")
+} else {
 
 cat(strrep("=", 70), "\n")
 cat("CHECK 13: UNHARMONIZED INPUT (state_2224_unharm)\n")
@@ -1045,6 +1050,8 @@ if (nrow(hamburg_rows) > 0) {
 }
 
 cat("\n")
+
+}  # end of if (!is.null(unharm)) block for CHECK 13
 
 # ==============================================================================
 # CHECK 14: WAHLLEITER COMPARISON
@@ -1345,7 +1352,98 @@ check_other_column <- function(df, name) {
 check_other_column(h21, "state_harm_21")
 check_other_column(h23, "state_harm_23")
 check_other_column(h25, "state_harm_25")
-check_other_column(unharm, "state_2224_unharm")
+if (!is.null(unharm)) check_other_column(unharm, "state_2224_unharm")
+
+cat("\n")
+
+# ==============================================================================
+# CROSS-CHECK: PARTY VOTE SHARES VS BUNDESLAENDER (Stelzle)
+# ==============================================================================
+# Cross-validate GERDA state-aggregated party vote shares against Bundeswahlleiter
+# state totals from the bundeslaendeR package (https://github.com/RStelzle/bundeslaendeR).
+# Flags any state x election x party combination with >1pp deviation.
+# Skipped gracefully if bundeslaendeR is not installed.
+
+cat(strrep("=", 70), "\n")
+cat("CROSS-CHECK: bundeslaendeR party vote shares (Stelzle)\n")
+cat(strrep("=", 70), "\n\n")
+
+if (!requireNamespace("bundeslaendeR", quietly = TRUE)) {
+  warn("bundeslaendeR package not installed — skipping cross-check.")
+  cat("  Install with: devtools::install_github('RStelzle/bundeslaendeR')\n\n")
+} else {
+  # Use state_unharm for aggregation (has all parties at municipality level)
+  if (file.exists("data/state_elections/final/state_unharm.rds")) {
+    unharm_all <- read_rds("data/state_elections/final/state_unharm.rds") |>
+      as_tibble()
+
+    # Identify party columns: not metadata, not flags, not aggregates
+    meta_cols <- c("ags", "election_year", "election_date", "state", "state_name",
+                   "ags_name", "ags_name_21", "county",
+                   "eligible_voters", "number_voters", "valid_votes",
+                   "invalid_votes", "turnout")
+    flag_cols <- grep("^flag_|^perc_total|^total_vote_share|^far_|^cdu_csu$|_name$|area_|pop|employees",
+                       names(unharm_all), value = TRUE)
+    party_cols <- setdiff(names(unharm_all), c(meta_cols, flag_cols))
+
+    # Aggregate to state level: votes = share * valid_votes, then shares
+    linked <- unharm_all |>
+      tidyr::pivot_longer(
+        cols = dplyr::all_of(party_cols),
+        names_to = "partyname_gerda", values_to = "vshare"
+      ) |>
+      tidyr::drop_na(vshare) |>
+      filter(vshare > 0) |>
+      dplyr::select(state, election_date, ags, partyname_gerda, valid_votes, vshare) |>
+      mutate(votes = vshare * valid_votes) |>
+      group_by(state, election_date, partyname_gerda) |>
+      summarise(votes = sum(votes, na.rm = TRUE), .groups = "drop") |>
+      group_by(state, election_date) |>
+      mutate(aggregated_vshare_gerda = votes / sum(votes, na.rm = TRUE)) |>
+      ungroup() |>
+      dplyr::rename(state_gerda = state) |>
+      dplyr::left_join(bundeslaendeR::link_gerda,
+                       by = c("state_gerda", "election_date", "partyname_gerda")) |>
+      dplyr::left_join(
+        bundeslaendeR::ltw_elections |>
+          dplyr::select(state, election_date, partyname_short,
+                        vshare_bl = party_vshare),
+        by = c("state", "election_date", "partyname_short")
+      )
+
+    deviations <- linked |>
+      tidyr::drop_na(vshare_bl) |>
+      mutate(error_pp = (vshare_bl - aggregated_vshare_gerda) * 100) |>
+      filter(abs(error_pp) >= 1) |>
+      arrange(desc(abs(error_pp))) |>
+      mutate(
+        gerda_pct = round(aggregated_vshare_gerda * 100, 2),
+        bl_pct    = round(vshare_bl * 100, 2),
+        error_pp  = round(error_pp, 2)
+      ) |>
+      dplyr::select(state_gerda, election_date, partyname_gerda,
+                    partyname_short, gerda_pct, bl_pct, error_pp)
+
+    n_matched <- linked |> tidyr::drop_na(vshare_bl) |> nrow()
+    n_dev <- nrow(deviations)
+
+    cat(sprintf("Matched %d state x election x party pairs against bundeslaendeR.\n", n_matched))
+    if (n_dev == 0) {
+      pass(sprintf("Party vote shares agree with bundeslaendeR within 1pp (%d pairs).", n_matched))
+    } else {
+      warn(sprintf("%d state x party pairs deviate >1pp from bundeslaendeR:", n_dev))
+      print(as.data.frame(deviations), right = FALSE)
+
+      # Write full deviation table to data_checks/
+      out_path <- "data/data_checks/bundeslaendeR_deviations.csv"
+      dir.create(dirname(out_path), showWarnings = FALSE, recursive = TRUE)
+      data.table::fwrite(deviations, out_path)
+      cat(sprintf("\n  Full deviation table written to %s\n", out_path))
+    }
+  } else {
+    warn("state_unharm.rds not found — skipping cross-check.")
+  }
+}
 
 cat("\n")
 

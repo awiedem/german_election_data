@@ -19,7 +19,12 @@ conflict_prefer("year", "lubridate")
 # Read crosswalk files ----------------------------------------------------
 cw <- fread("data/crosswalks/final/ags_crosswalks.csv") |>
   as_tibble() |>
-  mutate(ags = pad_zero_conditional(ags, 7))
+  mutate(
+    ags = pad_zero_conditional(ags, 7),
+    # fread may infer ags_21 as numeric when values look like integers —
+    # coerce to character to avoid type mismatches with df25$ags_21 later
+    ags_21 = pad_zero_conditional(as.character(ags_21), 8)
+  )
 
 # how many ags_21 for each year?
 cw |>
@@ -44,6 +49,9 @@ df <- read_rds("data/federal_elections/municipality_level/final/federal_muni_unh
   as_tibble() |>
   # remove population & area that were used for weighting multi mail-in districts
   dplyr::select(-c(pop, area)) |>
+  # drop ags_name/state_name from unharm to avoid conflict with crosswalk's ags_name;
+  # these are re-added at the end from the 2021 crosswalk
+  dplyr::select(-any_of(c("ags_name", "state_name"))) |>
   # dplyr::filter years before 1990: no crosswalks available
   dplyr::filter(election_year >= 1990) |>
   arrange(ags, election_year)
@@ -197,8 +205,9 @@ streitholz <- data.frame(
   ags = "16022540", ags_name = "Streitholz", year = 1990,
   area_cw = 1, pop_cw = 1,
   area = 1.59, population = 0.104,
-  ags_21 = 16061049, ags_name_21 = "Hohes Kreuz",
-  emp_cw = NA, employees = NA
+  ags_21 = "16061049", ags_name_21 = "Hohes Kreuz",
+  emp_cw = NA, employees = NA,
+  stringsAsFactors = FALSE
 )
 
 names(cw)
@@ -419,7 +428,8 @@ table(df_cw$election_year)
 ## Votes: weighted sum -----------------------------------------------------
 votes <- df_cw |>
   dplyr::filter(election_year < 2021) |>
-  bind_rows(df25) |>
+  dplyr::mutate(ags_21 = as.character(ags_21)) |>
+  bind_rows(df25 |> dplyr::mutate(ags_21 = as.character(ags_21))) |>
   group_by(ags_21, election_year) |>
   summarise(
     unique_mailin = max(unique_mailin),
@@ -441,7 +451,8 @@ table(votes$election_year)
 ## Population & area: weighted sum -----------------------------------------
 area_pop <- df_cw |>
   dplyr::filter(election_year < 2021) |>
-  bind_rows(df25) |>
+  dplyr::mutate(ags_21 = as.character(ags_21)) |>
+  bind_rows(df25 |> dplyr::mutate(ags_21 = as.character(ags_21))) |>
   group_by(ags_21, election_year) |>
   summarise(
     area = sum(area * area_cw, na.rm = TRUE),
@@ -738,7 +749,7 @@ df_harm <- df_harm |>
   relocate(county, .after = state) |>
   relocate(flag_unsuccessful_naive_merge, .after = population) |>
   relocate(flag_naive_turnout_above_1, .after = population) |>
-  dplyr::select(-c(ags_name, ags_name_21, emp_cw, employees, year_cw, id)) |>
+  dplyr::select(-dplyr::any_of(c("ags_name", "ags_name_21", "emp_cw", "employees", "year_cw", "id"))) |>
   # arrange
   arrange(ags, election_year)
 
@@ -806,6 +817,32 @@ df_harm <- df_harm |>
     flag_naive_turnout_above_1:perc_total_votes_incogruence,
     area_cw:population
   )
+
+
+# Add metadata columns: election_date, ags_name, state_name -----------------
+
+fed_date_lookup <- read_rds(
+  "data/federal_elections/municipality_level/final/federal_muni_unharm.rds"
+) |>
+  dplyr::distinct(election_year, election_date)
+
+# Build AGS -> ags_name lookup in base R to avoid NSE issues in outer scope
+.cw_raw <- read_rds("data/crosswalks/final/ags_crosswalks.rds")
+.cw_df  <- data.frame(
+  ags      = as.character(.cw_raw$ags_21),
+  ags_name = .cw_raw$ags_name_21,
+  stringsAsFactors = FALSE
+)
+.cw_df <- .cw_df[!is.na(.cw_df$ags_name), ]
+.cw_df <- .cw_df[!duplicated(.cw_df$ags), ]
+ags21_name_lookup <- tibble::as_tibble(.cw_df)
+rm(.cw_raw, .cw_df)
+
+df_harm <- df_harm |>
+  dplyr::left_join(fed_date_lookup, by = "election_year", relationship = "many-to-one") |>
+  dplyr::left_join(ags21_name_lookup, by = "ags", relationship = "many-to-one") |>
+  dplyr::mutate(state_name = haschaR::state_id_to_names(substr(ags, 1, 2))) |>
+  dplyr::relocate(ags, election_year, election_date, ags_name, state_name, state)
 
 
 # Save --------------------------------------------------------------------
