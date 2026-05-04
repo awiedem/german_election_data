@@ -75,7 +75,11 @@ for (i in seq_along(TARGET_YEARS)) {
   cat(sprintf("  BTW %d: %d cities flagged have=TRUE\n", TARGET_YEARS[i], coverage[i]))
 }
 
-## For every have_<year>==TRUE, verify the directory + file exist and open in sf.
+## have_<year>=TRUE means "publicly available online; URL recorded."
+## Downloading the actual files is a separate phase; here we differentiate:
+##   not-downloaded (dir missing)  -> INFO (expected before Phase F)
+##   downloaded but unreadable     -> FAIL (real corruption)
+not_downloaded <- list()
 broken <- list()
 for (year in TARGET_YEARS) {
   flag_col <- paste0("have_", year)
@@ -84,7 +88,7 @@ for (year in TARGET_YEARS) {
     ags <- rows$ags[i]
     dir <- file.path(SHP_DIR, ags, year)
     if (!dir.exists(dir)) {
-      broken[[length(broken) + 1]] <- tibble(ags = ags, year = year, issue = "dir missing")
+      not_downloaded[[length(not_downloaded) + 1]] <- tibble(ags = ags, year = year)
       next
     }
     geo_files <- list.files(dir, pattern = "\\.(shp|gpkg|geojson|json|kml)$",
@@ -93,7 +97,6 @@ for (year in TARGET_YEARS) {
       broken[[length(broken) + 1]] <- tibble(ags = ags, year = year, issue = "no geometry file")
       next
     }
-    ## Attempt to read first geometry file
     ok <- tryCatch({
       g <- sf::st_read(geo_files[1], quiet = TRUE)
       nrow(g) > 0 && !is.null(sf::st_crs(g))
@@ -104,9 +107,14 @@ for (year in TARGET_YEARS) {
     }
   }
 }
+not_downloaded_df <- bind_rows(not_downloaded)
 broken_df <- bind_rows(broken)
+record("INFO", sprintf("not yet downloaded: %d / %d flagged (run Phase F download)",
+                      nrow(not_downloaded_df), sum(coverage)))
 record(if (nrow(broken_df) == 0) "OK" else "FAIL",
-       sprintf("shapefile integrity: %d broken / %d flagged", nrow(broken_df), sum(coverage)))
+       sprintf("downloaded shapefile integrity: %d broken / %d on disk",
+               nrow(broken_df),
+               sum(coverage) - nrow(not_downloaded_df)))
 if (nrow(broken_df) > 0) {
   cat("  Broken entries:\n")
   print(broken_df)
