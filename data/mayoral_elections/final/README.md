@@ -2,19 +2,29 @@
 
 Seven datasets covering mayoral elections in 7 German states (Bayern, Niedersachsen, Nordrhein-Westfalen, Rheinland-Pfalz, Saarland, Sachsen, Schleswig-Holstein), 1945--2025.
 
+Scope: head-of-municipality elections (`Bürgermeisterwahl`, `Oberbürgermeisterwahl`, `VG-Bürgermeisterwahl`, `SG-Bürgermeisterwahl`). Head-of-county elections (`Landratswahl`) are published as a separate dataset — see [`../../landrat_elections/final/`](../../landrat_elections/final/).
+
 ## Datasets
 
 | File | Rows | Cols | Unit | Description |
 |---|---|---|---|---|
-| `mayoral_unharm` | 41,436 | 16 | Election | One row per election-round (winner-level summary), original boundaries |
-| `mayoral_harm` | 38,667 | 23 | Election | Same as above, mapped to 2021 municipal boundaries |
-| `mayoral_candidates` | 85,160 | 44 | Candidate | One row per candidate per election cycle (wide format), original boundaries, incl. candidate characteristics |
-| `mayor_panel` | 34,495 | 31 | Person-election | Within-mayor panel with person IDs, original boundaries |
-| `mayor_panel_harm` | 33,319 | 32 | Person-election | Same as above, mapped to 2021 municipal boundaries |
-| `mayor_panel_annual` | 185,112 | 27 | Person-year | Annual panel (forward-filled from elections), original boundaries |
-| `mayor_panel_annual_harm` | 179,011 | 28 | Person-year | Same as above, mapped to 2021 municipal boundaries |
+| `mayoral_unharm` | 39,986 | 16 | Election | One row per election-round (winner-level summary), original boundaries |
+| `mayoral_harm` | 38,637 | 23 | Election | Same as above, mapped to 2021 municipal boundaries |
+| `mayoral_candidates` | 81,878 | 44 | Candidate | One row per candidate per election cycle (wide format), original boundaries, incl. candidate characteristics |
+| `mayor_panel` | 34,377 | 31 | Person-election | Within-mayor panel with person IDs, original boundaries |
+| `mayor_panel_harm` | 33,288 | 32 | Person-election | Same as above, mapped to 2021 municipal boundaries |
+| `mayor_panel_annual` | 184,603 | 27 | Person-year | Annual panel (forward-filled from elections), original boundaries |
+| `mayor_panel_annual_harm` | 178,980 | 28 | Person-year | Same as above, mapped to 2021 municipal boundaries |
 
 All files are available as `.rds` and `.csv`.
+
+## Related datasets
+
+Landrat (county head) elections live in their own dataset at `../../landrat_elections/final/landrat_unharm.{rds,csv}` and `landrat_candidates.{rds,csv}`. They share the same schema as the mayoral files but cover county-level units (8-digit AGS ending in `000`) and are not harmonized to municipal boundaries.
+
+## Known data-quality issues
+
+- **NRW 2025 Stichwahl date typo (patched)**: The IT.NRW raw file `KW 2025 Oberbürgermeister-Landratswahlen.xlsx` encodes every Stichwahl row's date as Excel serial `44101` (2020-09-27) instead of `45928` (2025-09-28). This was verified by direct XML inspection — it is a source-data error, not a coding error. Our pipeline patches the dates in [`code/mayoral_elections/01_mayoral_unharm.R`](../../../code/mayoral_elections/01_mayoral_unharm.R) and [`01b_mayoral_candidates.R`](../../../code/mayoral_elections/01b_mayoral_candidates.R) so that 2025 SW data is usable. The patch will be removed once IT.NRW corrects the source file.
 
 ---
 

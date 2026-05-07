@@ -414,9 +414,18 @@ Same hybrid method as `02_municipal_harm.R`, targeting 2025 boundaries using `ag
 
 ## 7. Mayoral Elections
 
+### 7.0 Output split — mayoral vs Landrat
+
+The Stage 1 scripts ingest `Bürgermeisterwahl`, `Oberbürgermeisterwahl`, `VG-/SG-Bürgermeisterwahl`, and `Landratswahl` together (raw IT.NRW Excel files mix OB and Landrat in one workbook), then split outputs at the end:
+
+- `data/mayoral_elections/final/mayoral_unharm.{rds,csv}` and `mayoral_candidates.{rds,csv}` — municipal-level head elections
+- `data/landrat_elections/final/landrat_unharm.{rds,csv}` and `landrat_candidates.{rds,csv}` — county-level head elections (covers NRW, RLP, NI; not Bayern or Saarland)
+
+The two share an identical schema. `02_mayoral_harm.R` only consumes the mayoral files.
+
 ### 7.1 Current state (unharmonized only)
 
-**Script:** `code/mayoral_elections/01_mayoral_unharm.R` (489 lines)
+**Script:** `code/mayoral_elections/01_mayoral_unharm.R` (~1,425 lines)
 
 **Coverage:** 7 states with varying completeness:
 - **Fully processed:** Bayern (BY), NRW, Saarland (SAR), Sachsen (SN), Rheinland-Pfalz (RLP), Niedersachsen (NS), Schleswig-Holstein (SH)
@@ -427,6 +436,12 @@ Same hybrid method as `02_municipal_harm.R`, targeting 2025 boundaries using `ag
 - **Candidate-level data:** Unlike all other pipelines that track party vote shares, mayoral elections have candidate-level results (name, party affiliation, vote count, runoff status).
 - **Multiple rounds:** Many mayoral elections have first-round and runoff elections.
 - **Raw data:** `data/mayoral_elections/raw/<state>/` — state-specific Excel files and CSVs.
+
+**NRW classifier** (in `process_nrw_file()` and `process_nrw_candidates()`): the AGS suffix is ambiguous in NRW because both kreisfreie Städte and Landkreise have AGS ending in `"000"`. Classification uses the `gemeinde` name column instead — `"Krfr. Stadt X"` / `"Kreisfreie Stadt X"` → Oberbürgermeisterwahl; `"Kreis X"` / `"-Kreis"` / `"Hochsauerlandkreis"` / `"Städteregion Aachen"` → Landratswahl.
+
+### 7.1.1 Known IT.NRW source-data issues
+
+- **NRW 2025 Stichwahl date typo (patched in pipeline)**: `KW 2025 Oberbürgermeister-Landratswahlen.xlsx` has every Stichwahl row's date encoded as Excel serial `44101` (= 2020-09-27) instead of `45928` (= 2025-09-28). Verified by direct XML inspection of `xl/worksheets/sheet1.xml`. The Stage 1 scripts patch this automatically with a narrow rule (only the 2025 OB file, only the `2020-09-27` value). Remove this patch when IT.NRW corrects the source.
 
 ### 7.2 Why no harmonization exists yet
 

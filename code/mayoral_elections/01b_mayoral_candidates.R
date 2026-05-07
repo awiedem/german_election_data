@@ -122,7 +122,15 @@ bayern_base <- bayern_raw %>%
     election_year = lubridate::year(election_date),
     state = "09",
     state_name = "Bayern",
-    election_type = "Bürgermeisterwahl",
+    # Classify by the source's own Amtstitel column. Without this, Bayern
+    # Landrat elections (1098 rows) and Oberbürgermeister elections (557 rows)
+    # were silently labeled "Bürgermeisterwahl" — see
+    # docs/mayoral_elections_known_issues.md §14.
+    election_type = case_when(
+      grepl("^Landrat|^Landrät", Amtstitel) ~ "Landratswahl",
+      grepl("^Oberbürgermeister", Amtstitel) ~ "Oberbürgermeisterwahl",
+      TRUE ~ "Bürgermeisterwahl"
+    ),
     # Round: Wahlart distinguishes "erster Wahlgang" from "Stichwahl"
     round = case_when(
       Wahlart %in% c("Stichwahl", "Stichwahl ungültig", "Losentscheid") ~ "stichwahl",
@@ -281,10 +289,16 @@ process_nrw_candidates <- function(file, skip_rows, default_election_type) {
       state = "05",
       state_name = "Nordrhein-Westfalen",
       ags_name = gemeinde,
+      # Determine election type from the gemeinde (name) column. The AGS suffix
+      # alone is ambiguous in NRW — both kreisfreie Städte and Landkreise have
+      # AGS ending in "000". Use the source's own naming convention:
+      #   "Krfr. Stadt X" / "Kreisfreie Stadt X" → Oberbürgermeisterwahl
+      #   "Kreis X" / "Rhein-Erft-Kreis" / "Hochsauerlandkreis" / "Städteregion X" → Landratswahl
       election_type = case_when(
         default_election_type == "Bürgermeisterwahl" ~ "Bürgermeisterwahl",
-        grepl("000$", gkz_clean) ~ "Oberbürgermeisterwahl",
-        TRUE ~ "Landratswahl"
+        grepl("^Kreis |[Kk]reis$|-Kreis|, Kreis|Städteregion|Stadtregion", gemeinde) ~ "Landratswahl",
+        grepl("Stadt", gemeinde) ~ "Oberbürgermeisterwahl",
+        TRUE ~ "Oberbürgermeisterwahl"
       ),
       datum_num = suppressWarnings(as.numeric(datum)),
       datum_text = suppressWarnings(as.Date(datum, format = "%d.%m.%Y")),
@@ -311,7 +325,30 @@ process_nrw_candidates <- function(file, skip_rows, default_election_type) {
       candidate_voteshare = ifelse(!is.na(valid_votes) & valid_votes > 0 &
                                      !is.na(stimmen),
                                    stimmen / valid_votes, NA)
-    ) %>%
+    )
+
+  # IT.NRW data error: in `KW 2025 Oberbürgermeister-Landratswahlen.xlsx` every
+  # Stichwahl row has cell value 44101 (= 2020-09-27) hardcoded in column C
+  # instead of 45928 (= 2025-09-28). Verified via direct XML inspection of the
+  # source file — the row's vote totals match the 2025 SW (e.g. Düsseldorf
+  # Keller 120430 ≠ 2020 SW 118308; Bonn row pairs Déus + Dörner, but Déus
+  # only ran in 2025). Patch the dates so the 2025 SW data is usable. Remove
+  # this once IT.NRW corrects the source file.
+  if (election_year == 2025 && grepl("Oberb", basename(file))) {
+    n_patch <- sum(nrw_clean$election_date == as.Date("2020-09-27"), na.rm = TRUE)
+    if (n_patch > 0) {
+      cat("  IT.NRW 2025 patch:", n_patch, "rows 2020-09-27 → 2025-09-28\n")
+      nrw_clean <- nrw_clean %>%
+        mutate(
+          election_date = if_else(election_date == as.Date("2020-09-27"),
+                                  as.Date("2025-09-28"),
+                                  election_date),
+          election_year = year(election_date)
+        )
+    }
+  }
+
+  nrw_clean <- nrw_clean %>%
     # Detect Stichwahl: NRW Excel files list HW and SW as separate rows
     # with different dates. Within each ags+election_type, duplicate GKZ rows
     # with a date within 60 days of each other form an election cycle.
@@ -409,7 +446,14 @@ saarland_candidates <- saarland_raw %>%
     state = "10",
     state_name = "Saarland",
     election_year = Wahljahr,
-    election_type = "Bürgermeisterwahl",
+    # Classify Regionalverband Saarbrücken (the SL equivalent of a Landkreis;
+    # head election is "Regionalverbandsdirektor") as Landratswahl. Without
+    # this the 15 RVS rows were silently labeled "Bürgermeisterwahl" — see
+    # docs/mayoral_elections_known_issues.md §14.
+    election_type = case_when(
+      grepl("Regionalverband", `Gemeinde/Kreis`) ~ "Landratswahl",
+      TRUE ~ "Bürgermeisterwahl"
+    ),
     election_date = as.Date(paste(Wahljahr, Monat, Tag, sep = "-")),
     ags_name = `Gemeinde/Kreis`,
     info_type = `Wahlberechtigte/Wähler/Gültige/Ungültige/Partei/Einzelbewerber`,
@@ -1773,16 +1817,39 @@ cat("  With name:", sum(!is.na(mayoral_candidates$candidate_name)), "\n")
 cat("  Without name:", sum(is.na(mayoral_candidates$candidate_name)), "\n")
 
 # ============================================================================
+# SPLIT MAYORAL VS LANDRAT
+# ============================================================================
+# Landrat (county/Städteregion head) elections live in their own dataset.
+
+mayoral_types <- c("Bürgermeisterwahl", "Oberbürgermeisterwahl",
+                   "VG-Bürgermeisterwahl", "SG-Bürgermeisterwahl")
+
+landrat_candidates <- mayoral_candidates %>% filter(election_type == "Landratswahl")
+mayoral_candidates <- mayoral_candidates %>% filter(election_type %in% mayoral_types)
+
+cat("\nDataset split:\n")
+cat("  mayoral_candidates:", nrow(mayoral_candidates), "rows\n")
+cat("  landrat_candidates:", nrow(landrat_candidates), "rows\n")
+
+# ============================================================================
 # SAVE DATA
 # ============================================================================
 
 cat("\n=== Saving data ===\n")
 
+# Mayoral output
 write_rds(mayoral_candidates, "data/mayoral_elections/final/mayoral_candidates.rds")
 fwrite(mayoral_candidates, "data/mayoral_elections/final/mayoral_candidates.csv")
+
+# Landrat output (new standalone dataset)
+dir.create("data/landrat_elections/final", recursive = TRUE, showWarnings = FALSE)
+write_rds(landrat_candidates, "data/landrat_elections/final/landrat_candidates.rds")
+fwrite(landrat_candidates, "data/landrat_elections/final/landrat_candidates.csv")
 
 cat("Data saved to:\n")
 cat("  - data/mayoral_elections/final/mayoral_candidates.rds\n")
 cat("  - data/mayoral_elections/final/mayoral_candidates.csv\n")
+cat("  - data/landrat_elections/final/landrat_candidates.rds\n")
+cat("  - data/landrat_elections/final/landrat_candidates.csv\n")
 
 cat("\n=== Done ===\n")
