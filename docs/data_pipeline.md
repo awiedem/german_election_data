@@ -427,10 +427,12 @@ The two share an identical schema. `02_mayoral_harm.R` only consumes the mayoral
 
 **Script:** `code/mayoral_elections/01_mayoral_unharm.R` (~1,425 lines)
 
-**Coverage:** 7 states with varying completeness:
-- **Fully processed:** Bayern (BY), NRW, Saarland (SAR), Sachsen (SN), Rheinland-Pfalz (RLP), Niedersachsen (NS), Schleswig-Holstein (SH)
+**Coverage:** 12 states with varying completeness:
+- **Fully processed:** Bayern (BY), NRW, Saarland (SAR), Sachsen (SN), Rheinland-Pfalz (RLP), Niedersachsen (NS), Schleswig-Holstein (SH), Mecklenburg-Vorpommern (MV), Thüringen (TH), Baden-Württemberg (BW), Brandenburg (BB), Sachsen-Anhalt (ST)
 - NS covers 2006–2025 (9 election years, 1,093 rows) using 3 PDF parsers: standard one-page-per-election (2011+), German-number format with full party names (2006), and tabular summary (2013)
-- SH covers 2023–2025 via web scraping (wahlen-sh.de)
+- SH covers 2023–2025 via web scraping (wahlen-sh.de); MV and TH via Stage-0 PDF/scrape parsers
+- BW covers the most recent election per Gemeinde as of 31.12.2024 (1,101 Gemeinden, ~2016–2024) — see the BW Stage-0 parser below
+- BB (`00_bb_scrape.py`) and ST (`00_st_scrape.py`) are Landeswahlleiter-portal scrapes of the current cycle only: BB the amtsfreie Gemeinden/Städte + 4 kreisfreie Städte (~2018–2026; amtsangehörige ehrenamtliche BM excluded), ST all Bürgermeister-/OB-wahlen 2024–2026. Both carry party + all candidates + HW/SW; see the per-state classifier notes in the project `CLAUDE.md`
 
 **Key characteristics:**
 - **Candidate-level data:** Unlike all other pipelines that track party vote shares, mayoral elections have candidate-level results (name, party affiliation, vote count, runoff status).
@@ -438,6 +440,8 @@ The two share an identical schema. `02_mayoral_harm.R` only consumes the mayoral
 - **Raw data:** `data/mayoral_elections/raw/<state>/` — state-specific Excel files and CSVs.
 
 **NRW classifier** (in `process_nrw_file()` and `process_nrw_candidates()`): the AGS suffix is ambiguous in NRW because both kreisfreie Städte and Landkreise have AGS ending in `"000"`. Classification uses the `gemeinde` name column instead — `"Krfr. Stadt X"` / `"Kreisfreie Stadt X"` → Oberbürgermeisterwahl; `"Kreis X"` / `"-Kreis"` / `"Hochsauerlandkreis"` / `"Städteregion Aachen"` → Landratswahl.
+
+**BW Stage-0 parser** (`code/mayoral_elections/00_bw_parse.py`): parses Tables 13 (per-round Rahmendaten) and 14 (the elected person) of the Statistical Office's report `BW_Buergermeisterwahlen_2024_StatBericht_B-VII-3-j25.pdf` into `data/mayoral_elections/raw/baden_wuerttemberg/bw_parsed.csv` (winner-only, one row per Gemeinde-round; SH/MV-style block in Stage 1). Parsing is **token-order based**, not fixed-x: the table block drifts ~20 pt between pages and pdfplumber sometimes merges, sometimes splits the Lfd.Nr+AGS token — so rows anchor on the `dd.mm.yyyy` Wahltag / the rightmost numeric block, and the AGS is the first left-margin all-digit token of length ≥ 6. **BW office classifier:** the report carries no office title, so Oberbürgermeisterwahl is assigned by AGS — the 9 Stadtkreise (pinned by AGS) plus the 96 Große Kreisstädte (Stand 1.1.2025, matched to the Gemeinde column by normalised name, with the `Weingarten` name collision pinned to AGS `08436082`). The parser hard-fails if it does not resolve exactly 96 Große Kreisstädte. **BW data limitations:** no party (`winner_party`/`candidate_party` always NA), winner-only (no losing candidates, `n_candidates` NA), and the winner's votes are known only for the decisive round (Hauptwahl votes NA where a Neuwahl/Stichwahl followed). Wahlart `N` (Neuwahl, pre-Aug-2023) and `S` (Stichwahl, post-Aug-2023) both map to `round = "stichwahl"`. The online BW Statistikdatenbank (table `14431_…`) holds nothing beyond the report — no losing-candidate or party microdata is published anywhere, and regionalstatistik.de/destatis carry no mayoral data at all. **Lossless intermediate:** `bw_parsed.csv` additionally captures every per-Gemeinde field the report gives but the unified schema does not surface — `amtsperiode` (term number of the elected mayor), `hauptamtlich` (TRUE = hauptamtlich / FALSE = ehrenamtlich; 58 ehrenamtliche in 2024), `eu_citizen` (Unionsbürgerschaft; 1 in 2024), `briefwaehler` (postal-vote count) and `wahlgrund` (A = Ablauf der Amtszeit / S = Sonstige Gründe). The R Stage-1 scripts ignore these BW-only extras.
 
 ### 7.1.1 Known IT.NRW source-data issues
 

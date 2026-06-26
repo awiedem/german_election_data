@@ -58,3 +58,8 @@ data/state_elections/raw/Landtagswahlen/Brandenburg/bb_1994_vision_responses/
 
 # R transient output
 Rplots.pdf
+code/mayoral_elections/__pycache__/
+
+# Mayoral scraper HTML caches (regenerable via the 00_*_scrape.py scripts; the
+# committed artifacts are the parsed *_scraped.csv / *_parsed.csv. TH cache ~107MB).
+data/mayoral_elections/raw/**/html_cache/

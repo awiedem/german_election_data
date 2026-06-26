@@ -191,8 +191,8 @@ cat("\n11. Mayoral/Landrat split totals\n")
 
 # Mayoral row counts should be roughly stable (within 2% of expected baseline)
 m_rows <- nrow(m)
-check(m_rows > 35000 && m_rows < 45000,
-      sprintf("mayoral_unharm has %d rows (expected 35-45k)", m_rows),
+check(m_rows > 35000 && m_rows < 48000,
+      sprintf("mayoral_unharm has %d rows (expected 35-48k)", m_rows),
       sprintf("mayoral_unharm row count out of expected range: %d", m_rows))
 
 # Landrat dataset minimum counts
@@ -255,6 +255,73 @@ duesseldorf_2020 <- mc %>% filter(ags == "05111000", election_year == 2020) %>% 
 check(duesseldorf_2020 == 15,
       sprintf("Düsseldorf 2020: %d candidate rows (expected 15)", duesseldorf_2020),
       sprintf("Düsseldorf 2020: %d candidate rows (expected 15)", duesseldorf_2020))
+
+cat("\n16. Baden-Württemberg coverage + Oberbürgermeister classifier\n")
+# BW = last mayoral election per Gemeinde as of 31.12.2024 (StaLA B VII 3-j/25).
+# 1101 Gemeinden, exactly 1101 winners (one per Gemeinde).
+bw_u_munis <- m %>% filter(state == "08") %>% pull(ags) %>% unique()
+check(length(bw_u_munis) == 1101,
+      sprintf("BW: %d Gemeinden in mayoral_unharm (expected 1101)", length(bw_u_munis)),
+      sprintf("BW: %d Gemeinden (expected 1101)", length(bw_u_munis)))
+# Office classifier: 9 Stadtkreise + 96 Große Kreisstädte = 105 OB Gemeinden.
+bw_ob <- m %>% filter(state == "08", election_type == "Oberbürgermeisterwahl") %>%
+  pull(ags) %>% unique()
+check(length(bw_ob) == 105,
+      sprintf("BW: %d Oberbürgermeister Gemeinden (expected 105 = 9 SK + 96 GKS)", length(bw_ob)),
+      sprintf("BW: %d Oberbürgermeister Gemeinden (expected 105)", length(bw_ob)))
+# Stuttgart (Stadtkreis) must be OB; a small Gemeinde must be BM.
+check("08111000" %in% bw_ob && !("08115001" %in% bw_ob),
+      "BW classifier: Stuttgart=OB, Aidlingen=BM",
+      "BW classifier: Stuttgart/Aidlingen office wrong")
+# BW collects no party — winner_party must be entirely NA.
+bw_party_na <- m %>% filter(state == "08") %>% pull(winner_party)
+check(all(is.na(bw_party_na)),
+      "BW: winner_party all NA (no party collected)",
+      sprintf("BW: %d non-NA winner_party (expected 0)", sum(!is.na(bw_party_na))))
+# Official gender → 114 elected women (matches StaLA press release 10.4%).
+bw_women <- mc %>% filter(state == "08", candidate_gender == "female") %>% nrow()
+check(bw_women == 114,
+      sprintf("BW: %d elected women (matches StaLA's 114 / 10.4%%)", bw_women),
+      sprintf("BW: %d elected women (expected 114)", bw_women))
+# No BW Landrat (BW Landrat elections are not in this source).
+check(sum(l$state == "08") == 0,
+      "BW: 0 Landrat rows (none leaked / none expected)",
+      sprintf("BW: %d Landrat rows (expected 0)", sum(l$state == "08")))
+# Vote-count integrity: Stuttgart OB Neuwahl 2020 winner = 83,812 votes (42.3%).
+stgt <- mc %>% filter(ags == "08111000")
+check(nrow(stgt) == 1 && isTRUE(stgt$candidate_votes_sw[1] == 83812),
+      "BW vote integrity: Stuttgart OB 2020 Neuwahl winner = 83,812 votes",
+      "BW vote integrity: Stuttgart OB 2020 winner votes wrong")
+
+cat("\n17. Brandenburg + Sachsen-Anhalt coverage (portal scrapes, recent cycle)\n")
+# Brandenburg (state 12): amtsfreie Gemeinden/Städte + 4 kreisfreie Städte (OB),
+# WITH party affiliation. Recent cycle only (~2018-2026).
+bb_m <- m %>% filter(state == "12")
+check(n_distinct(bb_m$ags) >= 70,
+      sprintf("BB: %d Gemeinden in mayoral_unharm (≥70 expected)", n_distinct(bb_m$ags)),
+      sprintf("BB: only %d Gemeinden (expected ≥70)", n_distinct(bb_m$ags)))
+bb_ob <- bb_m %>% filter(election_type == "Oberbürgermeisterwahl") %>% pull(ags) %>% unique()
+check(setequal(bb_ob, c("12051000", "12052000", "12053000", "12054000")),
+      "BB: exactly the 4 kreisfreie Städte are Oberbürgermeisterwahl",
+      sprintf("BB: OB cities wrong (%s)", paste(bb_ob, collapse = ", ")))
+check(mean(!is.na(bb_m$winner_party)) > 0.95,
+      "BB: winner_party populated (>95%; BB candidates carry party)",
+      sprintf("BB: only %.0f%% winner_party non-NA", 100 * mean(!is.na(bb_m$winner_party))))
+check(sum(l$state == "12") >= 0 && sum(m$state == "12" & m$election_type == "Landratswahl") == 0,
+      "BB: no Landratswahl leaked into mayoral",
+      "BB: Landratswahl leaked into mayoral")
+
+# Sachsen-Anhalt (state 15): Bürgermeister-/OB-wahlen 2024-2026, WITH party.
+st_m <- m %>% filter(state == "15")
+check(n_distinct(st_m$ags) >= 60,
+      sprintf("ST: %d Gemeinden in mayoral_unharm (≥60 expected)", n_distinct(st_m$ags)),
+      sprintf("ST: only %d Gemeinden (expected ≥60)", n_distinct(st_m$ags)))
+check(all(st_m$election_year >= 2024),
+      "ST: all elections in 2024-2026 (portal window)",
+      "ST: election years outside 2024-2026 window")
+check(sum(m$state == "15" & m$election_type == "Landratswahl") == 0,
+      "ST: no Landratswahl leaked into mayoral (ST Landrat is a separate dataset)",
+      "ST: Landratswahl leaked into mayoral")
 
 cat("\n════════════════════════════════════════════════════════════════════\n")
 if (failed == 0) {

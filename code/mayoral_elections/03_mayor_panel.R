@@ -210,8 +210,10 @@ cat("Bayern rows without person_id:", sum(is.na(bayern_panel$person_id)), "\n")
 
 cat("\n=== Processing named states: person IDs from names ===\n")
 
-# States with candidate names (excluding Bayern)
-named_states <- c("01", "03", "05", "07", "10", "14")
+# States with candidate names (excluding Bayern). "08" = Baden-Württemberg, where
+# each Gemeinde contributes a single election (the most recent as of 31.12.2024),
+# so BW rows carry winner identity/gender but no cross-time incumbency history.
+named_states <- c("01", "03", "05", "07", "08", "10", "12", "13", "14", "15", "16")
 
 winners_named <- cand |>
   filter(state %in% named_states, is_winner == TRUE)
@@ -832,7 +834,9 @@ for (s in sort(unique(harm$panel$state))) {
     s == "07" ~ "Rheinland-Pfalz",
     s == "09" ~ "Bayern",
     s == "10" ~ "Saarland",
+    s == "13" ~ "Mecklenburg-Vorpommern",
     s == "14" ~ "Sachsen",
+    s == "16" ~ "Thüringen",
     TRUE ~ s
   )
   cat(sprintf("  %s (%s): %d mayors (%d with 2+ terms)\n",

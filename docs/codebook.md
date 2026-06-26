@@ -291,7 +291,7 @@ This dataset provides yearly time-series data for basic municipality characteris
 
 **File:** `data/mayoral_elections/final/mayoral_candidates.rds` or `data/mayoral_elections/final/mayoral_candidates.csv`
 
-This dataset contains candidate-level results for mayoral elections in 7 German states (Bayern, Niedersachsen, Nordrhein-Westfalen, Rheinland-Pfalz, Saarland, Sachsen, Schleswig-Holstein), 1945--2025. One row per candidate per election cycle (wide format, with both Hauptwahl and Stichwahl results in columns). Includes predicted candidate characteristics (gender, migration background).
+This dataset contains candidate-level results for mayoral elections in 12 German states (Baden-Württemberg, Bayern, Brandenburg, Mecklenburg-Vorpommern, Niedersachsen, Nordrhein-Westfalen, Rheinland-Pfalz, Saarland, Sachsen, Sachsen-Anhalt, Schleswig-Holstein, Thüringen), 1945--2026. One row per candidate per election cycle (wide format, with both Hauptwahl and Stichwahl results in columns). Includes predicted candidate characteristics (gender, migration background). Note: Baden-Württemberg reports only the elected winner per Gemeinde (no losing candidates, no party affiliation), with official-register gender and birth year. Brandenburg and Sachsen-Anhalt are recent-cycle Landeswahlleiter-portal scrapes (BB ~2018–2026, ST 2024–2026) with party + all candidates — see the mayoral README for coverage and limitations.
 
 | Variable                          | Type      | Description                                                                                                          |
 | :-------------------------------- | :-------- | :------------------------------------------------------------------------------------------------------------------- |
@@ -324,6 +324,7 @@ This dataset contains candidate-level results for mayoral elections in 7 German 
 | `candidate_rank_sw`               | numeric   | Stichwahl rank. NA if not in runoff.                                                                                 |
 | `n_candidates_sw`                 | numeric   | Number of candidates in the Stichwahl.                                                                               |
 | `is_winner`                       | numeric   | 1 if the candidate won the election (HW outright or SW), 0 otherwise.                                               |
+| `flag_superseded`                 | logical   | TRUE for a Bayern round that did not seat the mayor and is superseded by a later valid round — either an annulled round (`Wahlart` "... ungültig") or a Hauptwahl with no absolute majority (winner < 50%) that was not resolved by a Stichwahl and is followed by a repeat Hauptwahl (*Neuwahl*) within 250 days. Duly-won (≥50%) Hauptwahlen preceding a later by-election are NOT flagged. Constant within an election. Rows are kept, not dropped; filter `== FALSE` for decisive rounds only. FALSE for all non-Bayern states. |
 | `candidate_birth_year`            | numeric   | Birth year. NI only.                                                                                                 |
 | `candidate_profession`            | character | Profession. NI only.                                                                                                 |
 | `office_type`                     | character | Office type. BY and SL only.                                                                                         |
@@ -342,7 +343,7 @@ This dataset contains candidate-level results for mayoral elections in 7 German 
 
 **Notes:**
 
-- **Gender classification** uses the Python `gender-guesser` package (Jorg Michael's `nam_dict.txt`, ~70,000 names with country-specific gender codes). Raw gender data from RLP and SL takes precedence over predictions. The lookup is pre-computed by `code/mayoral_elections/04a_build_gender_lookup.py`. Coverage: 100% of named candidates. Cross-validation accuracy: 99.79% against RLP raw data (F1 = 0.989), 100% against SL raw data.
+- **Gender classification** uses the Python `gender-guesser` package (Jorg Michael's `nam_dict.txt`, ~70,000 names with country-specific gender codes). Raw gender data from RLP, SL, and BW (the latter from the official register) takes precedence over predictions. The lookup is pre-computed by `code/mayoral_elections/04a_build_gender_lookup.py`. Coverage: 100% of named candidates. Cross-validation accuracy: 99.79% against RLP raw data (F1 = 0.989), 100% against SL raw data.
 - **Migration background** is a probabilistic estimate based on name patterns (Turkish, Arabic, Eastern European, Southern European surname/firstname lists and regex patterns). It should not be interpreted as verified migration status. Coverage: all candidates with last names (14,859). Low-confidence classifications (conf < 0.80) are predominantly Eastern European surname endings.
 - **Local surname rootedness** columns are placeholders populated with NA values. Implementation is blocked on telephone directory data.
 - **Bayern** has no candidate names in the source data, so gender, migration background, and local surname columns are all NA for Bayern rows.
