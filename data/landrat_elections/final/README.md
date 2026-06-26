@@ -10,6 +10,7 @@ Direct-election results for heads of German Landkreise (rural counties) and equi
 | Nordrhein-Westfalen (NRW) | 2009, 2014, 2015, 2020, 2025 | 31 + Städteregion Aachen | IT.NRW Excel files (mayoral pipeline) |
 | Rheinland-Pfalz (RLP) | 1994--2024 | 24 | Landeswahlleiter sheet "Landräte" (mayoral pipeline) |
 | Niedersachsen (NI) | 2006--2025 | 39 | PDF extraction (mayoral pipeline) |
+| **Mecklenburg-Vorpommern (MV)** | 2000--2025 | 18 | PDF extraction from LAIV-MV Direktwahlen PDFs via [code/mayoral_elections/00_mv_parse.py](../../../code/mayoral_elections/00_mv_parse.py) (mayoral pipeline). Pre-/post-2011-reform Kreis codes are year-aware (e.g. Nordwestmecklenburg `13058000` pre-2011, `13074000` from 2011) |
 | **Brandenburg (BB)** | 2018--2026 | 14 | scraped from `wahlen.brandenburg.de/.../landraetewahlen/` ([code/landrat_elections/00_bb_scrape.R](../../../code/landrat_elections/00_bb_scrape.R)) |
 | **Sachsen (SN)** | 2002, 2008, 2015, 2020, 2022, 2025 | 13 | mixed sources ([code/landrat_elections/00_sn_scrape.R](../../../code/landrat_elections/00_sn_scrape.R)) — 2002 XLS winner-only; 2008 + 2015 per-Kreis HTML (wahlarchiv); 2020/2025 single-Kreis Excels; 2022 statewide Excel (9 Kreise, aggregated from Gemeinde rows) |
 | **Sachsen-Anhalt (ST)** | 2007, 2014, 2015 | 11 | CSV downloads for 2007/2014 + 2015 per-Kreis HTML. The 2007 CSV has only Gemeinde-level rows (no Kreis summary), so the parser aggregates them by 5-digit Kreis prefix ([code/landrat_elections/00_st_scrape.R](../../../code/landrat_elections/00_st_scrape.R)) |
@@ -52,7 +53,7 @@ This dataset is currently published only in unharmonized form (original boundari
 
 Two pipeline branches feed this dataset:
 
-**1. Mayoral pipeline** (in `code/mayoral_elections/`) — produces Landrat rows for BY, NRW, RLP, NI, SL because their raw files mix Landrat and Bürgermeister/Oberbürgermeister together. The split happens at the end of stages 01 and 01b.
+**1. Mayoral pipeline** (in `code/mayoral_elections/`) — produces Landrat rows for BY, NRW, RLP, NI, SL, and MV because their raw files mix Landrat and Bürgermeister/Oberbürgermeister together. The split happens at the end of stages 01 and 01b. MV additionally uses a Python Stage-0 ([`00_mv_parse.py`](../../../code/mayoral_elections/00_mv_parse.py)) that parses the 69 LAIV-MV Direktwahlen PDFs into a candidate-level intermediate which stages 01/01b read.
 
 - `code/mayoral_elections/01_mayoral_unharm.R` writes initial `landrat_unharm.{rds,csv}`
 - `code/mayoral_elections/01b_mayoral_candidates.R` writes initial `landrat_candidates.{rds,csv}`
