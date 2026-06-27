@@ -427,12 +427,13 @@ The two share an identical schema. `02_mayoral_harm.R` only consumes the mayoral
 
 **Script:** `code/mayoral_elections/01_mayoral_unharm.R` (~1,425 lines)
 
-**Coverage:** 12 states with varying completeness:
-- **Fully processed:** Bayern (BY), NRW, Saarland (SAR), Sachsen (SN), Rheinland-Pfalz (RLP), Niedersachsen (NS), Schleswig-Holstein (SH), Mecklenburg-Vorpommern (MV), Thüringen (TH), Baden-Württemberg (BW), Brandenburg (BB), Sachsen-Anhalt (ST)
+**Coverage:** 13 states with varying completeness:
+- **Fully processed:** Bayern (BY), NRW, Saarland (SAR), Sachsen (SN), Rheinland-Pfalz (RLP), Niedersachsen (NS), Schleswig-Holstein (SH), Mecklenburg-Vorpommern (MV), Thüringen (TH), Baden-Württemberg (BW), Brandenburg (BB), Sachsen-Anhalt (ST), Hessen (HE)
 - NS covers 2006–2025 (9 election years, 1,093 rows) using 3 PDF parsers: standard one-page-per-election (2011+), German-number format with full party names (2006), and tabular summary (2013)
 - SH covers 2023–2025 via web scraping (wahlen-sh.de); MV and TH via Stage-0 PDF/scrape parsers
 - BW covers the most recent election per Gemeinde as of 31.12.2024 (1,101 Gemeinden, ~2016–2024) — see the BW Stage-0 parser below
 - BB (`00_bb_scrape.py`) and ST (`00_st_scrape.py`) are Landeswahlleiter-portal scrapes of the current cycle only: BB the amtsfreie Gemeinden/Städte + 4 kreisfreie Städte (~2018–2026; amtsangehörige ehrenamtliche BM excluded), ST all Bürgermeister-/OB-wahlen 2024–2026. Both carry party + all candidates + HW/SW; see the per-state classifier notes in the project `CLAUDE.md`
+- HE (`00_he_parse.py`) is a coordinate-based parse of the StaLA report "B VII m Direktwahlen" (most-recent Direktwahl per Gemeinde/Landkreis, ~2017–2024). It names the winner (party + register gender + full turnout) + the first Wahlvorschlag only; Landrat rows are split to the landrat dataset. OB classifier = 5 kreisfreie Städte (AGS ending `000`) + 7 pinned Sonderstatusstädte. See the per-state notes in `CLAUDE.md`
 
 **Key characteristics:**
 - **Candidate-level data:** Unlike all other pipelines that track party vote shares, mayoral elections have candidate-level results (name, party affiliation, vote count, runoff status).
@@ -641,7 +642,7 @@ As of February 2026, the following data gaps remain.
 
 ### Partially integrated
 
-**Mayoral elections** — 7 states, `mayoral_unharm` (41,436 rows), `mayoral_harm` (38,667 rows mapped to 2021 boundaries), `mayoral_candidates` (85,160 rows with candidate characteristics). Stage 4 scripts (`04a_build_gender_lookup.py` + `04_candidate_characteristics.R`) add predicted gender and migration background for all named candidates.
+**Mayoral elections** — 13 states, `mayoral_unharm` (48,165 rows), `mayoral_harm` (46,814 rows mapped to 2021 boundaries), `mayoral_candidates` (97,371 rows with candidate characteristics). Stage 4 scripts (`04a_build_gender_lookup.py` + `04_candidate_characteristics.R`) add predicted gender and migration background for all named candidates. The newest cycle (8 March 2026 Bayern, 15 March 2026 Hessen Kommunalwahlen) is added by dedicated Stage-0 scripts — `00_by_kommunalwahl2026_parse.py` (official Landesamt Mandatsträger XLSX, full votes) and `00_he_kommunalwahl2026_scrape.py` (hessenschau result pages, percentage-only). Landratswahlen split to the separate `data/landrat_elections/` datasets.
 
 **Mayoral elections — Schleswig-Holstein** — Data scraped from `wahlen-sh.de`, covering 2023–2025 (45 elections, 110 candidates).
 

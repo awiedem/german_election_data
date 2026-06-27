@@ -26,6 +26,8 @@ m  <- readRDS("data/mayoral_elections/final/mayoral_unharm.rds")
 mh <- readRDS("data/mayoral_elections/final/mayoral_harm.rds")
 lc <- readRDS("data/landrat_elections/final/landrat_candidates.rds")
 l  <- readRDS("data/landrat_elections/final/landrat_unharm.rds")
+mp <- readRDS("data/mayoral_elections/final/mayor_panel.rds")
+if (!"state" %in% names(mp)) mp$state <- substr(mp$ags, 1, 2)
 
 fail <- function(msg) {
   cat("  ✗ FAIL:", msg, "\n")
@@ -43,7 +45,9 @@ n1 <- sum(grepl("Krfr\\.|Kreisfreie Stadt", l$ags_name, ignore.case = TRUE))
 if (n1 == 0) { pass("no kreisfreie Städte leaked into landrat_unharm")
 } else { fail(sprintf("%d kreisfreie Städte leaked into landrat_unharm", n1)) }
 
-n2 <- sum(grepl("^Kreis |[Kk]reis$|-Kreis|, Kreis|Städteregion|Stadtregion", m$ags_name))
+# NB: "(?!stadt)" so a Gemeinde named "X, Kreisstadt" (a district seat with a
+# Bürgermeister, common in Hessen) is NOT mistaken for a leaked Landkreis.
+n2 <- sum(grepl("^Kreis |[Kk]reis$|-Kreis|, Kreis(?!stadt)|Städteregion|Stadtregion", m$ags_name, perl = TRUE))
 if (n2 == 0) { pass("no Kreise leaked into mayoral_unharm")
 } else { fail(sprintf("%d Kreise leaked into mayoral_unharm", n2)) }
 
@@ -51,7 +55,7 @@ n3 <- sum(grepl("Krfr\\.|Kreisfreie Stadt", lc$ags_name, ignore.case = TRUE))
 if (n3 == 0) { pass("no kreisfreie Städte leaked into landrat_candidates")
 } else { fail(sprintf("%d kreisfreie Städte leaked into landrat_candidates", n3)) }
 
-n4 <- sum(grepl("^Kreis |[Kk]reis$|-Kreis|, Kreis|Städteregion|Stadtregion", mc$ags_name))
+n4 <- sum(grepl("^Kreis |[Kk]reis$|-Kreis|, Kreis(?!stadt)|Städteregion|Stadtregion", mc$ags_name, perl = TRUE))
 if (n4 == 0) { pass("no Kreise leaked into mayoral_candidates")
 } else { fail(sprintf("%d Kreise leaked into mayoral_candidates", n4)) }
 
@@ -191,8 +195,8 @@ cat("\n11. Mayoral/Landrat split totals\n")
 
 # Mayoral row counts should be roughly stable (within 2% of expected baseline)
 m_rows <- nrow(m)
-check(m_rows > 35000 && m_rows < 48000,
-      sprintf("mayoral_unharm has %d rows (expected 35-48k)", m_rows),
+check(m_rows > 35000 && m_rows < 55000,
+      sprintf("mayoral_unharm has %d rows (expected 35-55k)", m_rows),
       sprintf("mayoral_unharm row count out of expected range: %d", m_rows))
 
 # Landrat dataset minimum counts
@@ -322,6 +326,90 @@ check(all(st_m$election_year >= 2024),
 check(sum(m$state == "15" & m$election_type == "Landratswahl") == 0,
       "ST: no Landratswahl leaked into mayoral (ST Landrat is a separate dataset)",
       "ST: Landratswahl leaked into mayoral")
+
+cat("\n18. Hessen coverage + OB classifier (StaLA B VII m Direktwahlen snapshot)\n")
+# Hessen = most recent Direktwahl per Gemeinde/Landkreis (~2017-2024). BM/OB go
+# to mayoral; Landrat is split to the landrat dataset.
+he_m <- m %>% filter(state == "06")
+check(n_distinct(he_m$ags) >= 400,
+      sprintf("HE: %d Gemeinden in mayoral_unharm (≥400 expected)", n_distinct(he_m$ags)),
+      sprintf("HE: only %d Gemeinden (expected ≥400)", n_distinct(he_m$ags)))
+# OB = 5 kreisfreie Städte + 7 Sonderstatusstädte = 12 cities.
+he_ob <- he_m %>% filter(election_type == "Oberbürgermeisterwahl") %>% pull(ags) %>% unique()
+check(length(he_ob) == 12 &&
+        all(c("06412000", "06414000", "06435014", "06631009") %in% he_ob),
+      sprintf("HE: %d Oberbürgermeister cities (expected 12 = 5 kfS + 7 Sonderstatus)", length(he_ob)),
+      sprintf("HE: %d OB cities (expected 12)", length(he_ob)))
+check(sum(m$state == "06" & m$election_type == "Landratswahl") == 0,
+      "HE: no Landratswahl leaked into mayoral (HE Landrat split to landrat dataset)",
+      "HE: Landratswahl leaked into mayoral")
+# HE Landrat lives in the landrat dataset (21 Landkreise).
+check(n_distinct(l$ags[l$state == "06"]) >= 21,
+      sprintf("HE: %d Landkreise in landrat_unharm (≥21 expected)", n_distinct(l$ags[l$state == "06"])),
+      sprintf("HE: only %d Landkreise in landrat (expected 21)", n_distinct(l$ags[l$state == "06"])))
+# Vote-share integrity where the winner is Wahlvorschlag 1 (votes known).
+he_winv <- mc %>% filter(state == "06", is_winner, !is.na(candidate_votes_hw),
+                         !is.na(valid_votes), valid_votes > 0) %>%
+  mutate(calc = candidate_votes_hw / valid_votes)
+check(nrow(he_winv) == 0 || all(abs(he_winv$calc - he_winv$candidate_voteshare_hw) < 0.02, na.rm = TRUE),
+      sprintf("HE vote integrity: winner votes/valid == voteshare (%d checked)", nrow(he_winv)),
+      "HE vote integrity: winner voteshare mismatch")
+
+cat("\n19. Bayern Kommunalwahl 2026 (added from the Landesamt Mandatsträger XLSX)\n")
+by26 <- m %>% filter(state == "09", election_year == 2026)
+check(n_distinct(by26$ags) >= 1800,
+      sprintf("BY 2026: %d Gemeinden in mayoral_unharm (≥1800 expected)", n_distinct(by26$ags)),
+      sprintf("BY 2026: only %d Gemeinden (expected ≥1800)", n_distinct(by26$ags)))
+by26_ob <- by26 %>% filter(election_type == "Oberbürgermeisterwahl") %>% pull(ags) %>% n_distinct()
+check(by26_ob >= 45,
+      sprintf("BY 2026: %d Oberbürgermeister cities (≥45 expected)", by26_ob),
+      sprintf("BY 2026: only %d OB cities (expected ≥45)", by26_ob))
+check(sum(m$state == "09" & m$election_year == 2026 & m$election_type == "Landratswahl") == 0,
+      "BY 2026: no Landratswahl leaked into mayoral (62 Landkreise split to landrat)",
+      "BY 2026: Landratswahl leaked into mayoral")
+# vote integrity: sum of candidate votes equals valid votes in 2026 candidate data
+by26c <- mc %>% filter(state == "09", election_year == 2026)
+check(nrow(by26c) > 4000 && mean(!is.na(by26c$candidate_votes_hw)) > 0.95,
+      sprintf("BY 2026: %d candidate rows with votes (>95%% have HW votes)", nrow(by26c)),
+      "BY 2026: candidate votes missing")
+# panel: 2026 winners link to historical terms via Amtsantritt (incumbents present)
+by26p <- mp %>% filter(state == "09", election_year == 2026)
+check(nrow(by26p) >= 1800 && sum(by26p$is_incumbent == 1, na.rm = TRUE) >= 500,
+      sprintf("BY 2026: %d panel rows, %d re-elected incumbents (Amtsantritt-linked)",
+              nrow(by26p), sum(by26p$is_incumbent == 1, na.rm = TRUE)),
+      "BY 2026: panel person-linking failed")
+
+cat("\n20. Hessen Kommunalwahl 2026 (official XLSX full votes + hessenschau %-only)\n")
+he26 <- m %>% filter(state == "06", election_year == 2026)
+check(n_distinct(he26$ags) >= 25,
+      sprintf("HE 2026: %d Gemeinden in mayoral_unharm (≥25 expected)", n_distinct(he26$ags)),
+      sprintf("HE 2026: only %d Gemeinden (expected ≥25)", n_distinct(he26$ags)))
+he26_ob <- he26 %>% filter(election_type == "Oberbürgermeisterwahl") %>% pull(ags) %>% n_distinct()
+check(he26_ob == 1,
+      sprintf("HE 2026: %d Oberbürgermeister city (Hanau)", he26_ob),
+      sprintf("HE 2026: %d OB cities (expected 1 = Hanau)", he26_ob))
+check(sum(m$state == "06" & m$election_year == 2026 & m$election_type == "Landratswahl") == 0 &&
+        sum(l$state == "06" & l$election_year == 2026) == 0,
+      "HE 2026: no Landratswahl (mayoral-only source)",
+      "HE 2026: unexpected Landratswahl rows")
+# Hybrid: the official May-2026 XLSX gives FULL votes for the ~12 Gemeinden it
+# covers; the rest stay %-only from the hessenschau scrape (valid_votes NA).
+he26_full <- he26 %>% filter(!is.na(valid_votes))
+he26_pct <- he26 %>% filter(is.na(valid_votes))
+check(nrow(he26_full) >= 10 && nrow(he26_pct) >= 8,
+      sprintf("HE 2026: %d round-rows with full votes (official XLSX) + %d %%-only (hessenschau)",
+              nrow(he26_full), nrow(he26_pct)),
+      sprintf("HE 2026: expected XLSX-full + hessenschau-%%only mix, got %d/%d",
+              nrow(he26_full), nrow(he26_pct)))
+he26_dec <- he26 %>% filter(!is.na(winner_voteshare))
+check(nrow(he26_dec) >= 25 && all(he26_dec$winner_voteshare >= 0.5 - 1e-9),
+      sprintf("HE 2026: all %d decisive winners polled ≥50%% (no missing Stichwahl)", nrow(he26_dec)),
+      sprintf("HE 2026: %d decisive winner(s) < 50%% — missing Stichwahl",
+              sum(he26_dec$winner_voteshare < 0.5 - 1e-9)))
+he26p <- mp %>% filter(state == "06", election_year == 2026)
+check(nrow(he26p) >= 25 && n_distinct(he26p$ags) == nrow(he26p),
+      sprintf("HE 2026: %d panel terms (one per Gemeinde, HW/SW deduped)", nrow(he26p)),
+      "HE 2026: panel term dedup failed")
 
 cat("\n════════════════════════════════════════════════════════════════════\n")
 if (failed == 0) {

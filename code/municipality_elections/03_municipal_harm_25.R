@@ -406,9 +406,10 @@ df_harm <- sums |>
   left_join_check_obs(area_pop, by = c("ags", "year")) |>
   # Convert ags to numeric for compatibility
   mutate(ags = as.numeric(ags)) |>
-  # Bind 2025 data (that was unharmonized)
+  # Bind 2025+ data unharmonized (already on 2025 boundaries; incl. the 2026 HE
+  # Kommunalwahl, whose AGS are 2025-boundary codes)
   bind_rows(df_cw |>
-    filter(election_year == 2025) |>
+    filter(election_year >= 2025) |>
     mutate(ags_name = ags_name.x) |>
     select(-any_of(c("ags_name.x", "ags_name.y", "ags_name_25", "year_cw", "id"))) |>
     rename(year = election_year) |>

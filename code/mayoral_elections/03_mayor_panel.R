@@ -174,6 +174,44 @@ bayern <- bayern |>
 
 cat("Bayern after Stichwahl dedup:", nrow(bayern), "rows\n")
 
+# --- Bayern Kommunalwahl 2026 (separate source) ------------------------------
+# The "Wahlen seit 1945" file ends at 2025; append the 8/22 March 2026 winners
+# from by2026_parsed.csv. They carry Erster Amtsantritt, so binding them in here
+# (before the person_id step) links re-elected mayors to their historical terms.
+by26_file <- "data/mayoral_elections/raw/bayern/by2026_parsed.csv"
+if (file.exists(by26_file)) {
+  by26_all <- fread(by26_file, encoding = "UTF-8",
+                    colClasses = list(character = c("ags", "candidate_party",
+                                                    "candidate_name", "round",
+                                                    "amtsantritt"))) |>
+    filter(election_type %in% c("Bürgermeisterwahl", "Oberbürgermeisterwahl")) |>
+    mutate(election_date = as.Date(election_date),
+           candidate_voteshare = as.numeric(candidate_voteshare),
+           is_winner = as.logical(is_winner))
+  by26_panel <- by26_all |>
+    group_by(ags, election_date) |>
+    filter(any(is_winner)) |>                     # decisive round only
+    summarise(
+      election_year = as.integer(first(election_year)),
+      winner_party = candidate_party[is_winner][1],
+      winner_voteshare = candidate_voteshare[is_winner][1],
+      runner_up_voteshare = suppressWarnings(max(candidate_voteshare[!is_winner], na.rm = TRUE)),
+      n_candidates = as.integer(first(n_candidates)),
+      amtsantritt = as.Date(first(amtsantritt[is_winner])),
+      .groups = "drop"
+    ) |>
+    mutate(
+      runner_up_voteshare = ifelse(is.finite(runner_up_voteshare), runner_up_voteshare, NA_real_),
+      winning_margin = winner_voteshare - coalesce(runner_up_voteshare, 0),
+      winner_party = ifelse(nzchar(winner_party), winner_party, NA_character_)
+    ) |>
+    select(ags, election_date, election_year, winner_party, winner_voteshare,
+           winning_margin, n_candidates, amtsantritt)
+  bayern <- bind_rows(bayern, by26_panel)
+  cat("Bayern + 2026:", nrow(bayern), "rows (",
+      nrow(by26_panel), "from the 2026 Kommunalwahl )\n")
+}
+
 # Assign person_id from Amtsantritt
 # Same (ags, amtsantritt) = same person
 bayern_persons <- bayern |>
@@ -213,7 +251,7 @@ cat("\n=== Processing named states: person IDs from names ===\n")
 # States with candidate names (excluding Bayern). "08" = Baden-Württemberg, where
 # each Gemeinde contributes a single election (the most recent as of 31.12.2024),
 # so BW rows carry winner identity/gender but no cross-time incumbency history.
-named_states <- c("01", "03", "05", "07", "08", "10", "12", "13", "14", "15", "16")
+named_states <- c("01", "03", "05", "06", "07", "08", "10", "12", "13", "14", "15", "16")
 
 winners_named <- cand |>
   filter(state %in% named_states, is_winner == TRUE)

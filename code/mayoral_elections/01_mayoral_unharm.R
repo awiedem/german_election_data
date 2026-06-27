@@ -16,6 +16,8 @@
 #   kreisfreie Städte (~2018-2026; with party; Landeswahlleiter portal scrape)
 # - Sachsen-Anhalt — Bürgermeister-/OB-wahlen 2024-2026 (with party;
 #   Landeswahlleiter portal scrape)
+# - Hessen — most recent Direktwahl per Gemeinde/Landkreis (~2017-2024; winner +
+#   party + gender + Wahlvorschlag 1; StaLA report B VII m Direktwahlen)
 #
 # Data covers different time periods for each state
 
@@ -1543,23 +1545,20 @@ if (length(th_have) > 0) {
 }
 
 # ============================================================================
-# BADEN-WÜRTTEMBERG
+# BADEN-WÜRTTEMBERG  (hybrid: Komm.ONE + StaLA winner-only fallback)
 # ============================================================================
-# Bürgermeister- und Oberbürgermeisterwahlen, "letzte Wahl je Gemeinde" zum
-# Stichtag 31.12.2024 (so Wahltage spannen ~2016-2024), aus dem Statistischen
-# Bericht B VII 3-j/25 (Tabellen 13 + 14), geparst von 00_bw_parse.py nach
-# data/mayoral_elections/raw/baden_wuerttemberg/bw_parsed.csv (winner-only,
-# eine Zeile je Gemeinde-Wahlgang). Besonderheiten der BW-Quelle:
-#   - Keine Parteizugehörigkeit (BW kennt keine Wahlvorschlagsträger) -> winner_party = NA.
-#   - Nur der/die Gewählte wird berichtet (keine unterlegenen Bewerber).
-#   - Die Stimmen der/des Gewählten liegen nur für den entscheidenden Wahlgang
-#     vor; bei Gemeinden mit Neuwahl/Stichwahl ist winner_votes der (nicht
-#     entscheidenden) Hauptwahl NA. Wahlart N (Neuwahl, vor 1.8.2023) und S
-#     (Stichwahl, ab 1.8.2023) werden beide als round = "stichwahl" geführt.
+# Two sources (see 01b for the full description), merged at the winner level:
+#   (1) StaLA report -> bw_parsed.csv (00_bw_parse.py): winner-only, no party,
+#       most-recent election per Gemeinde @31.12.2024.
+#   (2) Komm.ONE votemanager -> bw_komm_one_parsed.csv (00_bw_komm_one_scrape.py):
+#       full per-round results; here reduced to the winner of each round.
+# Komm.ONE supersedes StaLA where it covers an election (same ags + date). BW has
+# no party (winner_party = NA); Neuwahl + Stichwahl both -> round = "stichwahl".
 
 cat("\n=== Processing Baden-Württemberg mayoral elections ===\n")
 
 bw_file <- "data/mayoral_elections/raw/baden_wuerttemberg/bw_parsed.csv"
+bw_komm_file <- "data/mayoral_elections/raw/baden_wuerttemberg/bw_komm_one_parsed.csv"
 
 if (file.exists(bw_file)) {
   bw_raw <- fread(bw_file, encoding = "UTF-8",
@@ -1567,7 +1566,7 @@ if (file.exists(bw_file)) {
                     "state_name", "election_date", "candidate_party",
                     "candidate_name", "candidate_gender", "round")))
 
-  bw_clean <- bw_raw %>%
+  bw_stala <- bw_raw %>%
     mutate(election_date = as.Date(election_date),
            election_year = as.integer(election_year)) %>%
     transmute(
@@ -1582,6 +1581,50 @@ if (file.exists(bw_file)) {
       winner_votes = as.numeric(candidate_votes),     # NA on non-decisive Hauptwahl
       winner_voteshare = as.numeric(candidate_voteshare)
     )
+
+  if (file.exists(bw_komm_file)) {
+    bk_full <- fread(bw_komm_file, encoding = "UTF-8",
+                colClasses = list(character = c("ags", "ags_name", "state",
+                  "state_name", "election_date", "round"))) %>%
+      mutate(election_date = as.Date(election_date),
+             election_year = as.integer(election_year),
+             candidate_voteshare = as.numeric(candidate_voteshare),
+             is_winner = as.logical(is_winner))
+    # Komm.ONE supersedes StaLA only for cycles where it captured the DECISIVE round
+    # (has a Stichwahl, or a Hauptwahl winner with an absolute majority >=50%);
+    # otherwise the Stichwahl is missing from Komm.ONE and StaLA holds the decisive
+    # winner, so fall back to StaLA for that whole (ags, election_year) cycle.
+    # (Mirror of the rule in 01b_mayoral_candidates.R.)
+    komm_complete <- bk_full %>%
+      group_by(ags, election_year) %>%
+      summarise(decisive = any(round == "stichwahl") ||
+                  any(round == "hauptwahl" & is_winner &
+                      !is.na(candidate_voteshare) & candidate_voteshare >= 0.5),
+                .groups = "drop") %>%
+      filter(decisive) %>% select(ags, election_year)
+    bk <- bk_full %>%
+      semi_join(komm_complete, by = c("ags", "election_year")) %>%
+      filter(is_winner) %>%                           # winner of each round
+      transmute(
+        ags, ags_name, state, state_name, election_year, election_date,
+        election_type, round,
+        eligible_voters = as.numeric(eligible_voters),
+        number_voters = as.numeric(number_voters),
+        valid_votes = as.numeric(valid_votes),
+        invalid_votes = as.numeric(invalid_votes),
+        turnout = as.numeric(turnout),
+        winner_party = NA_character_,
+        winner_votes = as.numeric(candidate_votes),
+        winner_voteshare = as.numeric(candidate_voteshare)
+      )
+    bw_clean <- bind_rows(bk, bw_stala %>% anti_join(komm_complete, by = c("ags", "election_year")))
+    cat(sprintf("  Komm.ONE: %d round-results across %d complete cycles; StaLA kept: %d\n",
+                nrow(bk), nrow(komm_complete),
+                nrow(bw_stala %>% anti_join(komm_complete, by = c("ags", "election_year")))))
+  } else {
+    bw_clean <- bw_stala
+    cat("  Note: Komm.ONE file not found; using StaLA winner-only data only.\n")
+  }
 
   cat("Baden-Württemberg: Processed", nrow(bw_clean), "round-results across",
       length(unique(bw_clean$election_year)), "years\n")
@@ -1693,6 +1736,181 @@ if (file.exists(st_file)) {
 } else {
   cat("Note: ST parsed data not found at", st_file, "\n")
   cat("  Run 00_st_scrape.py first to generate the data.\n")
+}
+
+# ============================================================================
+# HESSEN
+# ============================================================================
+# Bürgermeister-/Oberbürgermeister- und Landratswahlen, parsed from the
+# Hessisches Statistisches Landesamt report "B VII m Direktwahlen" (Stand
+# 06.05.2024) by 00_he_parse.py into
+# data/mayoral_elections/raw/hessen/he_parsed.csv. Like BW it is a most-recent-
+# per-Gemeinde/Landkreis snapshot (~2017-2024). The report names the winner
+# (party + gender + full turnout) and the FIRST Wahlvorschlag only, so the
+# winner's vote count is known only when the winner is Wahlvorschlag 1 (~69%);
+# otherwise winner_votes is NA (the intermediate flags the winner via is_winner,
+# NOT via max votes — pick the winner row by is_winner). Landratswahl rows are
+# routed to the landrat dataset by the split at the end of this script.
+
+cat("\n=== Processing Hessen mayoral/Landrat elections ===\n")
+
+he_file <- "data/mayoral_elections/raw/hessen/he_parsed.csv"
+
+if (file.exists(he_file)) {
+  he_raw <- fread(he_file, encoding = "UTF-8",
+                  colClasses = list(character = c("ags", "ags_name", "state",
+                    "state_name", "election_date", "candidate_party",
+                    "candidate_name", "round")))
+
+  he_clean <- he_raw %>%
+    mutate(election_date = as.Date(election_date),
+           election_year = as.integer(election_year),
+           is_winner = as.logical(is_winner),
+           candidate_votes = as.numeric(candidate_votes),
+           candidate_voteshare = as.numeric(candidate_voteshare)) %>%
+    # The winner is flagged explicitly (often has NA votes when not Wahlvorschlag 1),
+    # so pick the is_winner row; fall back to any row for the non-decisive Hauptwahl.
+    group_by(ags, election_date, round) %>%
+    arrange(desc(is_winner), desc(candidate_votes)) %>%
+    slice(1) %>%
+    ungroup() %>%
+    transmute(
+      ags, ags_name, state, state_name, election_year, election_date,
+      election_type, round,
+      eligible_voters = as.numeric(eligible_voters),
+      number_voters = as.numeric(number_voters),
+      valid_votes = as.numeric(valid_votes),
+      invalid_votes = as.numeric(invalid_votes),
+      turnout = as.numeric(turnout),
+      winner_party = if_else(is_winner & nzchar(candidate_party), candidate_party, NA_character_),
+      winner_votes = if_else(is_winner, candidate_votes, NA_real_),
+      winner_voteshare = if_else(is_winner, candidate_voteshare, NA_real_)
+    )
+
+  cat("Hessen: Processed", nrow(he_clean), "round-results across",
+      length(unique(he_clean$election_year)), "years\n")
+  cat("  By type:\n"); print(table(he_clean$election_type))
+  all_mayoral_data[["hessen"]] <- he_clean
+} else {
+  cat("Note: HE parsed data not found at", he_file, "\n")
+  cat("  Run 00_he_parse.py first to generate the data.\n")
+}
+
+# ============================================================================
+# BAYERN — Kommunalwahl 2026 (8 March, Stichwahl 22 March)
+# ============================================================================
+# The main Bayern source ("Wahlen seit 1945", Stand 2025-11) ends at 2025, so the
+# 8/22 March 2026 Kommunalwahl (Bürgermeister/OB + Landrat) is added separately
+# from the Bayerisches Landesamt Mandatsträger XLSX, parsed by
+# 00_by_kommunalwahl2026_parse.py into
+# data/mayoral_elections/raw/bayern/by2026_parsed.csv (candidate-level long: one
+# row per Wahlvorschlag per round; party = Kennwort, votes = gültige Stimmen;
+# winner name/gender/birth year from the Mandatsträger sheet). Only Wahltag-2026
+# rows are kept (no overlap with the historical file). Landratswahl rows split to
+# the landrat dataset at the end. Aggregate to winner-level per round, like MV/BB.
+
+cat("\n=== Processing Bayern Kommunalwahl 2026 ===\n")
+
+by26_file <- "data/mayoral_elections/raw/bayern/by2026_parsed.csv"
+
+if (file.exists(by26_file)) {
+  by26_raw <- fread(by26_file, encoding = "UTF-8",
+                    colClasses = list(character = c("ags", "ags_name", "state",
+                      "state_name", "election_date", "candidate_party",
+                      "candidate_name", "round")))
+
+  by26_clean <- by26_raw %>%
+    mutate(election_date = as.Date(election_date),
+           election_year = as.integer(election_year)) %>%
+    group_by(ags, election_date, round) %>%
+    arrange(desc(candidate_votes)) %>%
+    slice(1) %>%
+    ungroup() %>%
+    transmute(
+      ags, ags_name, state, state_name, election_year, election_date,
+      election_type, round,
+      eligible_voters = as.numeric(eligible_voters),
+      number_voters = as.numeric(number_voters),
+      valid_votes = as.numeric(valid_votes),
+      invalid_votes = as.numeric(invalid_votes),
+      turnout = as.numeric(turnout),
+      winner_party = if_else(nzchar(candidate_party), candidate_party, NA_character_),
+      winner_votes = as.numeric(candidate_votes),
+      winner_voteshare = as.numeric(candidate_voteshare)
+    )
+
+  cat("Bayern 2026: Processed", nrow(by26_clean), "round-results\n")
+  cat("  By type:\n"); print(table(by26_clean$election_type))
+  all_mayoral_data[["bayern_2026"]] <- by26_clean
+} else {
+  cat("Note: BY 2026 parsed data not found at", by26_file, "\n")
+  cat("  Run 00_by_kommunalwahl2026_parse.py first to generate the data.\n")
+}
+
+# ============================================================================
+# HESSEN — Kommunalwahl 2026 (15 March, Stichwahl 29 March / 12 April)
+# ============================================================================
+# The Hessisches Statistisches Landesamt has not yet published the 2026 direct
+# elections in its "B VII m Direktwahlen" report (latest issue: May 2024, the
+# `hessen` block above). Until then the 2026 elections (15 March Kommunalwahl +
+# Stichwahlen + 2026 by-elections) are scraped from the hessenschau result pages
+# by 00_he_kommunalwahl2026_scrape.py into he2026_parsed.csv. That source is
+# PERCENTAGE-ONLY (like RLP): candidate_voteshare + turnout are known, but NO
+# absolute vote counts -> valid_votes / winner_votes are NA. The winner is the
+# decisive round's flagged candidate (top voteshare in the Stichwahl if held,
+# else the Hauptwahl). No Landrat elections are in this source. No overlap with
+# the May-2024 `hessen` block (different election dates).
+
+cat("\n=== Processing Hessen Kommunalwahl 2026 (%-only) ===\n")
+
+he26_file <- "data/mayoral_elections/raw/hessen/he2026_parsed.csv"
+
+if (file.exists(he26_file)) {
+  he26_raw <- fread(he26_file, encoding = "UTF-8",
+                    colClasses = list(character = c("ags", "ags_name", "state",
+                      "state_name", "election_date", "candidate_party",
+                      "candidate_name", "round")))
+
+  he26_clean <- he26_raw %>%
+    mutate(election_date = as.Date(election_date),
+           election_year = as.integer(election_year),
+           is_winner = as.logical(is_winner),
+           candidate_voteshare = as.numeric(candidate_voteshare)) %>%
+    # winner flagged on the decisive round; order by voteshare (votes are NA)
+    group_by(ags, election_date, round) %>%
+    arrange(desc(is_winner), desc(candidate_voteshare)) %>%
+    slice(1) %>%
+    ungroup() %>%
+    transmute(
+      ags, ags_name, state, state_name, election_year, election_date,
+      election_type, round,
+      eligible_voters = NA_real_, number_voters = NA_real_,
+      valid_votes = NA_real_, invalid_votes = NA_real_,   # %-only source
+      turnout = as.numeric(turnout),
+      winner_party = if_else(is_winner & nzchar(candidate_party), candidate_party, NA_character_),
+      winner_votes = NA_real_,
+      winner_voteshare = if_else(is_winner, candidate_voteshare, NA_real_)
+    )
+
+  # The official XLSX (he_parsed, `hessen` block) now carries 2026 with FULL votes
+  # for the Gemeinden it covers; drop those (ags, election_date) from the
+  # hessenschau %-only scrape so each 2026 round has a single source.
+  if (!is.null(all_mayoral_data[["hessen"]])) {
+    xlsx26 <- all_mayoral_data[["hessen"]] %>%
+      filter(election_year == 2026) %>% distinct(ags, election_date)
+    n_before <- nrow(he26_clean)
+    he26_clean <- he26_clean %>% anti_join(xlsx26, by = c("ags", "election_date"))
+    cat("Hessen 2026: dropped", n_before - nrow(he26_clean),
+        "%-only round-rows now covered with full votes by the XLSX\n")
+  }
+
+  cat("Hessen 2026: Processed", nrow(he26_clean), "round-results across",
+      n_distinct(he26_clean$ags), "Gemeinden\n")
+  cat("  By type:\n"); print(table(he26_clean$election_type))
+  all_mayoral_data[["hessen_2026"]] <- he26_clean
+} else {
+  cat("Note: HE 2026 parsed data not found at", he26_file, "\n")
+  cat("  Run 00_he_kommunalwahl2026_scrape.py first to generate the data.\n")
 }
 
 # ============================================================================
