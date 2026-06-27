@@ -1,6 +1,6 @@
 # Mayoral Elections Data
 
-Seven datasets covering mayoral elections in 12 German states (Baden-Württemberg, Bayern, Brandenburg, Mecklenburg-Vorpommern, Niedersachsen, Nordrhein-Westfalen, Rheinland-Pfalz, Saarland, Sachsen, Sachsen-Anhalt, Schleswig-Holstein, Thüringen), 1945--2026.
+Seven datasets covering mayoral elections in 13 German states (Baden-Württemberg, Bayern, Brandenburg, Hessen, Mecklenburg-Vorpommern, Niedersachsen, Nordrhein-Westfalen, Rheinland-Pfalz, Saarland, Sachsen, Sachsen-Anhalt, Schleswig-Holstein, Thüringen), 1945--2026.
 
 Scope: head-of-municipality elections (`Bürgermeisterwahl`, `Oberbürgermeisterwahl`, `VG-Bürgermeisterwahl`, `SG-Bürgermeisterwahl`). Head-of-county elections (`Landratswahl`) are published as a separate dataset — see [`../../landrat_elections/final/`](../../landrat_elections/final/).
 
@@ -8,13 +8,13 @@ Scope: head-of-municipality elections (`Bürgermeisterwahl`, `Oberbürgermeister
 
 | File | Rows | Cols | Unit | Description |
 |---|---|---|---|---|
-| `mayoral_unharm` | 45,440 | 17 | Election | One row per election-round (winner-level summary), original boundaries |
-| `mayoral_harm` | 44,089 | 23 | Election | Same as above, mapped to 2021 municipal boundaries |
-| `mayoral_candidates` | 91,976 | 45 | Candidate | One row per candidate per election cycle (wide format), original boundaries, incl. candidate characteristics |
-| `mayor_panel` | 36,300 | 31 | Person-election | Within-mayor panel with person IDs, original boundaries |
-| `mayor_panel_harm` | 35,211 | 32 | Person-election | Same as above, mapped to 2021 municipal boundaries |
-| `mayor_panel_annual` | 193,504 | 27 | Person-year | Annual panel (forward-filled from elections), original boundaries |
-| `mayor_panel_annual_harm` | 187,881 | 28 | Person-year | Same as above, mapped to 2021 municipal boundaries |
+| `mayoral_unharm` | 48,306 | 17 | Election | One row per election-round (winner-level summary), original boundaries |
+| `mayoral_harm` | 46,955 | 23 | Election | Same as above, mapped to 2021 municipal boundaries |
+| `mayoral_candidates` | 99,013 | 45 | Candidate | One row per candidate per election cycle (wide format), original boundaries, incl. candidate characteristics |
+| `mayor_panel` | 38,790 | 31 | Person-election | Within-mayor panel with person IDs, original boundaries |
+| `mayor_panel_harm` | 37,701 | 32 | Person-election | Same as above, mapped to 2021 municipal boundaries |
+| `mayor_panel_annual` | 199,076 | 27 | Person-year | Annual panel (forward-filled from elections), original boundaries |
+| `mayor_panel_annual_harm` | 193,453 | 28 | Person-year | Same as above, mapped to 2021 municipal boundaries |
 
 All files are available as `.rds` and `.csv`.
 
@@ -26,9 +26,15 @@ Landrat (county head) elections live in their own dataset at `../../landrat_elec
 
 - **NRW 2025 Stichwahl date typo (patched)**: The IT.NRW raw file `KW 2025 Oberbürgermeister-Landratswahlen.xlsx` encodes every Stichwahl row's date as Excel serial `44101` (2020-09-27) instead of `45928` (2025-09-28). This was verified by direct XML inspection — it is a source-data error, not a coding error. Our pipeline patches the dates in [`code/mayoral_elections/01_mayoral_unharm.R`](../../../code/mayoral_elections/01_mayoral_unharm.R) and [`01b_mayoral_candidates.R`](../../../code/mayoral_elections/01b_mayoral_candidates.R) so that 2025 SW data is usable. The patch will be removed once IT.NRW corrects the source file.
 
-- **Baden-Württemberg coverage & limitations**: BW (state `08`) provides the **most recent** mayoral election in each of the 1,101 Gemeinden as of 31.12.2024 (so election dates span ~2016–2024, not a full historical series) — the Statistical Office has only been legally permitted to collect these centrally since August 2023 (KomWG §39a). Three source limitations carry into the data: (1) **no party affiliation** — BW mayoral candidates have no Wahlvorschlagsträger, so `winner_party` / `candidate_party` are always `NA`; (2) **winner-only** — only the elected person is published (no losing candidates), so each Gemeinde contributes exactly one candidate row and `n_candidates` is `NA`; (3) the winner's vote count is reported only for the **decisive** round, so for the ~143 Gemeinden that needed a Neuwahl/Stichwahl the winner's Hauptwahl votes are `NA`. Gender and birth year are taken from the official register (treated as raw, not predicted). Source: Statistisches Landesamt Baden-Württemberg, Statistischer Bericht B VII 3-j/25. A few per-Gemeinde fields the report carries but the unified schema does not surface — `amtsperiode` (term number of the elected mayor), `hauptamtlich` (full-time vs. honorary), `eu_citizen` (Unionsbürgerschaft), `briefwaehler` (postal-vote count) and `wahlgrund` (reason for the election) — are preserved in the raw intermediate `data/mayoral_elections/raw/baden_wuerttemberg/bw_parsed.csv` for anyone who needs them.
+- **Baden-Württemberg — hybrid (Komm.ONE + Statistisches Landesamt)**: BW (state `08`) covers all 1,101 Gemeinden, combining two sources. (a) **Komm.ONE** (`wahlergebnisse.komm.one`, the votemanager portal of BW's municipal IT provider) supplies **full candidate-level** results — all candidates, votes, full turnout, and both Hauptwahl and Stichwahl — for the municipalities/elections it publishes in its modern format (election dates ~2003–2025; **274 BW elections now have full candidate lists**). (b) The **Statistisches Landesamt** report B VII 3-j/25 (most-recent election per Gemeinde as of 31.12.2024) fills the rest — the ~217 Gemeinden whose election is only in Komm.ONE's older format, and elections predating the portal — as **winner-only** rows (no losing candidates, `n_candidates` `NA`). Komm.ONE supersedes the StaLA row for a cycle only when it captured the decisive round (a Stichwahl, or a Hauptwahl winner ≥50%); otherwise the StaLA winner is kept (e.g. the rare case where a runoff is absent from the portal). **No party affiliation either way** — BW mayoral candidates have no Wahlvorschlagsträger, so `winner_party`/`candidate_party` are always `NA`. The elected winner's **gender and birth year** come from the official register (StaLA), carried onto the Komm.ONE winner where available (else gender is name-predicted); the published count of 114 elected women is preserved. Komm.ONE candidates carry no birth year. Sources: Komm.ONE votemanager (`code/mayoral_elections/00_bw_komm_one_scrape.py`) and StaLA B VII 3-j/25 (`00_bw_parse.py`). A few per-Gemeinde StaLA fields not in the unified schema — `amtsperiode`, `hauptamtlich`, `eu_citizen`, `briefwaehler`, `wahlgrund` — are preserved in the raw intermediate `data/mayoral_elections/raw/baden_wuerttemberg/bw_parsed.csv`.
 
 - **Brandenburg & Sachsen-Anhalt coverage (recent-cycle portal scrapes)**: BB (state `12`) and ST (state `15`) are scraped from the respective Landeswahlleiter result portals, which publish only the **current cycle** — BB the most recent Bürgermeister-/OB-wahl of each amtsfreie Gemeinde/Stadt + the 4 kreisfreie Städte (~2018–2026), ST all Bürgermeister-/OB-wahlen of 2024–2026 (sections `bm24`/`bm25`/`bm26`). Neither is a full historical series, and BB excludes the amtsangehörige Gemeinden (ehrenamtliche Bürgermeister), whose portal keys are 12-digit Amt+Gemeinde codes without a clean 8-digit AGS. Unlike Baden-Württemberg, both states publish **party affiliation and all candidates** (Hauptwahl + Stichwahl), so they populate the full candidate schema; candidate gender is predicted from names (no register data). Single-candidate rounds are Ja/Nein votes (the candidate's votes are the Ja-Stimmen, so they sum to less than the valid votes). Sources: Landeswahlleiter Brandenburg (`wahlen.brandenburg.de`) and Landeswahlleiter Sachsen-Anhalt (`wahlergebnisse.sachsen-anhalt.de`).
+
+- **Hessen coverage & limitations**: HE (state `06`) is parsed from the Hessisches Statistisches Landesamt report *B VII m – Direktwahlen*, a most-recent-per-Gemeinde/Landkreis snapshot (election dates ~2020–2026). The primary source is now the **May-2026 issue in XLSX form** (`00_he_parse_xlsx.py`), which lists **every Wahlvorschlag with its votes** (real `n_candidates`, up to 20) and **full vote counts** — a major upgrade over the older 2024 PDF (winner + first Wahlvorschlag only), which is retained only as a fallback (`he_pdf_parsed.csv`) for the ~57 units whose last election predates the XLSX's 2020 window. 421 Gemeinden (Bürgermeister + Oberbürgermeister: the 5 kreisfreie Städte + the 7 Sonderstatusstädte Hanau, Fulda, Gießen, Marburg, Rüsselsheim, Wetzlar, Bad Homburg) feed the mayoral dataset; the 21 Landkreise (Landrat) are split to [`../../landrat_elections/final/`](../../landrat_elections/final/). The winner is the **highest-voted Wahlvorschlag** of the decisive round (named, with party + gender); losing Wahlvorschläge carry party + votes but no candidate name. Single-candidate elections are Ja/Nein (winner votes = Ja-Stimmen < valid). Source: HSL report B VII m (statistischebibliothek.de); the parser is a byte-exact reproduction (0/463 party-vote mismatches vs the raw table), and a winner sample was independently re-verified externally.
+
+- **2026 Kommunalwahlen (Bayern + Hessen, newest cycle)**: The most recent local elections — **Bayern** (8 March 2026, Stichwahl 22 March) and **Hessen** (15 March 2026, Stichwahlen 29 March / 12 April, plus Jan/June by-elections) — are added from sources newer than the historical files above, each independently spot-verified against official municipality pages and local press (13/13 winners confirmed).
+  - **Bayern 2026** (1,920 Gemeinden incl. 50 Oberbürgermeister; 62 Landrat split to the landrat dataset): from the Bayerisches Landesamt für Statistik *Mandatsträger* XLSX (official). Full candidate-level votes + turnout; the elected person's name/gender/birth year/first-Amtsantritt come from the Mandatsträger sheet and are attached to the winning Wahlvorschlag (the panel links re-elected incumbents by Amtsantritt — 1,075 of the 2026 winners were already in office). Candidate names exist only for the winner (Bayern publishes no losing-candidate names).
+  - **Hessen 2026** (28 Gemeinden incl. Hanau OB; 9 Stichwahlen) is a **hybrid**: the ~12 Gemeinden already in the May-2026 *B VII m* XLSX carry **full vote counts** (via the `hessen` source above); the remaining ~16 — the by-elections (Jan/June) and March results not yet in that report issue — are scraped from the hessenschau result pages as **percentage-only** (like RLP: candidate + party + vote share + turnout, but `valid_votes` / `candidate_votes` `NA`). The two sources are de-duplicated by `(ags, election_date)`. The winner is the decisive round's top result (Stichwahl if held); a built-in integrity check guarantees no runoff is missed (every recorded winner ≥ 50%), and the runoff date is read from the page text (not the URL). The %-only rows are superseded by full vote counts as later *B VII m* issues add them. All 13 sampled 2026 winners were independently re-verified (13/13).
 
 ---
 
@@ -136,6 +142,7 @@ One row per candidate per election cycle. Companion to `mayoral_unharm` -- same 
 | Baden-Württemberg | Yes | Yes (100%) | -- | Yes | Yes | -- | Winner only |
 | Bayern | -- | -- | -- | -- | -- | -- | Yes |
 | Brandenburg | Yes | -- | Yes | Yes | -- | -- | Yes |
+| Hessen | Yes | Yes | Yes | Yes | -- | -- | Winner (if Wahlvorschlag 1) + WV1 |
 | Sachsen-Anhalt | Yes | -- | Yes | Yes | -- | -- | Yes |
 | Niedersachsen | Yes | -- | Yes (99.9%) | Yes | Yes | Yes | Yes |
 | Nordrhein-Westfalen | Yes | -- | Yes (100%) | Yes | -- | -- | Yes |
@@ -274,12 +281,13 @@ Each mayor-election is expanded from `election_year` to the year before the next
 
 | State | HW Elections | SW Elections | Detection Method |
 |---|---|---|---|
-| Bayern | 31,534 | 3,174 | `Wahlart` column in raw data |
+| Bayern | 33,297 | 3,174 | `Wahlart` column in raw data (incl. 8/22 March 2026 Kommunalwahl) |
 | Sachsen | 1,576 | 300 | `Status` VE/EE + date matching |
 | Nordrhein-Westfalen | 1,341 | 331 | 60-day cycle detection |
 | Baden-Württemberg | 1,101 | 143 | `Wahlart` H/N/S in the report (126 Neuwahl + 17 Stichwahl) |
 | Niedersachsen | 1,000 | 93 | Separate Stichwahl PDFs (2006/2013) + round detection |
 | Rheinland-Pfalz | 693 | 227 | `Stichwahltag` column + separate HW/SW results |
+| Hessen | 449 | 97 | `Stichwahl` marker + paired HW/SW rows (report + 2026 hessenschau, %-only) |
 | Brandenburg | 78 | 38 | Separate `~h_`/`~s_` result pages on the portal |
 | Sachsen-Anhalt | 66 | 9 | Hauptwahl + Stichwahl columns on each result page |
 | Saarland | 42 | 15 | `Wahlart...3` column in raw data |
@@ -291,9 +299,10 @@ Each mayor-election is expanded from `election_year` to the year before the next
 
 | State | Code | Year Range | Unharm Rows | Panel Persons | Panel Elections | Source |
 |---|---|---|---|---|---|---|
-| Baden-Württemberg | 08 | 2016--2024 (stock at 31.12.2024) | 1,244 | 1,101 | 1,101 | PDF (Stat. Landesamt B VII 3-j/25) |
+| Baden-Württemberg | 08 | 2003--2025 (hybrid) | 1,401 | 1,167 | 1,241 | Komm.ONE votemanager (candidate-level) + Stat. Landesamt B VII 3-j/25 (winner-only) |
 | Bayern | 09 | 1945--2025 | 34,824 | 12,246 | 31,383 | Excel (Bayerisches Landesamt) |
 | Brandenburg | 12 | 2018--2026 (recent cycle) | 116 | 79 | 79 | Web scraping (wahlen.brandenburg.de) |
+| Hessen | 06 | 2017--2024 (snapshot at 06.05.2024) | 509 | 421 | 421 | PDF (Stat. Landesamt B VII m Direktwahlen) |
 | Sachsen | 14 | 2001--2024 | 2,176 | 447 | 524 | Excel (Buergermeisteratlas) |
 | Sachsen-Anhalt | 15 | 2024--2026 | 75 | 66 | 66 | Web scraping (wahlergebnisse.sachsen-anhalt.de) |
 | Nordrhein-Westfalen | 05 | 2009--2025 | 1,986 | 1,007 | 1,639 | Excel (IT.NRW) |
