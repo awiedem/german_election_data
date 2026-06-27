@@ -102,7 +102,7 @@ This dataset contains federal election results from 1990 to 2025 at the municipa
 
 **File:** `data/state_elections/final/state_unharm.rds` (or `.csv`)
 
-This dataset contains state election results from 1946 to 2024 at the municipality level, using each election year's original administrative boundaries. Covers all 16 German states with 126,989 rows and 439 columns (426 individual party columns).
+This dataset contains state election results from 1946 to 2026 at the municipality level, using each election year's original administrative boundaries. Covers all 16 German states, with each party that ever ran preserved as its own column.
 
 | Variable                        | Type      | Description                                                                                                                                    |
 | :------------------------------ | :-------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -123,6 +123,7 @@ This dataset contains state election results from 1946 to 2024 at the municipali
 **Notes:**
 
 - **Bayern (BY)** uses Gesamtstimmen (Erst+Zweitstimme combined). Both ballots count equally for proportional seat allocation and the 5% threshold. Party vote shares are proportions of Gesamtstimmen. The identity `valid_votes + invalid_votes = number_voters × 2` holds for BY 1950+. The 1946 election was single-ballot.
+- **Baden-Württemberg (BW) 2026** is the first BW Landtagswahl under the new **two-vote system** (Erst-/Zweitstimme). GERDA records the **Zweitstimme** (Landeslistenstimme) — the proportional list vote — as each party's vote, continuing the single-vote series of BW 1956–2021. `valid_votes`/`invalid_votes`/turnout are likewise the Zweitstimme figures. Source: Statistisches Landesamt BW GENESIS tables 14311_0009 (votes) + 14311_0008 (turnout).
 - **Hamburg (HH) 2011+ and Bremen (HB) 2011+** use a 5-vote personalized-list system (Kumulieren/Panaschieren): each voter casts 5 Landesstimmen, which can be cumulated on one candidate or split across candidates and lists. GERDA reports party shares as proportions of cast Landesstimmen, so `valid_votes ≈ 5 × number_voters`. Shares sum to 1 within a municipality and are comparable across HH (or HB) municipalities, but the per-voter denominator differs from single-ballot states. Earlier HH/HB elections used a single-vote system.
 - **NRW 1947–1970**: County-level only (synthetic AGS `050xx000`). Cannot be harmonized; only in unharm.
 - **HH 1982**: Two elections (June + December) — both rows present, distinguished by `election_date`.
@@ -131,7 +132,7 @@ This dataset contains state election results from 1946 to 2024 at the municipali
 
 **Files:** `data/state_elections/final/state_harm_21.rds`, `state_harm_23.rds`, `state_harm_25.rds` (or `.csv`)
 
-State election results from 1990 to 2024 harmonized to fixed administrative boundaries (2021, 2023, or 2025) using population-weighted crosswalks. 67,393–67,613 rows, 451 columns.
+State election results from 1990 to 2026 harmonized to fixed administrative boundaries (2021, 2023, or 2025) using population-weighted crosswalks. BW 2026 (a 2025-vintage boundary year) maps onto each target via the year−1 crosswalk fallback; BW had no Gemeinde mergers in this window, so the mapping is effectively identity and totals are conserved exactly.
 
 | Variable                        | Type      | Description                                                                                                                                    |
 | :------------------------------ | :-------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |

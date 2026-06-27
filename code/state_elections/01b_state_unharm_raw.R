@@ -86,7 +86,7 @@ normalise_party <- function(pname) {
   if (grepl("^ZENTRUM$", p_up))                            return("zentrum")
   if (grepl("^FREIE SACHSEN", p_up))                       return("freie_sachsen")
   if (grepl("WERTEUNION|^WU$", p_up))                     return("werteunion")
-  if (grepl("^TEAM TODENHÖFER|^TEAM TODENH", p_up))       return("team_todenhofer")
+  if (grepl("^TEAM TODENH|TODENH[OÖ]FER|GERECHTIGKEITSPARTEI", p_up)) return("team_todenhofer")
   if (grepl("^HUMANISTEN|^DIE HUMANISTEN", p_up))          return("die_humanisten")
   if (grepl("^VIOLETTEN|^DIE VIOLETTEN", p_up))            return("violetten")
   if (grepl("^VOLKSAB.?STIMMUNG", p_up))                   return("volksabstimmung")
@@ -3731,6 +3731,109 @@ for (yr in names(bw_dates)) {
   cat(n_muni, "munis,", sum(result$eligible_voters, na.rm = TRUE), "EV\n")
 
   bw_results[[yr]] <- result
+}
+
+## ── BW 2026: two-vote Landtagswahl from GENESIS Flachdateien ───────────────
+## The 2026 reform introduced a two-vote system (Erst-/Zweitstimme). The
+## "Wahlen seit 1945"-derived XLSX above ends at 2021, so 2026 is added from the
+## StaLA GENESIS regional tables (Flachdatei = long format, Latin-1, ";"-sep,
+## one row per region × variable-attribute × value):
+##   14311_0009 — Gemeinde party votes (Parteien × Erst-/Zweitstimme)
+##   14311_0008 — Gemeinde Wahlbeteiligung & Stimmengültigkeit
+## GERDA records the Zweitstimme (Landeslistenstimme) as the party vote, the
+## headline proportional result and the natural continuation of the prior
+## single-vote series. Party label → token uses the official Kurzbezeichnung in
+## the trailing "(...)" so e.g. the Die-PARTEI long name (which contains the
+## word "Tierschutz") is not mis-mapped onto a tierschutz party.
+bw26_dir        <- file.path(raw_path, "Baden-Württemberg")
+bw26_votes_file <- file.path(bw26_dir, "LTW2026_14311_0009_gemeinde_stimmen_flat.csv")
+bw26_turn_file  <- file.path(bw26_dir, "LTW2026_14311_0008_gemeinde_wahlbeteiligung_flat.csv")
+
+if (file.exists(bw26_votes_file) && file.exists(bw26_turn_file)) {
+  cat("BW 2026 (GENESIS two-vote LTW) ...")
+
+  ## Extract the official short name from a trailing "(...)", else the full label
+  bw26_kurz <- function(label) {
+    m <- regmatches(label, regexpr("\\(([^()]+)\\)\\s*$", label))
+    if (length(m) == 0L || !nzchar(m)) return(label)
+    sub("^\\((.*)\\)\\s*$", "\\1", m)
+  }
+  ## GENESIS value parser: German numbers (. thousands, , decimal); "-"/"." = NA
+  bw26_num <- function(v) {
+    v <- trimws(v)
+    v[v %in% c("-", ".", "x", "/", "...", "")] <- NA_character_
+    as.numeric(gsub(",", ".", gsub("\\.", "", v)))
+  }
+
+  ## --- party votes: keep Zweitstimme only ---
+  v <- fread(bw26_votes_file, sep = ";", header = TRUE, encoding = "Latin-1",
+             colClasses = "character", quote = "")
+  setnames(v,
+           c("1_variable_attribute_code", "2_variable_attribute_label",
+             "3_variable_attribute_label"),
+           c("geo", "party_raw", "stimme"))
+  v <- v[stimme == "Zweitstimme"]
+  v[, ags := substr(geo, 1, 8)]
+  v[, party_raw := enc2utf8(party_raw)]
+  v[, votes := bw26_num(value)]
+  v <- v[!is.na(votes)]                       # "-" rows = party not on the ballot
+  token_map <- vapply(unique(v$party_raw),
+                      function(l) suppressMessages(normalise_party(bw26_kurz(l))),
+                      character(1))
+  v[, token := token_map[party_raw]]
+  party_wide <- dcast(v, ags ~ token, value.var = "votes",
+                      fun.aggregate = function(x) sum(x, na.rm = TRUE))
+  tokens26 <- setdiff(names(party_wide), "ags")
+
+  ## --- turnout & validity (Zweitstimme) ---
+  tt <- fread(bw26_turn_file, sep = ";", header = TRUE, encoding = "Latin-1",
+              colClasses = "character", quote = "")
+  setnames(tt,
+           c("1_variable_attribute_code", "2_variable_attribute_label",
+             "3_variable_attribute_label", "value_variable_label"),
+           c("geo", "sg", "stimme", "vvar"))
+  tt[, ags := substr(geo, 1, 8)]
+  tt[, val := bw26_num(value)]
+  pick <- function(cond) {
+    s <- tt[cond, .(ags, val)]
+    setNames(s$val, s$ags)
+  }
+  elig_v  <- pick(tt$vvar == "Wahlberechtigte" & tt$value_unit == "Anzahl")
+  vot_v   <- pick(tt$vvar == "Wähler/-innen"   & tt$value_unit == "Anzahl")
+  val_v   <- pick(tt$vvar == "Stimmen" & tt$value_unit == "Anzahl" &
+                  tt$sg == "gültig"   & tt$stimme == "Zweitstimme")
+  inval_v <- pick(tt$vvar == "Stimmen" & tt$value_unit == "Anzahl" &
+                  tt$sg == "ungültig" & tt$stimme == "Zweitstimme")
+
+  ## --- assemble: one row per Gemeinde, party SHARES (consistent with the loop) ---
+  result <- tibble(ags = sort(unique(party_wide$ags)))
+  result$election_year <- 2026L
+  result$state         <- "08"
+  result$election_date <- as.Date("2026-03-08")
+  result$eligible_voters <- unname(elig_v[result$ags])
+  result$number_voters   <- unname(vot_v[result$ags])
+  result$valid_votes     <- unname(val_v[result$ags])
+  result$invalid_votes   <- unname(inval_v[result$ags])
+
+  pw <- as.data.frame(party_wide)
+  rownames(pw) <- pw$ags
+  count_mat <- pw[result$ags, tokens26, drop = FALSE]
+  count_mat[is.na(count_mat)] <- NA_real_          # absent token = party not on ballot
+  mapped_sum <- rowSums(count_mat, na.rm = TRUE)
+  result$turnout <- result$number_voters / result$eligible_voters
+  for (tok in tokens26) {
+    result[[tok]] <- count_mat[[tok]] / result$valid_votes
+  }
+  result$other   <- pmax(result$valid_votes - mapped_sum, 0) / result$valid_votes
+  result$cdu_csu <- result$cdu
+
+  ## Drop gemeindefreie Gebiete (AGS ending in 99x), as elsewhere in BW
+  result <- result |> filter(!grepl("99[0-9]$", ags))
+
+  cat(nrow(result), "munis,", sum(result$eligible_voters, na.rm = TRUE), "EV\n")
+  bw_results[["2026"]] <- result
+} else {
+  cat("BW 2026 GENESIS flat files not found — skipping 2026.\n")
 }
 
 all_states[["bw"]] <- bind_rows(bw_results)

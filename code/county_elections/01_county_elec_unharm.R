@@ -2289,6 +2289,25 @@ cat("\n===== BADEN-WÜRTTEMBERG =====\n")
 
 bw_dir <- "data/county_elections/raw/local_elections_bw"
 
+#' BW Kreistag pre-2024: assign the uncaptured residual (the local
+#' Wählervereinigungen bloc, ~25% in BW Kreistag) to the waehlervereinigungen
+#' SHARE column. The 2004-2019/1994/1999 source tables break out only named
+#' parties, so per-Kreis shares otherwise sum to ~0.75; this makes them sum to
+#' ~1.0 and yields a local-list series consistent with the 2024 GENESIS data,
+#' which lists "Sonstige Wählervereinigungen" explicitly. Operates on already-
+#' computed share columns; named-party shares are unchanged. (Not applied to the
+#' 2024 parser, which captures the full Wahlvorschlag set → shares already = 1.0.)
+bw_add_wv_residual <- function(df) {
+  meta <- c("ags", "ags_name", "eligible_voters", "number_voters", "valid_votes",
+            "invalid_votes", "turnout", "county", "state", "election_year",
+            "waehlervereinigungen")
+  pcols <- setdiff(names(df), meta)
+  captured <- rowSums(df[, pcols, drop = FALSE], na.rm = TRUE)
+  df$waehlervereinigungen <- ifelse(!is.na(df$valid_votes) & df$valid_votes > 0,
+                                    pmax(1 - captured, 0), NA_real_)
+  df
+}
+
 #' Parse BW Format B (1994, 2004-2019): multi-row per Kreis
 parse_bw_format_b <- function(filepath, year) {
   cat("  Reading BW", year, "(format B)...\n")
@@ -2398,6 +2417,7 @@ parse_bw_format_b <- function(filepath, year) {
                        df[[pc]] / df$valid_votes, NA_real_)
   }
 
+  df <- bw_add_wv_residual(df)
   df$turnout <- ifelse(!is.na(df$eligible_voters) & df$eligible_voters > 0,
                        df$number_voters / df$eligible_voters, NA_real_)
   df$county <- substr(df$ags, 1, 5)
@@ -2457,6 +2477,7 @@ parse_bw_1999 <- function(filepath) {
                           vals / df$valid_votes, NA_real_)
   }
 
+  df <- bw_add_wv_residual(df)
   df$turnout <- ifelse(!is.na(df$eligible_voters) & df$eligible_voters > 0,
                        df$number_voters / df$eligible_voters, NA_real_)
   df$county <- substr(df$ags, 1, 5)
@@ -2506,6 +2527,7 @@ parse_bw_1994 <- function(filepath) {
                           vals / df$valid_votes, NA_real_)
   }
 
+  df <- bw_add_wv_residual(df)
   df$turnout <- ifelse(!is.na(df$eligible_voters) & df$eligible_voters > 0,
                        df$number_voters / df$eligible_voters, NA_real_)
   df$county <- substr(df$ags, 1, 5)

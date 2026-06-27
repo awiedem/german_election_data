@@ -305,7 +305,7 @@ Follows the same approach as `02_federal_muni_harm_21.R` but:
 **Script:** `code/state_elections/01b_state_unharm_raw.R`
 **Sources:** Raw files from each state's statistical office in `data/state_elections/raw/Landtagswahlen/`. Formats include XLSX, XLS, CSV, and OCR-extracted CSVs from scanned PDFs.
 
-This unified script processes all 16 German states (1946–2025), replacing the earlier `01_state_unharm.R` (GENESIS API) + `03_state_2022-24.R` (manual collection) approach. Each state has dedicated parsing logic handling heterogeneous source formats.
+This unified script processes all 16 German states (1946–2026), replacing the earlier `01_state_unharm.R` (GENESIS API) + `03_state_2022-24.R` (manual collection) approach. Each state has dedicated parsing logic handling heterogeneous source formats.
 
 **Why the pipeline was replaced:** The GENESIS Regionalstatistik API does not properly allocate Briefwahl (mail-in) votes from shared/pooled districts to individual municipalities. A systematic comparison of 27,503 overlapping municipality-year observations (2006–2019) found massive valid_votes undercounts in 5 eastern German states: SN (+10–17% recovery), MV (+7–19%), BB (+0.1–20%), TH (+4–6%), ST (+0–8%). In the worst cases, individual municipalities were missing up to 195% of their valid votes. See `data/state_elections/final/README.md` and `docs/state_pipeline_audit.md` for the full comparison.
 
@@ -315,6 +315,7 @@ This unified script processes all 16 German states (1946–2025), replacing the 
 - **Vote shares from source:** Computed as `party_votes / valid_votes` (not `number_voters`).
 - **Briefwahl properly allocated:** State raw data is pre-aggregated to municipalities with Briefwahl assigned to the correct municipality by the Landeswahlleiter.
 - **Bayern Gesamtstimmen:** BY uses combined Erst+Zweitstimme (both count for seat allocation). `valid_votes ≈ 2 × number_voters` for BY 1950+.
+- **Baden-Württemberg 2026 (two-vote):** BW's first Landtagswahl under the new Erst-/Zweitstimme system. Added from StaLA GENESIS Flachdateien (tables 14311_0009 votes + 14311_0008 turnout) in a dedicated block; GERDA records the **Zweitstimme** (Landeslistenstimme), continuing the prior single-vote series. Party labels are resolved via the official short name in the trailing `(...)` before `normalise_party()` (so e.g. the long Die-PARTEI name is not mis-matched on "Tierschutz").
 - **OCR-extracted elections:** BB 1990/1994/1999, SH 1983, NRW 1947/1950, SL 1970/1975 were digitized from scanned PDFs. NRW 1947-1970 are county-level only (synthetic AGS `050xx000`, ~84 Kreise per year, aggregated from 150 WK for 1947/1950). The NRW source PDF contains three elections in interleaved rows (a=1947, b=1949 Bundestag, c=1950 Landtag); row identification uses party presence patterns.
 - **Percentage-only data:** HB 1946–1995 (converted BIFF→XLSX with graphical headers) and HB 2011 (hardcoded from official Faltblatt PDF) only have vote share percentages — `valid_votes`/`invalid_votes` are NA.
 - **RP 1979–2016:** Added from Landeswahlleiter file (`LW_RLP_1979_2021.xlsx`), Landesstimmen only, no turnout metadata. 2021 retains separate source with full turnout data. Note: source data is missing 5–6 municipalities for 1979–2001 (founded after 1979), causing 0.07–0.31% shortfall vs official Landesergebnisse. From 2006 onward, deviations are ≤0.16%; 2011/2016 match exactly.
@@ -490,7 +491,7 @@ A `02_mayoral_harm.R` script has not yet been written.
 
 ### Pipeline status
 
-Processing code exists in `code/county_elections/01_county_elec_unharm.R` (Stage 1 — unharm only). Work in progress; 5 of ~10 states implemented.
+Processing code exists in `code/county_elections/01_county_elec_unharm.R` (Stage 1 — unharm) and `02_county_elec_harm_21.R` (Stage 2 — harmonized to 2021 boundaries, split into `_muni` municipality-level and `_cty` county-level outputs). Work in progress; multiple states implemented (see table below).
 
 **Script:** `01_county_elec_unharm.R`
 **Output:** `data/county_elections/final/county_elec_unharm.{rds,csv}`
@@ -504,6 +505,7 @@ Processing code exists in `code/county_elections/01_county_elec_unharm.R` (Stage
 | Mecklenburg-Vorpommern (MV) | 13 | 2014–2024 (3 elections) | XLSX (2014) + CSV (2019, 2024) | CSV: `Ausgabe=="A"` filter for absolute values; `x` → NA |
 | Sachsen (SN) | 14 | 1999–2024 (6 elections) | Excel (.xlsx) | Legacy (1999–2014) vs modern (2019+) format; **SN 2014 has party names in row 5 not row 4** |
 | Brandenburg (BB) | 12 | 2003–2024 (5 elections) | Excel (.xlsx) | Ballot-district level → municipality aggregation; **BB 2024 uses 12-digit ARS (not 8-digit AGS)** |
+| Baden-Württemberg (BW) | 08 | 1994–2024 (7 elections) | Excel (.xlsx) + GENESIS flat CSV (2024) | **Kreis-level** (5-digit AGS + "000"), 35 Landkreise (Stadtkreise hold no Kreistag). 2024 from StaLA GENESIS table 14411_0002 via `parse_bw_kt_genesis()`, using raw **"Gültige Stimmen bei Verhältniswahl"** (cumulative votes). No turnout in the 2024 source → `eligible/number/invalid_votes`, `turnout` NA. The local **Wählervereinigungen** bloc is residual-backfilled into `waehlervereinigungen` for 2004–2019 (`bw_add_wv_residual()`) so per-Kreis shares sum to ~1.0 across years; 1994/1999 already break it out (`fwv`/`wv`/`gemeinsame_wv`). Named-party shares unchanged |
 
 ### Architecture
 
@@ -522,7 +524,6 @@ Processing code exists in `code/county_elections/01_county_elec_unharm.R` (Stage
 
 | State | Format | Notes |
 |---|---|---|
-| Baden-Württemberg (BW) | Excel (.xlsx) | 6 files |
 | Hessen (HE) | Excel (.xlsx) | 1 file |
 | Nordrhein-Westfalen (NRW) | ZIP archive | 1 archive |
 | Niedersachsen (NS) | ZIP archive | 1 archive |
