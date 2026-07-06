@@ -1690,28 +1690,111 @@ if (file.exists(bb_file)) {
 # ============================================================================
 # SACHSEN-ANHALT
 # ============================================================================
-# Bürgermeister-/Oberbürgermeisterwahlen, scraped from the Landeswahlleiter
-# portal by 00_st_scrape.py into
-# data/mayoral_elections/raw/sachsen_anhalt/st_bm_parsed.csv (candidate-level
-# long, one row per candidate per round, WITH party). The portal only carries
-# 2024-2026 (sections bm24/bm25/bm26), so this is a recent cross-section. Office
-# title is read from each result page ("(Ober)Bürgermeister: <Name>"); kreisfreie
-# Städte and Städte whose head bears the OB title -> Oberbürgermeisterwahl. Here
-# we aggregate to winner-level per round, like MV/TH/BB.
+# Bürgermeister-/Oberbürgermeisterwahlen — HYBRID of two sources:
+#
+#   (1) st_stala_parsed.csv (PRIMARY): Statistisches Landesamt Sachsen-Anhalt
+#       "Datensatzbeschreibung Bürgermeisterwahlen" extract (bmbm.csv, Stand
+#       26.02.2025), parsed by 00_st_stala_parse.py. 218 Gemeinden × most-
+#       recent election, covering 2019-11-10 through 2026-02-15 (matches the
+#       7-year Amtszeit window). Candidate-level with full names + party +
+#       both rounds. Includes an explicit `is_winner` flag from the row-level
+#       "Elected" record — more reliable than rank when a Ja/Nein vote polled
+#       <50% or when a name has a Dr. title.
+#
+#   (2) st_bm_parsed.csv (FALLBACK): Landeswahlleiter portal scrape by
+#       00_st_scrape.py (bm24/bm25/bm26). Covers 5 (ags, date) pairs
+#       post-2026-02-15 that are NOT yet in the StaLA extract, plus a single
+#       candidate (Wöhling, Genthin 2024, row 118 corruption) that the StaLA
+#       CSV is missing due to a garbled B08/B09 record.
+#
+# Merge rule (transparent, deterministic):
+#   - Start with all StaLA rows.
+#   - Append portal rows for (ags, election_date) NOT present in StaLA.
+#   - Append portal candidate rows for (ags, election_date) that IS in StaLA
+#     but whose (round, candidate_last_name) is NOT — this recovers the
+#     Genthin "Wöhling" record without disturbing anything else.
+#   Then aggregate to winner-level per (ags, election_date, round).
 
 cat("\n=== Processing Sachsen-Anhalt mayoral elections ===\n")
 
-st_file <- "data/mayoral_elections/raw/sachsen_anhalt/st_bm_parsed.csv"
+st_stala_file  <- "data/mayoral_elections/raw/sachsen_anhalt/st_stala_parsed.csv"
+st_portal_file <- "data/mayoral_elections/raw/sachsen_anhalt/st_bm_parsed.csv"
 
-if (file.exists(st_file)) {
-  st_raw <- fread(st_file, encoding = "UTF-8",
-                  colClasses = list(character = c("ags", "ags_name", "state",
-                    "state_name", "election_date", "candidate_party",
-                    "candidate_name", "round")))
+st_col_classes <- list(character = c("ags", "ags_name", "state",
+    "state_name", "election_date", "candidate_party",
+    "candidate_name", "candidate_last_name", "candidate_first_name",
+    "round"))
+
+if (file.exists(st_stala_file)) {
+  st_stala <- fread(st_stala_file, encoding = "UTF-8", colClasses = st_col_classes)
+
+  if (file.exists(st_portal_file)) {
+    st_portal <- fread(st_portal_file, encoding = "UTF-8", colClasses = st_col_classes)
+    # Portal file lacks these StaLA-only columns; fill them so bind_rows aligns.
+    if (!"candidate_title" %in% names(st_portal)) st_portal[, candidate_title := NA_character_]
+    if (!"is_winner"       %in% names(st_portal)) st_portal[, is_winner       := NA]
+  } else {
+    st_portal <- st_stala[0]   # empty of same schema — falls through cleanly
+  }
+
+  stala_pairs <- unique(st_stala[, .(ags, election_date)])
+  st_portal[, candidate_votes := as.numeric(candidate_votes)]
+  st_stala[, candidate_votes := as.numeric(candidate_votes)]
+
+  # (a) portal-only elections — take everything for AGS-dates StaLA doesn't cover
+  portal_extras <- st_portal[!stala_pairs, on = c("ags", "election_date")]
+
+  # (b) portal candidates missing from StaLA in shared elections. A portal row
+  # is dropped as a duplicate if StaLA has ANY row in the same (ags, date, round)
+  # that matches on candidate_last_name OR candidate_first_name OR
+  # candidate_votes (case-insensitive). Catches Genthin "Wiedicke"/"Wiedecke"
+  # (name typo, same votes) and Barleben "Nase" (same name, off-by-1 scrape).
+  # Keeps genuinely-missing candidates (Genthin "Wöhling", 96 votes).
+  st_portal[, .row_id := .I]
+  portal_shared <- st_portal[stala_pairs, on = c("ags", "election_date"), nomatch = 0]
+
+  claim_set <- function(dt, col, id_col = NULL) {
+    vals <- as.character(.subset2(dt, col))
+    keep <- !is.na(vals) & nzchar(trimws(vals))
+    if (col == "candidate_votes") {
+      vals[keep] <- paste0("V:", vals[keep])
+    } else {
+      vals[keep] <- paste0("N:", tolower(vals[keep]))
+    }
+    out <- data.table(ags = dt$ags[keep], election_date = dt$election_date[keep],
+                      round = dt$round[keep], claim_key = vals[keep])
+    if (!is.null(id_col)) out[, (id_col) := dt[[id_col]][keep]]
+    out
+  }
+  stala_claims <- unique(rbindlist(list(
+    claim_set(st_stala, "candidate_last_name"),
+    claim_set(st_stala, "candidate_first_name"),
+    claim_set(st_stala, "candidate_votes")
+  )))
+  portal_claims <- rbindlist(list(
+    claim_set(portal_shared, "candidate_last_name", ".row_id"),
+    claim_set(portal_shared, "candidate_first_name", ".row_id"),
+    claim_set(portal_shared, "candidate_votes", ".row_id")
+  ))
+
+  matched_ids <- unique(portal_claims[stala_claims,
+                                      on = c("ags", "election_date", "round", "claim_key"),
+                                      nomatch = 0]$.row_id)
+  portal_supp <- portal_shared[!.row_id %in% matched_ids]
+  st_portal[, .row_id := NULL]
+  portal_supp[, .row_id := NULL]
+
+  st_raw <- rbindlist(list(st_stala, portal_extras, portal_supp),
+                      use.names = TRUE, fill = TRUE)
+
+  cat("  Sources merged: StaLA=", nrow(st_stala),
+      "candidate rows, portal-only elections=", nrow(portal_extras),
+      "rows, portal supplements=", nrow(portal_supp), "rows\n", sep = "")
 
   st_clean <- st_raw %>%
     mutate(election_date = as.Date(election_date),
-           election_year = as.integer(election_year)) %>%
+           election_year = as.integer(election_year),
+           candidate_votes = as.numeric(candidate_votes)) %>%
     group_by(ags, election_date, round) %>%
     arrange(desc(candidate_votes)) %>%
     slice(1) %>%
@@ -1725,7 +1808,7 @@ if (file.exists(st_file)) {
       invalid_votes = as.numeric(invalid_votes),
       turnout = as.numeric(turnout),
       winner_party = candidate_party,
-      winner_votes = as.numeric(candidate_votes),
+      winner_votes = candidate_votes,
       winner_voteshare = as.numeric(candidate_voteshare)
     )
 
@@ -1734,8 +1817,8 @@ if (file.exists(st_file)) {
   cat("  By type:\n"); print(table(st_clean$election_type))
   all_mayoral_data[["sachsen_anhalt"]] <- st_clean
 } else {
-  cat("Note: ST parsed data not found at", st_file, "\n")
-  cat("  Run 00_st_scrape.py first to generate the data.\n")
+  cat("Note: ST StaLA data not found at", st_stala_file, "\n")
+  cat("  Run 00_st_stala_parse.py first to generate the data.\n")
 }
 
 # ============================================================================

@@ -315,17 +315,114 @@ check(sum(l$state == "12") >= 0 && sum(m$state == "12" & m$election_type == "Lan
       "BB: no Landratswahl leaked into mayoral",
       "BB: Landratswahl leaked into mayoral")
 
-# Sachsen-Anhalt (state 15): Bürgermeister-/OB-wahlen 2024-2026, WITH party.
+# Sachsen-Anhalt (state 15): Bürgermeister-/OB-wahlen — Statistisches Landesamt
+# "Datensatzbeschreibung Bürgermeisterwahlen" (bmbm.csv) is the PRIMARY source
+# (2019-2026, 218 Gemeinden, most-recent per Gemeinde) + Landeswahlleiter portal
+# for post-cutoff 2026 elections and the Genthin Wöhling supplement.
 st_m <- m %>% filter(state == "15")
-check(n_distinct(st_m$ags) >= 60,
-      sprintf("ST: %d Gemeinden in mayoral_unharm (≥60 expected)", n_distinct(st_m$ags)),
-      sprintf("ST: only %d Gemeinden (expected ≥60)", n_distinct(st_m$ags)))
-check(all(st_m$election_year >= 2024),
-      "ST: all elections in 2024-2026 (portal window)",
-      "ST: election years outside 2024-2026 window")
+check(n_distinct(st_m$ags) >= 200,
+      sprintf("ST: %d Gemeinden in mayoral_unharm (≥200 expected, StaLA covers ~218)", n_distinct(st_m$ags)),
+      sprintf("ST: only %d Gemeinden (expected ≥200)", n_distinct(st_m$ags)))
+check(min(st_m$election_year) >= 2019 && max(st_m$election_year) <= 2026,
+      "ST: elections in 2019-2026 window (StaLA snapshot)",
+      sprintf("ST: election years outside 2019-2026 (min=%d, max=%d)",
+              min(st_m$election_year), max(st_m$election_year)))
 check(sum(m$state == "15" & m$election_type == "Landratswahl") == 0,
       "ST: no Landratswahl leaked into mayoral (ST Landrat is a separate dataset)",
       "ST: Landratswahl leaked into mayoral")
+
+# Known OB fixtures — winners we can verify externally
+st_ob_expected <- data.frame(
+  ags = c("15001000", "15002000", "15003000", "15087370", "15082180"),
+  gemeinde = c("Dessau-Roßlau", "Halle (Saale)", "Magdeburg", "Sangerhausen", "Köthen"),
+  election_date = as.Date(c("2021-06-27", "2025-02-23", "2022-05-08",
+                            "2024-04-28", "2023-04-02")),
+  round = "stichwahl",
+  winner_last = c("Reck", "Vogt", "Borris", "Schweiger", "Buchheim"),
+  winner_share_min = c(0.72, 0.51, 0.64, 0.55, 0.60)  # lower bounds
+)
+# Cross-check winner votes match voteshare × valid_votes (rounding-safe)
+st_vote_integrity_ok <- st_m %>%
+  filter(!is.na(winner_votes) & !is.na(valid_votes) & valid_votes > 0 &
+         !is.na(winner_voteshare)) %>%
+  mutate(implied = winner_votes / valid_votes,
+         diff    = abs(implied - winner_voteshare)) %>%
+  pull(diff)
+# Tolerance 5e-4 handles both StaLA's exact ratios AND the portal's 3-decimal
+# rounded shares (e.g. Zerbst/Anhalt 2026 portal has 0.822 vs implied 0.82189).
+check(all(st_vote_integrity_ok < 5e-4),
+      sprintf("ST vote integrity: winner_votes / valid_votes == winner_voteshare (%d rows checked)",
+              length(st_vote_integrity_ok)),
+      "ST vote integrity: winner_votes/valid_votes mismatches winner_voteshare")
+
+# Load candidates for winner-identity checks
+st_c <- mc %>% filter(state == "15")
+for (i in seq_len(nrow(st_ob_expected))) {
+  row <- st_ob_expected[i, ]
+  win <- st_c %>%
+    filter(ags == row$ags & is_winner == TRUE) %>%
+    slice(1)
+  ok <- nrow(win) == 1 && !is.na(win$candidate_last_name) &&
+    win$candidate_last_name == row$winner_last
+  check(ok,
+        sprintf("ST OB fixture: %s — winner is %s (expected)", row$gemeinde, row$winner_last),
+        sprintf("ST OB fixture: %s — winner mismatch (got '%s')",
+                row$gemeinde, if (nrow(win)==1) win$candidate_last_name else "<none>"))
+}
+
+# ART classifier — exactly 19 Gemeinden ever appear as OB (3 kfS + 16 GKS with
+# hauptamtl. Oberbürgermeister in the StaLA universe as of 2025-02).
+st_ob_ags <- st_m %>% filter(election_type == "Oberbürgermeisterwahl") %>%
+  pull(ags) %>% unique()
+check(length(st_ob_ags) == 19,
+      sprintf("ST OB classifier: %d Gemeinden classified as OB (expected 19 = 3 kfS + 16 GKS)", length(st_ob_ags)),
+      sprintf("ST OB classifier: %d Gemeinden (expected 19)", length(st_ob_ags)))
+kfs <- c("15001000", "15002000", "15003000")  # Dessau-Roßlau, Halle, Magdeburg
+check(all(kfs %in% st_ob_ags),
+      "ST OB: all 3 kreisfreie Städte classified as OB",
+      "ST OB: kreisfreie Städte missing from OB set")
+
+# Genthin regression — the known StaLA corruption (row 118, missing Wöhling).
+# Ensure the portal-supplement recovered her candidate row so the election has
+# the correct 8 candidates.
+genthin <- st_c %>% filter(ags == "15086040" & election_date == as.Date("2024-11-10"))
+check(nrow(genthin) == 8,
+      "ST regression: Genthin 2024 has 8 candidates (StaLA=7 + portal-supplied Wöhling)",
+      sprintf("ST regression: Genthin has %d candidates (expected 8)", nrow(genthin)))
+check("Wöhling" %in% genthin$candidate_last_name,
+      "ST regression: Wöhling recovered from portal for Genthin 2024",
+      "ST regression: Wöhling NOT present for Genthin 2024")
+check(sum(genthin$is_winner, na.rm = TRUE) == 1 &&
+      genthin$candidate_last_name[which(genthin$is_winner)] == "Turian",
+      "ST regression: Turian is the winner in Genthin 2024",
+      "ST regression: wrong / missing winner for Genthin 2024")
+
+# ONE winner per (ags, election_date) — no ambiguous or duplicate winner rows.
+per_elec_st <- st_c %>%
+  group_by(ags, election_date) %>%
+  summarise(n_wins = sum(is_winner, na.rm = TRUE), .groups = "drop")
+check(all(per_elec_st$n_wins == 1),
+      sprintf("ST: exactly one winner per election (%d elections checked)", nrow(per_elec_st)),
+      sprintf("ST: %d elections with ≠ 1 winner", sum(per_elec_st$n_wins != 1)))
+
+# Ehrenamtliche Bürgermeister — the StaLA source lists them (ART=leer). Almost
+# all of them ran as Einzelbewerber (winner_party empty). Confirm the winner_party
+# distribution has a large Einzelbewerber share (the ehrenamtl. pattern).
+st_bm_win_np <- mean(is.na(st_m$winner_party) | st_m$winner_party == "")
+check(st_bm_win_np > 0.5,
+      sprintf("ST: %.0f%% of winners are Einzelbewerber (expected majority — ehrenamtliche BM)",
+              100 * st_bm_win_np),
+      sprintf("ST: only %.0f%% Einzelbewerber (something changed)", 100 * st_bm_win_np))
+
+# Landrat unaffected — mayoral 01 overwrites landrat_unharm from HE/BY, but ST
+# Landrat comes from a separate pipeline (00_st_scrape.R in landrat_elections/).
+# Ensure ST Landrat coverage is untouched by this change (10 of 11 Landkreise —
+# Stendal 15090 not in the landrat scrape window; not our concern here).
+st_l <- l %>% filter(state == "15")
+check(n_distinct(st_l$ags) >= 10,
+      sprintf("ST Landrat: %d Landkreise present (≥10 expected, mayoral integration didn't affect)",
+              n_distinct(st_l$ags)),
+      sprintf("ST Landrat: only %d Landkreise", n_distinct(st_l$ags)))
 
 cat("\n18. Hessen coverage + OB classifier (StaLA B VII m Direktwahlen snapshot)\n")
 # Hessen = most recent Direktwahl per Gemeinde/Landkreis (~2017-2024). BM/OB go
