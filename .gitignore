@@ -64,3 +64,8 @@ code/mayoral_elections/__pycache__/
 # committed artifacts are the parsed *_scraped.csv / *_parsed.csv. TH cache ~107MB).
 data/mayoral_elections/raw/**/html_cache*/
 data/mayoral_elections/raw/**/komm_one_cache/
+
+# Nested-duplicate Kreistagswahlen dir — byte-identical to its parent and marked
+# com.dropbox.ignored so Dropbox stops syncing it across machines. Belt-and-suspenders
+# gitignore keeps it out of `git status` if a client without the xattr recreates it.
+data/county_elections/raw/Kreistagswahlen/Kreistagswahlen/
