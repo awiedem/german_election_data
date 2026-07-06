@@ -11,8 +11,8 @@ suppressMessages(pacman::p_load(tidyverse, data.table))
 options(width = 200)
 setwd(here::here())
 F <- "data/mayoral_elections/final/"
-sn <- c("01"="SH","03"="NI","05"="NRW","07"="RLP","08"="BW","09"="BY","10"="SL",
-        "13"="MV","14"="SN","16"="TH")
+sn <- c("01"="SH","03"="NI","05"="NRW","06"="HE","07"="RLP","08"="BW","09"="BY",
+        "10"="SL","12"="BB","13"="MV","14"="SN","15"="ST","16"="TH")
 mtypes <- c("Bürgermeisterwahl","Oberbürgermeisterwahl","VG-Bürgermeisterwahl","SG-Bürgermeisterwahl")
 NERR <- 0; NWARN <- 0
 rep <- function(sev, check, msg, det = NULL) {
@@ -119,6 +119,186 @@ memmingen_false <- mu[ags=="09764000" & election_date=="1946-01-27", all(!flag_s
 majority_false <- mu[paste(ags,election_date) %in%
   c("09571181 1972-06-11","09574117 1972-06-11"), all(!flag_superseded)]
 if (isTRUE(flagged_true) && isTRUE(memmingen_false) && isTRUE(majority_false)) ok("flag.fixtures","5 superseded TRUE; Memmingen 1946 + 2 majority by-election predecessors FALSE") else rep("ERROR","flag.fixtures",sprintf("fixture mismatch (superseded=%s, memmingen_false=%s, majority_false=%s)",flagged_true,memmingen_false,majority_false))
+
+cat("\n========== I. Sachsen-Anhalt StaLA integration ==========\n")
+# The May-2025 Sachsen-Anhalt StaLA bmbm.csv is the primary source (2019-2026,
+# 218 Gemeinden). Portal supplements 5 post-cutoff 2026 elections + Genthin
+# Wöhling. These checks pin down the integration end-to-end.
+st_mu <- mu[substr(ags,1,2) == "15"]
+st_mc <- mc[substr(ags,1,2) == "15"]
+
+# Coverage: at least 200 unique AGS (the StaLA universe of 218 is upper bound).
+if (uniqueN(st_mu$ags) < 200) rep("ERROR","st.coverage",
+  sprintf("only %d ST Gemeinden in mayoral_unharm (expected ~223)",uniqueN(st_mu$ags))) else
+  ok("st.coverage", sprintf("%d ST Gemeinden in mayoral_unharm",uniqueN(st_mu$ags)))
+
+# 19 OB Gemeinden expected: 3 kfS + 16 GKS with hauptamtl. Oberbürgermeister.
+st_ob_ags <- unique(st_mu[election_type == "Oberbürgermeisterwahl"]$ags)
+if (length(st_ob_ags) != 19) rep("ERROR","st.ob_count",
+  sprintf("%d OB cities (expected 19)",length(st_ob_ags))) else
+  ok("st.ob_count","19 ST OB Gemeinden (3 kfS + 16 GKS)")
+
+# 3 kreisfreie Städte hard fixture
+kfs <- c("15001000","15002000","15003000")
+if (!all(kfs %in% st_ob_ags)) rep("ERROR","st.kfs_ob","kfS missing from OB set") else
+  ok("st.kfs_ob","all 3 kreisfreie Städte classified as OB")
+
+# One winner per election
+st_winners <- st_mc[, .(w = sum(is_winner, na.rm=TRUE)), .(ags, election_date)]
+if (any(st_winners$w != 1)) rep("ERROR","st.one_winner",
+  sprintf("%d ST elections with ≠ 1 winner",sum(st_winners$w != 1)),
+  st_winners[w != 1]) else
+  ok("st.one_winner", sprintf("exactly 1 winner per election (%d elections)",nrow(st_winners)))
+
+# Winner votes = candidate max (winner is the top scorer of the decisive round)
+st_recon <- merge(
+  st_mu[!is.na(winner_votes), .(ags, election_date, round, winner_votes)],
+  st_mc[, .(cand_max = max(candidate_votes_hw, candidate_votes_sw, na.rm=TRUE),
+            cand_max_sw = suppressWarnings(max(candidate_votes_sw, na.rm=TRUE)),
+            cand_max_hw = suppressWarnings(max(candidate_votes_hw, na.rm=TRUE))),
+        .(ags, election_date)],
+  by = c("ags","election_date"), all.x = TRUE
+)
+# For SW rounds match cand_max_sw; for HW rounds match cand_max_hw
+st_recon[, expected := ifelse(round == "stichwahl", cand_max_sw, cand_max_hw)]
+mm <- st_recon[!is.na(expected) & !is.na(winner_votes) & winner_votes != expected]
+if (nrow(mm)) rep("ERROR","st.winner_reconcile",
+  sprintf("%d ST rows: unharm winner_votes != candidates max",nrow(mm)),
+  head(mm[, .(ags, election_date, round, winner_votes, expected)],5)) else
+  ok("st.winner_reconcile","ST unharm winner_votes = candidates max per round")
+
+# Named-source integration fixtures (winner surname must match). Fixture dates
+# are HW dates — mayoral_candidates is HW-keyed after the 01b wide pivot.
+# Fixtures independently verified against Wikipedia / official Landeswahlleiter
+# / local newspapers (July 2026 adversarial pass, 20/20 winners).
+st_fixtures <- data.table(
+  ags = c("15001000","15002000","15003000","15082180","15084355","15085135",
+          "15085370","15087370","15089015","15089030","15086040","15083040",
+          "15081455","15084550","15091375","15088355","15084250"),
+  gemeinde = c("Dessau-Roßlau","Halle","Magdeburg","Köthen","Naumburg","Halberstadt",
+               "Wernigerode","Sangerhausen","Aschersleben","Bernburg","Genthin",
+               "Barleben","Salzwedel","Weißenfels","Wittenberg","Steigra","Karsdorf"),
+  election_date = as.Date(c("2021-06-06","2025-02-02","2022-04-24","2023-03-19",
+                            "2021-04-11","2020-07-05","2022-04-03","2024-04-14",
+                            "2022-05-08","2021-09-26","2024-11-10","2025-05-25",
+                            "2022-11-06","2022-04-24","2022-04-24","2026-06-07",
+                            "2026-03-22")),
+  winner = c("Reck","Vogt","Borris","Buchheim","Müller","Szarata",
+             "Kascha","Schweiger","Amme","Ristow","Turian","Nase",
+             "Meining","Papke","Zugehör","Stockhaus","Schumann")
+)
+w_check <- st_mc[
+  st_fixtures[, .(ags, election_date)],
+  on = c("ags","election_date")][
+    is_winner == TRUE, .(ags, election_date, got = candidate_last_name)]
+w_check <- merge(st_fixtures, w_check, by = c("ags","election_date"), all.x = TRUE)
+bad_fx <- w_check[is.na(got) | got != winner]
+if (nrow(bad_fx)) rep("ERROR","st.fixtures",
+  sprintf("%d ST fixture winner mismatches",nrow(bad_fx)), bad_fx) else
+  ok("st.fixtures", sprintf("%d ST named-source fixtures verified (Reck/Vogt/Borris/…)", nrow(st_fixtures)))
+
+# Genthin regression: 8 candidates, Wöhling present, Turian is winner
+gen <- st_mc[ags == "15086040" & election_date == as.Date("2024-11-10")]
+gen_ok <- nrow(gen) == 8 && "Wöhling" %in% gen$candidate_last_name &&
+  gen[is_winner==TRUE, .N] == 1 && gen[is_winner==TRUE]$candidate_last_name[1] == "Turian"
+if (!gen_ok) rep("ERROR","st.genthin_regression",
+  sprintf("Genthin 2024 regression: %d cands, wöhling=%s, winner=%s",
+          nrow(gen), "Wöhling" %in% gen$candidate_last_name,
+          paste(gen[is_winner==TRUE]$candidate_last_name, collapse=","))) else
+  ok("st.genthin_regression","Genthin 2024: 8 cands, Wöhling recovered, Turian wins")
+
+# Election-year window: 2019-2026 (StaLA snapshot Feb 2025 + portal 2026 tail)
+if (min(st_mu$election_year) < 2019 || max(st_mu$election_year) > 2026)
+  rep("ERROR","st.year_window",
+      sprintf("ST years %d-%d outside 2019-2026",min(st_mu$election_year),max(st_mu$election_year))) else
+  ok("st.year_window", sprintf("ST elections in 2019-%d",max(st_mu$election_year)))
+
+# No Landratswahl leaked (ST Landrat is a separate dataset/pipeline)
+if (nrow(st_mu[election_type == "Landratswahl"])) rep("ERROR","st.no_landrat",
+  "Landratswahl leaked into ST mayoral") else
+  ok("st.no_landrat","no Landratswahl in ST mayoral (Landrat is separate)")
+
+# Hard numeric fixtures: pin winner_votes for 5 landmark OB Stichwahlen
+# (Dessau-Roßlau 2021, Halle 2025, Magdeburg 2022, Köthen 2023, Sangerhausen 2024).
+# Surname fixtures above guard identity; these guard the vote-count extraction path.
+st_vote_fx <- data.table(
+  ags           = c("15001000","15002000","15003000","15082180","15087370"),
+  election_date = as.Date(c("2021-06-27","2025-02-23","2022-05-08","2023-04-02","2024-04-28")),
+  gemeinde      = c("Dessau-Roßlau","Halle","Magdeburg","Köthen","Sangerhausen"),
+  winner        = c("Reck","Vogt","Borris","Buchheim","Schweiger"),
+  votes         = c(14856L, 60758L, 39210L, 4207L, 5341L))
+vx <- merge(st_vote_fx,
+            st_mu[round == "stichwahl", .(ags, election_date, got_votes = winner_votes)],
+            by = c("ags","election_date"), all.x = TRUE)
+bad_vx <- vx[is.na(got_votes) | got_votes != votes]
+if (nrow(bad_vx)) rep("ERROR","st.vote_fixtures",
+  sprintf("%d ST vote-count fixture mismatches", nrow(bad_vx)), bad_vx) else
+  ok("st.vote_fixtures","5 landmark OB Stichwahlen match pinned winner_votes")
+
+# Round pairing: every Stichwahl in ST must have a same-year Hauptwahl at the
+# same AGS whose winner_voteshare < 0.5 (i.e. failed to seat a mayor outright).
+# Guards against orphaned SW rows introduced by a merge-rule regression.
+sw <- st_mu[round == "stichwahl", .(ags, election_year, sw_date = election_date)]
+hw <- st_mu[round == "hauptwahl", .(ags, election_year, hw_date = election_date,
+                                     hw_share = winner_voteshare)]
+pair <- merge(sw, hw, by = c("ags","election_year"), all.x = TRUE)
+orph <- pair[is.na(hw_share) | hw_share >= 0.5]
+if (nrow(orph)) rep("ERROR","st.round_pair",
+  sprintf("%d Stichwahl rounds without paired HW < 0.5", nrow(orph)), orph) else
+  ok("st.round_pair", sprintf("%d Stichwahl rounds all paired with HW<0.5", nrow(sw)))
+
+# Candidate voteshare completeness: for multi-candidate elections the sum of
+# candidate_voteshare_hw should be ≈1.0. Single-candidate Ja/Nein rounds have
+# a valid partial share (Ja/gültige) and are excluded.
+sh <- st_mc[!is.na(candidate_voteshare_hw),
+            .(sh_sum = sum(candidate_voteshare_hw), nc = .N),
+            .(ags, election_date)][nc > 1]
+bad_sh <- sh[sh_sum < 0.995 | sh_sum > 1.005]
+if (nrow(bad_sh)) rep("ERROR","st.share_sum",
+  sprintf("%d multi-cand ST elections with sum(share_hw) outside [0.995,1.005]",
+          nrow(bad_sh)), bad_sh) else
+  ok("st.share_sum",
+     sprintf("%d multi-candidate ST elections: candidate shares sum to 1", nrow(sh)))
+
+# Portal-supplement provenance: the StaLA snapshot (bmbm.csv) is the primary
+# source. Anything in ST mayoral NOT covered by StaLA must be a documented
+# post-cutoff portal supplement (5 elections after 2026-02-15). If the set drifts,
+# the hybrid merge in 01/01b regressed.
+portal_expected <- data.table(
+  ags = c("15082430","15084250","15084470","15088355","15088365"),
+  election_date = as.Date(c("2026-04-12","2026-03-22","2026-03-29","2026-06-07","2026-06-07")))
+stla_raw <- suppressWarnings(fread(
+  "data/mayoral_elections/raw/sachsen_anhalt/st_stala_parsed.csv",
+  colClasses = list(character = "ags")))
+stla_keys <- unique(stla_raw[, .(ags, election_date = as.character(as.Date(election_date)))])
+st_keys   <- unique(st_mu[, .(ags, election_date = as.character(election_date))])
+portal_only <- st_keys[!stla_keys, on = c("ags","election_date")]
+exp_keys <- paste(portal_expected$ags, portal_expected$election_date)
+got_keys <- paste(portal_only$ags, portal_only$election_date)
+if (!setequal(exp_keys, got_keys)) rep("ERROR","st.portal_prov",
+  sprintf("portal-supplement set drifted: got %d elections, expected %d (%s)",
+          length(got_keys), length(exp_keys),
+          paste(setdiff(got_keys, exp_keys), collapse=" ; ")),
+  portal_only) else
+  ok("st.portal_prov", "exactly 5 post-cutoff 2026 elections from portal (Zerbst/Karsdorf/Stößen/Steigra/Teutschenthal)")
+
+# PARTEI value sanity: no leading/trailing whitespace, no control characters
+# (Windows-1252 CRLF artifacts), non-NA. Empty string is valid (=Einzelbewerber).
+# Truncated coalition names (containing a comma, length exactly 20) are OK and
+# documented in [[st-stala-mayoral-upgrade]].
+if (any(is.na(st_mc$candidate_party))) rep("ERROR","st.party_sanity",
+  "candidate_party contains NA (should be '' for Einzelbewerber)") else {
+  pv <- unique(st_mc$candidate_party)
+  whs <- pv[nzchar(pv) & grepl("^\\s|\\s$", pv)]
+  ctl <- pv[grepl("[[:cntrl:]]", pv)]
+  if (length(whs) || length(ctl)) rep("ERROR","st.party_sanity",
+    sprintf("%d whitespace-bounded / %d control-char PARTEI values",
+            length(whs), length(ctl)),
+    data.table(bad = c(whs, ctl))) else
+    ok("st.party_sanity",
+       sprintf("%d distinct PARTEI values, all clean (no whitespace/ctrl artifacts)",
+               length(pv[nzchar(pv)])))
+}
 
 cat("\n========== F. Coverage by state ==========\n")
 print(mu[election_type %in% mtypes, .(elec=uniqueN(paste(ags,election_date)), munis=uniqueN(ags),
