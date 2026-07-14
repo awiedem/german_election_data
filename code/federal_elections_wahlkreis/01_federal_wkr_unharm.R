@@ -124,10 +124,20 @@ parse_kerg2 <- function(path, year) {
   d[, gnr := suppressWarnings(as.integer(Gebietsnummer))]
   wk <- d[Gebietsart == "Wahlkreis"]
 
-  parties <- wk[Gruppenart == "Partei" & !is.na(stimme),
-                .(gebiet_nr = gnr, name = Gebietsname,
-                  land_nr = suppressWarnings(as.integer(UegGebietsnummer)),
-                  stimme, party_raw = Gruppenname, votes = Anzahl)]
+  # Named parties only, excluding the "sonstige"/"Übrige" residual bucket (which
+  # the classic parser also drops -> it goes to `other`). Keep the Wahlkreis rows
+  # and the Bund total (remapped to nr 999, matching the classic parser) so the
+  # driver's Wahlkreis->national reconciliation runs for kerg2 years too.
+  is_party <- d$Gruppenart == "Partei" & !is.na(d$stimme) &
+    !grepl("^sonstige|^übrige", d$Gruppenname, ignore.case = TRUE)
+  wk_parties <- d[is_party & Gebietsart == "Wahlkreis",
+                  .(gebiet_nr = gnr, name = Gebietsname,
+                    land_nr = suppressWarnings(as.integer(UegGebietsnummer)),
+                    stimme, party_raw = Gruppenname, votes = Anzahl)]
+  bund_parties <- d[is_party & Gebietsart == "Bund",
+                    .(gebiet_nr = 999L, name = "Bund", land_nr = NA_integer_,
+                      stimme, party_raw = Gruppenname, votes = Anzahl)]
+  parties <- rbind(wk_parties, bund_parties)
   mk <- function(nm) wk[Gruppenname == nm]
   elig <- mk("Wahlberechtigte")[, .(gebiet_nr = gnr, eligible_voters = Anzahl)]
   vot  <- wk[Gruppenname %in% c("Wählende", "Wähler"), .(gebiet_nr = gnr, number_voters = Anzahl)]
@@ -139,8 +149,8 @@ parse_kerg2 <- function(path, year) {
                  list(meta, nm, elig, vot, val, inv))
   # Direktmandat winner = party with most Erststimmen per Wahlkreis (the kerg2
   # "Gewählt" flag exists only from 2025; max-Erststimme reproduces it exactly).
-  win <- parties[stimme == "erststimme",
-                 .(elected_raw = party_raw[which.max(votes)]), by = gebiet_nr]
+  win <- wk_parties[stimme == "erststimme",
+                    .(elected_raw = party_raw[which.max(votes)]), by = gebiet_nr]
   list(parties = parties, meta = meta, win = win, year = year)
 }
 
@@ -191,15 +201,48 @@ setnames(parties, c("gebiet_nr", "name"), c("wkr_nr", "wkr_name"))
 setnames(meta,    c("gebiet_nr", "name"), c("wkr_nr", "wkr_name"))
 key_cols <- c("year", "wkr_nr", "stimme")
 
+## State identifier (zero-padded, matching federal_cty_unharm / ltw_wkr_unharm)
+## + state name + the official election date.
+state_names <- c(
+  "01" = "Schleswig-Holstein", "02" = "Hamburg", "03" = "Niedersachsen",
+  "04" = "Bremen", "05" = "Nordrhein-Westfalen", "06" = "Hessen",
+  "07" = "Rheinland-Pfalz", "08" = "Baden-Württemberg", "09" = "Bayern",
+  "10" = "Saarland", "11" = "Berlin", "12" = "Brandenburg",
+  "13" = "Mecklenburg-Vorpommern", "14" = "Sachsen", "15" = "Sachsen-Anhalt",
+  "16" = "Thüringen"
+)
+election_dates <- c(
+  "2002" = "2002-09-22", "2005" = "2005-09-18", "2009" = "2009-09-27",
+  "2013" = "2013-09-22", "2017" = "2017-09-24", "2021" = "2021-09-26",
+  "2025" = "2025-02-23"
+)
+add_geo <- function(dt) {
+  dt[, state := sprintf("%02d", land_nr)]
+  dt[, state_name := unname(state_names[state])]
+  dt[, election_date := as.Date(unname(election_dates[as.character(year)]))]
+  dt[, land_nr := NULL]
+  dt[]
+}
+
 #### LONG output (counts + shares) ####
 long <- merge(parties, meta[, .(year, wkr_nr, stimme, eligible_voters, number_voters,
                                 valid_votes, invalid_votes)],
               by = key_cols, all.x = TRUE)
+# Add an explicit residual "other" row per (year, Wahlkreis, stimme) so the long
+# file (the count-level source of truth) also carries independents / Übrige /
+# tiny lists, which otherwise survive only as the `other` share in the wide file.
+other_long <- long[, .(votes = unique(valid_votes) - sum(votes, na.rm = TRUE)),
+                   by = .(year, wkr_nr, wkr_name, land_nr, stimme, eligible_voters,
+                          number_voters, valid_votes, invalid_votes)]
+other_long[, party := "other"][votes < 0, votes := 0]
+long <- rbind(long, other_long, use.names = TRUE)
 long[, vote_share := ifelse(valid_votes > 0, votes / valid_votes, NA_real_)]
 long[, turnout := ifelse(eligible_voters > 0, number_voters / eligible_voters, NA_real_)]
-setnames(long, "year", "election_year")
+long <- add_geo(long)
+long[, election_year := as.integer(year)][, year := NULL]
 long[, wkr_nr := sprintf("%03d", as.integer(wkr_nr))]
-setcolorder(long, c("election_year", "wkr_nr", "wkr_name", "land_nr", "stimme", "party",
+setcolorder(long, c("election_year", "election_date", "wkr_nr", "wkr_name",
+                    "state", "state_name", "stimme", "party",
                     "votes", "vote_share", "eligible_voters", "number_voters",
                     "valid_votes", "invalid_votes", "turnout"))
 setorder(long, election_year, wkr_nr, stimme, -votes)
@@ -224,10 +267,21 @@ wide[, turnout := ifelse(eligible_voters > 0, number_voters / eligible_voters, N
 wide[, flag_no_valid_votes := as.integer(is.na(valid_votes) | valid_votes == 0)]
 wide[, flag_naive_turnout_above_1 := as.integer(!is.na(turnout) & turnout > 1)]
 
-setnames(wide, "year", "election_year")
+# Structural absence -> NA (matching federal_cty_unharm / ltw_wkr_unharm): a
+# party that did not contest a given election reads NA that year, not a real 0%
+# (which would corrupt panel / first-difference designs). A party that ran but
+# scored 0 in a specific Wahlkreis keeps a real 0. Shares still sum to 1 (na.rm).
+for (p in party_cols) {
+  zero_years <- wide[, .(z = all(is.na(get(p)) | get(p) == 0)), by = year][z == TRUE]$year
+  if (length(zero_years)) wide[year %in% zero_years, (p) := NA_real_]
+}
+
+wide <- add_geo(wide)
+wide[, election_year := as.integer(year)][, year := NULL]
 wide[, wkr_nr := sprintf("%03d", as.integer(wkr_nr))]
 meta_front <- c("flag_no_valid_votes", "flag_naive_turnout_above_1",
-                "election_year", "wkr_nr", "wkr_name", "land_nr", "stimme",
+                "election_year", "election_date", "wkr_nr", "wkr_name",
+                "state", "state_name", "stimme",
                 "eligible_voters", "number_voters", "valid_votes", "invalid_votes",
                 "turnout", "elected_party")
 ordered_party_cols <- sort(party_cols)

@@ -1,6 +1,17 @@
 ## normalise_party: map raw party name → snake_case column name ------------
 ## Aligned with federal elections pipeline naming where possible.
 normalise_party <- function(pname) {
+  # Some official files annotate renamed parties as "CurrentName (YYYY: In-year
+  # name)" (e.g. the 2021 file writes "HEIMAT (2021: NPD)", "... (2021: LKR)").
+  # For a single-election dataset the in-year (historical) name is the correct
+  # identity, so extract it when present; otherwise the annotated string falls to
+  # the snake_case fallback and splits a party across differently-named columns
+  # by year (and leaves the canonical column empty).
+  ann <- regmatches(pname, regexpr("\\(20[0-9]{2}:[^)]*\\)", pname))
+  if (length(ann) == 1L) {
+    inyear <- trimws(sub("^\\(20[0-9]{2}:\\s*", "", sub("\\)$", "", ann)))
+    if (nchar(inyear) > 0) pname <- inyear
+  }
   p <- trimws(pname)
   p_up <- toupper(p)
   # Compact form: strip internal spaces/dots so letter-spaced acronyms used by
@@ -89,7 +100,9 @@ normalise_party <- function(pname) {
   if (grepl("^BFB$|^B[UÜ]RGER F[UÜ]R", p_up))            return("bfb")
   if (grepl("^BGE$", p_up))                                return("bge")
   if (grepl("^B[UÜ]SO$|B[UÜ]RGERRECHTSBEWEGUNG.SOLIDARIT", p_up)) return("bueso")
-  if (grepl("GESUNDHEITS.*FORSCHUNG", p_up))                return("gesundheitsforschung")
+  # Partei für Gesundheitsforschung, which rebranded to "Verjüngungsforschung"
+  # (2025) — keep the established slug so the micro-party is consistent over time.
+  if (grepl("GESUNDHEITS.*FORSCHUNG|VERJ.NGUNGSFORSCHUNG", p_up)) return("gesundheitsforschung")
   if (grepl("^MERA25", p_up))                              return("mera25")
   if (grepl("^PATRIOTEN", p_up))                            return("patrioten")
   if (grepl("^PBC$", p_up))                                return("pbc")
