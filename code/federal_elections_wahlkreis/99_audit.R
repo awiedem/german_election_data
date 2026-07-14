@@ -40,14 +40,23 @@ check("every Direktmandat assigned", !any(is.na(wide[stimme == "erststimme"]$ele
 cdu_v <- if ("cdu" %in% pc) wide$cdu else 0
 csu_v <- if ("csu" %in% pc) wide$csu else 0
 check("cdu_csu == cdu + csu", all(abs(wide$cdu_csu - (cdu_v + csu_v)) < 1e-9, na.rm = TRUE))
+check("state / state_name / election_date columns present",
+      all(c("state", "state_name", "election_date") %in% names(wide)))
+check("state is zero-padded 01-16", all(wide$state %in% sprintf("%02d", 1:16)))
+# Structural absence is NA, not 0: a party absent from an entire election reads NA
+check("AfD is NA before it existed (2002)", all(is.na(wide[election_year == 2002]$afd)))
+check("CSU is a real 0 (not NA) outside Bavaria", all(wide[state != "09"]$csu == 0, na.rm = TRUE) &&
+        !any(is.na(wide[election_year == 2021 & state != "09"]$csu)))
 
 cat("\nfederal_wkr_unharm_long:\n")
-check("long has 110518 rows", nrow(long) == 110518L)
+check("long has 114702 rows", nrow(long) == 114702L)
 check("long vote_share in [0,1]", all(long$vote_share >= -1e-9 & long$vote_share <= 1 + 1e-9, na.rm = TRUE))
 check("long votes are non-negative integers", all(long$votes >= 0 & long$votes == round(long$votes), na.rm = TRUE))
-# long per (year,wkr,stimme) named-party votes <= valid_votes
-agg <- long[, .(named = sum(votes)), by = .(election_year, wkr_nr, stimme, valid_votes)]
-check("named votes <= valid_votes everywhere", all(agg$named <= agg$valid_votes))
+check("long carries an 'other' residual row per wkr-year-stimme",
+      long[party == "other", .N] == 299 * 2 * 7)
+# parties + other reconstruct valid_votes exactly in every (year,wkr,stimme)
+agg <- long[, .(tot = sum(votes)), by = .(election_year, wkr_nr, stimme, valid_votes)]
+check("long parties + other == valid_votes everywhere", all(agg$tot == agg$valid_votes))
 
 cat("\nwkr_2021_to_2025_crosswalk:\n")
 check("299 Wahlkreise", nrow(cw) == 299L)
@@ -55,6 +64,9 @@ check("categories in {unchanged,redrawn,new}", all(cw$boundary_change %in% c("un
 check("unchanged rows have zero eligible delta", all(cw[boundary_change == "unchanged"]$eligible_delta == 0))
 check("new rows have no 2021 predecessor", all(is.na(cw[boundary_change == "new"]$prior_2021_name)))
 check("matched rows have a 2021 predecessor", all(!is.na(cw[boundary_change != "new"]$prior_2021_name)))
+check("category tally is 283 unchanged / 10 redrawn / 6 new",
+      cw[boundary_change == "unchanged", .N] == 283 &&
+        cw[boundary_change == "redrawn", .N] == 10 && cw[boundary_change == "new", .N] == 6)
 
 cat("\nfederal_wkr_2021_on_2025 (recomputed):\n")
 check("598 rows (299 x 2)", nrow(rec) == 598L)

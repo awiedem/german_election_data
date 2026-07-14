@@ -86,48 +86,75 @@ wide <- merge(wide, named, by = c("wkr_nr", "stimme"))
 wide[, other := pmax(valid_votes - named, 0)]
 for (p in c(pcols, "other")) wide[, (p) := ifelse(valid_votes > 0, get(p) / valid_votes, NA_real_)]
 wide[, cdu_csu := rowSums(cbind(if ("cdu" %in% pcols) cdu else 0, if ("csu" %in% pcols) csu else 0), na.rm = TRUE)]
-wide[, turnout := NA_real_]  # voters not needed for share table; eligible retained for reference
 wide[, named := NULL]
-setcolorder(wide, c("wkr_nr", "wkr_name", "land", "stimme", "eligible_voters", "valid_votes",
-                    sort(pcols), "other", "cdu_csu"))
-setorder(wide, wkr_nr, stimme)
 
-#### Derive boundary_change by matching 2025 Wahlkreise to 2021 by NAME ####
-## Wahlkreis NUMBERS are reassigned between elections (per-Land seat
-## reallocation cascades the numbering), so 2025 #N is not 2021 #N. Match on the
-## normalised Wahlkreis name instead. The 2021 electorate is the territorial
-## fingerprint: an identical eligible-voter count means the territory was not
-## changed. A 2025 Wahlkreis whose name has no 2021 counterpart is a newly
-## created / restructured constituency (drawing on several 2021 predecessors);
-## for these the official recomputation still supplies the previous-election
-## strength directly.
+#### Derive boundary_change by matching 2025 Wahlkreise to 2021 ####
+## Wahlkreis NUMBERS are reassigned between elections (per-Land seat reallocation
+## cascades the numbering), so 2025 #N is not 2021 #N. Match on the normalised
+## Wahlkreis NAME; the 2021 electorate is the territorial fingerprint (identical
+## eligible count => territory unchanged). A merely RENAMED Wahlkreis has no name
+## match but an exact (electorate, Zweitstimme-valid) fingerprint against a single
+## 2021 Wahlkreis -> treat as unchanged (renamed). Only a Wahlkreis with neither a
+## name nor a fingerprint match is genuinely new / restructured (drawing on
+## several 2021 predecessors); the official recomputation still supplies its
+## previous-election strength directly.
 norm_name <- function(x) gsub("[^a-z]", "", tolower(x))
 act <- as.data.table(readRDS(file.path(fin_dir, "federal_wkr_unharm.rds")))
-a21 <- unique(act[election_year == 2021, .(prior_2021_wkr_nr = wkr_nr,
-                                           prior_2021_name = wkr_name, a_elig = eligible_voters)])
+a21 <- unique(act[election_year == 2021 & stimme == "zweitstimme",
+                  .(prior_2021_wkr_nr = wkr_nr, prior_2021_name = wkr_name,
+                    a_elig = eligible_voters, a_valid_z = valid_votes)])
 a21[, k := norm_name(prior_2021_name)]
-rec_elig <- unique(merge(unique(P[, .(wkr_nr, wkr_name, land)]),
-                         valid[stimme == "erststimme", .(wkr_nr, eligible_voters)], by = "wkr_nr"))
-rec_elig[, k := norm_name(wkr_name)]
-cw <- merge(rec_elig, a21, by = "k", all.x = TRUE)
-cw[, boundary_change := fifelse(is.na(a_elig), "new",
+rec <- unique(merge(unique(P[, .(wkr_nr, wkr_name, land)]),
+                    valid[stimme == "zweitstimme", .(wkr_nr, eligible_voters, r_valid_z = valid_votes)],
+                    by = "wkr_nr"))
+rec[, k := norm_name(wkr_name)]
+cw <- merge(rec, a21[, .(k, prior_2021_wkr_nr, prior_2021_name, a_elig, a_valid_z)], by = "k", all.x = TRUE)
+
+# Fallback for name-unmatched rows: a unique (electorate, Zweitstimme-valid) match.
+fp <- a21[, .(nfp = .N), by = .(a_elig, a_valid_z)][nfp == 1]
+fp <- merge(fp, a21, by = c("a_elig", "a_valid_z"))[, .(eligible_voters = a_elig,
+            r_valid_z = a_valid_z, fp_nr = prior_2021_wkr_nr, fp_name = prior_2021_name)]
+cw <- merge(cw, fp, by = c("eligible_voters", "r_valid_z"), all.x = TRUE)
+cw[is.na(prior_2021_wkr_nr) & !is.na(fp_nr),
+   `:=`(prior_2021_wkr_nr = fp_nr, prior_2021_name = fp_name, a_elig = eligible_voters)]
+
+cw[, boundary_change := fifelse(is.na(prior_2021_wkr_nr), "new",
                         fifelse(eligible_voters == a_elig, "unchanged", "redrawn"))]
-crosswalk <- cw[, .(wkr_nr, wkr_name, land, boundary_change,
+cw[, renamed := !is.na(prior_2021_name) & norm_name(prior_2021_name) != norm_name(wkr_name)]
+
+# 2-letter Land -> zero-padded state code + name (matching the main dataset).
+abbr_to_num <- c(SH = "01", HH = "02", NI = "03", HB = "04", NW = "05", HE = "06",
+                 RP = "07", BW = "08", BY = "09", SL = "10", BE = "11", BB = "12",
+                 MV = "13", SN = "14", ST = "15", TH = "16")
+state_names <- c(
+  "01" = "Schleswig-Holstein", "02" = "Hamburg", "03" = "Niedersachsen",
+  "04" = "Bremen", "05" = "Nordrhein-Westfalen", "06" = "Hessen",
+  "07" = "Rheinland-Pfalz", "08" = "Baden-Württemberg", "09" = "Bayern",
+  "10" = "Saarland", "11" = "Berlin", "12" = "Brandenburg",
+  "13" = "Mecklenburg-Vorpommern", "14" = "Sachsen", "15" = "Sachsen-Anhalt",
+  "16" = "Thüringen")
+cw[, state := unname(abbr_to_num[land])][, state_name := unname(state_names[state])]
+
+crosswalk <- cw[, .(wkr_nr, wkr_name, state, state_name, boundary_change, renamed,
                     prior_2021_wkr_nr, prior_2021_name,
                     recomputed_2021_eligible = eligible_voters, actual_2021_eligible = a_elig,
                     eligible_delta = eligible_voters - a_elig)]
 setorder(crosswalk, wkr_nr)
 
-# attach category to the wide share table
+# attach category + state to the wide share table
+wide[, state := unname(abbr_to_num[land])][, state_name := unname(state_names[state])][, land := NULL]
 wide <- merge(wide, crosswalk[, .(wkr_nr, boundary_change)], by = "wkr_nr", all.x = TRUE)
-setcolorder(wide, c("wkr_nr", "wkr_name", "land", "boundary_change"))
+setcolorder(wide, c("wkr_nr", "wkr_name", "state", "state_name", "boundary_change", "stimme",
+                    "eligible_voters", "valid_votes", sort(pcols), "other", "cdu_csu"))
+setorder(wide, wkr_nr, stimme)
 
 #### Report + write ####
 cat("2025 Wahlkreise by boundary_change:\n"); print(crosswalk[, .N, by = boundary_change][order(-N)])
-cat(sprintf("\nWahlkreise: %d | redrawn/new: %d\n",
-            crosswalk[, uniqueN(wkr_nr)], crosswalk[boundary_change != "unchanged", .N]))
+cat(sprintf("\nWahlkreise: %d | changed (redrawn+new): %d | of unchanged, renamed: %d\n",
+            crosswalk[, uniqueN(wkr_nr)], crosswalk[boundary_change != "unchanged", .N],
+            crosswalk[boundary_change == "unchanged" & renamed == TRUE, .N]))
 cat("Redrawn/new Wahlkreise:\n")
-print(crosswalk[boundary_change != "unchanged", .(wkr_nr, wkr_name, land, boundary_change, prior_2021_name)])
+print(crosswalk[boundary_change != "unchanged", .(wkr_nr, wkr_name, state, boundary_change, prior_2021_name)])
 
 fwrite(crosswalk, file.path(fin_dir, "wkr_2021_to_2025_crosswalk.csv"))
 saveRDS(as.data.frame(crosswalk), file.path(fin_dir, "wkr_2021_to_2025_crosswalk.rds"))
