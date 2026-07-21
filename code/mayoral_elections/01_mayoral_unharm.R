@@ -1744,6 +1744,29 @@ if (file.exists(st_stala_file)) {
   # (a) portal-only elections — take everything for AGS-dates StaLA doesn't cover
   portal_extras <- st_portal[!stala_pairs, on = c("ags", "election_date")]
 
+  # ... but drop portal "extras" that are really a StaLA election under a wrong
+  # date. Fingerprint = round + Gültige + the ordered multiset of candidate
+  # votes; identical fingerprints for one AGS at two dates mean one election.
+  # (StaLA's historical file dates Zerbst/Anhalt's Bürgermeisterwahl 2026-02-08;
+  #  the portal page carries the byte-identical result as 2026-04-12.)
+  round_fp <- function(dt) {
+    x <- dt[!is.na(candidate_votes)][order(ags, election_date, round, candidate_votes)]
+    if (!nrow(x)) return(x[, .(ags, election_date, round, fp = character(0))])
+    x[, .(fp = paste0(round[1], "~", valid_votes[1], "~",
+                      paste(candidate_votes, collapse = "|"))),
+      by = .(ags, election_date, round)]
+  }
+  if (nrow(portal_extras)) {
+    dup_keys <- round_fp(portal_extras)[round_fp(st_stala), on = c("ags", "fp"),
+                                        nomatch = 0][
+      election_date != i.election_date, .(ags, election_date, round)]
+    if (nrow(dup_keys)) {
+      cat("  Dropping ", nrow(dup_keys),
+          " portal round(s) duplicating a StaLA round at another date\n", sep = "")
+      portal_extras <- portal_extras[!dup_keys, on = c("ags", "election_date", "round")]
+    }
+  }
+
   # (b) portal candidates missing from StaLA in shared elections. A portal row
   # is dropped as a duplicate if StaLA has ANY row in the same (ags, date, round)
   # that matches on candidate_last_name OR candidate_first_name OR

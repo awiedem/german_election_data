@@ -63,7 +63,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 RAW_DIR = os.path.join(ROOT, "data", "mayoral_elections", "raw", "sachsen_anhalt")
 IN_CSV = os.path.join(RAW_DIR, "bmbm.csv")
-OUT_CSV = os.path.join(RAW_DIR, "st_stala_parsed.csv")
+# NOTE (2026-07): this parser is now a FALLBACK source. The primary ST source is
+# the StaLA historical file "2026_0661_BM-Wahl_ab_1994.xlsx" (1994-2026, 4142
+# elections), parsed by 00_st_hist_parse.py — which reads THIS file's output and
+# appends the handful of elections the historical file does not (yet) carry,
+# writing the final `st_stala_parsed.csv` that stages 01/01b consume.
+# Run order:  00_st_stala_parse.py   →  00_st_hist_parse.py
+# (Mirrors the Hessen pattern: 00_he_parse.py → he_pdf_parsed.csv, then
+#  00_he_parse_xlsx.py merges → he_parsed.csv.)
+OUT_CSV = os.path.join(RAW_DIR, "st_bmbm_parsed.csv")
 
 STATE = "15"
 STATE_NAME = "Sachsen-Anhalt"

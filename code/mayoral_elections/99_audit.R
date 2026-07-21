@@ -315,31 +315,54 @@ check(sum(l$state == "12") >= 0 && sum(m$state == "12" & m$election_type == "Lan
       "BB: no Landratswahl leaked into mayoral",
       "BB: Landratswahl leaked into mayoral")
 
-# Sachsen-Anhalt (state 15): Bürgermeister-/OB-wahlen — Statistisches Landesamt
-# "Datensatzbeschreibung Bürgermeisterwahlen" (bmbm.csv) is the PRIMARY source
-# (2019-2026, 218 Gemeinden, most-recent per Gemeinde) + Landeswahlleiter portal
-# for post-cutoff 2026 elections and the Genthin Wöhling supplement.
+# Sachsen-Anhalt (state 15): Bürgermeister-/OB-wahlen. PRIMARY source is now the
+# StaLA HISTORICAL file "2026_0661_BM-Wahl_ab_1994.xlsx" (1994-2026, ~4140
+# elections, 2057 historical AGS → 218 current Gemeinden), parsed by
+# 00_st_hist_parse.py. The older bmbm.csv snapshot (00_st_stala_parse.py →
+# st_bmbm_parsed.csv) stays AUTHORITATIVE for the 270 election-rounds it covers
+# — it is the cleaner record (the historical file has ~16 surname typos, one
+# vote typo, a swapped name field and 4 date typos in that window) — while the
+# historical file supplies the whole back-catalogue and fixes bmbm's one known
+# corruption (Genthin 2024 / Wöhling). Landeswahlleiter portal remains a fallback.
 st_m <- m %>% filter(state == "15")
-check(n_distinct(st_m$ags) >= 200,
-      sprintf("ST: %d Gemeinden in mayoral_unharm (≥200 expected, StaLA covers ~218)", n_distinct(st_m$ags)),
-      sprintf("ST: only %d Gemeinden (expected ≥200)", n_distinct(st_m$ags)))
-check(min(st_m$election_year) >= 2019 && max(st_m$election_year) <= 2026,
-      "ST: elections in 2019-2026 window (StaLA snapshot)",
-      sprintf("ST: election years outside 2019-2026 (min=%d, max=%d)",
+check(n_distinct(st_m$ags) >= 2000,
+      sprintf("ST: %d distinct AGS in mayoral_unharm (≥2000 expected — historical series uses AGS am Wahltag)", n_distinct(st_m$ags)),
+      sprintf("ST: only %d distinct AGS (expected ≥2000)", n_distinct(st_m$ags)))
+check(min(st_m$election_year) == 1994 && max(st_m$election_year) <= 2026,
+      sprintf("ST: elections span %d-%d (historical series from 1994)",
+              min(st_m$election_year), max(st_m$election_year)),
+      sprintf("ST: unexpected election-year span (min=%d, max=%d; expected 1994-2026)",
               min(st_m$election_year), max(st_m$election_year)))
+check(nrow(st_m) >= 4500,
+      sprintf("ST: %d round-results (≥4500 expected from the 1994-2026 series)", nrow(st_m)),
+      sprintf("ST: only %d round-results (expected ≥4500)", nrow(st_m)))
 check(sum(m$state == "15" & m$election_type == "Landratswahl") == 0,
       "ST: no Landratswahl leaked into mayoral (ST Landrat is a separate dataset)",
       "ST: Landratswahl leaked into mayoral")
 
-# Known OB fixtures — winners we can verify externally
+# Known OB fixtures — winners verifiable externally. `election_date` is the
+# HAUPTWAHL date, because mayoral_candidates is the wide HW/SW format keyed on
+# the cycle's Hauptwahl (the Stichwahl date lives in election_date_sw). Pinning
+# the date is essential now that ST is a 1994-2026 series: without it a
+# per-AGS lookup returns whichever election happens to sort first.
+# The pre-2019 rows double as regression cover for the historical back-catalogue
+# (Wiegand was Halle's OB 2012-2021, Trümper Magdeburg's 2001-2022).
 st_ob_expected <- data.frame(
-  ags = c("15001000", "15002000", "15003000", "15087370", "15082180"),
-  gemeinde = c("Dessau-Roßlau", "Halle (Saale)", "Magdeburg", "Sangerhausen", "Köthen"),
-  election_date = as.Date(c("2021-06-27", "2025-02-23", "2022-05-08",
-                            "2024-04-28", "2023-04-02")),
-  round = "stichwahl",
-  winner_last = c("Reck", "Vogt", "Borris", "Schweiger", "Buchheim"),
-  winner_share_min = c(0.72, 0.51, 0.64, 0.55, 0.60)  # lower bounds
+  ags = c("15001000", "15002000", "15003000", "15087370", "15082180",
+          "15002000", "15002000", "15003000", "15003000", "15001000",
+          "15087370", "15082180"),
+  gemeinde = c("Dessau-Roßlau", "Halle (Saale)", "Magdeburg", "Sangerhausen", "Köthen",
+               "Halle (Saale) 2019", "Halle (Saale) 2012", "Magdeburg 2015",
+               "Magdeburg 2008", "Dessau-Roßlau 2014", "Sangerhausen 2010",
+               "Köthen 2008"),
+  election_date = as.Date(c("2021-06-06", "2025-02-02", "2022-04-24",
+                            "2024-04-14", "2023-03-19",
+                            "2019-10-13", "2012-07-01", "2015-03-15",
+                            "2008-03-09", "2014-05-25", "2010-02-28",
+                            "2008-02-17")),
+  winner_last = c("Reck", "Vogt", "Borris", "Schweiger", "Buchheim",
+                  "Wiegand", "Wiegand", "Trümper", "Trümper", "Kuras",
+                  "Poschmann", "Zander")
 )
 # Cross-check winner votes match voteshare × valid_votes (rounding-safe)
 st_vote_integrity_ok <- st_m %>%
@@ -360,8 +383,8 @@ st_c <- mc %>% filter(state == "15")
 for (i in seq_len(nrow(st_ob_expected))) {
   row <- st_ob_expected[i, ]
   win <- st_c %>%
-    filter(ags == row$ags & is_winner == TRUE) %>%
-    slice(1)
+    filter(ags == row$ags & election_date == row$election_date &
+             is_winner %in% TRUE)
   ok <- nrow(win) == 1 && !is.na(win$candidate_last_name) &&
     win$candidate_last_name == row$winner_last
   check(ok,
@@ -370,13 +393,21 @@ for (i in seq_len(nrow(st_ob_expected))) {
                 row$gemeinde, if (nrow(win)==1) win$candidate_last_name else "<none>"))
 }
 
-# ART classifier — exactly 19 Gemeinden ever appear as OB (3 kfS + 16 GKS with
-# hauptamtl. Oberbürgermeister in the StaLA universe as of 2025-02).
+# ART classifier — 38 distinct AGS appear as OB across 1994-2026. That is ~24
+# cities counted under BOTH their pre-2007-Kreisreform code and their current
+# one (Halle 15202000 + 15002000, Magdeburg 15303000 + 15003000, Dessau
+# 15101000 + 15001000, …), plus cities that held an OB election historically but
+# no longer do (Wolfen, Burg, Merseburg). The 19-Gemeinde figure was the count
+# in the 2019-2026 snapshot and no longer applies to the historical series.
 st_ob_ags <- st_m %>% filter(election_type == "Oberbürgermeisterwahl") %>%
   pull(ags) %>% unique()
-check(length(st_ob_ags) == 19,
-      sprintf("ST OB classifier: %d Gemeinden classified as OB (expected 19 = 3 kfS + 16 GKS)", length(st_ob_ags)),
-      sprintf("ST OB classifier: %d Gemeinden (expected 19)", length(st_ob_ags)))
+check(length(st_ob_ags) == 38,
+      sprintf("ST OB classifier: %d distinct AGS classified as OB across 1994-2026 (historical + current codes)", length(st_ob_ags)),
+      sprintf("ST OB classifier: %d Gemeinden (expected 38)", length(st_ob_ags)))
+# The three kreisfreie Städte must appear under their historical codes too.
+check(all(c("15202000", "15303000", "15101000") %in% st_ob_ags),
+      "ST OB: pre-2007 codes for Halle/Magdeburg/Dessau present (historical series)",
+      "ST OB: pre-2007 kreisfreie-Stadt codes missing from the OB set")
 kfs <- c("15001000", "15002000", "15003000")  # Dessau-Roßlau, Halle, Magdeburg
 check(all(kfs %in% st_ob_ags),
       "ST OB: all 3 kreisfreie Städte classified as OB",

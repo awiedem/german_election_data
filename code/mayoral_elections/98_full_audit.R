@@ -132,11 +132,15 @@ if (uniqueN(st_mu$ags) < 200) rep("ERROR","st.coverage",
   sprintf("only %d ST Gemeinden in mayoral_unharm (expected ~223)",uniqueN(st_mu$ags))) else
   ok("st.coverage", sprintf("%d ST Gemeinden in mayoral_unharm",uniqueN(st_mu$ags)))
 
-# 19 OB Gemeinden expected: 3 kfS + 16 GKS with hauptamtl. Oberbürgermeister.
+# 38 distinct AGS appear as OB across the 1994-2026 series: ~24 cities counted
+# under BOTH their pre-2007-Kreisreform code and their current one (Halle
+# 15202000 + 15002000, Magdeburg 15303000 + 15003000, Dessau 15101000 +
+# 15001000, …) plus cities that held an OB election historically but no longer
+# do (Wolfen, Burg, Merseburg). 19 was the count in the old 2019-2026 snapshot.
 st_ob_ags <- unique(st_mu[election_type == "Oberbürgermeisterwahl"]$ags)
-if (length(st_ob_ags) != 19) rep("ERROR","st.ob_count",
-  sprintf("%d OB cities (expected 19)",length(st_ob_ags))) else
-  ok("st.ob_count","19 ST OB Gemeinden (3 kfS + 16 GKS)")
+if (length(st_ob_ags) != 38) rep("ERROR","st.ob_count",
+  sprintf("%d OB cities (expected 38)",length(st_ob_ags))) else
+  ok("st.ob_count","38 ST OB AGS across 1994-2026 (historical + current codes)")
 
 # 3 kreisfreie Städte hard fixture
 kfs <- c("15001000","15002000","15003000")
@@ -207,11 +211,11 @@ if (!gen_ok) rep("ERROR","st.genthin_regression",
           paste(gen[is_winner==TRUE]$candidate_last_name, collapse=","))) else
   ok("st.genthin_regression","Genthin 2024: 8 cands, Wöhling recovered, Turian wins")
 
-# Election-year window: 2019-2026 (StaLA snapshot Feb 2025 + portal 2026 tail)
-if (min(st_mu$election_year) < 2019 || max(st_mu$election_year) > 2026)
+# Election-year window: 1994-2026 (StaLA historical file "BM-Wahl ab 1994")
+if (min(st_mu$election_year) != 1994 || max(st_mu$election_year) > 2026)
   rep("ERROR","st.year_window",
-      sprintf("ST years %d-%d outside 2019-2026",min(st_mu$election_year),max(st_mu$election_year))) else
-  ok("st.year_window", sprintf("ST elections in 2019-%d",max(st_mu$election_year)))
+      sprintf("ST years %d-%d outside 1994-2026",min(st_mu$election_year),max(st_mu$election_year))) else
+  ok("st.year_window", sprintf("ST elections span 1994-%d",max(st_mu$election_year)))
 
 # No Landratswahl leaked (ST Landrat is a separate dataset/pipeline)
 if (nrow(st_mu[election_type == "Landratswahl"])) rep("ERROR","st.no_landrat",
@@ -235,17 +239,30 @@ if (nrow(bad_vx)) rep("ERROR","st.vote_fixtures",
   sprintf("%d ST vote-count fixture mismatches", nrow(bad_vx)), bad_vx) else
   ok("st.vote_fixtures","5 landmark OB Stichwahlen match pinned winner_votes")
 
-# Round pairing: every Stichwahl in ST must have a same-year Hauptwahl at the
-# same AGS whose winner_voteshare < 0.5 (i.e. failed to seat a mayor outright).
-# Guards against orphaned SW rows introduced by a merge-rule regression.
-sw <- st_mu[round == "stichwahl", .(ags, election_year, sw_date = election_date)]
-hw <- st_mu[round == "hauptwahl", .(ags, election_year, hw_date = election_date,
-                                     hw_share = winner_voteshare)]
-pair <- merge(sw, hw, by = c("ags","election_year"), all.x = TRUE)
-orph <- pair[is.na(hw_share) | hw_share >= 0.5]
+# Round pairing: every Stichwahl must follow a Hauptwahl at the same AGS that
+# failed to seat a mayor outright. Guards against orphaned SW rows from a
+# merge-rule regression.
+#   * Pair each Stichwahl with the NEAREST PRECEDING Hauptwahl, not with any
+#     same-year one — over a 1994-2026 series a Gemeinde can hold several
+#     elections in one year (and the source gives some 2008 Gemeinden a shared
+#     AGS), so same-year matching pairs unrelated rounds.
+#   * A runoff is required when no one exceeds 50%, so hw_share == 0.5 is a
+#     legitimate trigger; only hw_share > 0.5 is an error.
+#   * hw_share is NA for many 1994 rounds (winner-only records, no vote counts)
+#     and cannot be tested.
+sw <- st_mu[round == "stichwahl", .(ags, sw_date = election_date)]
+hw <- st_mu[round == "hauptwahl", .(ags, hw_date = election_date,
+                                    hw_share = winner_voteshare)]
+cand <- merge(sw, hw, by = "ags", allow.cartesian = TRUE)[hw_date <= sw_date]
+pair <- cand[order(ags, sw_date, -as.numeric(hw_date))][, .SD[1], by = .(ags, sw_date)]
+no_hw <- sw[!pair, on = c("ags","sw_date")]
+orph  <- rbind(no_hw[, .(ags, sw_date, hw_date = as.Date(NA), hw_share = NA_real_)],
+               pair[!is.na(hw_share) & hw_share > 0.5,
+                    .(ags, sw_date, hw_date, hw_share)])
 if (nrow(orph)) rep("ERROR","st.round_pair",
-  sprintf("%d Stichwahl rounds without paired HW < 0.5", nrow(orph)), orph) else
-  ok("st.round_pair", sprintf("%d Stichwahl rounds all paired with HW<0.5", nrow(sw)))
+  sprintf("%d Stichwahl rounds with no preceding HW or a HW that already won outright",
+          nrow(orph)), orph) else
+  ok("st.round_pair", sprintf("%d Stichwahl rounds all follow a HW that failed to seat a mayor", nrow(sw)))
 
 # Candidate voteshare completeness: for multi-candidate elections the sum of
 # candidate_voteshare_hw should be ≈1.0. Single-candidate Ja/Nein rounds have
@@ -254,19 +271,34 @@ sh <- st_mc[!is.na(candidate_voteshare_hw),
             .(sh_sum = sum(candidate_voteshare_hw), nc = .N),
             .(ags, election_date)][nc > 1]
 bad_sh <- sh[sh_sum < 0.995 | sh_sum > 1.005]
+# Three documented exceptions, all source defects rather than pipeline faults:
+#  * 15154013 (2001-05-06) and 15159006 (2001-06-10) — the source gives two
+#    DIFFERENT Gemeinden the same AGS on the same day (Großzöberitz/Heideloh and
+#    Cosa/Diebzig). They are flagged `flag_shared_ags` by 00_st_hist_parse.py;
+#    stage 01 reduces each pair to one row, so the shares sum to 2.0.
+#  * 15261033 Leuna 1994-06-12 — arithmetic error in the source itself: the
+#    candidate votes sum to 4010 against 3910 Gültige Stimmen.
+st_share_known <- data.table(
+  ags           = c("15154013","15159006","15261033"),
+  election_date = as.Date(c("2001-05-06","2001-06-10","1994-06-12")))
+bad_sh <- bad_sh[!st_share_known, on = c("ags","election_date")]
 if (nrow(bad_sh)) rep("ERROR","st.share_sum",
   sprintf("%d multi-cand ST elections with sum(share_hw) outside [0.995,1.005]",
           nrow(bad_sh)), bad_sh) else
   ok("st.share_sum",
      sprintf("%d multi-candidate ST elections: candidate shares sum to 1", nrow(sh)))
 
-# Portal-supplement provenance: the StaLA snapshot (bmbm.csv) is the primary
-# source. Anything in ST mayoral NOT covered by StaLA must be a documented
-# post-cutoff portal supplement (5 elections after 2026-02-15). If the set drifts,
-# the hybrid merge in 01/01b regressed.
+# Portal-supplement provenance: st_stala_parsed.csv (StaLA historical file +
+# bmbm) is the primary source. Anything in ST mayoral NOT covered by it would be
+# a Landeswahlleiter-portal supplement. Since the historical file (Stand
+# 13.07.2026) reaches 2026-06-07 it now covers all five formerly portal-only
+# elections (Zerbst, Karsdorf, Stößen, Steigra, Teutschenthal), so the expected
+# supplement set is EMPTY. Note Zerbst: StaLA dates it 2026-02-08 while the
+# portal page carries the byte-identical result as 2026-04-12 — 01/01b drop that
+# portal round via the fingerprint guard. A non-empty set here means either the
+# merge regressed or the portal gained a genuinely new election.
 portal_expected <- data.table(
-  ags = c("15082430","15084250","15084470","15088355","15088365"),
-  election_date = as.Date(c("2026-04-12","2026-03-22","2026-03-29","2026-06-07","2026-06-07")))
+  ags = character(0), election_date = as.Date(character(0)))
 stla_raw <- suppressWarnings(fread(
   "data/mayoral_elections/raw/sachsen_anhalt/st_stala_parsed.csv",
   colClasses = list(character = "ags")))
@@ -280,7 +312,7 @@ if (!setequal(exp_keys, got_keys)) rep("ERROR","st.portal_prov",
           length(got_keys), length(exp_keys),
           paste(setdiff(got_keys, exp_keys), collapse=" ; ")),
   portal_only) else
-  ok("st.portal_prov", "exactly 5 post-cutoff 2026 elections from portal (Zerbst/Karsdorf/Stößen/Steigra/Teutschenthal)")
+  ok("st.portal_prov", "no portal supplements needed — StaLA historical file covers all ST elections")
 
 # PARTEI value sanity: no leading/trailing whitespace, no control characters
 # (Windows-1252 CRLF artifacts), non-NA. Empty string is valid (=Einzelbewerber).

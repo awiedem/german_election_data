@@ -65,7 +65,14 @@ code/mayoral_elections/__pycache__/
 data/mayoral_elections/raw/**/html_cache*/
 data/mayoral_elections/raw/**/komm_one_cache/
 
+# Signed personal-data transmission declaration for the Sachsen-Anhalt StaLA mayoral
+# extract (DSGVO/Versicherung paperwork — contains personal info, not source data).
+data/mayoral_elections/raw/sachsen_anhalt/Versicherung zur Übermittlung von personenbezogenen Daten.*
+
 # Nested-duplicate Kreistagswahlen dir — byte-identical to its parent and marked
 # com.dropbox.ignored so Dropbox stops syncing it across machines. Belt-and-suspenders
 # gitignore keeps it out of `git status` if a client without the xattr recreates it.
 data/county_elections/raw/Kreistagswahlen/Kreistagswahlen/
+
+# Word/Excel lock files (e.g. "~$document.docx")
+~$*
