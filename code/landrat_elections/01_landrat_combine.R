@@ -1019,11 +1019,13 @@ if (nrow(new_long) > 0) {
   # cross-pipeline duplication. The mayoral pipeline owns BY/NRW/RLP/NI for
   # candidates and the RVS row of SL. This script's scrapers contribute
   # BB/SN/ST/TH PLUS the 5 extra SL Landkreise. SL rows are filtered to
-  # exclude AGS 10000041 (RVS, owned by the mayoral pipeline).
+  # exclude the Regionalverband Saarbrücken row (AGS 10041000), which the
+  # mayoral pipeline owns. NB: this AGS was 10000041 before the Saarland
+  # AGS-construction fix in 01_mayoral_unharm.R.
   scraper_states <- c("12", "14", "15", "16")
   new_wide <- new_wide %>% filter(
     state %in% scraper_states |
-      (state == "10" & ags != "10000041")
+      (state == "10" & ags != "10041000")
   )
 
   combined_cands <- bind_rows(existing_cands, new_wide) %>%

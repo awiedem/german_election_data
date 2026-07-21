@@ -418,7 +418,18 @@ saarland_raw <- read_excel(saarland_file, sheet = "Erfassung") %>%
 saarland_clean <- saarland_raw %>%
   mutate(
     # Create AGS (8 digits)
-    ags = paste0("10", str_pad(as.character(AGS), width = 6, side = "left", pad = "0")),
+    # The source AGS column omits the state prefix. Municipalities carry a
+    # 5-digit code ("41511" -> 10041511), but the Kreis-level Regionalverband
+    # Saarbrücken carries only its 2-digit Kreis code ("41"). Left-padding that
+    # to six digits produced 10000041, which is not a valid AGS: for a
+    # Kreis-level unit the Kreis code belongs in positions 3-5 with "000" as the
+    # municipality part, i.e. 10041000 (matching county_elec_unharm's 10041100
+    # and the sibling Landkreise 10042000, 10043000, ...).
+    ags = ifelse(
+      nchar(as.character(AGS)) <= 3,
+      paste0("10", str_pad(as.character(AGS), width = 3, side = "left", pad = "0"), "000"),
+      paste0("10", str_pad(as.character(AGS), width = 6, side = "left", pad = "0"))
+    ),
     state = "10",  # Saarland state code
     state_name = "Saarland",
     election_year = Wahljahr,

@@ -108,7 +108,7 @@ n5 <- sum(!grepl("000$", l$ags))
 if (n5 == 0) {
   pass("all AGS end in '000' (Kreis-level)")
 } else {
-  warn(sprintf("%d AGS do NOT end in '000' (SL Regionalverband uses 10000041)", n5))
+  warn(sprintf("%d AGS do NOT end in '000' (Kreis-level units should)", n5))
 }
 
 # ============================================================================
