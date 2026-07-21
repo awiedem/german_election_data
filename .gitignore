@@ -76,3 +76,15 @@ data/county_elections/raw/Kreistagswahlen/Kreistagswahlen/
 
 # Word/Excel lock files (e.g. "~$document.docx")
 ~$*
+
+# Sachsen-Anhalt mayoral RAW + intermediate files carry full candidate names.
+# The Statistisches Landesamt supplies them for SCIENTIFIC USE ONLY; only
+# anonymised data may be published ("analog zu den bayerischen Daten"), and
+# § 80 KWO LSA bars publishing Wahlvorschlag data >6 months after the result.
+# The published outputs (mayoral_candidates etc.) name only the ELECTED person.
+# These stay on disk so the pipeline runs; they are never redistributed.
+data/mayoral_elections/raw/sachsen_anhalt/2026_0661_BM-Wahl_ab_1994.xlsx
+data/mayoral_elections/raw/sachsen_anhalt/bmbm.csv
+data/mayoral_elections/raw/sachsen_anhalt/st_stala_parsed.csv
+data/mayoral_elections/raw/sachsen_anhalt/st_bmbm_parsed.csv
+data/mayoral_elections/raw/sachsen_anhalt/st_bm_parsed.csv

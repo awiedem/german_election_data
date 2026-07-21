@@ -572,13 +572,14 @@ def main() -> None:
     # demonstrably the more accurate record per row, while the historical file
     # is (per its own Erläuterung) "in der Aufbauphase". Evidence found by
     # diffing the two over their 270 shared election-rounds:
-    #   * ~16 surname typos in the historical file that bmbm has right
-    #     (Schwnke/Schwenke, Schid/Schmid, Freiedland/Friedland, Kopf/Knopf,
-    #      Zedschak/Zedschack, Kümmel/Krümmel, Baierl/Baier, Arnhold/Arnold …).
-    #   * Arnstein 2023: historical swaps the name fields (last="Janet",
-    #     first="Klaus"); bmbm has last="Klaus", first="Janet".
-    #   * Halle 2025-02-02: historical gives Jacobi 3035, bmbm 3065 — only
-    #     bmbm's figure makes the round add up (87407+30 = 87437 = Gültige).
+    #   * ~16 surname typos in the historical file that bmbm has right (single
+    #     dropped or transposed letters — the same person, same votes, spelled
+    #     two ways).
+    #   * Arnstein 2023: the historical file swaps the surname and forename
+    #     fields for one candidate; bmbm has them the right way round.
+    #   * Halle 2025-02-02: the two sources differ by 30 on one candidate's vote
+    #     count — only bmbm's figure makes the round add up
+    #     (87407 + 30 = 87437 = Gültige Stimmen).
     #   * Landsberg 2022 runoff: historical lists Schenk (3rd in the HW with
     #     1047) as the runoff participant; the top two were Müller (1533) and
     #     Halfpap (1275). bmbm correctly has Müller.
@@ -586,7 +587,7 @@ def main() -> None:
     #     Blanck off a 1762/5488 = 32% Hauptwahl; bmbm has the real 2023-10-08
     #     runoff that Blanck won.
     # Conversely the historical file fixes bmbm's one known corruption (the
-    # Genthin 2024 B08/B09 record → candidate Wöhling, 96 votes), so historical
+    # Genthin 2024 B08/B09 record → its 8th candidate, 96 votes), so historical
     # candidates that bmbm lacks are grafted back in.
     #
     # Three rules:

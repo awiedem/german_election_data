@@ -224,7 +224,7 @@ def main():
         # but stray metadata are dropped with a warning — this catches the
         # known Genthin 2024 corruption (row 118 of the extract dated 26.02.2025),
         # where B08+B09 hold garbage tokens "AfD;m;185" / "w;179" that are NOT
-        # a real candidate (the missing 8th candidate — Wöhling, 96 votes —
+        # a real candidate (the missing 8th candidate, 96 votes,
         # is only recoverable from the Landeswahlleiter portal scrape).
         cands = []
         for k in range(1, N_CAND_SLOTS + 1):

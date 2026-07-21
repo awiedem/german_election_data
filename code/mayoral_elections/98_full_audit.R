@@ -123,7 +123,7 @@ if (isTRUE(flagged_true) && isTRUE(memmingen_false) && isTRUE(majority_false)) o
 cat("\n========== I. Sachsen-Anhalt StaLA integration ==========\n")
 # The May-2025 Sachsen-Anhalt StaLA bmbm.csv is the primary source (2019-2026,
 # 218 Gemeinden). Portal supplements 5 post-cutoff 2026 elections + Genthin
-# Wöhling. These checks pin down the integration end-to-end.
+# its 8th candidate. These checks pin down the integration end-to-end.
 st_mu <- mu[substr(ags,1,2) == "15"]
 st_mc <- mc[substr(ags,1,2) == "15"]
 
@@ -201,15 +201,17 @@ if (nrow(bad_fx)) rep("ERROR","st.fixtures",
   sprintf("%d ST fixture winner mismatches",nrow(bad_fx)), bad_fx) else
   ok("st.fixtures", sprintf("%d ST named-source fixtures verified (Reck/Vogt/Borris/…)", nrow(st_fixtures)))
 
-# Genthin regression: 8 candidates, Wöhling present, Turian is winner
+# Genthin regression: 8 candidates, the 96-vote record present, Turian wins
 gen <- st_mc[ags == "15086040" & election_date == as.Date("2024-11-10")]
-gen_ok <- nrow(gen) == 8 && "Wöhling" %in% gen$candidate_last_name &&
+# The recovered 8th candidate lost, so their name is stripped under the StaLA
+# licence; pin the row by its vote count (96) instead of by name.
+gen_ok <- nrow(gen) == 8 && 96 %in% gen$candidate_votes_hw &&
   gen[is_winner==TRUE, .N] == 1 && gen[is_winner==TRUE]$candidate_last_name[1] == "Turian"
 if (!gen_ok) rep("ERROR","st.genthin_regression",
   sprintf("Genthin 2024 regression: %d cands, wöhling=%s, winner=%s",
-          nrow(gen), "Wöhling" %in% gen$candidate_last_name,
+          nrow(gen), 96 %in% gen$candidate_votes_hw,
           paste(gen[is_winner==TRUE]$candidate_last_name, collapse=","))) else
-  ok("st.genthin_regression","Genthin 2024: 8 cands, Wöhling recovered, Turian wins")
+  ok("st.genthin_regression","Genthin 2024: 8 cands, 96-vote record recovered, Turian wins")
 
 # Election-year window: 1994-2026 (StaLA historical file "BM-Wahl ab 1994")
 if (min(st_mu$election_year) != 1994 || max(st_mu$election_year) > 2026)

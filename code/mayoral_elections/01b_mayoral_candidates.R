@@ -2002,7 +2002,7 @@ if (file.exists(bb_file)) {
 # elections 2019-2026, all candidates, both rounds) + Landeswahlleiter portal
 # supplements (00_st_scrape.py → st_bm_parsed.csv) for the 5 (ags, date)
 # pairs post-2026-02-15 not yet in the StaLA extract, plus the 1 candidate
-# (Wöhling, Genthin 2024) missing from StaLA due to a corrupted B08/B09
+# (the 8th candidate, Genthin 2024) missing from StaLA due to a corrupted B08/B09
 # record in bmbm.csv row 118.
 #
 # The merge rule mirrors 01_mayoral_unharm.R exactly (see there for the
@@ -2064,9 +2064,9 @@ if (file.exists(st_stala_file)) {
   # Robust portal-supplement rule (mirrors 01_mayoral_unharm.R): a portal row
   # is dropped as a dup of StaLA if StaLA has ANY row in the same
   # (ags, election_date, round) whose last_name OR first_name OR votes match
-  # (case-insensitive). Catches Genthin "Wiedicke"/"Wiedecke" (name typo, same
-  # votes) and Barleben "Nase" (same name, off-by-1 scrape); keeps genuine
-  # missing candidates (Genthin "Wöhling", 96 votes).
+  # (case-insensitive). Catches a Genthin surname typo (same votes) and a
+  # Barleben off-by-one scrape (same name); keeps genuinely missing
+  # candidates (the Genthin record with 96 votes).
   st_portal[, .row_id := .I]
   portal_shared <- st_portal[stala_pairs, on = c("ags", "election_date"), nomatch = 0]
 
@@ -2654,6 +2654,47 @@ mayoral_candidates <- mayoral_candidates %>% filter(election_type %in% mayoral_t
 cat("\nDataset split:\n")
 cat("  mayoral_candidates:", nrow(mayoral_candidates), "rows\n")
 cat("  landrat_candidates:", nrow(landrat_candidates), "rows\n")
+
+# ============================================================================
+# ANONYMISATION — Sachsen-Anhalt (state 15)
+# ============================================================================
+# The Statistisches Landesamt Sachsen-Anhalt supplies its Bürgermeisterwahlen
+# data with full candidate names for SCIENTIFIC USE ONLY. Only anonymised data
+# may be redistributed or published, "analog zu den bayerischen Daten" — i.e.
+# the Bayern model, where the elected person is named and losing candidates
+# carry no personal data whatsoever. § 80 KWO LSA independently bars publishing
+# Wahlvorschlag (candidate) data more than six months after the final result.
+#
+# We therefore strip every personal / name-derived field from ST NON-WINNER
+# rows. Vote counts, shares, ranks and the Wahlvorschlagsträger (party) are NOT
+# personal data and are kept, so the electoral analysis is unaffected. Winners
+# are public office-holders and keep their names, exactly as in Bayern.
+#
+# This must run AFTER the wide HW/SW pivot, which pairs the two rounds by
+# candidate name. Downstream, 04_candidate_characteristics.R derives gender and
+# name-origin FROM the name, so stripping here also keeps those NA for losers
+# (matching Bayern, whose losers are NA throughout).
+st_personal_cols <- c("candidate_name", "candidate_last_name",
+                      "candidate_first_name", "candidate_title",
+                      "candidate_gender", "candidate_birth_year",
+                      "candidate_profession")
+
+anonymise_st_losers <- function(df, label) {
+  if (!all(c("ags", "is_winner") %in% names(df)) || !nrow(df)) return(df)
+  idx <- substr(as.character(df$ags), 1, 2) == "15" & !(df$is_winner %in% TRUE)
+  n_before <- sum(idx & !is.na(df$candidate_last_name) &
+                    nzchar(trimws(as.character(df$candidate_last_name))))
+  for (cl in intersect(st_personal_cols, names(df))) {
+    df[[cl]][idx] <- NA
+  }
+  cat("  ", label, ": anonymised ", sum(idx), " ST non-winner rows (",
+      n_before, " carried a name)\n", sep = "")
+  df
+}
+
+cat("\n=== Anonymising Sachsen-Anhalt losing candidates (StaLA licence) ===\n")
+mayoral_candidates <- anonymise_st_losers(mayoral_candidates, "mayoral_candidates")
+landrat_candidates <- anonymise_st_losers(landrat_candidates, "landrat_candidates")
 
 # ============================================================================
 # SAVE DATA

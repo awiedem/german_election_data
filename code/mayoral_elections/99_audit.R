@@ -323,7 +323,7 @@ check(sum(l$state == "12") >= 0 && sum(m$state == "12" & m$election_type == "Lan
 # — it is the cleaner record (the historical file has ~16 surname typos, one
 # vote typo, a swapped name field and 4 date typos in that window) — while the
 # historical file supplies the whole back-catalogue and fixes bmbm's one known
-# corruption (Genthin 2024 / Wöhling). Landeswahlleiter portal remains a fallback.
+# corruption (Genthin 2024, its 8th candidate). Landeswahlleiter portal remains a fallback.
 st_m <- m %>% filter(state == "15")
 check(n_distinct(st_m$ags) >= 2000,
       sprintf("ST: %d distinct AGS in mayoral_unharm (≥2000 expected — historical series uses AGS am Wahltag)", n_distinct(st_m$ags)),
@@ -413,16 +413,20 @@ check(all(kfs %in% st_ob_ags),
       "ST OB: all 3 kreisfreie Städte classified as OB",
       "ST OB: kreisfreie Städte missing from OB set")
 
-# Genthin regression — the known StaLA corruption (row 118, missing Wöhling).
+# Genthin regression — the known StaLA corruption (row 118, a missing 8th candidate).
 # Ensure the portal-supplement recovered her candidate row so the election has
 # the correct 8 candidates.
 genthin <- st_c %>% filter(ags == "15086040" & election_date == as.Date("2024-11-10"))
 check(nrow(genthin) == 8,
-      "ST regression: Genthin 2024 has 8 candidates (StaLA=7 + portal-supplied Wöhling)",
+      "ST regression: Genthin 2024 has 8 candidates (StaLA=7 + the recovered 8th)",
       sprintf("ST regression: Genthin has %d candidates (expected 8)", nrow(genthin)))
-check("Wöhling" %in% genthin$candidate_last_name,
-      "ST regression: Wöhling recovered from portal for Genthin 2024",
-      "ST regression: Wöhling NOT present for Genthin 2024")
+# The recovered 8th candidate LOST, so under the StaLA licence their name is
+# stripped from the published data (see the licence check below). Identify the
+# row by its vote count (96) instead — that proves the record was recovered
+# without republishing a losing candidate's name.
+check(96 %in% genthin$candidate_votes_hw,
+      "ST regression: the missing 8th Genthin 2024 candidate (96 votes) is present",
+      "ST regression: the 96-vote Genthin 2024 candidate is NOT present")
 check(sum(genthin$is_winner, na.rm = TRUE) == 1 &&
       genthin$candidate_last_name[which(genthin$is_winner)] == "Turian",
       "ST regression: Turian is the winner in Genthin 2024",
@@ -444,6 +448,41 @@ check(st_bm_win_np > 0.5,
       sprintf("ST: %.0f%% of winners are Einzelbewerber (expected majority — ehrenamtliche BM)",
               100 * st_bm_win_np),
       sprintf("ST: only %.0f%% Einzelbewerber (something changed)", 100 * st_bm_win_np))
+
+# ---------------------------------------------------------------------------
+# LICENCE COMPLIANCE — ST losing candidates must carry NO personal data.
+# ---------------------------------------------------------------------------
+# The Statistisches Landesamt Sachsen-Anhalt supplies the source with full names
+# for scientific use only; publication is limited to anonymised data "analog zu
+# den bayerischen Daten" (§ 80 KWO LSA likewise bars publishing candidate data
+# more than six months after the result). 01b therefore strips every personal
+# and name-derived field from ST non-winner rows. This check is the guard: if it
+# ever fails, the published dataset is in breach — do not release it.
+st_personal <- c("candidate_name", "candidate_last_name", "candidate_first_name",
+                 "candidate_title", "candidate_gender", "candidate_birth_year",
+                 "candidate_profession", "candidate_gender_source",
+                 "candidate_gender_method", "candidate_gender_prob",
+                 "candidate_name_origin", "candidate_name_origin_conf",
+                 "candidate_name_origin_method", "candidate_migration_bg",
+                 "candidate_migration_bg_prob", "candidate_local_surname",
+                 "candidate_surname_county_share", "candidate_surname_n_counties",
+                 "candidate_surname_overrep_ratio")
+st_losers <- st_c %>% filter(!(is_winner %in% TRUE))
+st_leaks <- sapply(intersect(st_personal, names(st_losers)), function(cl) {
+  v <- st_losers[[cl]]
+  sum(!is.na(v) & nzchar(trimws(as.character(v))))
+})
+check(sum(st_leaks) == 0,
+      sprintf("ST licence: %d losing-candidate rows carry no personal data (Bayern-equivalent anonymisation)",
+              nrow(st_losers)),
+      sprintf("ST licence BREACH: personal data present on losing candidates — %s",
+              paste(sprintf("%s=%d", names(st_leaks)[st_leaks > 0], st_leaks[st_leaks > 0]),
+                    collapse = ", ")))
+# The elected person stays named — they hold public office, as in Bayern.
+check(sum(!is.na(st_c$candidate_last_name) &
+            nzchar(trimws(st_c$candidate_last_name))) > 3000,
+      "ST: elected mayors remain named (public office-holders, Bayern model)",
+      "ST: winner names unexpectedly missing")
 
 # Landrat unaffected — mayoral 01 overwrites landrat_unharm from HE/BY, but ST
 # Landrat comes from a separate pipeline (00_st_scrape.R in landrat_elections/).

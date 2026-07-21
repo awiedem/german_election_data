@@ -1704,7 +1704,7 @@ if (file.exists(bb_file)) {
 #   (2) st_bm_parsed.csv (FALLBACK): Landeswahlleiter portal scrape by
 #       00_st_scrape.py (bm24/bm25/bm26). Covers 5 (ags, date) pairs
 #       post-2026-02-15 that are NOT yet in the StaLA extract, plus a single
-#       candidate (Wöhling, Genthin 2024, row 118 corruption) that the StaLA
+#       candidate (Genthin 2024, row 118 corruption) that the StaLA
 #       CSV is missing due to a garbled B08/B09 record.
 #
 # Merge rule (transparent, deterministic):
@@ -1712,7 +1712,7 @@ if (file.exists(bb_file)) {
 #   - Append portal rows for (ags, election_date) NOT present in StaLA.
 #   - Append portal candidate rows for (ags, election_date) that IS in StaLA
 #     but whose (round, candidate_last_name) is NOT — this recovers the
-#     Genthin "Wöhling" record without disturbing anything else.
+#     Genthin 8th-candidate record without disturbing anything else.
 #   Then aggregate to winner-level per (ags, election_date, round).
 
 cat("\n=== Processing Sachsen-Anhalt mayoral elections ===\n")
@@ -1770,9 +1770,9 @@ if (file.exists(st_stala_file)) {
   # (b) portal candidates missing from StaLA in shared elections. A portal row
   # is dropped as a duplicate if StaLA has ANY row in the same (ags, date, round)
   # that matches on candidate_last_name OR candidate_first_name OR
-  # candidate_votes (case-insensitive). Catches Genthin "Wiedicke"/"Wiedecke"
-  # (name typo, same votes) and Barleben "Nase" (same name, off-by-1 scrape).
-  # Keeps genuinely-missing candidates (Genthin "Wöhling", 96 votes).
+  # candidate_votes (case-insensitive). Catches a Genthin surname typo (same
+  # votes) and a Barleben off-by-one scrape (same name). Keeps genuinely
+  # missing candidates (the Genthin record with 96 votes).
   st_portal[, .row_id := .I]
   portal_shared <- st_portal[stala_pairs, on = c("ags", "election_date"), nomatch = 0]
 
