@@ -40,7 +40,9 @@ The roughly 45 detailed `Sonstige: <party>` columns in the raw file (a breakdown
 
 ## Coverage
 
-Municipal seats, by state (all `NA` outside these): Baden-Württemberg 1989–2024, Hessen 1993–2021, Thüringen 1994–2024, Nordrhein-Westfalen 1994–2025 (kreisfreie Städte only from 2025), Brandenburg 2003–2024, Rheinland-Pfalz 2004–2019 (excluding kreisfreie Städte), Schleswig-Holstein 2018 only, Mecklenburg-Vorpommern 2019 and 2024, Niedersachsen 2021 (eight kreisfreie Städte only), Bremen and Hamburg (Bürgerschaft; Hamburg 2025 only). No seat data at all for Bayern, Berlin, Saarland, Sachsen, Sachsen-Anhalt.
+Municipal seats, by state (all `NA` outside these): Baden-Württemberg 1989–2024, Hessen 1993–2021, Thüringen 1994–2024, Nordrhein-Westfalen 1994–2025 (kreisfreie Städte only from 2025), Brandenburg 2003–2024, Rheinland-Pfalz 2004–2019 (excluding kreisfreie Städte), Schleswig-Holstein 2018 only, Mecklenburg-Vorpommern 2019 and 2024, Saarland 2019, Sachsen-Anhalt 1994–2019 (all six elections), Niedersachsen (2011 and 2016 ordinary Gemeinden; 2021 the eight kreisfreie Städte), Bremen and Hamburg (Bürgerschaft; Hamburg 2025 only). No seat data at all for Bayern, Berlin, Sachsen.
+
+A July 2026 follow-up merged three states' already-on-disk seat sources: Saarland 2019 (`GRW_Sitzverteilung_2019.xlsx`, year-guarded join so 2019 seats are not stamped onto earlier years), Sachsen-Anhalt 1994–2019 (seat counts were already present in the vote workbook as unnamed columns two positions right of each party's vote column — extracted, no new file), and Niedersachsen 2011 and 2016 (seat objects were read but never merged). Niedersachsen's eight kreisfreie Städte enter through a separate block absent from the 2011/2016 seat files, so they stay `NA` those years (the 2021 source conversely covers only those cities).
 
 Two coverage points differ from the original plan's expectation and were checked: Schleswig-Holstein 2023 has no seats because that block sets the seat columns to `NA_real_` on purpose (SH 2023 has no seat source), not through an error; Mecklenburg-Vorpommern seats are present, which the initial diagnostic had missed.
 

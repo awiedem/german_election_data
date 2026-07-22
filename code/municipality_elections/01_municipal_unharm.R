@@ -7344,13 +7344,36 @@ saarland_kommunalwahlen_data_sub$gew_PIRATEN <- NA
 saarland_kommunalwahlen_data_sub$gew_FDP <- NA
 saarland_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
 
-saarland_kommunalwahlen_data_sub$sitze_CDU <- NA
-saarland_kommunalwahlen_data_sub$sitze_SPD <- NA
-saarland_kommunalwahlen_data_sub$sitze_DIELINKE <- NA
-saarland_kommunalwahlen_data_sub$sitze_GRÜNE <- NA
-saarland_kommunalwahlen_data_sub$sitze_AfD <- NA
+# Seats: the GRW seat file covers only 2019, while this frame holds 1984-2019.
+# Build an AGS->seats lookup (52 municipalities) and assign only to 2019 rows so
+# the single-year seats are not stamped onto earlier years of the same AGS.
+saarland_grw_sitze_2019 <- as.data.table(read_excel(
+  "raw/saarland/GRW_Sitzverteilung_2019.xlsx",
+  sheet = "Tabelle1",
+  skip = 1
+))
+saarland_grw_sitze_2019 <- saarland_grw_sitze_2019[
+  !is.na(`Regional-schlüssel`) &
+    suppressWarnings(as.numeric(`Regional-schlüssel`)) >= 10000
+]
+saarland_grw_sitze_2019[,
+  AGS_8dig := paste0("10", sprintf("%06d", as.numeric(`Regional-schlüssel`)))
+]
+sl_mi <- match(
+  saarland_kommunalwahlen_data_sub$AGS_8dig,
+  saarland_grw_sitze_2019$AGS_8dig
+)
+sl_is2019 <- as.character(saarland_kommunalwahlen_data_sub$election_year) == "2019"
+sl_seat <- function(col) {
+  ifelse(sl_is2019, as.numeric(saarland_grw_sitze_2019[[col]][sl_mi]), NA_real_)
+}
+saarland_kommunalwahlen_data_sub$sitze_CDU <- sl_seat("CDU")
+saarland_kommunalwahlen_data_sub$sitze_SPD <- sl_seat("SPD")
+saarland_kommunalwahlen_data_sub$sitze_DIELINKE <- sl_seat("DIE LINKE")
+saarland_kommunalwahlen_data_sub$sitze_GRÜNE <- sl_seat("GRÜNE")
+saarland_kommunalwahlen_data_sub$sitze_AfD <- sl_seat("AfD")
 saarland_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
-saarland_kommunalwahlen_data_sub$sitze_FDP <- NA
+saarland_kommunalwahlen_data_sub$sitze_FDP <- sl_seat("FDP")
 saarland_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
 
 # Creating new dataframe with selected vars ----
@@ -7559,6 +7582,19 @@ saarland_kommunalwahlen_data_sub <- saarland_kommunalwahlen_data_sub[
 #write_csv(saarland_kommunalwahlen_data_sub, here::here("output/saarland_kommunalwahlen.csv"))
 
 ######### SACHSEN-ANHALT ----
+
+# Helper: in every Sachsen-Anhalt sheet each party's seat count sits exactly two
+# columns to the right of its vote-count column (layout absolut | % | Sitze
+# [| dar. Frauen]). The Sitze columns are unnamed on read, so index them
+# positionally as +2 from the (named) vote column. Returns NA if the vote column
+# is absent or ambiguous. Values are the same ones the block already reads for
+# abs_*, so seat availability mirrors vote availability per year.
+sa_seat_at <- function(df, party_col) {
+  i <- which(names(df) == party_col)
+  if (length(i) != 1) return(rep(NA_real_, nrow(df)))
+  suppressWarnings(as.numeric(df[[i[1] + 2]]))
+}
+
 ###### Sachsen-Anhalt 1994 Kommunalwahlen ----
 #### Load election data ----
 
@@ -7616,13 +7652,13 @@ sachsen_anhalt_1994_kommunalwahlen_data_sub$gew_FDP <- NA
 sachsen_anhalt_1994_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
 sachsen_anhalt_1994_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
 
-sachsen_anhalt_1994_kommunalwahlen_data_sub$sitze_CDU <- NA
-sachsen_anhalt_1994_kommunalwahlen_data_sub$sitze_SPD <- NA
-sachsen_anhalt_1994_kommunalwahlen_data_sub$sitze_DIELINKE <- NA
-sachsen_anhalt_1994_kommunalwahlen_data_sub$sitze_GRÜNE <- NA
+sachsen_anhalt_1994_kommunalwahlen_data_sub$sitze_CDU <- sa_seat_at(sachsen_anhalt_1994_kommunalwahlen_data_sub, "CDU")
+sachsen_anhalt_1994_kommunalwahlen_data_sub$sitze_SPD <- sa_seat_at(sachsen_anhalt_1994_kommunalwahlen_data_sub, "SPD")
+sachsen_anhalt_1994_kommunalwahlen_data_sub$sitze_DIELINKE <- sa_seat_at(sachsen_anhalt_1994_kommunalwahlen_data_sub, "PDS")
+sachsen_anhalt_1994_kommunalwahlen_data_sub$sitze_GRÜNE <- sa_seat_at(sachsen_anhalt_1994_kommunalwahlen_data_sub, "Gruene")
 sachsen_anhalt_1994_kommunalwahlen_data_sub$sitze_AfD <- NA
 sachsen_anhalt_1994_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
-sachsen_anhalt_1994_kommunalwahlen_data_sub$sitze_FDP <- NA
+sachsen_anhalt_1994_kommunalwahlen_data_sub$sitze_FDP <- sa_seat_at(sachsen_anhalt_1994_kommunalwahlen_data_sub, "FDP")
 sachsen_anhalt_1994_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
 sachsen_anhalt_1994_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
 
@@ -7743,13 +7779,13 @@ sachsen_anhalt_1999_kommunalwahlen_data_sub$gew_FDP <- NA
 sachsen_anhalt_1999_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
 sachsen_anhalt_1999_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
 
-sachsen_anhalt_1999_kommunalwahlen_data_sub$sitze_CDU <- NA
-sachsen_anhalt_1999_kommunalwahlen_data_sub$sitze_SPD <- NA
-sachsen_anhalt_1999_kommunalwahlen_data_sub$sitze_DIELINKE <- NA
-sachsen_anhalt_1999_kommunalwahlen_data_sub$sitze_GRÜNE <- NA
+sachsen_anhalt_1999_kommunalwahlen_data_sub$sitze_CDU <- sa_seat_at(sachsen_anhalt_1999_kommunalwahlen_data_sub, "CDU")
+sachsen_anhalt_1999_kommunalwahlen_data_sub$sitze_SPD <- sa_seat_at(sachsen_anhalt_1999_kommunalwahlen_data_sub, "SPD")
+sachsen_anhalt_1999_kommunalwahlen_data_sub$sitze_DIELINKE <- sa_seat_at(sachsen_anhalt_1999_kommunalwahlen_data_sub, "PDS")
+sachsen_anhalt_1999_kommunalwahlen_data_sub$sitze_GRÜNE <- sa_seat_at(sachsen_anhalt_1999_kommunalwahlen_data_sub, "Gruene")
 sachsen_anhalt_1999_kommunalwahlen_data_sub$sitze_AfD <- NA
 sachsen_anhalt_1999_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
-sachsen_anhalt_1999_kommunalwahlen_data_sub$sitze_FDP <- NA
+sachsen_anhalt_1999_kommunalwahlen_data_sub$sitze_FDP <- sa_seat_at(sachsen_anhalt_1999_kommunalwahlen_data_sub, "FDP")
 sachsen_anhalt_1999_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
 sachsen_anhalt_1999_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
 
@@ -7872,13 +7908,13 @@ sachsen_anhalt_2004_kommunalwahlen_data_sub$gew_FDP <- NA
 sachsen_anhalt_2004_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
 sachsen_anhalt_2004_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
 
-sachsen_anhalt_2004_kommunalwahlen_data_sub$sitze_CDU <- NA
-sachsen_anhalt_2004_kommunalwahlen_data_sub$sitze_SPD <- NA
-sachsen_anhalt_2004_kommunalwahlen_data_sub$sitze_DIELINKE <- NA
-sachsen_anhalt_2004_kommunalwahlen_data_sub$sitze_GRÜNE <- NA
+sachsen_anhalt_2004_kommunalwahlen_data_sub$sitze_CDU <- sa_seat_at(sachsen_anhalt_2004_kommunalwahlen_data_sub, "CDU")
+sachsen_anhalt_2004_kommunalwahlen_data_sub$sitze_SPD <- sa_seat_at(sachsen_anhalt_2004_kommunalwahlen_data_sub, "SPD")
+sachsen_anhalt_2004_kommunalwahlen_data_sub$sitze_DIELINKE <- sa_seat_at(sachsen_anhalt_2004_kommunalwahlen_data_sub, "PDS")
+sachsen_anhalt_2004_kommunalwahlen_data_sub$sitze_GRÜNE <- sa_seat_at(sachsen_anhalt_2004_kommunalwahlen_data_sub, "Gruene")
 sachsen_anhalt_2004_kommunalwahlen_data_sub$sitze_AfD <- NA
 sachsen_anhalt_2004_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
-sachsen_anhalt_2004_kommunalwahlen_data_sub$sitze_FDP <- NA
+sachsen_anhalt_2004_kommunalwahlen_data_sub$sitze_FDP <- sa_seat_at(sachsen_anhalt_2004_kommunalwahlen_data_sub, "FDP")
 sachsen_anhalt_2004_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
 sachsen_anhalt_2004_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
 
@@ -7998,13 +8034,13 @@ sachsen_anhalt_2009_kommunalwahlen_data_sub$gew_FDP <- NA
 sachsen_anhalt_2009_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
 sachsen_anhalt_2009_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
 
-sachsen_anhalt_2009_kommunalwahlen_data_sub$sitze_CDU <- NA
-sachsen_anhalt_2009_kommunalwahlen_data_sub$sitze_SPD <- NA
-sachsen_anhalt_2009_kommunalwahlen_data_sub$sitze_DIELINKE <- NA
-sachsen_anhalt_2009_kommunalwahlen_data_sub$sitze_GRÜNE <- NA
+sachsen_anhalt_2009_kommunalwahlen_data_sub$sitze_CDU <- sa_seat_at(sachsen_anhalt_2009_kommunalwahlen_data_sub, "CDU")
+sachsen_anhalt_2009_kommunalwahlen_data_sub$sitze_SPD <- sa_seat_at(sachsen_anhalt_2009_kommunalwahlen_data_sub, "SPD")
+sachsen_anhalt_2009_kommunalwahlen_data_sub$sitze_DIELINKE <- sa_seat_at(sachsen_anhalt_2009_kommunalwahlen_data_sub, "LINKE")
+sachsen_anhalt_2009_kommunalwahlen_data_sub$sitze_GRÜNE <- sa_seat_at(sachsen_anhalt_2009_kommunalwahlen_data_sub, "Gruene")
 sachsen_anhalt_2009_kommunalwahlen_data_sub$sitze_AfD <- NA
 sachsen_anhalt_2009_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
-sachsen_anhalt_2009_kommunalwahlen_data_sub$sitze_FDP <- NA
+sachsen_anhalt_2009_kommunalwahlen_data_sub$sitze_FDP <- sa_seat_at(sachsen_anhalt_2009_kommunalwahlen_data_sub, "FDP")
 sachsen_anhalt_2009_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
 sachsen_anhalt_2009_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
 
@@ -8126,15 +8162,15 @@ sachsen_anhalt_2014_kommunalwahlen_data_sub$gew_FDP <- NA
 sachsen_anhalt_2014_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
 sachsen_anhalt_2014_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
 
-sachsen_anhalt_2014_kommunalwahlen_data_sub$sitze_CDU <- NA
-sachsen_anhalt_2014_kommunalwahlen_data_sub$sitze_SPD <- NA
-sachsen_anhalt_2014_kommunalwahlen_data_sub$sitze_DIELINKE <- NA
-sachsen_anhalt_2014_kommunalwahlen_data_sub$sitze_GRÜNE <- NA
-sachsen_anhalt_2014_kommunalwahlen_data_sub$sitze_AfD <- NA
-sachsen_anhalt_2014_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
-sachsen_anhalt_2014_kommunalwahlen_data_sub$sitze_FDP <- NA
-sachsen_anhalt_2014_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
-sachsen_anhalt_2014_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
+sachsen_anhalt_2014_kommunalwahlen_data_sub$sitze_CDU <- sa_seat_at(sachsen_anhalt_2014_kommunalwahlen_data_sub, "CDU")
+sachsen_anhalt_2014_kommunalwahlen_data_sub$sitze_SPD <- sa_seat_at(sachsen_anhalt_2014_kommunalwahlen_data_sub, "SPD")
+sachsen_anhalt_2014_kommunalwahlen_data_sub$sitze_DIELINKE <- sa_seat_at(sachsen_anhalt_2014_kommunalwahlen_data_sub, "LINKE")
+sachsen_anhalt_2014_kommunalwahlen_data_sub$sitze_GRÜNE <- sa_seat_at(sachsen_anhalt_2014_kommunalwahlen_data_sub, "Gruene")
+sachsen_anhalt_2014_kommunalwahlen_data_sub$sitze_AfD <- sa_seat_at(sachsen_anhalt_2014_kommunalwahlen_data_sub, "AfD")
+sachsen_anhalt_2014_kommunalwahlen_data_sub$sitze_PIRATEN <- sa_seat_at(sachsen_anhalt_2014_kommunalwahlen_data_sub, "Piraten")
+sachsen_anhalt_2014_kommunalwahlen_data_sub$sitze_FDP <- sa_seat_at(sachsen_anhalt_2014_kommunalwahlen_data_sub, "FDP")
+sachsen_anhalt_2014_kommunalwahlen_data_sub$sitze_DiePARTEI <- sa_seat_at(sachsen_anhalt_2014_kommunalwahlen_data_sub, "DiePartei")
+sachsen_anhalt_2014_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- sa_seat_at(sachsen_anhalt_2014_kommunalwahlen_data_sub, "FW")
 
 # Creating new dataframe with selected vars ----
 sachsen_anhalt_2014_kommunalwahlen_data_sub <- sachsen_anhalt_2014_kommunalwahlen_data_sub[, .(
@@ -8256,15 +8292,15 @@ sachsen_anhalt_2019_kommunalwahlen_data_sub$gew_FDP <- NA
 sachsen_anhalt_2019_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
 sachsen_anhalt_2019_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
 
-sachsen_anhalt_2019_kommunalwahlen_data_sub$sitze_CDU <- NA
-sachsen_anhalt_2019_kommunalwahlen_data_sub$sitze_SPD <- NA
-sachsen_anhalt_2019_kommunalwahlen_data_sub$sitze_DIELINKE <- NA
-sachsen_anhalt_2019_kommunalwahlen_data_sub$sitze_GRÜNE <- NA
-sachsen_anhalt_2019_kommunalwahlen_data_sub$sitze_AfD <- NA
+sachsen_anhalt_2019_kommunalwahlen_data_sub$sitze_CDU <- sa_seat_at(sachsen_anhalt_2019_kommunalwahlen_data_sub, "CDU")
+sachsen_anhalt_2019_kommunalwahlen_data_sub$sitze_SPD <- sa_seat_at(sachsen_anhalt_2019_kommunalwahlen_data_sub, "SPD")
+sachsen_anhalt_2019_kommunalwahlen_data_sub$sitze_DIELINKE <- sa_seat_at(sachsen_anhalt_2019_kommunalwahlen_data_sub, "LINKE")
+sachsen_anhalt_2019_kommunalwahlen_data_sub$sitze_GRÜNE <- sa_seat_at(sachsen_anhalt_2019_kommunalwahlen_data_sub, "Gruene")
+sachsen_anhalt_2019_kommunalwahlen_data_sub$sitze_AfD <- sa_seat_at(sachsen_anhalt_2019_kommunalwahlen_data_sub, "AfD")
 sachsen_anhalt_2019_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
-sachsen_anhalt_2019_kommunalwahlen_data_sub$sitze_FDP <- NA
-sachsen_anhalt_2019_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
-sachsen_anhalt_2019_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
+sachsen_anhalt_2019_kommunalwahlen_data_sub$sitze_FDP <- sa_seat_at(sachsen_anhalt_2019_kommunalwahlen_data_sub, "FDP")
+sachsen_anhalt_2019_kommunalwahlen_data_sub$sitze_DiePARTEI <- sa_seat_at(sachsen_anhalt_2019_kommunalwahlen_data_sub, "DiePartei")
+sachsen_anhalt_2019_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- sa_seat_at(sachsen_anhalt_2019_kommunalwahlen_data_sub, "FW")
 
 # Creating new dataframe with selected vars ----
 sachsen_anhalt_2019_kommunalwahlen_data_sub <- sachsen_anhalt_2019_kommunalwahlen_data_sub[, .(
@@ -13738,6 +13774,26 @@ names(niedersachsen_2011_gemeinderatswahlen_data) <- str_replace_all(
   ""
 )
 
+#### Merge seat counts (2011) ----
+# Seat file shares the AGS key; suffix its columns with _sitze (Thueringen
+# pattern) and merge onto the vote data on the raw un-prefixed AGS key.
+names(niedersachsen_2011_gemeinderatswahlen_data_sitze) <- str_replace_all(
+  names(niedersachsen_2011_gemeinderatswahlen_data_sitze),
+  fixed(" "),
+  ""
+)
+names(niedersachsen_2011_gemeinderatswahlen_data_sitze) <- str_c(
+  names(niedersachsen_2011_gemeinderatswahlen_data_sitze),
+  "_sitze"
+)
+niedersachsen_2011_gemeinderatswahlen_data <- merge(
+  niedersachsen_2011_gemeinderatswahlen_data,
+  niedersachsen_2011_gemeinderatswahlen_data_sitze,
+  by.x = "AGS(Stadtkennziffer/Gemeindekennziffer)",
+  by.y = "AGS(Stadtkennziffer/Gemeindekennziffer)_sitze",
+  all.x = TRUE
+)
+
 #### Recoding ----
 # Create new dataframe ----
 niedersachsen_2011_gemeinderatswahlen_data_sub <- niedersachsen_2011_gemeinderatswahlen_data %>%
@@ -13788,13 +13844,13 @@ niedersachsen_2011_gemeinderatswahlen_data_sub$gew_FDP <- NA
 niedersachsen_2011_gemeinderatswahlen_data_sub$gew_DiePARTEI <- NA
 niedersachsen_2011_gemeinderatswahlen_data_sub$gew_FREIEWÄHLER <- NA
 
-niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_CDU <- NA
-niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_SPD <- NA
-niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_DIELINKE <- NA
-niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_GRÜNE <- NA
+niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_CDU <- as.numeric(niedersachsen_2011_gemeinderatswahlen_data_sub$`CDU(insgesamt)_sitze`)
+niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_SPD <- as.numeric(niedersachsen_2011_gemeinderatswahlen_data_sub$`SPD(insgesamt)_sitze`)
+niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_DIELINKE <- as.numeric(niedersachsen_2011_gemeinderatswahlen_data_sub$`DIELINKE.(insgesamt)_sitze`)
+niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_GRÜNE <- as.numeric(niedersachsen_2011_gemeinderatswahlen_data_sub$`GRÜNE(insgesamt)_sitze`)
 niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_AfD <- NA
-niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
-niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_FDP <- NA
+niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_PIRATEN <- as.numeric(niedersachsen_2011_gemeinderatswahlen_data_sub$`PIRATENNiedersachsen(insgesamt)_sitze`)
+niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_FDP <- as.numeric(niedersachsen_2011_gemeinderatswahlen_data_sub$`FDP(insgesamt)_sitze`)
 niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
 
@@ -13873,6 +13929,18 @@ niedersachsen_2016_gemeinderatswahlen_data_sitze <- as.data.table(read_excel(
 niedersachsen_2016_gemeinderatswahlen_data_sitze <-
   niedersachsen_2016_gemeinderatswahlen_data_sitze %>%
   filter(MG %in% niedersachsen_2016_gemeinderatswahlen_data$MG)
+
+#### Merge seat counts (2016) ----
+# MG (municipality name) is a unique 1:1 key in both the anzahl and sitze sheets.
+niedersachsen_2016_gemeinderatswahlen_data <- merge(
+  niedersachsen_2016_gemeinderatswahlen_data,
+  niedersachsen_2016_gemeinderatswahlen_data_sitze[, .(
+    MG,
+    CDU_sitze = CDU, SPD_sitze = SPD, Gruene_sitze = Gruene,
+    FDP_sitze = FDP, DIELINKE_sitze = DIELINKE, AfD_sitze = AfD
+  )],
+  by = "MG", all.x = TRUE
+)
 
 niedersachsen_2016_gemeinderatswahlen_data <-
   niedersachsen_2016_gemeinderatswahlen_data %>%
@@ -13956,13 +14024,13 @@ niedersachsen_2016_gemeinderatswahlen_data_sub$gew_FDP <- NA
 niedersachsen_2016_gemeinderatswahlen_data_sub$gew_DiePARTEI <- NA
 niedersachsen_2016_gemeinderatswahlen_data_sub$gew_FREIEWÄHLER <- NA
 
-niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_CDU <- NA
-niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_SPD <- NA
-niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_DIELINKE <- NA
-niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_GRÜNE <- NA
-niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_AfD <- NA
+niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_CDU <- as.numeric(niedersachsen_2016_gemeinderatswahlen_data_sub$CDU_sitze)
+niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_SPD <- as.numeric(niedersachsen_2016_gemeinderatswahlen_data_sub$SPD_sitze)
+niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_DIELINKE <- as.numeric(niedersachsen_2016_gemeinderatswahlen_data_sub$DIELINKE_sitze)
+niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_GRÜNE <- as.numeric(niedersachsen_2016_gemeinderatswahlen_data_sub$Gruene_sitze)
+niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_AfD <- as.numeric(niedersachsen_2016_gemeinderatswahlen_data_sub$AfD_sitze)
 niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
-niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_FDP <- NA
+niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_FDP <- as.numeric(niedersachsen_2016_gemeinderatswahlen_data_sub$FDP_sitze)
 niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
 
