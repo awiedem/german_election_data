@@ -10,7 +10,11 @@ options(scipen = 999)
 pacman::p_load("tidyverse", "data.table", "readxl", "haschaR")
 conflict_prefer("filter", "dplyr")
 
-raw_dir <- "data/county_elections/raw/Kreistagswahlen/Kreistagswahlen"
+# NB: this used to point at a nested `Kreistagswahlen/Kreistagswahlen/` copy that
+# duplicated its parent. That copy is now marked com.dropbox.ignored (and
+# gitignored) so it no longer syncs, leaving it empty — the raw files live in the
+# directory below.
+raw_dir <- "data/county_elections/raw/Kreistagswahlen"
 
 
 # --- Helper functions -------------------------------------------------------
@@ -625,7 +629,7 @@ df_st <- df_st |> select(-kreisschluessel, -kreis_name)
 
 cat("\n===== THÜRINGEN =====\n")
 
-th_dir <- file.path(raw_dir, "Th++ringen")
+th_dir <- file.path(raw_dir, "Thüringen")
 
 #' Parse a single TH XLSX sheet (one Kreis)
 #' Format: row 6 has party names; G rows = Gemeinde level
@@ -770,12 +774,12 @@ parse_th_xlsx <- function(filepath, year) {
 
 # Process TH years (skip 1990/1994/1999 .xls for now)
 th_files <- list(
-  list(year = 2004, file = "Th++ringen_2004_Kreistagswahl.xlsx"),
-  list(year = 2009, file = "Th++ringen_2009_Kreistagswahl.xlsx"),
-  list(year = 2014, file = "Th++ringen_2014_Kreistagswahl.xlsx"),
-  list(year = 2019, file = "Th++ringen_2019_Kreistagswahl.xlsx"),
-  list(year = 2021, file = "Th++ringen_2021_Kreistagswahl.xlsx"),
-  list(year = 2024, file = "Th++ringen_2024_Kreistagswahl.xlsx")
+  list(year = 2004, file = "Thüringen_2004_Kreistagswahl.xlsx"),
+  list(year = 2009, file = "Thüringen_2009_Kreistagswahl.xlsx"),
+  list(year = 2014, file = "Thüringen_2014_Kreistagswahl.xlsx"),
+  list(year = 2019, file = "Thüringen_2019_Kreistagswahl.xlsx"),
+  list(year = 2021, file = "Thüringen_2021_Kreistagswahl.xlsx"),
+  list(year = 2024, file = "Thüringen_2024_Kreistagswahl.xlsx")
 )
 
 th_results <- list()
@@ -1673,6 +1677,94 @@ for (yr in by_years) {
   } else {
     cat("  Skipping BY", yr, "- file not found\n")
   }
+}
+
+# -----------------------------------------------------------------------------
+# BY 2026 — Kommunalwahl of 8 March 2026, from the Landesamt results portal
+# -----------------------------------------------------------------------------
+# The 1984-2020 series comes from GENESIS table 14411-001r as XLSX pairs. For
+# 2026 the Landesamt publishes machine-readable XML instead, at
+# kommunalwahl2026.bayern.de/downloads.html (with XSD schemas). The Gremienwahl
+# file covers exactly the 96 units this dataset already holds: 71 Kreistage plus
+# the 25 Stadträte of the kreisfreie Städte. (Gemeinderatswahlen of the ~2,000
+# kreisangehörige Gemeinden are NOT in the bulk download — only browsable per
+# municipality — so municipal_elections cannot be extended from this source.)
+#
+# Bavarian council elections are cumulative (Kumulieren/Panaschieren), so the
+# file reports both raw cumulative votes (Stimmen_absolut) and ballot-equivalent
+# weighted votes (Gewichtete_Stimmen). The 1984-2020 series uses the weighted
+# figures, and so do we: Gewichtete_Stimmen + Ungueltige_Stimmzettel == Waehler
+# holds exactly for all 96 units.
+#
+# Unlike the XLSX series, the XML lists every individual Wahlvorschlag rather
+# than a pre-aggregated "Wählergruppen" bucket. To keep Bayern internally
+# consistent, recognised parties keep their own column and every local list
+# folds into `waehlergruppen`, mirroring the earlier years. Coalition labels
+# ("FREIE WÄHLER/Freie Wähler Ingolstadt", "ÖDP/Parteifreie") are attributed to
+# their leading party.
+by_xml_file <- file.path(by_dir, "Bayern_2026_Gremien_Komplett.xml")
+
+if (file.exists(by_xml_file)) {
+  cat("  Reading BY 2026 (XML) ...\n")
+  suppressMessages(library(xml2))
+
+  by26_num <- function(x) suppressWarnings(as.numeric(gsub("[^0-9.-]", "", x)))
+  # Parties that keep their own column in Bayern; everything else is a local
+  # list and folds into waehlergruppen.
+  by26_keep <- c("csu", "spd", "afd", "gruene", "linke_pds", "fdp", "oedp",
+                 "freie_waehler", "bp", "volt", "die_partei", "rep", "bsw",
+                 "mut", "v_partei3", "piraten", "die_franken", "tierschutz")
+
+  by26_col <- function(raw) {
+    n <- normalise_party_cty(raw)
+    if (n %in% by26_keep) return(n)
+    # coalition label: attribute to the leading party if recognised
+    lead <- normalise_party_cty(trimws(strsplit(raw, "/", fixed = TRUE)[[1]][1]))
+    if (lead %in% by26_keep) return(lead)
+    "waehlergruppen"
+  }
+
+  by26_doc <- read_xml(by_xml_file)
+  by26_units <- xml_find_all(by26_doc, ".//Regionaleinheit")
+
+  by26_rows <- lapply(by26_units, function(u) {
+    key <- xml_attr(u, "Schluesselnummer")
+    w   <- xml_find_first(u, "Wahl")
+    ag  <- xml_find_first(w, "Allgemeine_Angaben")
+    se  <- xml_find_first(w, "Stimmenergebnis")
+    zus <- xml_find_first(se, "Wahlvorschlaege_zusammen")
+    ung <- xml_find_first(se, "Ungueltige_Stimmzettel")
+    wv  <- xml_find_all(se, "Wahlvorschlag")
+
+    shares <- by26_num(xml_text(xml_find_first(wv, "Gewichtete_Stimmen_Anteil"))) / 100
+    cols   <- vapply(xml_text(xml_find_first(wv, "Bezeichnung")), by26_col,
+                     character(1), USE.NAMES = FALSE)
+    agg <- tapply(shares, cols, sum, na.rm = TRUE)
+
+    base <- data.frame(
+      ags = paste0("09", formatC(as.integer(key), width = 3, flag = "0"), "000"),
+      ags_name = xml_text(xml_find_first(ag, "Name_der_Regionaleinheit")),
+      eligible_voters = by26_num(xml_text(xml_find_first(ag, "Stimmberechtigte"))),
+      number_voters   = by26_num(xml_text(xml_find_first(ag, "Waehler"))),
+      valid_votes     = by26_num(xml_text(xml_find_first(zus, "Gewichtete_Stimmen"))),
+      invalid_votes   = by26_num(xml_text(xml_find_first(ung, "Anzahl"))),
+      stringsAsFactors = FALSE
+    )
+    for (nm in names(agg)) base[[nm]] <- unname(agg[[nm]])
+    base
+  })
+
+  df_by26 <- bind_rows(by26_rows)
+  df_by26$turnout <- ifelse(df_by26$eligible_voters > 0,
+                            df_by26$number_voters / df_by26$eligible_voters, NA_real_)
+  df_by26$county <- substr(df_by26$ags, 1, 5)
+  df_by26$state <- "09"
+  df_by26$election_year <- 2026
+
+  cat("    ->", nrow(df_by26), "units (Kreistage + Stadträte)\n")
+  by_results[["2026"]] <- as_tibble(df_by26)
+} else {
+  cat("  Skipping BY 2026 - XML not found\n")
 }
 
 df_by <- bind_rows(by_results)
