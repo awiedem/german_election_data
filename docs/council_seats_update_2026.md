@@ -24,6 +24,8 @@ New script `code/county_elections/03_county_seats.R` reads the hand-compiled fil
 
 This is a yearly council-composition panel, not an election table: one row per county-year for 400 counties × 15 years (2008–2022 = 6,000 rows), where a council's composition is repeated every year until the next election changes it. It is published separately from `county_elec_unharm` (which holds election-level Kreistagswahl vote results) because the two have different row semantics — a panel of standing composition versus a table of election events.
 
+**Boundaries — the reason a fixed county file is possible across a period with reforms.** Some counties did change inside 2008–2022 (Städteregion Aachen formed 2009; the Mecklenburg-Vorpommern Kreisgebietsreform cut 18 counties to 8 in 2011; Landkreis Göttingen merged with Osterode in 2016). The source uses one fixed set of ~400 current (post-reform, ~2021) county codes for all years and represents the change honestly rather than by fabrication: a reform-created county has `NA` total and zero party seats for the years before it existed (verified — no pre-existence row carries backfilled seats), and the abolished predecessor councils are simply not in the file. The consequence is a real coverage limit, not a data error: the panel holds no pre-reform county-council composition for reformed areas (Mecklenburg-Vorpommern 2008–2010 is entirely `NA`; merged Göttingen is `NA` before 2016). "Balanced 400 × 15" describes the row structure, which is balanced by construction, not full data coverage in every cell.
+
 Twenty-one columns: `county` (5-digit, matches `county` in `county_elec_unharm`), `county_name`, `county_type`, `state`, `state_name`, `year`, `government_party`, `seats_total`, nine party seat columns (`seats_spd, seats_cdu_csu, seats_fdp, seats_gruene, seats_freie_wahler, seats_linke_pds, seats_afd, seats_regional, seats_other`), `flag_seats_total_incongruent`, `comment`, `source`, `last_checked`.
 
 Two treatments applied on top of the raw file:
@@ -38,7 +40,7 @@ Municipal seats, by state (all `NA` outside these): Baden-Württemberg 1989–20
 
 Two coverage points differ from the original plan's expectation and were checked: Schleswig-Holstein 2023 has no seats because that block sets the seat columns to `NA_real_` on purpose (SH 2023 has no seat source), not through an error; Mecklenburg-Vorpommern seats are present, which the initial diagnostic had missed.
 
-County seats: complete and balanced, 400 counties in every year 2008–2022.
+County seats: 400 counties in every year 2008–2022 by construction (fixed current boundaries), with pre-existence years of reform-created counties left `NA` — see the boundary note above. Mecklenburg-Vorpommern 2008–2010 is `NA` throughout.
 
 ## Validation
 

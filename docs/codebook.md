@@ -261,6 +261,7 @@ Seat distributions in German county councils (Kreistage) and the councils of kre
 
 **Notes.**
 
+- **Boundaries.** The panel uses a single fixed set of ~400 current (post-reform, roughly 2021) county codes for every year. Counties created by a reform inside the window — Städteregion Aachen (2009), the eight Mecklenburg-Vorpommern counties of the 2011 Kreisgebietsreform, and the merged Landkreis Göttingen (2016) — have `NA`/empty rows for the years before they existed, not backfilled figures. The councils those reforms abolished (for example Mecklenburg-Vorpommern's pre-2011 Landkreise) are not in the file, so the dataset carries no pre-reform county-council composition for reformed areas: Mecklenburg-Vorpommern is empty for 2008–2010, and the merged Göttingen is empty before 2016. Fixing identity at current boundaries is what lets `county` align with `county` in `county_elec_unharm`.
 - Provenance: hand-compiled dataset "Sitzverteilungen der Parteien 2008–2022" (v1.0.0) contributed by coauthor Vincent Heddesheimer; per-row source URLs are in `source`. No upstream codebook exists.
 - The ~45 detailed `Sonstige: <party>` columns in the raw file (a decomposition of `seats_other`) are not carried into the published panel; they remain in the raw CSV.
 - 328 of the 400 counties match a `county` code in `county_elec_unharm`; unmatched are chiefly the city-states (Hamburg, Bremen) and Rheinland-Pfalz counties, whose vote-level results are covered differently.
