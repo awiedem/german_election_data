@@ -2655,6 +2655,28 @@ cat("  Without name:", sum(is.na(mayoral_candidates$candidate_name)), "\n")
 mayoral_types <- c("Bürgermeisterwahl", "Oberbürgermeisterwahl",
                    "VG-Bürgermeisterwahl", "SG-Bürgermeisterwahl")
 
+# A Landratswahl is a Kreis-level office, so its AGS must end in "000". Rows
+# typed Landratswahl on a municipal AGS are source mislabels (Hannover 2013 is
+# the Landeshauptstadt's Oberbürgermeisterwahl; Fahrenzhausen 1945 carries a
+# stray "Landrat/Landrätin" Amtstitel in the Bayern file). Mirrors the guard in
+# 01_mayoral_unharm.R — see the fuller note there.
+lr_misfiled <- mayoral_candidates$election_type == "Landratswahl" &
+  !grepl("000$", mayoral_candidates$ags)
+if (any(lr_misfiled)) {
+  muni_office <- mayoral_candidates %>%
+    filter(election_type %in% c("Bürgermeisterwahl", "Oberbürgermeisterwahl")) %>%
+    distinct(ags, election_type) %>%
+    group_by(ags) %>% slice(1) %>% ungroup() %>%
+    rename(inferred_type = election_type)
+  fixed <- mayoral_candidates[lr_misfiled, ] %>%
+    left_join(muni_office, by = "ags") %>%
+    mutate(election_type = coalesce(inferred_type, "Bürgermeisterwahl")) %>%
+    select(-inferred_type)
+  cat("\nReclassified", sum(lr_misfiled),
+      "Landratswahl candidate row(s) on a municipal AGS\n")
+  mayoral_candidates <- bind_rows(mayoral_candidates[!lr_misfiled, ], fixed)
+}
+
 # flag_superseded is scoped to the mayoral datasets; the Landrat dataset has its
 # own downstream combine pipeline, so drop the column from the Landrat split to
 # keep landrat_candidates byte-identical to before.
