@@ -239,7 +239,7 @@ The unharmonized municipal dataset carries council seat counts (`seats_*`) along
 
 **File:** `data/county_elections/final/county_council_seats.rds` (or `.csv`)
 
-Seat distributions in German county councils (Kreistage) and the councils of kreisfreie Städte, as a **yearly panel** covering 2008–2025 (400 counties × 18 years = 7,200 rows). This is a council-composition panel, not an election-result table: a county's seat distribution is repeated for every year until the next election changes it, so values are constant between elections. It is published separately from `county_elec_unharm` (which holds election-level Kreistagswahl vote results) for that reason. The extension adds Schleswig-Holstein's 2023 election and the 2024 elections in Baden-Württemberg, Brandenburg, Mecklenburg-Vorpommern, Rheinland-Pfalz, Saarland, Sachsen, Sachsen-Anhalt, and Thüringen.
+Seat distributions in German county councils (Kreistage) and the councils of kreisfreie Städte, as a **yearly panel** covering 2008–2025 (400 counties × 18 years = 7,200 rows). This is a council-composition panel, not an election-result table: a county's seat distribution is repeated for every year until the next election changes it, so values are constant between elections. It is published separately from `county_elec_unharm` (which holds election-level Kreistagswahl vote results) for that reason. The extension adds Schleswig-Holstein's 2023 election, the 2024 elections in Baden-Württemberg, Brandenburg, Mecklenburg-Vorpommern, Rheinland-Pfalz, Saarland, Sachsen, Sachsen-Anhalt, and Thüringen, and the Nordrhein-Westfalen 2025 Kreistags-/Ratswahl (53 counties).
 
 | Variable | Type | Description |
 | :-- | :-- | :-- |

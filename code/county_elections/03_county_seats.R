@@ -195,7 +195,9 @@ source_coverage_audit <- tribble(
   "Sachsen-Anhalt 2024", "CSV", "Schlüsselnummer", "total and party seats",
   file.exists(file.path(raw_root, "Sachsen-Anhalt", "Sachsen-Anhalt_2024_Ergebnisse_mit_Sitzen.csv")),
   "Thüringen 2024", "HTML", "county number in URL", "final party seat table",
-  length(list.files(file.path(raw_root, "Thüringen", "2024_html"), pattern = "[.]html$")) == 22L
+  length(list.files(file.path(raw_root, "Thüringen", "2024_html"), pattern = "[.]html$")) == 22L,
+  "Nordrhein-Westfalen 2025", "HTML", "county code in URL", "2025 seats total + per party",
+  length(list.files(file.path(raw_root, "Nordrhein-Wetfalen", "2025_html"), pattern = "[.]shtml$")) == 53L
 ) |>
   mutate(status = if_else(available, "ready", "missing"))
 if (any(!source_coverage_audit$available)) {
@@ -594,10 +596,48 @@ parse_rp_2024 <- function(return_2019 = FALSE) {
   })
 }
 
+# Nordrhein-Westfalen 2025 Kreistags-/Ratswahl (14 Sept 2025). One official
+# results page per county at wahlergebnisse.nrw, cached as HTML; each has a
+# single clean #mainErgTable. The council size is the "Gültige Stimmen / Vertr.
+# insgesamt" row (col 7 = 2025 seats); every party/list row after it is bucketed
+# by party_bucket() with the default local_groups = "other", so the generic
+# "Wählergruppe N" lists fall to seats_other and the FREIE WÄHLER party keeps its
+# own column. County identity comes from the URL/filename code (no code on page).
+parse_nrw_2025 <- function() {
+  paths <- list.files(here::here("data/county_elections/raw/Kreistagswahlen",
+                                 "Nordrhein-Wetfalen", "2025_html"),
+                      pattern = "[.]shtml$", full.names = TRUE)
+  map_dfr(paths, function(path) {
+    code3 <- str_match(basename(path), "a([0-9]{3})000")[, 2]
+    tab <- read_html(path) |>
+      html_element("#mainErgTable") |>
+      html_table(fill = TRUE, header = FALSE)
+    total_row <- which(grepl("Vertr\\. insgesamt", tab[[1]]))
+    stopifnot(length(total_row) == 1L)
+    total <- as.integer(str_trim(tab[[7]][total_row]))
+    party <- tab[-seq_len(total_row), ]
+    party <- party[!is.na(party[[1]]) & str_trim(party[[1]]) != "" &
+                     !grepl("^Download", party[[1]]), ]
+    seats <- suppressWarnings(as.integer(str_trim(party[[7]])))
+    seats[is.na(seats)] <- 0L  # "—" / "X" / blank -> zero seats
+    long_to_event(tibble(
+      county = paste0("05", code3),
+      party = party[[1]],
+      seats = seats,
+      seats_total = total,
+      comment = "Official final 2025 Kreistags-/Ratswahl result page cached as HTML.",
+      source = paste0("https://www.wahlergebnisse.nrw/kommunalwahlen/2025/aktuell/a",
+                      code3, "000kw2500.shtml"),
+      last_checked = official_check_date
+    )) |>
+      mutate(year = 2025L)
+  })
+}
+
 event_rows <- bind_rows(
   parse_sh_2023(), parse_bw_2024(), parse_bb_2024(), parse_mv_2024(),
   parse_rp_2024(), parse_sl_2024(), parse_sn_2024(), parse_st_2024(),
-  parse_th_2024()
+  parse_th_2024(), parse_nrw_2025()
 ) |>
   complete_event_cols() |>
   arrange(county, year)
@@ -625,9 +665,9 @@ if (nrow(event_total_mismatch)) {
        paste(event_total_mismatch$county, collapse = ", "))
 }
 expected_event_counts <- tibble(
-  state = c("01", "07", "08", "10", "12", "13", "14", "15", "16"),
-  year = c(2023L, rep(2024L, 8)),
-  expected_n = c(15L, 36L, 44L, 6L, 18L, 8L, 13L, 14L, 22L)
+  state = c("01", "07", "08", "10", "12", "13", "14", "15", "16", "05"),
+  year = c(2023L, rep(2024L, 8), 2025L),
+  expected_n = c(15L, 36L, 44L, 6L, 18L, 8L, 13L, 14L, 22L, 53L)
 )
 observed_event_counts <- event_rows |>
   mutate(state = substr(county, 1, 2)) |>
