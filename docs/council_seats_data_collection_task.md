@@ -2,7 +2,7 @@
 
 ## What this is and why
 
-GERDA now has two council-seat products (see `docs/council_seats_update_2026.md`): `seats_*` columns inside `municipal_unharm`, and a `county_council_seats` panel (400 current-boundary counties × 2008–2022) built from a hand-compiled file. Two coverage limits are worth closing with new data collection:
+GERDA has two council-seat products (see `docs/council_seats_update_2026.md`): `seats_*` columns inside `municipal_unharm`, and a `county_council_seats` panel with 400 current-boundary counties from 2008 through 2025. WS1 below was completed in July 2026; WS2 and WS3 remain deferred.
 
 1. The county panel stops at **2022** and misses the **June 2024 Kreistagswahlen** (held in most eastern states plus BW, RLP, SL — roughly nine states voted on 9 June 2024).
 2. Reform-created counties have **no pre-reform data** (Mecklenburg-Vorpommern 2008–2010, merged Landkreis Göttingen before 2016, Städteregion Aachen before 2009), because the source only has current boundaries.
@@ -19,7 +19,9 @@ Realistic expectation: the 2024 Kreistagswahlen and recent cycles are well-struc
 
 ## Workstreams, in priority order
 
-### WS1 — Extend `county_council_seats` to include the 2024 Kreistagswahlen (highest value, most tractable)
+### WS1 — Extend `county_council_seats` to include the 2024 Kreistagswahlen (completed)
+
+Completed with Schleswig-Holstein 2023 and the 2024 elections in Baden-Württemberg, Brandenburg, Mecklenburg-Vorpommern, Rheinland-Pfalz, Saarland, Sachsen, Sachsen-Anhalt, and Thüringen. See `docs/county_seats_coverage_2025.md` for the source audit and validation record.
 
 Add county-council seat distributions for the elections held after the current panel ends (primarily 9 June 2024; also any 2023 county elections), on the same current-boundary county set.
 

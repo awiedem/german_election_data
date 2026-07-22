@@ -239,7 +239,7 @@ The unharmonized municipal dataset carries council seat counts (`seats_*`) along
 
 **File:** `data/county_elections/final/county_council_seats.rds` (or `.csv`)
 
-Seat distributions in German county councils (Kreistage) and the councils of kreisfreie Städte, as a **yearly panel** covering 2008–2022 (400 counties × 15 years = 6,000 rows). This is a council-composition panel, not an election-result table: a county's seat distribution is repeated for every year until the next election changes it, so values are constant between elections. It is published separately from `county_elec_unharm` (which holds election-level Kreistagswahl vote results) for that reason.
+Seat distributions in German county councils (Kreistage) and the councils of kreisfreie Städte, as a **yearly panel** covering 2008–2025 (400 counties × 18 years = 7,200 rows). This is a council-composition panel, not an election-result table: a county's seat distribution is repeated for every year until the next election changes it, so values are constant between elections. It is published separately from `county_elec_unharm` (which holds election-level Kreistagswahl vote results) for that reason. The extension adds Schleswig-Holstein's 2023 election and the 2024 elections in Baden-Württemberg, Brandenburg, Mecklenburg-Vorpommern, Rheinland-Pfalz, Saarland, Sachsen, Sachsen-Anhalt, and Thüringen.
 
 | Variable | Type | Description |
 | :-- | :-- | :-- |
@@ -248,13 +248,14 @@ Seat distributions in German county councils (Kreistage) and the councils of kre
 | `county_type` | character | `"Landkreis"` or `"kreisfreie Stadt"`. |
 | `state` | character | State identifier (first two digits of `county`). |
 | `state_name` | character | State name (English). |
-| `year` | integer | Calendar year (2008–2022). |
-| `government_party` | character | Party of the county executive (Landrat / Oberbürgermeister); `"parteilos"` = independent. Inferred from the source column `Regierungspartei`; interpretation not documented upstream. |
-| `seats_total` | integer | Total council size. `NA` where the source left the total blank (38 rows). |
+| `year` | integer | Calendar year (2008–2025). |
+| `government_party` | character | Party of the county executive (Landrat / Oberbürgermeister); `"parteilos"` = independent. Inferred from the historical source column `Regierungspartei`; interpretation is not documented upstream. It is `NA` in 2023–2025 because the new seat-result sources do not identify the governing party. |
+| `seats_total` | integer | Total council size. `NA` where the source left the total blank (39 panel rows). |
 | `seats_spd`, `seats_cdu_csu`, `seats_fdp`, `seats_gruene`, `seats_freie_wahler`, `seats_linke_pds`, `seats_afd` | integer | Seats won by SPD, CDU/CSU, FDP, GRÜNE, Freie Wähler, Die Linke, AfD. Blank in source = 0 seats. |
-| `seats_regional` | integer | Seats won by regional parties (e.g. SSW in Schleswig-Holstein). |
-| `seats_other` | integer | Seats won by all remaining parties combined. |
-| `flag_seats_total_incongruent` | logical | `TRUE` where `seats_total` does not equal the sum of the nine party columns (5 rows: Groß-Gerau 2011, Landkreis Heilbronn 2008, Donau-Ries 2020–2022). Discrepancies in the source, kept as recorded. |
+| `seats_regional` | integer | Seats won by regional parties (e.g. SSW in Schleswig-Holstein). Not comparable across the 2022/2023 boundary — see the note below; use `seats_local_other` for time series. |
+| `seats_other` | integer | Seats won by all remaining parties combined. Not comparable across the 2022/2023 boundary — see the note below. |
+| `seats_local_other` | integer | `seats_freie_wahler + seats_regional + seats_other`: all seats not held by the six major parties (CDU/CSU, SPD, Die Linke, GRÜNE, AfD, FDP). Equals `seats_total` minus those six. This sum is comparable across all years and states even though its three components are not (see note). Use it, not the three components, for cross-year comparisons of non-establishment strength. |
+| `flag_seats_total_incongruent` | logical | `TRUE` where `seats_total` does not equal the sum of the nine party columns (the five historical source rows plus Donau-Ries carried forward through 2025, for 8 panel rows). Discrepancies in the source are kept as recorded. All newly parsed election rows are congruent. |
 | `comment` | character | Free-text note from the source (`Kommentar`), if any. |
 | `source` | character | Source URL(s) for the row (`Quelle(n)`). |
 | `last_checked` | Date | Date the source entry was last verified. |
@@ -262,7 +263,8 @@ Seat distributions in German county councils (Kreistage) and the councils of kre
 **Notes.**
 
 - **Boundaries.** The panel uses a single fixed set of ~400 current (post-reform, roughly 2021) county codes for every year. Counties created by a reform inside the window — Städteregion Aachen (2009), the eight Mecklenburg-Vorpommern counties of the 2011 Kreisgebietsreform, and the merged Landkreis Göttingen (2016) — have `NA`/empty rows for the years before they existed, not backfilled figures. The councils those reforms abolished (for example Mecklenburg-Vorpommern's pre-2011 Landkreise) are not in the file, so the dataset carries no pre-reform county-council composition for reformed areas: Mecklenburg-Vorpommern is empty for 2008–2010, and the merged Göttingen is empty before 2016. Fixing identity at current boundaries is what lets `county` align with `county` in `county_elec_unharm`.
-- Provenance: hand-compiled dataset "Sitzverteilungen der Parteien 2008–2022" (v1.0.0) contributed by coauthor Vincent Heddesheimer; per-row source URLs are in `source`. No upstream codebook exists.
+- Provenance: the 2008–2022 rows come from the hand-compiled dataset "Sitzverteilungen der Parteien 2008–2022" (v1.0.0), contributed by coauthor Vincent Heddesheimer. The 2023 and 2024 election rows are parsed from official state statistical-office and returning-officer files cached under `data/county_elections/raw/Kreistagswahlen/`. Per-row official URLs are in `source`; see `docs/county_seats_coverage_2025.md` for the source audit.
+- **The three-way split of non-major-party seats is not comparable over time.** `seats_freie_wahler`, `seats_regional`, and `seats_other` are populated under different conventions in the hand-compiled 2008–2022 rows and the parsed 2023–2025 rows, and across states. The 2008–2022 source often folded Freie Wähler and local voter groups into `seats_regional`, while the newer rows assign Freie Wähler to `seats_freie_wahler`, local voter groups to `seats_other`, and reserve `seats_regional` for genuine regional parties (SSW). For example, Landkreis Böblingen shows `seats_regional` 26 and `seats_freie_wahler` 0 in 2019, then `seats_regional` 0 and `seats_freie_wahler` 24 in 2024, with no real change in who won those seats. The six major-party columns are consistent across all years; for any series involving Freie Wähler, regional, or other seats, use `seats_local_other` (their sum), which is defined identically everywhere. The old rows cannot be re-split because the source did not record the detail.
 - The ~45 detailed `Sonstige: <party>` columns in the raw file (a decomposition of `seats_other`) are not carried into the published panel; they remain in the raw CSV.
 - 328 of the 400 counties match a `county` code in `county_elec_unharm`; unmatched are chiefly the city-states (Hamburg, Bremen) and Rheinland-Pfalz counties, whose vote-level results are covered differently.
 
