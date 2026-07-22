@@ -470,7 +470,7 @@ A `02_mayoral_harm.R` script has not yet been written.
 
 ### Pipeline status
 
-Processing code exists in `code/county_elections/01_county_elec_unharm.R` (Stage 1 — unharm only). Work in progress; 5 of ~10 states implemented.
+Processing code exists in `code/county_elections/01_county_elec_unharm.R` (Stage 1 — unharm) and `02_county_elec_harm_21.R` (Stage 2 — harmonized to 2021). A separate script `03_county_seats.R` builds a county-year council-composition panel (see below). The table below lists the five states whose format quirks are documented here; the current script combines additional states as well.
 
 **Script:** `01_county_elec_unharm.R`
 **Output:** `data/county_elections/final/county_elec_unharm.{rds,csv}`
@@ -509,6 +509,10 @@ Processing code exists in `code/county_elections/01_county_elec_unharm.R` (Stage
 | Rheinland-Pfalz (RLP) | ZIP archive | 1 archive |
 | Saarland (SAR) | PDF | Requires OCR |
 | Schleswig-Holstein (SH) | PDF | Requires OCR |
+
+### County council seats panel (`03_county_seats.R`)
+
+Separate from the Kreistagswahl vote pipeline. Reads the hand-compiled file `data/county_elections/raw/Kreistagswahlen/Sitzverteilungen_der_Parteien_2008-2022_v1-0-0.csv` (semicolon-separated, contributed by V. Heddesheimer, v1.0.0) and produces `data/county_elections/final/county_council_seats.{rds,csv}` — a balanced yearly panel of council composition, 400 counties × 15 years (2008–2022), one row per county-year with total seats, per-party seats, and the county's governing party. Values repeat between elections (composition is constant until the next election). Blank council-size cells become `NA`; a `flag_seats_total_incongruent` column marks the five rows where the source total disagrees with the party-column sum. The ~45 detailed `Sonstige: <party>` columns are dropped from the published panel. See the codebook section "County Council Seats" for the full column list and coverage notes.
 
 ---
 

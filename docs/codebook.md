@@ -30,6 +30,8 @@ header-includes:
 - [Federal Elections (Municipality Level, Harmonized)](#federal-elections-municipality-level-harmonized)
 - [State Elections (Municipality Level, Harmonized)](#state-elections-municipality-level-harmonized)
 - [Municipal Elections (Municipality Level, Harmonized)](#municipal-elections-municipality-level-harmonized)
+- [Municipal Council Seats (in `municipal_unharm`)](#municipal-council-seats-in-municipal_unharm)
+- [County Council Seats (`county_council_seats`)](#county-council-seats-county_council_seats)
 - [Mayoral Elections — Candidate-Level (`mayoral_candidates`)](#mayoral-elections--candidate-level)
 - [Mayor Panel (`mayor_panel` / `mayor_panel_harm`)](#mayor-panel-mayor_panel--mayor_panel_harm)
 - [Annual Mayor Panel (`mayor_panel_annual` / `mayor_panel_annual_harm`)](#annual-mayor-panel-mayor_panel_annual--mayor_panel_annual_harm)
@@ -205,6 +207,63 @@ This dataset contains municipal council (Stadtrat/Gemeinderat) election results 
 - Vote shares are proportions of `valid_votes` (calculated as `prop_*` variables in `01_municipal_unharm.R`).
 - `area` and `population` are sourced from official municipality registers (Gemeindeverzeichnisse); `area` is km², `population` is scaled to thousands.
 - **Kumulieren and Panaschieren.** Municipal council elections in Baden-Württemberg, Bayern, Hessen, Rheinland-Pfalz, Mecklenburg-Vorpommern, Schleswig-Holstein, Saarland, Sachsen, Sachsen-Anhalt, Thüringen, Brandenburg, Bremen and Niedersachsen allow voters to cumulate votes on a single candidate (Kumulieren) and to split votes across lists (Panaschieren). Each voter casts multiple votes equal to the number of council seats, so `valid_votes` counts cast individual votes (Stimmen), not ballots, and the ratio `valid_votes / number_voters` reflects seat-count × cumulation behavior rather than a ballot count. Party shares (`cdu_csu`, `spd`, …) are proportions of these cast individual votes and sum to 1 within a municipality. They are directly comparable across municipalities within a state but not to single-vote systems (NRW is the main exception, where each voter casts one list vote). State-specific rules (e.g., up-to-3 cumulation in BW vs. up-to-5 in HE/RP) affect the realized `valid_votes / number_voters` ratio but not the share interpretation.
+
+---
+
+## Municipal Council Seats (in `municipal_unharm`)
+
+**File:** `data/municipal_elections/final/municipal_unharm.rds` (or `.csv`) — seat columns are present in the unharmonized dataset only.
+
+The unharmonized municipal dataset carries council seat counts (`seats_*`) alongside the vote-share columns, for the major parties, where the state source reports them. A seat count is the number of council mandates a party won in that municipality's council (Gemeinderat / Stadtrat). Seats are provided only in `municipal_unharm`: seat counts cannot be meaningfully summed across municipalities that merged, so the harmonized datasets (`municipal_harm`, `municipal_harm_25`) do not include them.
+
+| Variable | Type | Description |
+| :-- | :-- | :-- |
+| `seats_cdu_csu` | numeric | Council seats won by CDU/CSU. |
+| `seats_spd` | numeric | Council seats won by SPD. |
+| `seats_linke_pds` | numeric | Council seats won by Die Linke (or predecessor PDS). |
+| `seats_gruene` | numeric | Council seats won by GRÜNE. |
+| `seats_afd` | numeric | Council seats won by AfD. |
+| `seats_piraten` | numeric | Council seats won by Piratenpartei. |
+| `seats_fdp` | numeric | Council seats won by FDP. |
+| `seats_die_partei` | numeric | Council seats won by Die PARTEI. |
+| `seats_freie_wahler` | numeric | Council seats won by Freie Wähler. |
+| `seats_bsw` | numeric | Council seats won by BSW. |
+
+**Coverage.** Seat data exists only for the states and years where the source provides it, and is `NA` elsewhere. Present: Baden-Württemberg (1989–2024), Hessen (1993–2021), Thüringen (1994–2024), Nordrhein-Westfalen (1994–2025, kreisfreie Städte only from 2025), Brandenburg (2003–2024), Rheinland-Pfalz (2004–2019, excluding kreisfreie Städte), Schleswig-Holstein (2018 only), Mecklenburg-Vorpommern (2019, 2024), Niedersachsen (2021, eight kreisfreie Städte only), Bremen and Hamburg (2025 only). No seat data: Bayern, Berlin, Saarland, Sachsen, Sachsen-Anhalt.
+
+**Party seats do not sum to council size.** Only the ten major parties above have seat columns. Local voter groups (Wählergruppen), joint nominations, independent candidates, and smaller parties hold a substantial share of German local council seats but are not represented here, so the row sum of `seats_*` is a lower bound on council size, not the total. Two source-side seat categories (local voter groups and joint nominations) were held back from this release because of an unresolved cross-year labeling inconsistency in the Brandenburg source; they are a planned addition.
+
+---
+
+## County Council Seats (`county_council_seats`)
+
+**File:** `data/county_elections/final/county_council_seats.rds` (or `.csv`)
+
+Seat distributions in German county councils (Kreistage) and the councils of kreisfreie Städte, as a **yearly panel** covering 2008–2022 (400 counties × 15 years = 6,000 rows). This is a council-composition panel, not an election-result table: a county's seat distribution is repeated for every year until the next election changes it, so values are constant between elections. It is published separately from `county_elec_unharm` (which holds election-level Kreistagswahl vote results) for that reason.
+
+| Variable | Type | Description |
+| :-- | :-- | :-- |
+| `county` | character | County identifier (5-digit Kreisschlüssel; matches `county` in `county_elec_unharm`). |
+| `county_name` | character | Name of the county / kreisfreie Stadt. |
+| `county_type` | character | `"Landkreis"` or `"kreisfreie Stadt"`. |
+| `state` | character | State identifier (first two digits of `county`). |
+| `state_name` | character | State name (English). |
+| `year` | integer | Calendar year (2008–2022). |
+| `government_party` | character | Party of the county executive (Landrat / Oberbürgermeister); `"parteilos"` = independent. Inferred from the source column `Regierungspartei`; interpretation not documented upstream. |
+| `seats_total` | integer | Total council size. `NA` where the source left the total blank (38 rows). |
+| `seats_spd`, `seats_cdu_csu`, `seats_fdp`, `seats_gruene`, `seats_freie_wahler`, `seats_linke_pds`, `seats_afd` | integer | Seats won by SPD, CDU/CSU, FDP, GRÜNE, Freie Wähler, Die Linke, AfD. Blank in source = 0 seats. |
+| `seats_regional` | integer | Seats won by regional parties (e.g. SSW in Schleswig-Holstein). |
+| `seats_other` | integer | Seats won by all remaining parties combined. |
+| `flag_seats_total_incongruent` | logical | `TRUE` where `seats_total` does not equal the sum of the nine party columns (5 rows: Groß-Gerau 2011, Landkreis Heilbronn 2008, Donau-Ries 2020–2022). Discrepancies in the source, kept as recorded. |
+| `comment` | character | Free-text note from the source (`Kommentar`), if any. |
+| `source` | character | Source URL(s) for the row (`Quelle(n)`). |
+| `last_checked` | Date | Date the source entry was last verified. |
+
+**Notes.**
+
+- Provenance: hand-compiled dataset "Sitzverteilungen der Parteien 2008–2022" (v1.0.0) contributed by coauthor Vincent Heddesheimer; per-row source URLs are in `source`. No upstream codebook exists.
+- The ~45 detailed `Sonstige: <party>` columns in the raw file (a decomposition of `seats_other`) are not carried into the published panel; they remain in the raw CSV.
+- 328 of the 400 counties match a `county` code in `county_elec_unharm`; unmatched are chiefly the city-states (Hamburg, Bremen) and Rheinland-Pfalz counties, whose vote-level results are covered differently.
 
 ---
 
