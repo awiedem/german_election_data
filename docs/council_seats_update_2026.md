@@ -42,6 +42,10 @@ Two coverage points differ from the original plan's expectation and were checked
 
 County seats: 400 counties in every year 2008–2022 by construction (fixed current boundaries), with pre-existence years of reform-created counties left `NA` — see the boundary note above. Mecklenburg-Vorpommern 2008–2010 is `NA` throughout.
 
+### Design decision: why one fixed-boundary file, not per-year files with then-current units
+
+A per-year structure — one file per year holding that year's then-current set of counties — was considered and declined. It would be the more faithful representation of each year's reality, but it cannot be populated: the source `Sitzverteilungen` file contains only the ~400 current (post-reform) counties, and the county vote data `county_elec_unharm` likewise starts Mecklenburg-Vorpommern at 2014 on the eight current codes. The pre-reform councils (Mecklenburg-Vorpommern's 18 pre-2011 Landkreise, the separate pre-2016 Göttingen and Osterode, the separate pre-2009 city and Landkreis of Aachen) are not in the repository at all. A per-year file would therefore just relabel the same empty cells: for the ~27 reform-affected county-years the then-current units would carry no data, and we would drop the current-code `NA` rows and have nothing to put in their place. The single fixed-boundary file keeps identity aligned with `county_elec_unharm` and loses no information relative to the alternative. Revisit only if the pre-reform seat data is first collected from the state statistical offices cited in each row's `source` column; that is a separate data-collection task, not a restructuring.
+
 ## Validation
 
 Municipal, regression against the committed dataset: 82,354 rows unchanged; all 32 pre-existing columns byte-identical after a common sort; the only difference is the 10 added seat columns. All seat values are non-negative whole numbers.
