@@ -20444,6 +20444,7 @@ kommunalwahlen_merge <- kommunalwahlen_merge |>
     valid_votes,
     turnout,
     starts_with("prop_"),
+    starts_with("seats_"),
     starts_with("replaced")
   )
 
