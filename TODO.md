@@ -1,6 +1,6 @@
 # GERDA TODO / Status
 
-Tracking outstanding work on the German Election Database. Last updated: 2026-04-20.
+Tracking outstanding work on the German Election Database. Last updated: 2026-07-23.
 
 ---
 
@@ -117,6 +117,20 @@ Audited 2026-04-22 against current state of the data.
 - [ ] **Parquet export** (Sascha). Nice-to-have for smaller file sizes and faster downloads. No `.parquet` files in `data/` currently.
 - [ ] **Link to external datasets.** Cornelius's dataset, Julian Voss's 1949 dataset — future integration opportunity.
 - [ ] **Dissemination workflow.** Send a post via PolMeth / EPSA mailing lists when GERDA is updated with new elections.
+
+---
+
+### 8. Council seats follow-ups (merged to main 2026-07-23)
+
+The council-seats branch (`feat/council-seats`, merge commit `8b20142`) added ten `seats_*` columns to `municipal_unharm` and the `county_council_seats` panel (400 counties x 2008-2025). Change record: `docs/council_seats_update_2026.md`. Remaining items:
+
+- [ ] **Municipal voter-group seat columns (deferred).** Two columns (Wählergruppen, Gemeinsame Wahlvorschläge) are dropped by a `-contains()` step in `01_municipal_unharm.R` (~line 20205) AND are mislabeled at the source: Brandenburg 2003 vs 2008 write raw "Wählergruppen" seats into swapped output columns. Audit BB 2003/2008/2014/2019/2024 against official sources before exposing them.
+- [ ] **Ask Vincent:** (a) is `government_party` in the hand-compiled county seats file the Landrat's party? (currently inferred, not confirmed); (b) provenance/citation line for `Sitzverteilungen_der_Parteien_2008-2022_v1-0-0` for the codebook.
+- [ ] **Municipal seats coverage gaps** (optional extensions): RLP seats stop at 2019, SH at 2018 (newer elections need collection); no municipal seats at all for Bayern, Berlin, Sachsen.
+- [ ] **County seats pre-reform backfill** (optional): the panel uses fixed current county codes, so abolished pre-reform councils are absent (all of MV 2008-2010 is NA; same for pre-2009 Städteregion Aachen and pre-2016 LK Göttingen predecessors). Backfilling would require mapping abolished county councils.
+- [ ] **Refresh project `CLAUDE.md`.** Stale claims: "county elections: no processing code" (there are now unharm/harm_21/seats scripts and final datasets) and municipal coverage "1990-2021" (now 1984-2026 with seats columns).
+- [ ] **Website/package release alignment.** gerda R package catalog updated 2026-07-23 (dev version: `county_council_seats` exposed, municipal ranges corrected; 47 datasets). When the next package version ships, mirror the NEWS entry in the website `update-log.md` / `r-package.md` (see gerda repo `CLAUDE.md` for the checklist) — 0.7.1 is still pending at CRAN.
+- [ ] **Broken pointer file.** `meinungsbild/docs/methodology_notes.pdf` is a 130-byte Git-LFS pointer, not a real PDF (siblings `.qmd`/`.md`/`.html` are fine). Re-render from the `.qmd` or delete.
 
 **Confirmed done (for traceability):**
 
