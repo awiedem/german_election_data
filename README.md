@@ -72,6 +72,7 @@ GERDA includes federal, state, municipal, European, mayoral, and county (Kreista
 | County Elections          | Municipality         | 1990-2024        | Yes (2021)        | `county_elec_harm_21`        |
 | County Elections          | County (5-digit)     | 1990-2024        | Yes (2021)        | `county_elec_harm_21_cty`    |
 | County Elections          | Municipality         | 1991-2024        | Yes (2021)        | `county_elec_harm_21_muni`   |
+| County Council Seats      | County (5-digit)     | 2008-2025        | No                | `county_council_seats`       |
 | Mayoral Elections         | Municipality         | 1945-2025        | No                | `mayoral_unharm`             |
 | Mayoral Elections         | Municipality         | 1945-2025        | Yes (2021)        | `mayoral_harm`               |
 | Mayoral Elections         | Municipality (cand.) | 1945-2025        | No                | `mayoral_candidates`         |

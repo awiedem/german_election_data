@@ -492,7 +492,7 @@ A `02_mayoral_harm.R` script has not yet been written.
 
 ### Pipeline status
 
-Processing code exists in `code/county_elections/01_county_elec_unharm.R` (Stage 1 — unharm) and `02_county_elec_harm_21.R` (Stage 2 — harmonized to 2021 boundaries, split into `_muni` municipality-level and `_cty` county-level outputs). Work in progress; multiple states implemented (see table below).
+Processing code exists in `code/county_elections/01_county_elec_unharm.R` (Stage 1 — unharm) and `02_county_elec_harm_21.R` (Stage 2 — harmonized to 2021 boundaries, split into `_muni` municipality-level and `_cty` county-level outputs). A separate script `03_county_seats.R` builds a county-year council-composition panel (see below). Work in progress; multiple states implemented (see table below).
 
 **Script:** `01_county_elec_unharm.R`
 **Output:** `data/county_elections/final/county_elec_unharm.{rds,csv}`
@@ -531,6 +531,12 @@ Processing code exists in `code/county_elections/01_county_elec_unharm.R` (Stage
 | Rheinland-Pfalz (RLP) | ZIP archive | 1 archive |
 | Saarland (SAR) | PDF | Requires OCR |
 | Schleswig-Holstein (SH) | PDF | Requires OCR |
+
+### County council seats panel (`03_county_seats.R`)
+
+Separate from the Kreistagswahl vote pipeline. The script reads the hand-compiled 2008–2022 file and parses cached official seat results for Schleswig-Holstein 2023, Baden-Württemberg, Brandenburg, Mecklenburg-Vorpommern, Rheinland-Pfalz, Saarland, Sachsen, Sachsen-Anhalt, and Thüringen 2024, and Nordrhein-Westfalen 2025. It produces `data/county_elections/final/county_council_seats.{rds,csv}`, a balanced yearly panel of council composition with 400 counties × 18 years (2008–2025). It carries each seat vector forward until the next election and leaves `government_party` missing in the new years rather than inferring it from seat pluralities.
+
+Each parser must return one normalized row per county, use five-digit county codes, and map all labels into the existing nine public seat categories. The build stops on unknown or duplicate codes, nonnumeric or negative seats, unexpected state-year counts, changed source schemas, or a new official row whose party seats do not sum to its council total. The script also reconstructs Rheinland-Pfalz 2019 from the same official report as an overlap audit. Three documented discrepancies with the frozen hand-compiled panel are retained; any change to that discrepancy set stops the build. See `docs/county_seats_coverage_2025.md` for sources, exceptions, and spot checks.
 
 ---
 
