@@ -58,3 +58,33 @@ data/state_elections/raw/Landtagswahlen/Brandenburg/bb_1994_vision_responses/
 
 # R transient output
 Rplots.pdf
+code/mayoral_elections/__pycache__/
+
+# Mayoral scraper HTML/JSON caches (regenerable via the 00_*_scrape.py scripts; the
+# committed artifacts are the parsed *_scraped.csv / *_parsed.csv. TH cache ~107MB).
+data/mayoral_elections/raw/**/html_cache*/
+data/mayoral_elections/raw/**/komm_one_cache/
+
+# Signed personal-data transmission declaration for the Sachsen-Anhalt StaLA mayoral
+# extract (DSGVO/Versicherung paperwork — contains personal info, not source data).
+data/mayoral_elections/raw/sachsen_anhalt/Versicherung zur Übermittlung von personenbezogenen Daten.*
+
+# Nested-duplicate Kreistagswahlen dir — byte-identical to its parent and marked
+# com.dropbox.ignored so Dropbox stops syncing it across machines. Belt-and-suspenders
+# gitignore keeps it out of `git status` if a client without the xattr recreates it.
+data/county_elections/raw/Kreistagswahlen/Kreistagswahlen/
+
+# Word/Excel lock files (e.g. "~$document.docx")
+~$*
+
+# Sachsen-Anhalt mayoral RAW + intermediate files carry full candidate names.
+# The Statistisches Landesamt supplies them for SCIENTIFIC USE ONLY; only
+# anonymised data may be published ("analog zu den bayerischen Daten"), and
+# § 80 KWO LSA bars publishing Wahlvorschlag data >6 months after the result.
+# The published outputs (mayoral_candidates etc.) name only the ELECTED person.
+# These stay on disk so the pipeline runs; they are never redistributed.
+data/mayoral_elections/raw/sachsen_anhalt/2026_0661_BM-Wahl_ab_1994.xlsx
+data/mayoral_elections/raw/sachsen_anhalt/bmbm.csv
+data/mayoral_elections/raw/sachsen_anhalt/st_stala_parsed.csv
+data/mayoral_elections/raw/sachsen_anhalt/st_bmbm_parsed.csv
+data/mayoral_elections/raw/sachsen_anhalt/st_bm_parsed.csv

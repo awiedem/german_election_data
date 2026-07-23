@@ -10,7 +10,11 @@ options(scipen = 999)
 pacman::p_load("tidyverse", "data.table", "readxl", "haschaR")
 conflict_prefer("filter", "dplyr")
 
-raw_dir <- "data/county_elections/raw/Kreistagswahlen/Kreistagswahlen"
+# NB: this used to point at a nested `Kreistagswahlen/Kreistagswahlen/` copy that
+# duplicated its parent. That copy is now marked com.dropbox.ignored (and
+# gitignored) so it no longer syncs, leaving it empty — the raw files live in the
+# directory below.
+raw_dir <- "data/county_elections/raw/Kreistagswahlen"
 
 
 # --- Helper functions -------------------------------------------------------
@@ -243,6 +247,25 @@ normalise_party_cty <- function(x) {
     "oedpuwv"                     = "oedp_uwv",
     "\u00f6dpuwv"                 = "oedp_uwv",
     "pdsuwv"                      = "pds_uwv",
+
+    # BW Kreistagswahl 2024 (GENESIS 14411): joint-list Wahlvorschl\u00e4ge of the
+    # form "<party> und W\u00e4hlervereinigungen" fold into the base party (matching
+    # the parse_bw_format_b own-list + joint-list summing convention); the
+    # residual local-list bloc maps to the long-running waehlervereinigungen col.
+    "sonstige w\u00e4hlervereinigungen"       = "waehlervereinigungen",
+    "cdu und w\u00e4hlervereinigungen"        = "cdu",
+    "fdp und w\u00e4hlervereinigungen"        = "fdp",
+    "gr\u00fcne und w\u00e4hlervereinigungen" = "gruene",
+    "die linke und w\u00e4hlervereinigungen"  = "linke_pds",
+    "\u00f6dp und w\u00e4hlervereinigungen"   = "oedp",
+    "dkp und w\u00e4hlervereinigungen"        = "dkp",
+    "linksorientierte listen"                 = "linksorientierte_listen",
+    "klimaliste"                              = "klimaliste",
+    "volt - \u00f6dp"                         = "volt_oedp",
+    "liste der jungen union"                  = "junge_union",
+    "statt partei die unabh\u00e4ngigen"      = "statt_partei",
+    "die grauen - graue panther"              = "graue",
+    "die gerechtigkeitspartei - team todenh\u00f6fer" = "team_todenhofer",
 
     # NI-specific
     "b\u00fcndnis c"              = "buendnis_c",
@@ -606,7 +629,7 @@ df_st <- df_st |> select(-kreisschluessel, -kreis_name)
 
 cat("\n===== THÜRINGEN =====\n")
 
-th_dir <- file.path(raw_dir, "Th++ringen")
+th_dir <- file.path(raw_dir, "Thüringen")
 
 #' Parse a single TH XLSX sheet (one Kreis)
 #' Format: row 6 has party names; G rows = Gemeinde level
@@ -751,12 +774,12 @@ parse_th_xlsx <- function(filepath, year) {
 
 # Process TH years (skip 1990/1994/1999 .xls for now)
 th_files <- list(
-  list(year = 2004, file = "Th++ringen_2004_Kreistagswahl.xlsx"),
-  list(year = 2009, file = "Th++ringen_2009_Kreistagswahl.xlsx"),
-  list(year = 2014, file = "Th++ringen_2014_Kreistagswahl.xlsx"),
-  list(year = 2019, file = "Th++ringen_2019_Kreistagswahl.xlsx"),
-  list(year = 2021, file = "Th++ringen_2021_Kreistagswahl.xlsx"),
-  list(year = 2024, file = "Th++ringen_2024_Kreistagswahl.xlsx")
+  list(year = 2004, file = "Thüringen_2004_Kreistagswahl.xlsx"),
+  list(year = 2009, file = "Thüringen_2009_Kreistagswahl.xlsx"),
+  list(year = 2014, file = "Thüringen_2014_Kreistagswahl.xlsx"),
+  list(year = 2019, file = "Thüringen_2019_Kreistagswahl.xlsx"),
+  list(year = 2021, file = "Thüringen_2021_Kreistagswahl.xlsx"),
+  list(year = 2024, file = "Thüringen_2024_Kreistagswahl.xlsx")
 )
 
 th_results <- list()
@@ -1656,6 +1679,94 @@ for (yr in by_years) {
   }
 }
 
+# -----------------------------------------------------------------------------
+# BY 2026 — Kommunalwahl of 8 March 2026, from the Landesamt results portal
+# -----------------------------------------------------------------------------
+# The 1984-2020 series comes from GENESIS table 14411-001r as XLSX pairs. For
+# 2026 the Landesamt publishes machine-readable XML instead, at
+# kommunalwahl2026.bayern.de/downloads.html (with XSD schemas). The Gremienwahl
+# file covers exactly the 96 units this dataset already holds: 71 Kreistage plus
+# the 25 Stadträte of the kreisfreie Städte. (Gemeinderatswahlen of the ~2,000
+# kreisangehörige Gemeinden are NOT in the bulk download — only browsable per
+# municipality — so municipal_elections cannot be extended from this source.)
+#
+# Bavarian council elections are cumulative (Kumulieren/Panaschieren), so the
+# file reports both raw cumulative votes (Stimmen_absolut) and ballot-equivalent
+# weighted votes (Gewichtete_Stimmen). The 1984-2020 series uses the weighted
+# figures, and so do we: Gewichtete_Stimmen + Ungueltige_Stimmzettel == Waehler
+# holds exactly for all 96 units.
+#
+# Unlike the XLSX series, the XML lists every individual Wahlvorschlag rather
+# than a pre-aggregated "Wählergruppen" bucket. To keep Bayern internally
+# consistent, recognised parties keep their own column and every local list
+# folds into `waehlergruppen`, mirroring the earlier years. Coalition labels
+# ("FREIE WÄHLER/Freie Wähler Ingolstadt", "ÖDP/Parteifreie") are attributed to
+# their leading party.
+by_xml_file <- file.path(by_dir, "Bayern_2026_Gremien_Komplett.xml")
+
+if (file.exists(by_xml_file)) {
+  cat("  Reading BY 2026 (XML) ...\n")
+  suppressMessages(library(xml2))
+
+  by26_num <- function(x) suppressWarnings(as.numeric(gsub("[^0-9.-]", "", x)))
+  # Parties that keep their own column in Bayern; everything else is a local
+  # list and folds into waehlergruppen.
+  by26_keep <- c("csu", "spd", "afd", "gruene", "linke_pds", "fdp", "oedp",
+                 "freie_waehler", "bp", "volt", "die_partei", "rep", "bsw",
+                 "mut", "v_partei3", "piraten", "die_franken", "tierschutz")
+
+  by26_col <- function(raw) {
+    n <- normalise_party_cty(raw)
+    if (n %in% by26_keep) return(n)
+    # coalition label: attribute to the leading party if recognised
+    lead <- normalise_party_cty(trimws(strsplit(raw, "/", fixed = TRUE)[[1]][1]))
+    if (lead %in% by26_keep) return(lead)
+    "waehlergruppen"
+  }
+
+  by26_doc <- read_xml(by_xml_file)
+  by26_units <- xml_find_all(by26_doc, ".//Regionaleinheit")
+
+  by26_rows <- lapply(by26_units, function(u) {
+    key <- xml_attr(u, "Schluesselnummer")
+    w   <- xml_find_first(u, "Wahl")
+    ag  <- xml_find_first(w, "Allgemeine_Angaben")
+    se  <- xml_find_first(w, "Stimmenergebnis")
+    zus <- xml_find_first(se, "Wahlvorschlaege_zusammen")
+    ung <- xml_find_first(se, "Ungueltige_Stimmzettel")
+    wv  <- xml_find_all(se, "Wahlvorschlag")
+
+    shares <- by26_num(xml_text(xml_find_first(wv, "Gewichtete_Stimmen_Anteil"))) / 100
+    cols   <- vapply(xml_text(xml_find_first(wv, "Bezeichnung")), by26_col,
+                     character(1), USE.NAMES = FALSE)
+    agg <- tapply(shares, cols, sum, na.rm = TRUE)
+
+    base <- data.frame(
+      ags = paste0("09", formatC(as.integer(key), width = 3, flag = "0"), "000"),
+      ags_name = xml_text(xml_find_first(ag, "Name_der_Regionaleinheit")),
+      eligible_voters = by26_num(xml_text(xml_find_first(ag, "Stimmberechtigte"))),
+      number_voters   = by26_num(xml_text(xml_find_first(ag, "Waehler"))),
+      valid_votes     = by26_num(xml_text(xml_find_first(zus, "Gewichtete_Stimmen"))),
+      invalid_votes   = by26_num(xml_text(xml_find_first(ung, "Anzahl"))),
+      stringsAsFactors = FALSE
+    )
+    for (nm in names(agg)) base[[nm]] <- unname(agg[[nm]])
+    base
+  })
+
+  df_by26 <- bind_rows(by26_rows)
+  df_by26$turnout <- ifelse(df_by26$eligible_voters > 0,
+                            df_by26$number_voters / df_by26$eligible_voters, NA_real_)
+  df_by26$county <- substr(df_by26$ags, 1, 5)
+  df_by26$state <- "09"
+  df_by26$election_year <- 2026
+
+  cat("    ->", nrow(df_by26), "units (Kreistage + Stadträte)\n")
+  by_results[["2026"]] <- as_tibble(df_by26)
+} else {
+  cat("  Skipping BY 2026 - XML not found\n")
+}
+
 df_by <- bind_rows(by_results)
 cat("BY total:", nrow(df_by), "rows x", ncol(df_by), "cols\n")
 cat("BY years:", paste(sort(unique(df_by$election_year)), collapse = ", "), "\n")
@@ -2181,6 +2292,67 @@ if (file.exists(he_2021_csv)) {
   }, error = function(e) cat("    ERROR in HE 2021 CSV:", conditionMessage(e), "\n"))
 }
 
+# --- HE 2026 Kreistagswahl (15 March 2026), Landeswahlleiter / 23degrees portal ---
+# Clean per-Gemeinde CSV (row 1 title, row 2 headers, row 3 position numbers, row 4+
+# data). Party vote counts are in "<party> absolut" columns; local Wählergruppen
+# (WG1, WG2, …) are position-indexed per Gemeinde and summed into `waehlergruppen`.
+# Kept rows = individual Gemeinden (Gebietstyp "VF"); the LK aggregate rows
+# (Gebietstyp "LK") are dropped, matching the existing Gemeinde-level HE structure.
+he_2026_csv <- file.path(he_dir, "Hessen_2026_Kreiswahl_portal.csv")
+if (file.exists(he_2026_csv)) {
+  cat("  Reading HE 2026 Kreiswahl CSV...\n")
+  tryCatch({
+    he26_lines <- readLines(he_2026_csv, encoding = "UTF-8", warn = FALSE)
+    he26_headers <- gsub('^"|"$', '', trimws(strsplit(he26_lines[2], ";")[[1]]))
+    # line 1 = title, line 2 = column headers, data from line 3 (NO position-number
+    # row); keep only rows whose Gebietsschlüssel is numeric.
+    he26_rows <- lapply(strsplit(he26_lines[3:length(he26_lines)], ";"),
+                        function(r) { r <- gsub('^"|"$', '', r); length(r) <- length(he26_headers); r })
+    he26_rows <- he26_rows[vapply(he26_rows,
+                        function(r) grepl("^[0-9]{6,}$", gsub("[^0-9]", "", r[1])), logical(1))]
+    he26_df <- as.data.frame(do.call(rbind, he26_rows), stringsAsFactors = FALSE)
+    names(he26_df) <- he26_headers
+
+    # individual Gemeinden only (drop Landkreis "LK" / Land aggregates)
+    he26_df <- he26_df[trimws(he26_df[["Gebietstyp"]]) == "VF", ]
+    gs <- gsub("[^0-9]", "", he26_df[["Gebietsschlüssel"]])           # 9-digit
+    ags26 <- paste0("06", substr(gs, nchar(gs) - 5L, nchar(gs)))      # 06 + last 6
+    numcol <- function(nm) suppressWarnings(as.numeric(gsub("[^0-9]", "", he26_df[[nm]])))
+
+    df_26 <- data.frame(
+      ags = ags26, ags_name = trimws(he26_df[["Gebietsbezeichnung"]]),
+      state = "06", election_year = 2026L, county = substr(ags26, 1, 5),
+      stringsAsFactors = FALSE)
+    df_26$eligible_voters <- numcol("Wahlberechtigte")
+    df_26$number_voters   <- numcol("Wählerinnen und Wähler")
+    df_26$valid_votes     <- numcol("Gültige Stimmen")               # cast votes (Kumulieren)
+    df_26$turnout <- ifelse(!is.na(df_26$eligible_voters) & df_26$eligible_voters > 0,
+                            df_26$number_voters / df_26$eligible_voters, NA_real_)
+
+    wg_sum <- rep(0, nrow(he26_df)); wg_any <- rep(FALSE, nrow(he26_df))
+    for (h in he26_headers) {
+      if (!grepl(" absolut$", h)) next
+      pn <- sub(" absolut$", "", h)
+      vals <- suppressWarnings(as.numeric(gsub("[^0-9]", "", he26_df[[h]])))
+      if (all(is.na(vals) | vals == 0)) next
+      if (grepl("^WG\\d+$", pn)) {                                    # local Wählergruppe
+        wg_sum <- wg_sum + ifelse(is.na(vals), 0, vals); wg_any <- wg_any | !is.na(vals); next
+      }
+      pname <- normalise_party_cty(tolower(clean_header(pn)))
+      sh <- ifelse(!is.na(df_26$valid_votes) & df_26$valid_votes > 0, vals / df_26$valid_votes, NA_real_)
+      df_26[[pname]] <- if (!is.null(df_26[[pname]]))                 # combine on rare name collision
+        rowSums(cbind(df_26[[pname]], sh), na.rm = TRUE) else sh
+    }
+    if (any(wg_any)) {
+      wg_sum[!wg_any] <- NA_real_
+      df_26[["waehlergruppen"]] <- ifelse(!is.na(df_26$valid_votes) & df_26$valid_votes > 0,
+                                          wg_sum / df_26$valid_votes, NA_real_)
+    }
+    cat("    -> 2026:", nrow(df_26), "Gemeinden\n")
+    he_results[["2026"]] <- as_tibble(df_26)
+  }, error = function(e) cat("    ERROR in HE 2026 CSV:", conditionMessage(e), "\n"))
+}
+
 df_he <- bind_rows(he_results)
 
 # Remove Landkreis aggregate rows (AGS ending in "000") where municipality-level
@@ -2208,6 +2380,25 @@ df_he |> count(election_year) |> print()
 cat("\n===== BADEN-WÜRTTEMBERG =====\n")
 
 bw_dir <- "data/county_elections/raw/local_elections_bw"
+
+#' BW Kreistag pre-2024: assign the uncaptured residual (the local
+#' Wählervereinigungen bloc, ~25% in BW Kreistag) to the waehlervereinigungen
+#' SHARE column. The 2004-2019/1994/1999 source tables break out only named
+#' parties, so per-Kreis shares otherwise sum to ~0.75; this makes them sum to
+#' ~1.0 and yields a local-list series consistent with the 2024 GENESIS data,
+#' which lists "Sonstige Wählervereinigungen" explicitly. Operates on already-
+#' computed share columns; named-party shares are unchanged. (Not applied to the
+#' 2024 parser, which captures the full Wahlvorschlag set → shares already = 1.0.)
+bw_add_wv_residual <- function(df) {
+  meta <- c("ags", "ags_name", "eligible_voters", "number_voters", "valid_votes",
+            "invalid_votes", "turnout", "county", "state", "election_year",
+            "waehlervereinigungen")
+  pcols <- setdiff(names(df), meta)
+  captured <- rowSums(df[, pcols, drop = FALSE], na.rm = TRUE)
+  df$waehlervereinigungen <- ifelse(!is.na(df$valid_votes) & df$valid_votes > 0,
+                                    pmax(1 - captured, 0), NA_real_)
+  df
+}
 
 #' Parse BW Format B (1994, 2004-2019): multi-row per Kreis
 parse_bw_format_b <- function(filepath, year) {
@@ -2318,6 +2509,7 @@ parse_bw_format_b <- function(filepath, year) {
                        df[[pc]] / df$valid_votes, NA_real_)
   }
 
+  df <- bw_add_wv_residual(df)
   df$turnout <- ifelse(!is.na(df$eligible_voters) & df$eligible_voters > 0,
                        df$number_voters / df$eligible_voters, NA_real_)
   df$county <- substr(df$ags, 1, 5)
@@ -2377,6 +2569,7 @@ parse_bw_1999 <- function(filepath) {
                           vals / df$valid_votes, NA_real_)
   }
 
+  df <- bw_add_wv_residual(df)
   df$turnout <- ifelse(!is.na(df$eligible_voters) & df$eligible_voters > 0,
                        df$number_voters / df$eligible_voters, NA_real_)
   df$county <- substr(df$ags, 1, 5)
@@ -2426,6 +2619,7 @@ parse_bw_1994 <- function(filepath) {
                           vals / df$valid_votes, NA_real_)
   }
 
+  df <- bw_add_wv_residual(df)
   df$turnout <- ifelse(!is.na(df$eligible_voters) & df$eligible_voters > 0,
                        df$number_voters / df$eligible_voters, NA_real_)
   df$county <- substr(df$ags, 1, 5)
@@ -2434,6 +2628,64 @@ parse_bw_1994 <- function(filepath) {
 
   cat("    ->", nrow(df), "Kreise\n")
   as_tibble(df)
+}
+
+#' Parse BW Kreistagswahl 2024 from GENESIS Flachdatei (14411_0002)
+#' Kreis-level long format (Latin-1, ";"-sep). Only the 35 Landkreise hold a
+#' Kreistagswahl; the 9 Stadtkreise appear with all-"-" rows and are dropped.
+#' Party vote = "Gültige Stimmen bei Verhältniswahl" (raw cumulative votes) and
+#' valid_votes = their per-Kreis sum, matching the share basis of the prior
+#' XLSX years (parse_bw_format_b). This table carries no Wahlberechtigte /
+#' Wähler / ungültige, so eligible_voters / number_voters / invalid_votes /
+#' turnout are NA. Party label → token uses the trailing-"(...)" Kurzbezeichnung.
+parse_bw_kt_genesis <- function(filepath, year = 2024L) {
+  cat("  Reading BW", year, "Kreistag (GENESIS flat)...\n")
+  d <- fread(filepath, sep = ";", header = TRUE, encoding = "Latin-1",
+             colClasses = "character", quote = "")
+  setnames(d, c("1_variable_attribute_code", "2_variable_attribute_label",
+                "value_variable_label"), c("geo", "party_raw", "vvar"))
+  d <- d[grepl("KRSI$", geo)]                       # Kreise only (drop "08LA" Land)
+  d <- d[vvar == "Gültige Stimmen bei Verhältniswahl" & value_unit == "Anzahl"]
+  d[, party_raw := enc2utf8(party_raw)]
+  d[, ags := paste0(substr(geo, 1, 5), "000")]
+  g_num <- function(v) {
+    v <- trimws(v); v[v %in% c("-", ".", "x", "/", "...", "")] <- NA_character_
+    as.numeric(gsub(",", ".", gsub("\\.", "", v)))
+  }
+  d[, votes := g_num(value)]
+  d <- d[!is.na(votes)]                              # "-" = list not on this Kreis ballot
+  g_kurz <- function(label) {
+    m <- regmatches(label, regexpr("\\(([^()]+)\\)\\s*$", label))
+    if (length(m) == 0L || !nzchar(m)) return(label)
+    sub("^\\((.*)\\)\\s*$", "\\1", m)
+  }
+  toks <- vapply(unique(d$party_raw),
+                 function(l) normalise_party_cty(tolower(trimws(g_kurz(l)))),
+                 character(1))
+  d[, token := toks[party_raw]]
+
+  # per-Kreis valid total = sum of all list votes (mutually exclusive Wahlvorschläge)
+  tot <- d[, .(valid_votes = sum(votes, na.rm = TRUE)), by = ags]
+  tot <- tot[valid_votes > 0]                        # Stadtkreise have no Kreistag
+  pc  <- dcast(d[ags %in% tot$ags], ags ~ token, value.var = "votes",
+               fun.aggregate = function(x) sum(x, na.rm = TRUE), fill = NA_real_)
+  df  <- merge(tot, pc, by = "ags")
+  party_cols <- setdiff(names(df), c("ags", "valid_votes"))
+
+  out <- data.frame(ags = df$ags, ags_name = NA_character_,
+                    eligible_voters = NA_real_, number_voters = NA_real_,
+                    valid_votes = df$valid_votes, invalid_votes = NA_real_,
+                    stringsAsFactors = FALSE, check.names = FALSE)
+  for (p in party_cols) {
+    out[[p]] <- ifelse(!is.na(df$valid_votes) & df$valid_votes > 0,
+                       df[[p]] / df$valid_votes, NA_real_)
+  }
+  out$turnout       <- NA_real_
+  out$county        <- substr(out$ags, 1, 5)
+  out$state         <- "08"
+  out$election_year <- as.integer(year)
+  cat("    ->", nrow(out), "Kreise\n")
+  as_tibble(out)
 }
 
 # Process BW files
@@ -2450,6 +2702,14 @@ for (yr in c(2004, 2009, 2014, 2019)) {
   bw_results[[as.character(yr)]] <- tryCatch(
     parse_bw_format_b(file.path(bw_dir, paste0("Kreisergebnisse_KW_", yr, ".xlsx")), yr),
     error = function(e) { cat("  BW", yr, "ERROR:", conditionMessage(e), "\n"); NULL }
+  )
+}
+# 2024 Kreistagswahl from GENESIS flat file (StaLA table 14411_0002)
+bw_kt24_file <- file.path(bw_dir, "KTW2024_14411_0002_kreis_stimmen_flat.csv")
+if (file.exists(bw_kt24_file)) {
+  bw_results[["2024"]] <- tryCatch(
+    parse_bw_kt_genesis(bw_kt24_file, 2024L),
+    error = function(e) { cat("  BW 2024 ERROR:", conditionMessage(e), "\n"); NULL }
   )
 }
 bw_results <- bw_results[!sapply(bw_results, is.null)]

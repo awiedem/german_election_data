@@ -13132,9 +13132,77 @@ hessen_2021_gemeinderatswahl_data_sub$Turnout <- hessen_2021_gemeinderatswahl_da
   hessen_2021_gemeinderatswahl_data_sub$Wahlberechtigteinsgesamt
 
 
+###### Hessen 2026 Gemeindevertretungswahl (15 March 2026) ----
+# Source: Landeswahlleiter / 23degrees portal (semicolon CSV: row1 title, row2 headers,
+# row3 position numbers, row4+ data). Party vote counts are in "<party> absolut" columns;
+# these are CUMULATIVE Kumulieren/Panaschieren votes (GültigeStimmen >> Wähler). AGS_8dig
+# is the 6-digit code (the "06" prefix is added at the Hessen merge below). BSW (new in
+# 2026) is broken out; Volt + minor parties + local Wählergruppen fold into "other" at the
+# global merge step. read via readLines (quoted, BOM CSV; line 1 = title, line 2 =
+# column headers, data from line 3 — there is NO separate position-number row).
+# Keep only rows whose Gebietsschlüssel is numeric (robust to any stray rows).
+he26m_lines <- readLines(
+  "raw/Hessen_2026_portal/Wahlergebnisse_Gemeindewahl2026_Hessen.csv",
+  encoding = "UTF-8", warn = FALSE)
+he26m_hdr <- gsub('^"|"$', '', trimws(strsplit(he26m_lines[2], ";")[[1]]))
+he26m_rows <- lapply(strsplit(he26m_lines[3:length(he26m_lines)], ";"),
+                     function(r) { r <- gsub('^"|"$', '', r); length(r) <- length(he26m_hdr); r })
+he26m_rows <- he26m_rows[vapply(he26m_rows,
+                     function(r) grepl("^[0-9]{6,}$", gsub("[^0-9]", "", r[1])), logical(1))]
+he26m <- as.data.table(do.call(rbind, he26m_rows))
+setnames(he26m, he26m_hdr)
+# Drop Gemeinden that held a Mehrheitswahl (no party lists submitted): the portal
+# reports no party-vote results for them (Gültige Stimmen blank), so they carry no
+# proportional shares. (2 in 2026: Wohratal, Rasdorf.)
+he26m <- he26m[grepl("[0-9]", `Gültige Stimmen`)]
+
+.he26_gs <- gsub("[^0-9]", "", he26m[["Gebietsschlüssel"]])
+.he26_a6 <- substr(.he26_gs, nchar(.he26_gs) - 5L, nchar(.he26_gs))  # 6-digit; "06" added at merge
+.he26_a6[.he26_a6 == "415000"] <- "435014"  # Hanau: portal codes it as pseudo-kreisfrei 415000
+.he26_num <- function(nm) suppressWarnings(as.numeric(gsub("[^0-9]", "", he26m[[nm]])))
+hessen_2026_gemeinderatswahl_data_sub <- data.table(
+  AGS_8dig = .he26_a6,
+  Bundesland = "Hessen",
+  Gebietsname = trimws(he26m[["Gebietsbezeichnung"]]),
+  election_year = "2026",
+  election_type = "Kommunalwahlen",
+  IDIRB = "", IDBA = "",
+  Wahlberechtigteinsgesamt = .he26_num("Wahlberechtigte"),
+  Wähler = .he26_num("Wählerinnen und Wähler"),
+  GültigeStimmen = .he26_num("Gültige Stimmen"),
+  abs_CDU = .he26_num("CDU absolut"),
+  abs_SPD = .he26_num("SPD absolut"),
+  abs_DIELINKE = .he26_num("Die Linke absolut"),
+  abs_GRÜNE = .he26_num("GRÜNE absolut"),
+  abs_AfD = .he26_num("AfD absolut"),
+  abs_PIRATEN = .he26_num("PIRATEN absolut"),
+  abs_FDP = .he26_num("FDP absolut"),
+  abs_DiePARTEI = .he26_num("Die PARTEI absolut"),
+  abs_FREIEWÄHLER = .he26_num("FREIE WÄHLER absolut"),
+  abs_BSW = .he26_num("BSW absolut")
+)
+# vote shares (same idiom as the per-year blocks above)
+hessen_2026_gemeinderatswahl_data_sub <-
+  hessen_2026_gemeinderatswahl_data_sub %>%
+  mutate_at(
+    vars(contains('abs')),
+    .funs = list(XXX = ~ . / as.numeric(GültigeStimmen))
+  ) %>%
+  rename_at(
+    vars(matches("abs") & matches("X")),
+    list(~ paste(sub("abs_", "prop_", .), sep = "_"))
+  ) %>%
+  rename_at(vars(matches("_XXX")), list(~ paste(sub("_XXX", "", .), sep = "")))
+hessen_2026_gemeinderatswahl_data_sub$Turnout <-
+  hessen_2026_gemeinderatswahl_data_sub$Wähler /
+  hessen_2026_gemeinderatswahl_data_sub$Wahlberechtigteinsgesamt
+
+
 ####### Merge files and save overall output for Hessen ----
-# Merge
-hessen_kommunalwahlen <- rbind(
+# Merge. rbindlist(fill = TRUE) coerces differing column types across the year
+# blocks (as the original base rbind did) AND fills NA for the BSW columns that
+# exist only from 2026 on.
+hessen_kommunalwahlen <- as.data.frame(data.table::rbindlist(list(
   hessen_1989_gemeinderatswahl_data_sub,
   hessen_1993_gemeinderatswahl_data_sub,
   hessen_1997_gemeinderatswahl_data_sub,
@@ -13142,8 +13210,9 @@ hessen_kommunalwahlen <- rbind(
   hessen_2006_gemeinderatswahl_data_sub,
   hessen_2011_gemeinderatswahl_data_sub,
   hessen_2016_gemeinderatswahl_data_sub,
-  hessen_2021_gemeinderatswahl_data_sub
-)
+  hessen_2021_gemeinderatswahl_data_sub,
+  hessen_2026_gemeinderatswahl_data_sub
+), fill = TRUE))
 
 # Replace - with NA
 hessen_kommunalwahlen[hessen_kommunalwahlen == "-"] <- NA

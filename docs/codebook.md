@@ -104,7 +104,7 @@ This dataset contains federal election results from 1990 to 2025 at the municipa
 
 **File:** `data/state_elections/final/state_unharm.rds` (or `.csv`)
 
-This dataset contains state election results from 1946 to 2024 at the municipality level, using each election year's original administrative boundaries. Covers all 16 German states with 126,989 rows and 439 columns (426 individual party columns).
+This dataset contains state election results from 1946 to 2026 at the municipality level, using each election year's original administrative boundaries. Covers all 16 German states, with each party that ever ran preserved as its own column.
 
 | Variable                        | Type      | Description                                                                                                                                    |
 | :------------------------------ | :-------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -125,6 +125,7 @@ This dataset contains state election results from 1946 to 2024 at the municipali
 **Notes:**
 
 - **Bayern (BY)** uses Gesamtstimmen (Erst+Zweitstimme combined). Both ballots count equally for proportional seat allocation and the 5% threshold. Party vote shares are proportions of Gesamtstimmen. The identity `valid_votes + invalid_votes = number_voters × 2` holds for BY 1950+. The 1946 election was single-ballot.
+- **Baden-Württemberg (BW) 2026** is the first BW Landtagswahl under the new **two-vote system** (Erst-/Zweitstimme). GERDA records the **Zweitstimme** (Landeslistenstimme) — the proportional list vote — as each party's vote, continuing the single-vote series of BW 1956–2021. `valid_votes`/`invalid_votes`/turnout are likewise the Zweitstimme figures. Source: Statistisches Landesamt BW GENESIS tables 14311_0009 (votes) + 14311_0008 (turnout).
 - **Hamburg (HH) 2011+ and Bremen (HB) 2011+** use a 5-vote personalized-list system (Kumulieren/Panaschieren): each voter casts 5 Landesstimmen, which can be cumulated on one candidate or split across candidates and lists. GERDA reports party shares as proportions of cast Landesstimmen, so `valid_votes ≈ 5 × number_voters`. Shares sum to 1 within a municipality and are comparable across HH (or HB) municipalities, but the per-voter denominator differs from single-ballot states. Earlier HH/HB elections used a single-vote system.
 - **NRW 1947–1970**: County-level only (synthetic AGS `050xx000`). Cannot be harmonized; only in unharm.
 - **HH 1982**: Two elections (June + December) — both rows present, distinguished by `election_date`.
@@ -133,7 +134,7 @@ This dataset contains state election results from 1946 to 2024 at the municipali
 
 **Files:** `data/state_elections/final/state_harm_21.rds`, `state_harm_23.rds`, `state_harm_25.rds` (or `.csv`)
 
-State election results from 1990 to 2024 harmonized to fixed administrative boundaries (2021, 2023, or 2025) using population-weighted crosswalks. 67,393–67,613 rows, 451 columns.
+State election results from 1990 to 2026 harmonized to fixed administrative boundaries (2021, 2023, or 2025) using population-weighted crosswalks. BW 2026 (a 2025-vintage boundary year) maps onto each target via the year−1 crosswalk fallback; BW had no Gemeinde mergers in this window, so the mapping is effectively identity and totals are conserved exactly.
 
 | Variable                        | Type      | Description                                                                                                                                    |
 | :------------------------------ | :-------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -353,7 +354,7 @@ This dataset provides yearly time-series data for basic municipality characteris
 
 **File:** `data/mayoral_elections/final/mayoral_candidates.rds` or `data/mayoral_elections/final/mayoral_candidates.csv`
 
-This dataset contains candidate-level results for mayoral elections in 7 German states (Bayern, Niedersachsen, Nordrhein-Westfalen, Rheinland-Pfalz, Saarland, Sachsen, Schleswig-Holstein), 1945--2025. One row per candidate per election cycle (wide format, with both Hauptwahl and Stichwahl results in columns). Includes predicted candidate characteristics (gender, migration background).
+This dataset contains candidate-level results for mayoral elections in 13 German states (Baden-Württemberg, Bayern, Brandenburg, Hessen, Mecklenburg-Vorpommern, Niedersachsen, Nordrhein-Westfalen, Rheinland-Pfalz, Saarland, Sachsen, Sachsen-Anhalt, Schleswig-Holstein, Thüringen), 1945--2026. One row per candidate per election cycle (wide format, with both Hauptwahl and Stichwahl results in columns). Includes predicted candidate characteristics (gender, migration background). Note: Baden-Württemberg is a hybrid — Komm.ONE's votemanager portal supplies full candidate-level results (all candidates, both rounds; 274 elections) for the municipalities it publishes, and the Statistisches Landesamt report (winner-only) fills the rest; either way there is no party affiliation, and the elected winner's gender + birth year come from the official register. Brandenburg is a recent-cycle Landeswahlleiter-portal scrape (~2018–2026) with party + all candidates. **Sachsen-Anhalt is a full historical series, 1994–2026**, from the Statistisches Landesamt file "Bürgermeisterwahlen in Sachsen-Anhalt ab 1994" (all candidates + votes for both rounds, party, and the winner's gender/birth year/Amtsantritt), with the older Dezernat-13 extract kept authoritative for the 2019–2026 elections it covers; `ags` is the AGS at the time of the election (2,057 historical codes → 218 current Gemeinden), and 1994 is sparse by design (winner-only for many rows). Hessen is a most-recent-per-Gemeinde snapshot from the StaLA "B VII m Direktwahlen" report (~2020–2026), now its **May-2026 XLSX issue** which lists **every Wahlvorschlag with votes** (full counts, real `n_candidates`) — the elected winner is the highest-voted Wahlvorschlag (named, with register gender); losing Wahlvorschläge carry party + votes but no candidate name. The newest **2026 Kommunalwahlen** are added from sources newer than the historical files: Bayern (8/22 March 2026) from the official Landesamt Mandatsträger file (full votes; winner name/gender/birth year), and Hessen (15 March 2026 + Stichwahlen) as a **hybrid** — the ~12 Gemeinden already in the May-2026 XLSX carry full votes; the rest are from the hessenschau result pages and are **percentage-only** (candidate, party, vote share and turnout, but no absolute vote counts — `candidate_votes`/`valid_votes` NA, like RLP). See the mayoral README for coverage and limitations.
 
 | Variable                          | Type      | Description                                                                                                          |
 | :-------------------------------- | :-------- | :------------------------------------------------------------------------------------------------------------------- |
@@ -366,10 +367,10 @@ This dataset contains candidate-level results for mayoral elections in 7 German 
 | `election_date_sw`                | Date      | Stichwahl (runoff) date. NA if no runoff.                                                                            |
 | `election_type`                   | character | Type of election (`Buergermeisterwahl`, `Oberbuergermeisterwahl`, `Landratswahl`, `VG-Buergermeisterwahl`, `SG-Buergermeisterwahl`). |
 | `has_stichwahl`                   | logical   | TRUE if this election went to a runoff.                                                                              |
-| `eligible_voters`                 | numeric   | Number of eligible voters (Hauptwahl). NA for RLP (percentage-only data).                                            |
-| `number_voters`                   | numeric   | Number of voters (Hauptwahl). NA for RLP.                                                                            |
-| `valid_votes`                     | numeric   | Number of valid votes (Hauptwahl). NA for RLP.                                                                       |
-| `invalid_votes`                   | numeric   | Number of invalid votes (Hauptwahl). NA for RLP.                                                                     |
+| `eligible_voters`                 | numeric   | Number of eligible voters (Hauptwahl). NA for RLP and Hessen 2026 (percentage-only data).                                            |
+| `number_voters`                   | numeric   | Number of voters (Hauptwahl). NA for RLP and Hessen 2026.                                                                            |
+| `valid_votes`                     | numeric   | Number of valid votes (Hauptwahl). NA for RLP and Hessen 2026.                                                                       |
+| `invalid_votes`                   | numeric   | Number of invalid votes (Hauptwahl). NA for RLP and Hessen 2026.                                                                     |
 | `turnout`                         | numeric   | Hauptwahl turnout as proportion (0--1).                                                                              |
 | `turnout_sw`                      | numeric   | Stichwahl turnout. NA if no runoff.                                                                                  |
 | `candidate_name`                  | character | Full candidate name. NA for Bayern (source data has no names).                                                       |
@@ -386,6 +387,7 @@ This dataset contains candidate-level results for mayoral elections in 7 German 
 | `candidate_rank_sw`               | numeric   | Stichwahl rank. NA if not in runoff.                                                                                 |
 | `n_candidates_sw`                 | numeric   | Number of candidates in the Stichwahl.                                                                               |
 | `is_winner`                       | numeric   | 1 if the candidate won the election (HW outright or SW), 0 otherwise.                                               |
+| `flag_superseded`                 | logical   | TRUE for a Bayern round that did not seat the mayor and is superseded by a later valid round — either an annulled round (`Wahlart` "... ungültig") or a Hauptwahl with no absolute majority (winner < 50%) that was not resolved by a Stichwahl and is followed by a repeat Hauptwahl (*Neuwahl*) within 250 days. Duly-won (≥50%) Hauptwahlen preceding a later by-election are NOT flagged. Constant within an election. Rows are kept, not dropped; filter `== FALSE` for decisive rounds only. FALSE for all non-Bayern states. |
 | `candidate_birth_year`            | numeric   | Birth year. NI only.                                                                                                 |
 | `candidate_profession`            | character | Profession. NI only.                                                                                                 |
 | `office_type`                     | character | Office type. BY and SL only.                                                                                         |
@@ -404,7 +406,7 @@ This dataset contains candidate-level results for mayoral elections in 7 German 
 
 **Notes:**
 
-- **Gender classification** uses the Python `gender-guesser` package (Jorg Michael's `nam_dict.txt`, ~70,000 names with country-specific gender codes). Raw gender data from RLP and SL takes precedence over predictions. The lookup is pre-computed by `code/mayoral_elections/04a_build_gender_lookup.py`. Coverage: 100% of named candidates. Cross-validation accuracy: 99.79% against RLP raw data (F1 = 0.989), 100% against SL raw data.
+- **Gender classification** uses the Python `gender-guesser` package (Jorg Michael's `nam_dict.txt`, ~70,000 names with country-specific gender codes). Raw gender data from RLP, SL, and BW (the latter from the official register) takes precedence over predictions. The lookup is pre-computed by `code/mayoral_elections/04a_build_gender_lookup.py`. Coverage: 100% of named candidates. Cross-validation accuracy: 99.79% against RLP raw data (F1 = 0.989), 100% against SL raw data.
 - **Migration background** is a probabilistic estimate based on name patterns (Turkish, Arabic, Eastern European, Southern European surname/firstname lists and regex patterns). It should not be interpreted as verified migration status. Coverage: all candidates with last names (14,859). Low-confidence classifications (conf < 0.80) are predominantly Eastern European surname endings.
 - **Local surname rootedness** columns are placeholders populated with NA values. Implementation is blocked on telephone directory data.
 - **Bayern** has no candidate names in the source data, so gender, migration background, and local surname columns are all NA for Bayern rows.

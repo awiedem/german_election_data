@@ -494,9 +494,10 @@ df_post21_pre25 <- df |>
     final_area_cw = area_cw * area_w_25_21
   )
 
-# --- Map 2025 data directly via cw_25_to_21 ---
+# --- Map 2025+ data directly via cw_25_to_21 (incl. the 2026 HE Kommunalwahl,
+#     whose AGS are on 2025 boundaries) ---
 df_post21_25 <- df |>
-  filter(election_year == 2025) |>
+  filter(election_year >= 2025) |>
   mutate(ags_25 = ags) |>
   left_join(
     cw_25_to_21,

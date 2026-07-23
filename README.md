@@ -44,7 +44,7 @@ Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2025.
 
 ## Datasets
 
-GERDA includes federal, state, municipal, European, mayoral, and county (Kreistag) election results at the municipality level, plus a county-level federal series going back to 1953. Each dataset is available in an unharmonized version (original boundaries) and, where applicable, harmonized to 2021 and/or 2025 municipal boundaries. The mayoral pipeline also provides candidate-level records and a person-level mayor panel. Exact coverage by dataset:
+GERDA includes federal, state, municipal, European, mayoral, and county (Kreistag) election results at the municipality level, plus a county-level federal series going back to 1953 and federal results at the constituency (Wahlkreis) level for 2002–2025. Each dataset is available in an unharmonized version (original boundaries) and, where applicable, harmonized to 2021 and/or 2025 municipal boundaries. The mayoral pipeline also provides candidate-level records and a person-level mayor panel. Exact coverage by dataset:
 
 | **Data**                  | **Level**            | **Period**       | **Harmonization** | **File Name**                |
 |---------------------------|----------------------|------------------|-------------------|------------------------------|
@@ -62,6 +62,10 @@ GERDA includes federal, state, municipal, European, mayoral, and county (Kreista
 | Federal Elections         | Municipality         | 1990-2025        | Yes (2025)        | `federal_muni_harm_25`       |
 | Federal Elections         | County               | 1953-2025        | No                | `federal_cty_unharm`         |
 | Federal Elections         | County               | 1990-2025        | Yes (2021)        | `federal_cty_harm`           |
+| Federal Elections         | Constituency (Wahlkreis) | 2002-2025    | No                | `federal_wkr_unharm`         |
+| Federal Elections         | Constituency (Wahlkreis) | 2002-2025    | No                | `federal_wkr_unharm_long`    |
+| Federal Elections         | Constituency (Wahlkreis) | 2021 on 2025 | Yes (2025)        | `federal_wkr_2021_on_2025`   |
+| Federal Elections         | Constituency (Wahlkreis) | 2021 → 2025  | Crosswalk         | `wkr_2021_to_2025_crosswalk` |
 | European Elections        | Municipality         | 2009-2024        | No                | `european_muni_unharm`       |
 | European Elections        | Municipality         | 2009-2024        | Yes (2021)        | `european_muni_harm`         |
 | County Elections          | Municipality         | 1948-2024        | No                | `county_elec_unharm`         |

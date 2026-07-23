@@ -305,7 +305,7 @@ Follows the same approach as `02_federal_muni_harm_21.R` but:
 **Script:** `code/state_elections/01b_state_unharm_raw.R`
 **Sources:** Raw files from each state's statistical office in `data/state_elections/raw/Landtagswahlen/`. Formats include XLSX, XLS, CSV, and OCR-extracted CSVs from scanned PDFs.
 
-This unified script processes all 16 German states (1946–2025), replacing the earlier `01_state_unharm.R` (GENESIS API) + `03_state_2022-24.R` (manual collection) approach. Each state has dedicated parsing logic handling heterogeneous source formats.
+This unified script processes all 16 German states (1946–2026), replacing the earlier `01_state_unharm.R` (GENESIS API) + `03_state_2022-24.R` (manual collection) approach. Each state has dedicated parsing logic handling heterogeneous source formats.
 
 **Why the pipeline was replaced:** The GENESIS Regionalstatistik API does not properly allocate Briefwahl (mail-in) votes from shared/pooled districts to individual municipalities. A systematic comparison of 27,503 overlapping municipality-year observations (2006–2019) found massive valid_votes undercounts in 5 eastern German states: SN (+10–17% recovery), MV (+7–19%), BB (+0.1–20%), TH (+4–6%), ST (+0–8%). In the worst cases, individual municipalities were missing up to 195% of their valid votes. See `data/state_elections/final/README.md` and `docs/state_pipeline_audit.md` for the full comparison.
 
@@ -315,6 +315,7 @@ This unified script processes all 16 German states (1946–2025), replacing the 
 - **Vote shares from source:** Computed as `party_votes / valid_votes` (not `number_voters`).
 - **Briefwahl properly allocated:** State raw data is pre-aggregated to municipalities with Briefwahl assigned to the correct municipality by the Landeswahlleiter.
 - **Bayern Gesamtstimmen:** BY uses combined Erst+Zweitstimme (both count for seat allocation). `valid_votes ≈ 2 × number_voters` for BY 1950+.
+- **Baden-Württemberg 2026 (two-vote):** BW's first Landtagswahl under the new Erst-/Zweitstimme system. Added from StaLA GENESIS Flachdateien (tables 14311_0009 votes + 14311_0008 turnout) in a dedicated block; GERDA records the **Zweitstimme** (Landeslistenstimme), continuing the prior single-vote series. Party labels are resolved via the official short name in the trailing `(...)` before `normalise_party()` (so e.g. the long Die-PARTEI name is not mis-matched on "Tierschutz").
 - **OCR-extracted elections:** BB 1990/1994/1999, SH 1983, NRW 1947/1950, SL 1970/1975 were digitized from scanned PDFs. NRW 1947-1970 are county-level only (synthetic AGS `050xx000`, ~84 Kreise per year, aggregated from 150 WK for 1947/1950). The NRW source PDF contains three elections in interleaved rows (a=1947, b=1949 Bundestag, c=1950 Landtag); row identification uses party presence patterns.
 - **Percentage-only data:** HB 1946–1995 (converted BIFF→XLSX with graphical headers) and HB 2011 (hardcoded from official Faltblatt PDF) only have vote share percentages — `valid_votes`/`invalid_votes` are NA.
 - **RP 1979–2016:** Added from Landeswahlleiter file (`LW_RLP_1979_2021.xlsx`), Landesstimmen only, no turnout metadata. 2021 retains separate source with full turnout data. Note: source data is missing 5–6 municipalities for 1979–2001 (founded after 1979), causing 0.07–0.31% shortfall vs official Landesergebnisse. From 2006 onward, deviations are ≤0.16%; 2011/2016 match exactly.
@@ -414,19 +415,40 @@ Same hybrid method as `02_municipal_harm.R`, targeting 2025 boundaries using `ag
 
 ## 7. Mayoral Elections
 
+### 7.0 Output split — mayoral vs Landrat
+
+The Stage 1 scripts ingest `Bürgermeisterwahl`, `Oberbürgermeisterwahl`, `VG-/SG-Bürgermeisterwahl`, and `Landratswahl` together (raw IT.NRW Excel files mix OB and Landrat in one workbook), then split outputs at the end:
+
+- `data/mayoral_elections/final/mayoral_unharm.{rds,csv}` and `mayoral_candidates.{rds,csv}` — municipal-level head elections
+- `data/landrat_elections/final/landrat_unharm.{rds,csv}` and `landrat_candidates.{rds,csv}` — county-level head elections (covers NRW, RLP, NI; not Bayern or Saarland)
+
+The two share an identical schema. `02_mayoral_harm.R` only consumes the mayoral files.
+
 ### 7.1 Current state (unharmonized only)
 
-**Script:** `code/mayoral_elections/01_mayoral_unharm.R` (489 lines)
+**Script:** `code/mayoral_elections/01_mayoral_unharm.R` (~1,425 lines)
 
-**Coverage:** 7 states with varying completeness:
-- **Fully processed:** Bayern (BY), NRW, Saarland (SAR), Sachsen (SN), Rheinland-Pfalz (RLP), Niedersachsen (NS), Schleswig-Holstein (SH)
+**Coverage:** 13 states with varying completeness:
+- **Fully processed:** Bayern (BY), NRW, Saarland (SAR), Sachsen (SN), Rheinland-Pfalz (RLP), Niedersachsen (NS), Schleswig-Holstein (SH), Mecklenburg-Vorpommern (MV), Thüringen (TH), Baden-Württemberg (BW), Brandenburg (BB), Sachsen-Anhalt (ST), Hessen (HE)
 - NS covers 2006–2025 (9 election years, 1,093 rows) using 3 PDF parsers: standard one-page-per-election (2011+), German-number format with full party names (2006), and tabular summary (2013)
-- SH covers 2023–2025 via web scraping (wahlen-sh.de)
+- SH covers 2023–2025 via web scraping (wahlen-sh.de); MV and TH via Stage-0 PDF/scrape parsers
+- BW covers the most recent election per Gemeinde as of 31.12.2024 (1,101 Gemeinden, ~2016–2024) — see the BW Stage-0 parser below
+- BB (`00_bb_scrape.py`) is a Landeswahlleiter-portal scrape of the current cycle: amtsfreie Gemeinden/Städte + 4 kreisfreie Städte (~2018–2026; amtsangehörige ehrenamtliche BM excluded). Carries party + all candidates + HW/SW; see per-state classifier notes in the project `CLAUDE.md`
+- ST is a HYBRID of three sources, primary = the StaLA **historical** file `2026_0661_BM-Wahl_ab_1994.xlsx` ("Bürgermeisterwahlen in Sachsen-Anhalt ab 1994", Stand 13.07.2026), parsed by `00_st_hist_parse.py` → **4139 Hauptwahlen + 404 Stichwahlen, 1994–2026, 2057 historical AGS → 218 current Gemeinden**, with per-candidate votes for both rounds, winner gender/birth year/Amtsantritt and StaLA's own "AGS am Wahltag → AGS aktuell" crosswalk. The older Dezernat-13 extract (`bmbm.csv`, Stand 26.02.2025, parsed by `00_st_stala_parse.py` → `st_bmbm_parsed.csv`) remains **authoritative for the 270 election-rounds it covers**: it is the cleaner record, since diffing the two over the shared window exposed ~16 surname typos, a swapped name field, a vote typo (Halle 2025), a wrong runoff participant (Landsberg 2022) and a missing decisive round (Oebisfelde-Weferlingen 2023) in the historical file. The historical file in turn fixes bmbm's known Genthin 2024 corruption (its 8th candidate, 96 votes), which is grafted back in. The Landeswahlleiter portal (`00_st_scrape.py`) is now a no-op fallback. The merge lives in `00_st_hist_parse.py` (bmbm verbatim → historical elsewhere → candidate graft on ANY-of-(last, first, votes) mismatch → date-typo rounds dropped by a round+Gültige+vote-multiset fingerprint). It also repairs source defects: 3 duplicate records, 46 rows whose "AGS am Wahltag" wrongly held the post-merger code (recovered from `ags_crosswalks.csv` by name+year, guarded on harmonising to the same municipality; 6 remain flagged via `flag_shared_ags`), 4 same-day and 9 already-won "Stichwahlen", and one duplicated candidate slot. **Run order: `00_st_stala_parse.py` then `00_st_hist_parse.py`.**
+- HE (`00_he_parse.py`) is a coordinate-based parse of the StaLA report "B VII m Direktwahlen" (most-recent Direktwahl per Gemeinde/Landkreis, ~2017–2024). It names the winner (party + register gender + full turnout) + the first Wahlvorschlag only; Landrat rows are split to the landrat dataset. OB classifier = 5 kreisfreie Städte (AGS ending `000`) + 7 pinned Sonderstatusstädte. See the per-state notes in `CLAUDE.md`
 
 **Key characteristics:**
 - **Candidate-level data:** Unlike all other pipelines that track party vote shares, mayoral elections have candidate-level results (name, party affiliation, vote count, runoff status).
 - **Multiple rounds:** Many mayoral elections have first-round and runoff elections.
 - **Raw data:** `data/mayoral_elections/raw/<state>/` — state-specific Excel files and CSVs.
+
+**NRW classifier** (in `process_nrw_file()` and `process_nrw_candidates()`): the AGS suffix is ambiguous in NRW because both kreisfreie Städte and Landkreise have AGS ending in `"000"`. Classification uses the `gemeinde` name column instead — `"Krfr. Stadt X"` / `"Kreisfreie Stadt X"` → Oberbürgermeisterwahl; `"Kreis X"` / `"-Kreis"` / `"Hochsauerlandkreis"` / `"Städteregion Aachen"` → Landratswahl.
+
+**BW Stage-0 parser** (`code/mayoral_elections/00_bw_parse.py`): parses Tables 13 (per-round Rahmendaten) and 14 (the elected person) of the Statistical Office's report `BW_Buergermeisterwahlen_2024_StatBericht_B-VII-3-j25.pdf` into `data/mayoral_elections/raw/baden_wuerttemberg/bw_parsed.csv` (winner-only, one row per Gemeinde-round; SH/MV-style block in Stage 1). Parsing is **token-order based**, not fixed-x: the table block drifts ~20 pt between pages and pdfplumber sometimes merges, sometimes splits the Lfd.Nr+AGS token — so rows anchor on the `dd.mm.yyyy` Wahltag / the rightmost numeric block, and the AGS is the first left-margin all-digit token of length ≥ 6. **BW office classifier:** the report carries no office title, so Oberbürgermeisterwahl is assigned by AGS — the 9 Stadtkreise (pinned by AGS) plus the 96 Große Kreisstädte (Stand 1.1.2025, matched to the Gemeinde column by normalised name, with the `Weingarten` name collision pinned to AGS `08436082`). The parser hard-fails if it does not resolve exactly 96 Große Kreisstädte. **BW data limitations:** no party (`winner_party`/`candidate_party` always NA), winner-only (no losing candidates, `n_candidates` NA), and the winner's votes are known only for the decisive round (Hauptwahl votes NA where a Neuwahl/Stichwahl followed). Wahlart `N` (Neuwahl, pre-Aug-2023) and `S` (Stichwahl, post-Aug-2023) both map to `round = "stichwahl"`. The online BW Statistikdatenbank (table `14431_…`) holds nothing beyond the report — no losing-candidate or party microdata is published anywhere, and regionalstatistik.de/destatis carry no mayoral data at all. **Lossless intermediate:** `bw_parsed.csv` additionally captures every per-Gemeinde field the report gives but the unified schema does not surface — `amtsperiode` (term number of the elected mayor), `hauptamtlich` (TRUE = hauptamtlich / FALSE = ehrenamtlich; 58 ehrenamtliche in 2024), `eu_citizen` (Unionsbürgerschaft; 1 in 2024), `briefwaehler` (postal-vote count) and `wahlgrund` (A = Ablauf der Amtszeit / S = Sonstige Gründe). The R Stage-1 scripts ignore these BW-only extras.
+
+### 7.1.1 Known IT.NRW source-data issues
+
+- **NRW 2025 Stichwahl date typo (patched in pipeline)**: `KW 2025 Oberbürgermeister-Landratswahlen.xlsx` has every Stichwahl row's date encoded as Excel serial `44101` (= 2020-09-27) instead of `45928` (= 2025-09-28). Verified by direct XML inspection of `xl/worksheets/sheet1.xml`. The Stage 1 scripts patch this automatically with a narrow rule (only the 2025 OB file, only the `2020-09-27` value). Remove this patch when IT.NRW corrects the source.
 
 ### 7.2 Why no harmonization exists yet
 
@@ -470,7 +492,7 @@ A `02_mayoral_harm.R` script has not yet been written.
 
 ### Pipeline status
 
-Processing code exists in `code/county_elections/01_county_elec_unharm.R` (Stage 1 — unharm) and `02_county_elec_harm_21.R` (Stage 2 — harmonized to 2021). A separate script `03_county_seats.R` builds a county-year council-composition panel (see below). The table below lists the five states whose format quirks are documented here; the current script combines additional states as well.
+Processing code exists in `code/county_elections/01_county_elec_unharm.R` (Stage 1 — unharm) and `02_county_elec_harm_21.R` (Stage 2 — harmonized to 2021 boundaries, split into `_muni` municipality-level and `_cty` county-level outputs). A separate script `03_county_seats.R` builds a county-year council-composition panel (see below). Work in progress; multiple states implemented (see table below).
 
 **Script:** `01_county_elec_unharm.R`
 **Output:** `data/county_elections/final/county_elec_unharm.{rds,csv}`
@@ -484,6 +506,7 @@ Processing code exists in `code/county_elections/01_county_elec_unharm.R` (Stage
 | Mecklenburg-Vorpommern (MV) | 13 | 2014–2024 (3 elections) | XLSX (2014) + CSV (2019, 2024) | CSV: `Ausgabe=="A"` filter for absolute values; `x` → NA |
 | Sachsen (SN) | 14 | 1999–2024 (6 elections) | Excel (.xlsx) | Legacy (1999–2014) vs modern (2019+) format; **SN 2014 has party names in row 5 not row 4** |
 | Brandenburg (BB) | 12 | 2003–2024 (5 elections) | Excel (.xlsx) | Ballot-district level → municipality aggregation; **BB 2024 uses 12-digit ARS (not 8-digit AGS)** |
+| Baden-Württemberg (BW) | 08 | 1994–2024 (7 elections) | Excel (.xlsx) + GENESIS flat CSV (2024) | **Kreis-level** (5-digit AGS + "000"), 35 Landkreise (Stadtkreise hold no Kreistag). 2024 from StaLA GENESIS table 14411_0002 via `parse_bw_kt_genesis()`, using raw **"Gültige Stimmen bei Verhältniswahl"** (cumulative votes). No turnout in the 2024 source → `eligible/number/invalid_votes`, `turnout` NA. The local **Wählervereinigungen** bloc is residual-backfilled into `waehlervereinigungen` for 2004–2019 (`bw_add_wv_residual()`) so per-Kreis shares sum to ~1.0 across years; 1994/1999 already break it out (`fwv`/`wv`/`gemeinsame_wv`). Named-party shares unchanged |
 
 ### Architecture
 
@@ -502,7 +525,6 @@ Processing code exists in `code/county_elections/01_county_elec_unharm.R` (Stage
 
 | State | Format | Notes |
 |---|---|---|
-| Baden-Württemberg (BW) | Excel (.xlsx) | 6 files |
 | Hessen (HE) | Excel (.xlsx) | 1 file |
 | Nordrhein-Westfalen (NRW) | ZIP archive | 1 archive |
 | Niedersachsen (NS) | ZIP archive | 1 archive |
@@ -628,7 +650,7 @@ As of February 2026, the following data gaps remain.
 
 ### Partially integrated
 
-**Mayoral elections** — 7 states, `mayoral_unharm` (41,436 rows), `mayoral_harm` (38,667 rows mapped to 2021 boundaries), `mayoral_candidates` (85,160 rows with candidate characteristics). Stage 4 scripts (`04a_build_gender_lookup.py` + `04_candidate_characteristics.R`) add predicted gender and migration background for all named candidates.
+**Mayoral elections** — 13 states, `mayoral_unharm` (48,165 rows), `mayoral_harm` (46,814 rows mapped to 2021 boundaries), `mayoral_candidates` (97,371 rows with candidate characteristics). Stage 4 scripts (`04a_build_gender_lookup.py` + `04_candidate_characteristics.R`) add predicted gender and migration background for all named candidates. The newest cycle (8 March 2026 Bayern, 15 March 2026 Hessen Kommunalwahlen) is added by dedicated Stage-0 scripts — `00_by_kommunalwahl2026_parse.py` (official Landesamt Mandatsträger XLSX, full votes) and `00_he_kommunalwahl2026_scrape.py` (hessenschau result pages, percentage-only). Landratswahlen split to the separate `data/landrat_elections/` datasets.
 
 **Mayoral elections — Schleswig-Holstein** — Data scraped from `wahlen-sh.de`, covering 2023–2025 (45 elections, 110 candidates).
 

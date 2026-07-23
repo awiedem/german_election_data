@@ -1,0 +1,3 @@
+# Raw scraped HTML cache (reproducible via code/mayoral_elections/00_th_scrape.py).
+# The committed artifact is th_bm_scraped.csv. ~5400 files, not version-controlled.
+html_cache/
