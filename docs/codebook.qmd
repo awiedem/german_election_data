@@ -515,11 +515,19 @@ Direct elections of municipal mayors (Bürgermeister / Oberbürgermeister),
 1945--2026, covering 13 states. Head-of-county elections are published
 separately — see the Landrat section.
 
-**Files:** `mayoral_unharm` (52,845 x 17), `mayoral_harm` (49,252 x 23),
-`mayoral_candidates` (107,457 x 45), `mayor_panel` (42,836 x 31),
-`mayor_panel_harm` (41,732 x 32), `mayor_panel_annual` (254,045 x 27),
-`mayor_panel_annual_harm` (248,384 x 28) in
+**Files:** `mayoral_unharm` (55,224 x 17), `mayoral_harm` (51,627 x 23),
+`mayoral_candidates` (112,466 x 45), `mayor_panel` (44,822 x 31),
+`mayor_panel_harm` (43,718 x 32), `mayor_panel_annual` (265,551 x 27),
+`mayor_panel_annual_harm` (259,890 x 28) in
 `data/mayoral_elections/final/`.
+
+Hessen is a complete series from the introduction of direct mayoral elections
+in 1993 (HSL historical file, obtained on request). Candidate names are
+redacted by the statistical office there; names are present only where the
+published B VII m snapshot or the 2026 hessenschau results supply them
+(2017--2026 winners and 2026 candidates). Hessen single-candidate elections
+are Ja/Nein votes: the candidate's votes can legitimately fall short of
+`valid_votes`, whose count includes the Nein votes.
 
 ## Election level (`mayoral_unharm` / `mayoral_harm`)
 
@@ -627,8 +635,9 @@ Direct elections of county executives (Landrat / Landrätin, plus the heads of
 Städteregion Aachen and Regionalverband Saarbrücken), 1945--2026, 11 states,
 263 counties. Published separately from mayoral elections.
 
-**Files:** `landrat_unharm` (1,846 x 16), `landrat_candidates` (4,316 x 32) in
-`data/landrat_elections/final/`.
+**Files:** `landrat_unharm` (1,966 x 16), `landrat_candidates` (4,623 x 32) in
+`data/landrat_elections/final/`. Hessen covers all 21 Landkreise from 1993
+onward (HSL historical file).
 
 Columns are identical to the corresponding mayoral files —
 `landrat_unharm` matches `mayoral_unharm` minus `flag_superseded` (which is

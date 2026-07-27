@@ -1858,20 +1858,25 @@ if (file.exists(st_stala_file)) {
 # ============================================================================
 # HESSEN
 # ============================================================================
-# Bürgermeister-/Oberbürgermeister- und Landratswahlen, parsed from the
-# Hessisches Statistisches Landesamt report "B VII m Direktwahlen" (Stand
-# 06.05.2024) by 00_he_parse.py into
-# data/mayoral_elections/raw/hessen/he_parsed.csv. Like BW it is a most-recent-
-# per-Gemeinde/Landkreis snapshot (~2017-2024). The report names the winner
-# (party + gender + full turnout) and the FIRST Wahlvorschlag only, so the
-# winner's vote count is known only when the winner is Wahlvorschlag 1 (~69%);
-# otherwise winner_votes is NA (the intermediate flags the winner via is_winner,
-# NOT via max votes — pick the winner row by is_winner). Landratswahl rows are
-# routed to the landrat dataset by the split at the end of this script.
+# FULL HISTORICAL series 1993-2026: Bürgermeister-/Oberbürgermeister- und
+# Landratswahlen from the HSL file "Direktwahlen in Hessen seit 1993" (Stand
+# 17.07.2026, supplied on request), parsed by 00_he_hist_parse.py into
+# he_hist_parsed.csv — every Wahlvorschlag with votes + full counts + winner
+# party/gender, but NO candidate names (HSL data-protection redaction). The
+# parser grafts winner names from he_parsed.csv (May-2026 B VII m XLSX +
+# 2024-PDF fallback, ~441 names) and all 2026 candidate names from the
+# hessenschau scrape, so this ONE file supersedes the old snapshot-only
+# `hessen` block. Winners are flagged via is_winner (max-votes Wahlvorschlag
+# of a decisive round; the Ahnatal 2020 exact tie is broken by the source's
+# winner column = Losentscheid). Single-candidate rounds are Ja/Nein votes
+# (candidate votes < valid_votes). Landratswahl rows are routed to the landrat
+# dataset by the split at the end of this script. Falls back to the old
+# snapshot he_parsed.csv when the historical intermediate is absent.
 
 cat("\n=== Processing Hessen mayoral/Landrat elections ===\n")
 
-he_file <- "data/mayoral_elections/raw/hessen/he_parsed.csv"
+he_file <- "data/mayoral_elections/raw/hessen/he_hist_parsed.csv"
+if (!file.exists(he_file)) he_file <- "data/mayoral_elections/raw/hessen/he_parsed.csv"
 
 if (file.exists(he_file)) {
   he_raw <- fread(he_file, encoding = "UTF-8",
@@ -2009,7 +2014,8 @@ if (file.exists(he26_file)) {
       winner_voteshare = if_else(is_winner, candidate_voteshare, NA_real_)
     )
 
-  # The official XLSX (he_parsed, `hessen` block) now carries 2026 with FULL votes
+  # The official HSL data (he_hist_parsed, `hessen` block) carries most 2026
+  # cycles with FULL votes (and grafted hessenschau names)
   # for the Gemeinden it covers; drop those (ags, election_date) from the
   # hessenschau %-only scrape so each 2026 round has a single source.
   if (!is.null(all_mayoral_data[["hessen"]])) {

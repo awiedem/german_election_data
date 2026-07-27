@@ -193,10 +193,11 @@ check(nrow(rvs_in_landrat) > 0,
 
 cat("\n11. Mayoral/Landrat split totals\n")
 
-# Mayoral row counts should be roughly stable (within 2% of expected baseline)
+# Mayoral row counts should be roughly stable (within 2% of expected baseline;
+# 55,224 after the Hessen 1993-2026 historical series landed in July 2026)
 m_rows <- nrow(m)
-check(m_rows > 35000 && m_rows < 55000,
-      sprintf("mayoral_unharm has %d rows (expected 35-55k)", m_rows),
+check(m_rows > 40000 && m_rows < 62000,
+      sprintf("mayoral_unharm has %d rows (expected 40-62k)", m_rows),
       sprintf("mayoral_unharm row count out of expected range: %d", m_rows))
 
 # Landrat dataset minimum counts
@@ -494,13 +495,42 @@ check(n_distinct(st_l$ags) >= 10,
               n_distinct(st_l$ags)),
       sprintf("ST Landrat: only %d Landkreise", n_distinct(st_l$ags)))
 
-cat("\n18. Hessen coverage + OB classifier (StaLA B VII m Direktwahlen snapshot)\n")
-# Hessen = most recent Direktwahl per Gemeinde/Landkreis (~2017-2024). BM/OB go
-# to mayoral; Landrat is split to the landrat dataset.
+cat("\n18. Hessen coverage + OB classifier (HSL historical series 1993-2026)\n")
+# Hessen = FULL historical series from the HSL "Direktwahlen seit 1993" file
+# (00_he_hist_parse.py), winner names grafted from the B VII m snapshot +
+# hessenschau. BM/OB go to mayoral; Landrat is split to the landrat dataset.
 he_m <- m %>% filter(state == "06")
 check(n_distinct(he_m$ags) >= 400,
       sprintf("HE: %d Gemeinden in mayoral_unharm (≥400 expected)", n_distinct(he_m$ags)),
       sprintf("HE: only %d Gemeinden (expected ≥400)", n_distinct(he_m$ags)))
+# Full series: ~2,900 BM/OB round-results spanning 1993-2026.
+check(nrow(he_m) >= 2800 && min(he_m$election_year) == 1993 &&
+        max(he_m$election_year) >= 2026,
+      sprintf("HE: %d round-results spanning %d-%d (historical series)",
+              nrow(he_m), min(he_m$election_year), max(he_m$election_year)),
+      sprintf("HE: %d rounds %d-%d — historical series shrank",
+              nrow(he_m), min(he_m$election_year), max(he_m$election_year)))
+# Fixture: Ahnatal 2020-11-22 ended in an exact 2106:2106 tie, decided by lot
+# for the SPD candidate — the parser must break the tie via the winner column.
+ahna <- he_m %>% filter(ags == "06633001", election_date == as.Date("2020-11-22"))
+check(nrow(ahna) == 1 && ahna$winner_party == "SPD",
+      "HE fixture: Ahnatal 2020 exact-tie winner is SPD (Losentscheid)",
+      "HE fixture: Ahnatal 2020 tie-break failed")
+# Fixture: Obertshausen's by-election is 2026-01-18 (the B VII m snapshot's
+# 2025-01-18 is a date typo — not even a Sunday; hessenschau confirms 2026).
+obh <- he_m %>% filter(ags == "06438010", election_year >= 2025)
+check(nrow(obh) == 1 && obh$election_date == as.Date("2026-01-18"),
+      "HE fixture: Obertshausen by-election dated 2026-01-18 (snapshot typo fixed)",
+      "HE fixture: Obertshausen 2026-01-18 date wrong")
+# Frankfurt OB series: 6 elections 1995-2023, 4 of them with a Stichwahl
+# (2001, 2012, 2018, 2023).
+ffm <- he_m %>% filter(ags == "06412000")
+check(n_distinct(ffm$election_date[ffm$round == "hauptwahl"]) == 6 &&
+        sum(ffm$round == "stichwahl") == 4,
+      "HE fixture: Frankfurt 6 OB elections 1995-2023 (4 Stichwahlen)",
+      sprintf("HE fixture: Frankfurt OB series wrong (%d HW / %d SW)",
+              n_distinct(ffm$election_date[ffm$round == "hauptwahl"]),
+              sum(ffm$round == "stichwahl")))
 # OB = 5 kreisfreie Städte + 7 Sonderstatusstädte = 12 cities.
 he_ob <- he_m %>% filter(election_type == "Oberbürgermeisterwahl") %>% pull(ags) %>% unique()
 check(length(he_ob) == 12 &&
