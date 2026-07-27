@@ -839,10 +839,17 @@ ags21_name_lookup <- tibble::as_tibble(.cw_df)
 rm(.cw_raw, .cw_df)
 
 df_harm <- df_harm |>
+  # Drop any ags_name carried in from earlier joins (the ags21 Gemeindeverzeichnis
+  # merge above brings its own, which dplyr suffixes to ags_name.x/.y). They are
+  # stale and incomplete; ags21_name_lookup below is the single source of truth.
+  # Without this the suffixed leftover survives into the published file.
+  dplyr::select(-dplyr::any_of(c("ags_name", "ags_name.x", "ags_name.y"))) |>
   dplyr::left_join(fed_date_lookup, by = "election_year", relationship = "many-to-one") |>
   dplyr::left_join(ags21_name_lookup, by = "ags", relationship = "many-to-one") |>
   dplyr::mutate(state_name = haschaR::state_id_to_names(substr(ags, 1, 2))) |>
   dplyr::relocate(ags, election_year, election_date, ags_name, state_name, state)
+
+stopifnot(sum(grepl("^ags_name", names(df_harm))) == 1)
 
 
 # Save --------------------------------------------------------------------

@@ -199,7 +199,7 @@ convention; the Wahlkreis files use `valid_votes`.
 
 `federal_muni_raw` (160,313 x 145) is the ingested source data before
 standardization. `federal_muni_unharm` (151,793 x 141) is standardized on each
-year's own boundaries. `federal_muni_harm_21` (107,660 x 150) and
+year's own boundaries. `federal_muni_harm_21` (107,660 x 149) and
 `federal_muni_harm_25` (107,295 x 147) are harmonized to 2021 and 2025
 boundaries and start in 1990.
 
@@ -237,13 +237,6 @@ allocation.
 `federal_muni_raw` additionally carries `gruene_comb` and `linke_pds_comb`,
 which combine the separately reported predecessor labels (`b90/gr` with `grüne`,
 and the PDS lineage) into single series.
-
-::: {.callout-note}
-**Known artifact.** `federal_muni_harm_21` contains a column `ags_name.y`, a
-leaked join suffix from a merge in `02_federal_muni_harm_21.R`. It is `NA` for
-97,019 of 107,660 rows and carries no information beyond `ags_name`. Use
-`ags_name`. The column is slated for removal.
-:::
 
 ## County level
 
@@ -703,8 +696,6 @@ published alongside these under `data/shapefiles/`.
 Columns that exist in published files but carry no analytic meaning, listed so
 that users are not left guessing:
 
-- `ags_name.y` in `federal_muni_harm_21` — a leaked join suffix, `NA` in 90% of
-  rows. Use `ags_name`.
 - `total_votes_incogruence` and `perc_total_votes_incogruence` — the column
   names misspell "incongruence". Retained so existing code keeps working.
 - `candidate_local_surname`, `candidate_surname_county_share`,
