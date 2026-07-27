@@ -1024,6 +1024,136 @@ bayern_2020_kommunalwahlen_data_sub$Turnout <- as.numeric(
   as.numeric(bayern_2020_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
 
 
+###### Bayern 2026 Gemeinderatswahlen ----
+# Abschließende Ergebnisse of the 8 March 2026 Gemeinde-/Stadtratswahlen from
+# GENESIS-Online Bayern statistic 14431 (published 17.06.2026, PM160), pulled
+# as Flat-File-CSV exports into raw/bayern/genesis_2026/ (see the README there;
+# the site geo-blocks non-German IPs, and the 48-Wahlvorschlag tables had to be
+# pulled in three 16-party batches under the anonymous size limit).
+#
+# MEASURE NOTE: GENESIS exposes the 2026 wave (anonymously) only as GEWICHTETE
+# Stimmen (ballot-equivalent votes; table 14431-003r), not the cumulative
+# absolute votes of the 1996-2020 series (table 14431-004 pins 5 Stichtage and
+# needs a registered login). Party SHARES are unaffected — gewichtete Stimmen
+# sum exactly to the gültige Stimmzettel (asserted below), so prop_ = gew/total
+# matches the abs/GültigeStimmen construction — but the LEVEL of abs_*/
+# GültigeStimmen for 2026 is ballots, not cumulative votes. The gewichtete
+# votes are stored in BOTH abs_ and gew_ slots: the downstream zero->NA logic
+# keys on abs_ (an all-NA abs_ would wipe every 2026 prop via ifelse(abs==0)).
+# "Ohne Wahlvorschlag" (write-ins, WAEHLGRUPPE-OW) is NOT folded into
+# Wählergruppen; like all unlisted lists it stays inside GültigeStimmen and
+# thus in prop_other. Kreisfreie Städte come as 5-digit "(Krfr.St)" rows
+# (AGS + "000"), mirroring the earlier years.
+by26_dir <- "raw/bayern/genesis_2026"
+by26_read <- function(f) {
+  x <- fread(file.path(by26_dir, f), sep = ";", encoding = "Latin-1",
+             colClasses = "character")
+  # keep the 8-digit GEMEIN rows only: kreisfreie Städte are present there too
+  # (09161000 ...), so the 5-digit Kreis-level rows would only duplicate them
+  x <- x[`1_variable_code` == "GEMEIN" & nchar(`1_variable_attribute_code`) == 8 &
+           value_unit == "Anzahl"]
+  x[, AGS_8dig := `1_variable_attribute_code`]
+  x[, val := suppressWarnings(as.numeric(sub(",", ".", value, fixed = TRUE)))]
+  x
+}
+by26_gew <- rbindlist(lapply(
+  paste0("by2026_gemeinderat_gewichtete_batch", 1:3, ".csv"), by26_read))
+by26_sitze <- rbindlist(lapply(
+  paste0("by2026_gemeinderat_sitze_batch", 1:3, ".csv"), by26_read))
+by26_turn <- by26_read("by2026_gemeinderat_turnout.csv")
+by26_stz <- by26_read("by2026_gemeinderat_stimmzettel.csv")
+
+by26_party_map <- c(CSU = "CDU", SPD = "SPD", DIELINKE = "DIELINKE",
+                    GRUENE = "GRÜNE", AFD = "AfD", PIRATEN = "PIRATEN",
+                    FDP = "FDP", FREIEWAEHLER = "FREIEWÄHLER",
+                    GEMWAHLVOR = "Gemeinsame_Wahlvorschläge",
+                    WAEHLERGRUPPEN = "Wählergruppen")
+
+by26_wide <- function(long, prefix) {
+  # the Insgesamt rows carry an EMPTY PARTG2 code (label "Insgesamt" only)
+  long[, pcode := ifelse(`2_variable_attribute_code` == "" &
+                           `2_variable_attribute_label` == "Insgesamt",
+                         "INSGESAMT", `2_variable_attribute_code`)]
+  # each party batch file repeats the Insgesamt rows -> dedupe before casting
+  long <- unique(long, by = c("AGS_8dig", "pcode"))
+  d <- dcast(long[pcode %in% c(names(by26_party_map), "INSGESAMT")],
+             AGS_8dig + `1_variable_attribute_label` ~ pcode,
+             value.var = "val")
+  missing_cols <- setdiff(c(names(by26_party_map), "INSGESAMT"), names(d))
+  for (mc in missing_cols) d[, (mc) := NA_real_]
+  setnames(d, "1_variable_attribute_label", "Gebietsname")
+  setnames(d, names(by26_party_map), paste0(prefix, by26_party_map))
+  setnames(d, "INSGESAMT", paste0(prefix, "Insgesamt"))
+  d
+}
+by26 <- merge(
+  by26_wide(by26_gew, "gew26_"),
+  by26_wide(by26_sitze, "sitze26_")[, !"Gebietsname"],
+  by = "AGS_8dig", all = TRUE
+)
+by26 <- merge(by26, dcast(by26_turn[`value_variable_code` %in% c("WSBER1", "WAEHLR")],
+                          AGS_8dig ~ value_variable_code, value.var = "val"),
+              by = "AGS_8dig", all.x = TRUE)
+by26 <- merge(by26, dcast(by26_stz[`value_variable_code` == "STIZ02"],
+                          AGS_8dig ~ value_variable_code, value.var = "val"),
+              by = "AGS_8dig", all.x = TRUE)
+
+# drop units without a Gemeinderat election (gemeindefreie Gebiete etc.)
+by26 <- by26[!is.na(gew26_Insgesamt)]
+
+# integrity: gewichtete Stimmen must sum exactly to the gültigen Stimmzettel
+stopifnot(all(abs(by26$gew26_Insgesamt - by26$STIZ02) < 1, na.rm = TRUE))
+
+bayern_2026_kommunalwahlen_data_sub <- data.table(
+  AGS_8dig = by26$AGS_8dig,
+  Bundesland = "Bayern",
+  Gebietsname = by26$Gebietsname,
+  election_year = "2026",
+  election_type = "Kommunalwahlen",
+  IDIRB = "",
+  IDBA = ""
+)
+bayern_2026_kommunalwahlen_data_sub[, Wahlberechtigteinsgesamt := by26$WSBER1]
+bayern_2026_kommunalwahlen_data_sub[, `Wähler` := by26$WAEHLR]
+bayern_2026_kommunalwahlen_data_sub[, `GültigeStimmen` := by26$gew26_Insgesamt]
+for (p in unname(by26_party_map)) {
+  bayern_2026_kommunalwahlen_data_sub[, (paste0("abs_", p)) := by26[[paste0("gew26_", p)]]]
+  bayern_2026_kommunalwahlen_data_sub[, (paste0("gew_", p)) := by26[[paste0("gew26_", p)]]]
+  bayern_2026_kommunalwahlen_data_sub[, (paste0("sitze_", p)) := by26[[paste0("sitze26_", p)]]]
+}
+# "-" sentinels (party did not stand) arrive as NA -> 0, so the shared
+# zero->NA machinery flags them exactly like the earlier Bayern years
+abs_cols_26 <- paste0("abs_", unname(by26_party_map))
+for (cc in c(abs_cols_26, paste0("gew_", unname(by26_party_map)),
+             paste0("sitze_", unname(by26_party_map)))) {
+  bayern_2026_kommunalwahlen_data_sub[is.na(get(cc)), (cc) := 0]
+}
+
+bayern_2026_kommunalwahlen_data_sub <-
+  bayern_2026_kommunalwahlen_data_sub %>%
+  mutate_at(
+    vars(contains('abs')),
+    .funs = list(XXX = ~ . / as.numeric(GültigeStimmen))
+  ) %>%
+  rename_at(
+    vars(matches("abs") & matches("X")),
+    list(~ paste(sub("abs_", "prop_", .), sep = "_"))
+  ) %>%
+  rename_at(vars(matches("_XXX")), list(~ paste(sub("_XXX", "", .), sep = "")))
+
+bayern_2026_kommunalwahlen_data_sub$Turnout <- as.numeric(
+  bayern_2026_kommunalwahlen_data_sub$Wähler
+) /
+  as.numeric(bayern_2026_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
+
+# align column order with the other Bayern year blocks for rbind
+bayern_2026_kommunalwahlen_data_sub <- as.data.table(
+  bayern_2026_kommunalwahlen_data_sub
+)[, names(bayern_2020_kommunalwahlen_data_sub), with = FALSE]
+
+cat("Bayern 2026:", nrow(bayern_2026_kommunalwahlen_data_sub),
+    "Gemeinden (incl. kreisfreie Städte) from GENESIS 14431\n")
+
 ####### Merge files and save overall output for Bayern ----
 # Merge
 bayern_kommunalwahlen <- rbind(
@@ -1033,7 +1163,8 @@ bayern_kommunalwahlen <- rbind(
   bayern_2002_kommunalwahlen_data_sub,
   bayern_2008_kommunalwahlen_data_sub,
   bayern_2014_kommunalwahlen_data_sub,
-  bayern_2020_kommunalwahlen_data_sub
+  bayern_2020_kommunalwahlen_data_sub,
+  bayern_2026_kommunalwahlen_data_sub
 )
 
 # Replace INF at Turnout

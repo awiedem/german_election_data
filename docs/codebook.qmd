@@ -345,9 +345,16 @@ and long shapes as the federal Wahlkreis files, with `stimme`, `wkr_nr`,
 
 Kommunalwahlen — municipal council (Gemeinderat / Stadtrat) elections.
 
-**Files:** `municipal_unharm` (82,773 x 42, 1984--2026), `municipal_harm`
-(71,482 x 40, 1990--2026, 2021 boundaries), `municipal_harm_25` (71,239 x 39,
+**Files:** `municipal_unharm` (84,829 x 42, 1984--2026), `municipal_harm`
+(73,548 x 40, 1990--2026, 2021 boundaries), `municipal_harm_25` (73,295 x 39,
 2025 boundaries) in `data/municipal_elections/final/`.
+
+The Bayern series (1990--2026, six-year cycle) includes the 8 March 2026
+Gemeinde- and Stadtratswahlen from GENESIS-Online Bayern (statistic 14431,
+final results). For 2026 the source publishes weighted votes (gewichtete
+Stimmen, ballot-equivalent), so Bayern's 2026 `valid_votes` counts valid
+ballots rather than the cumulative individual votes of earlier years; vote
+shares are unaffected.
 
 Unlike the other pipelines, municipal elections carry a fixed set of ten major
 parties rather than every party that ever ran. Vote shares are proportions of
@@ -403,8 +410,9 @@ from 2025), Brandenburg 2003--2024, Rheinland-Pfalz 2004--2019 (excluding
 kreisfreie Städte), Sachsen-Anhalt 1994--2019, Mecklenburg-Vorpommern 2019 and
 2024, Saarland 2019, Niedersachsen 2011/2016 (ordinary Gemeinden) and 2021 (the
 eight kreisfreie Städte — the two sources are complementary, never a complete
-year), Schleswig-Holstein 2018, Bremen 1991--2023 and Hamburg 2025. No seat
-data for Bayern, Berlin, or Sachsen.
+year), Schleswig-Holstein 2018, Bremen 1991--2023, Hamburg 2025 and Bayern 2026
+(from GENESIS table 14431-005r; earlier Bayern years pending). No seat data for
+Berlin or Sachsen.
 
 **Party seats do not sum to council size.** Only the ten major parties have seat
 columns, while local voter groups, joint nominations and independents hold a
