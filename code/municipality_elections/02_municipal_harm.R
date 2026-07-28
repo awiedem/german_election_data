@@ -19,6 +19,43 @@ cw <- fread("data/crosswalks/final/ags_crosswalks.csv") |>
     ags = pad_zero_conditional(ags, 7),
     weights = pop_cw * population
     )
+
+# Add the two post-2020 RLP codes manually. The Statistisches Landesamt
+# Rheinland-Pfalz delivers its whole 1969-2019 Gemeinderatswahl series on 2025
+# boundaries, so two Gemeinden carry codes the 1990-2020 crosswalk does not know:
+#   07132502 Neitersen  (= Neitersen + Obernau, merged 2021) -> already a valid
+#            2021 code, maps to itself with weight 1;
+#   07232503 Obergeckler (= Niedergeckler + Obergeckler, merged after 2023) ->
+#            still two Gemeinden in 2021, so the combined result is split back by
+#            population (0.25/0.75) and area (0.18/0.82).
+cw_rp_2025 <- expand.grid(
+  year   = sort(unique(cw$year)),
+  ags_21 = c("07132502", "07232089", "07232096"),
+  stringsAsFactors = FALSE
+) |>
+  mutate(
+    ags         = ifelse(ags_21 == "07132502", "07132502", "07232503"),
+    ags_name    = ifelse(ags_21 == "07132502", "Neitersen", "Obergeckler"),
+    ags_name_21 = c("07132502" = "Neitersen", "07232089" = "Niedergeckler",
+                    "07232096" = "Obergeckler")[ags_21],
+    pop_cw      = c("07132502" = 1, "07232089" = 0.25, "07232096" = 0.75)[ags_21],
+    area_cw     = c("07132502" = 1, "07232089" = 1.39 / 7.75,
+                    "07232096" = 6.36 / 7.75)[ags_21],
+    # area/population/employees are the sums of the merged constituents
+    # (Neitersen 5.65/0.89/0.32 + Obernau 1.49/0.21/0.03)
+    area        = c("07132502" = 7.14, "07232089" = 1.39, "07232096" = 6.36)[ags_21],
+    population  = c("07132502" = 1.10, "07232089" = 0.05, "07232096" = 0.15)[ags_21],
+    emp_cw      = c("07132502" = 1, "07232089" = 0.5, "07232096" = 0.5)[ags_21],
+    employees   = c("07132502" = 0.35, "07232089" = 0.02, "07232096" = 0.02)[ags_21],
+    weights     = pop_cw * population
+  )
+for (col in names(cw)) {
+  if (!col %in% names(cw_rp_2025)) cw_rp_2025[[col]] <- NA
+  # match the crosswalk's own storage types (ags is padded character, ags_21 is
+  # integer) so the downstream binds do not hit a character/double clash
+  cw_rp_2025[[col]] <- methods::as(cw_rp_2025[[col]], class(cw[[col]])[1])
+}
+cw <- rbind(cw, as.data.table(cw_rp_2025)[, names(cw), with = FALSE])
 # 
 # cw <- fread("../crosswalks/final/ags_crosswalks.csv") |>
 #   mutate(

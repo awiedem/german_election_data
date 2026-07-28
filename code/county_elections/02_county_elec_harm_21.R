@@ -152,6 +152,32 @@ for (col in names(cw_muni)) {
 wasdow <- wasdow |> select(all_of(names(cw_muni)))
 cw_muni <- cw_muni |> bind_rows(wasdow) |> arrange(ags, election_year)
 
+# Add the 2025-only RLP code 07232503 manually. The Statistisches Landesamt
+# Rheinland-Pfalz delivers its whole 1964-2019 series on 2025 boundaries, on
+# which Niedergeckler (07232089) and Obergeckler (07232096) are merged; on 2021
+# boundaries they are still two Gemeinden, so the combined result is split back
+# by population (0.25/0.75) and area (0.18/0.82). Neitersen (07132502) needs no
+# entry — it is already a valid 2021 code and is picked up by self-mapping.
+geckler <- expand.grid(
+  election_year = sort(unique(cw_muni$election_year)),
+  ags_21 = c("07232089", "07232096"),
+  stringsAsFactors = FALSE
+) |>
+  mutate(
+    ags         = "07232503",
+    ags_name    = "Obergeckler",
+    ags_name_21 = ifelse(ags_21 == "07232089", "Niedergeckler", "Obergeckler"),
+    pop_cw      = ifelse(ags_21 == "07232089", 0.25, 0.75),
+    area_cw     = ifelse(ags_21 == "07232089", 1.39 / 7.75, 6.36 / 7.75),
+    area        = ifelse(ags_21 == "07232089", 1.39, 6.36),
+    population  = ifelse(ags_21 == "07232089", 0.05, 0.15),
+    emp_cw      = 0.5,
+    employees   = 0.02
+  )
+for (col in names(cw_muni)) if (!col %in% names(geckler)) geckler[[col]] <- NA
+geckler <- geckler |> select(all_of(names(cw_muni)))
+cw_muni <- cw_muni |> bind_rows(geckler) |> arrange(ags, election_year)
+
 # Naive merge
 df_cw_naive <- df_muni |>
   left_join_check_obs(cw_muni, by = c("ags", "election_year"))

@@ -18199,1079 +18199,179 @@ brandenburg_kommunalwahlen %>%
   summarize(mean = mean(prop_Gemeinsame_Wahlvorschläge, na.rm = T))
 
 ######### RLP ----
-###### RLP 1994 Gemeinderatswahlen ----
-#### Load election data ----
-rlp_1994_gemeinderatswahlen_data <- as.data.table(read_excel(
-  "raw/rlp/rlp_1994_1999.xlsx",
-  sheet = "1994"
-))
+###### RLP 1969-2019 Stadt- und Gemeinderatswahlen (StaLA historical series) ----
+# Source: Statistisches Landesamt Rheinland-Pfalz, Sonderauswertung 111-AD26-0373
+#   "Stadt- und Gemeinderatswahlen in Rheinland-Pfalz 1969-2019" (received July 2026).
+#   Supersedes the former per-year raw files (raw/rlp/rlp_*.xlsx): it covers all
+#   eleven Gemeinderatswahlen instead of six, carries party votes for 1994 (which
+#   were entirely missing before) and adds seat counts back to 1984.
+#
+# NOTE: the StaLA reports every election on the CURRENT (2025) municipal
+#   boundaries, i.e. this series is already boundary-harmonised at source.
+#
+# Layout of the party sheet: four header rows, then one row per (Gemeinde, Wahltag).
+#   col 1  Schlüssel  (printed only on the first row of each Gemeinde block -> fill down)
+#   col 2  Gemeindename
+#   col 3  Stichtag (dd.mm.yyyy)
+#   cols 4-31   "Gültige Stimmen"        (27 parties + Gesamtsumme)
+#   cols 32-59  "Ungewichtete Stimmen"   (same 28 columns; only populated from 1994)
+#   cols 60-87  "Sitze"                  (same 28 columns; only populated from 1984)
+#   The Wahlbeteiligung sheet has the same key/name/Stichtag stub plus
+#   Wahlberechtigte / Wähler / Wahlbeteiligung.
+#
+# RLP uses Kumulieren/Panaschieren. The "Gültige Stimmen" block holds the
+#   *gewichteten* party votes, i.e. the raw votes rescaled so that they sum to the
+#   number of valid ballots (Gesamtsumme is directly comparable to Wähler; the
+#   raw/ungewichtete block divided by it gives 0.85-0.95 of the council size, as
+#   expected when voters do not use all of their votes). The ungewichteten
+#   (cumulative) votes are not carried into GERDA; they remain in the raw file.
+#
+# Schlüssel = Kreis(3) + Verbandsgemeinde(2) + Gemeinde(3).
+#   AGS = "07" + Kreis + Gemeinde (the VG digits are not part of the AGS).
 
-#### Delete white space ----
-names(rlp_1994_gemeinderatswahlen_data) <- str_replace_all(
-  names(rlp_1994_gemeinderatswahlen_data),
-  fixed(" "),
-  ""
+#### Load election data ----
+rlp_stala_path <- "raw/rlp/stala_hist/RLP_Gemeinderatswahlen_1969-2019_StaLA.xlsx"
+
+rlp_stala_raw <- read_excel(
+  rlp_stala_path,
+  sheet = "GR_Parteistimmen_Gemeindeebene",
+  col_names = FALSE,
+  col_types = "text"
+)
+rlp_stala_wb_raw <- read_excel(
+  rlp_stala_path,
+  sheet = "GR_Wahlbeteiligung_Gemeindeeben",
+  col_names = FALSE,
+  col_types = "text"
+)
+
+# Party names sit in header row 4 and are repeated identically in all three blocks
+rlp_stala_parties <- as.character(unlist(
+  rlp_stala_raw[4, 4:31],
+  use.names = FALSE
+))
+stopifnot(
+  length(rlp_stala_parties) == 28,
+  rlp_stala_parties[28] == "Gesamtsumme",
+  identical(
+    as.character(unlist(rlp_stala_raw[4, 32:59], use.names = FALSE)),
+    rlp_stala_parties
+  ),
+  identical(
+    as.character(unlist(rlp_stala_raw[4, 60:87], use.names = FALSE)),
+    rlp_stala_parties
+  )
 )
 
 #### Recoding ----
-# Create new dataframe ----
-rlp_1994_gemeinderatswahlen_data_sub <- rlp_1994_gemeinderatswahlen_data
-
-# Creating non-existing variables ----
-rlp_1994_gemeinderatswahlen_data_sub[, AGS_8dig := ""] # 8 digits with leading zero
-rlp_1994_gemeinderatswahlen_data_sub[, Bundesland := "RLP"]
-rlp_1994_gemeinderatswahlen_data_sub[, Gebietsname := ""]
-rlp_1994_gemeinderatswahlen_data_sub[, election_year := "1994"]
-rlp_1994_gemeinderatswahlen_data_sub[, election_type := "Kommunalwahlen"]
-rlp_1994_gemeinderatswahlen_data_sub[, IDIRB := ""]
-rlp_1994_gemeinderatswahlen_data_sub[, IDBA := ""]
-
-
-# Renaming existing variables ----
-rlp_1994_gemeinderatswahlen_data_sub$AGS_8dig <- str_extract(
-  rlp_1994_gemeinderatswahlen_data_sub$Gebiet,
-  "\\d{8}"
-)
-rlp_1994_gemeinderatswahlen_data_sub$Gebietsname <- sub(
-  "^\\d{8}\\s+(.*)$",
-  "\\1",
-  rlp_1994_gemeinderatswahlen_data_sub$Gebiet
-)
-rlp_1994_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt <- rlp_1994_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
-rlp_1994_gemeinderatswahlen_data_sub$Wähler <- rlp_1994_gemeinderatswahlen_data_sub$Waehler
-#rlp_1994_gemeinderatswahlen_data_sub$GültigeStimmen <- rlp_1994_gemeinderatswahlen_data_sub$GueltigeStimmen
-
-rlp_1994_gemeinderatswahlen_data_sub$GültigeStimmen <- rlp_1994_gemeinderatswahlen_data_sub$gueltigeStimmen
-
-rlp_1994_gemeinderatswahlen_data_sub$abs_CDU <- as.numeric(
-  rlp_1994_gemeinderatswahlen_data_sub$CDU
-)
-rlp_1994_gemeinderatswahlen_data_sub$abs_SPD <- as.numeric(
-  rlp_1994_gemeinderatswahlen_data_sub$SPD
-)
-rlp_1994_gemeinderatswahlen_data_sub$abs_DIELINKE <- as.numeric(
-  rlp_1994_gemeinderatswahlen_data_sub$DIELINKE
-)
-rlp_1994_gemeinderatswahlen_data_sub$abs_GRÜNE <- as.numeric(
-  rlp_1994_gemeinderatswahlen_data_sub$Gruene
-)
-rlp_1994_gemeinderatswahlen_data_sub$abs_AfD <- NA
-rlp_1994_gemeinderatswahlen_data_sub$abs_PIRATEN <- NA
-rlp_1994_gemeinderatswahlen_data_sub$abs_FDP <- as.numeric(
-  rlp_1994_gemeinderatswahlen_data_sub$fdp
-)
-rlp_1994_gemeinderatswahlen_data_sub$abs_DiePARTEI <- NA
-rlp_1994_gemeinderatswahlen_data_sub$abs_FREIEWÄHLER <- NA
-rlp_1994_gemeinderatswahlen_data_sub$abs_Gemeinsame_Wahlvorschläge <- NA
-rlp_1994_gemeinderatswahlen_data_sub$abs_Wählergruppen <- as.numeric(
-  rlp_1994_gemeinderatswahlen_data_sub$WG
-)
-
-
-rlp_1994_gemeinderatswahlen_data_sub$gew_CDU <- NA
-rlp_1994_gemeinderatswahlen_data_sub$gew_SPD <- NA
-rlp_1994_gemeinderatswahlen_data_sub$gew_DIELINKE <- NA
-rlp_1994_gemeinderatswahlen_data_sub$gew_GRÜNE <- NA
-rlp_1994_gemeinderatswahlen_data_sub$gew_AfD <- NA
-rlp_1994_gemeinderatswahlen_data_sub$gew_PIRATEN <- NA
-rlp_1994_gemeinderatswahlen_data_sub$gew_FDP <- NA
-rlp_1994_gemeinderatswahlen_data_sub$gew_DiePARTEI <- NA
-rlp_1994_gemeinderatswahlen_data_sub$gew_FREIEWÄHLER <- NA
-rlp_1994_gemeinderatswahlen_data_sub$gew_Gemeinsame_Wahlvorschläge <- NA
-rlp_1994_gemeinderatswahlen_data_sub$gew_Wählergruppen <- NA
-
-rlp_1994_gemeinderatswahlen_data_sub$sitze_CDU <- NA
-rlp_1994_gemeinderatswahlen_data_sub$sitze_SPD <- NA
-rlp_1994_gemeinderatswahlen_data_sub$sitze_DIELINKE <- NA
-rlp_1994_gemeinderatswahlen_data_sub$sitze_GRÜNE <- NA
-rlp_1994_gemeinderatswahlen_data_sub$sitze_AfD <- NA
-rlp_1994_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
-rlp_1994_gemeinderatswahlen_data_sub$sitze_FDP <- NA
-rlp_1994_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
-rlp_1994_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
-rlp_1994_gemeinderatswahlen_data_sub$sitze_Gemeinsame_Wahlvorschläge <- NA
-rlp_1994_gemeinderatswahlen_data_sub$sitze_Wählergruppen <- NA
-
-
-# Creating new dataframe with selected vars ----
-rlp_1994_gemeinderatswahlen_data_sub <- rlp_1994_gemeinderatswahlen_data_sub[, .(
-  AGS_8dig,
-  Bundesland,
-  Gebietsname,
-  election_year,
-  election_type,
-  IDIRB,
-  IDBA,
-  Wahlberechtigteinsgesamt,
-  Wähler,
-  GültigeStimmen,
-  abs_CDU,
-  abs_SPD,
-  abs_DIELINKE,
-  abs_GRÜNE,
-  abs_AfD,
-  abs_PIRATEN,
-  abs_FDP,
-  abs_FREIEWÄHLER,
-  abs_Gemeinsame_Wahlvorschläge,
-  abs_Wählergruppen,
-  gew_CDU,
-  gew_SPD,
-  gew_DIELINKE,
-  gew_GRÜNE,
-  gew_AfD,
-  gew_PIRATEN,
-  gew_FDP,
-  gew_FREIEWÄHLER,
-  gew_Gemeinsame_Wahlvorschläge,
-  gew_Wählergruppen,
-  sitze_CDU,
-  sitze_SPD,
-  sitze_DIELINKE,
-  sitze_GRÜNE,
-  sitze_AfD,
-  sitze_PIRATEN,
-  sitze_FDP,
-  sitze_FREIEWÄHLER,
-  sitze_Gemeinsame_Wahlvorschläge,
-  sitze_Wählergruppen
-)]
-
-# Calculating vote shares ----
-# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
-
-rlp_1994_gemeinderatswahlen_data_sub <-
-  rlp_1994_gemeinderatswahlen_data_sub %>%
-  mutate_at(
-    vars(contains('gew')),
-    .funs = list(XXX = ~ . / as.numeric(GültigeStimmen))
-  ) %>%
-  rename_at(
-    vars(matches("gew") & matches("X")),
-    list(~ paste(sub("gew_", "prop_", .), sep = "_"))
-  ) %>%
-  rename_at(vars(matches("_XXX")), list(~ paste(sub("_XXX", "", .), sep = "")))
-
-
-# Calculating turnout ----
-rlp_1994_gemeinderatswahlen_data_sub$Turnout <- rlp_1994_gemeinderatswahlen_data_sub$Wähler /
-  rlp_1994_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
-
-
-###### RLP 1999 Gemeinderatswahlen ----
-#### Load election data ----
-rlp_1999_gemeinderatswahlen_data <- as.data.table(read_excel(
-  "raw/rlp/rlp_1994_1999.xlsx",
-  sheet = "1999"
-))
-
-#### Delete white space ----
-names(rlp_1999_gemeinderatswahlen_data) <- str_replace_all(
-  names(rlp_1999_gemeinderatswahlen_data),
-  fixed(" "),
-  ""
-)
-
-#### Recoding ----
-# Create new dataframe ----
-rlp_1999_gemeinderatswahlen_data_sub <- rlp_1999_gemeinderatswahlen_data
-
-# Creating non-existing variables ----
-rlp_1999_gemeinderatswahlen_data_sub[, AGS_8dig := ""] # 8 digits with leading zero
-rlp_1999_gemeinderatswahlen_data_sub[, Bundesland := "RLP"]
-rlp_1999_gemeinderatswahlen_data_sub[, Gebietsname := ""]
-rlp_1999_gemeinderatswahlen_data_sub[, election_year := "1999"]
-rlp_1999_gemeinderatswahlen_data_sub[, election_type := "Kommunalwahlen"]
-rlp_1999_gemeinderatswahlen_data_sub[, IDIRB := ""]
-rlp_1999_gemeinderatswahlen_data_sub[, IDBA := ""]
-
-
-# Renaming existing variables ----
-rlp_1999_gemeinderatswahlen_data_sub$AGS_8dig <- str_extract(
-  rlp_1999_gemeinderatswahlen_data_sub$Gebiet,
-  "\\d{8}"
-)
-rlp_1999_gemeinderatswahlen_data_sub$Gebietsname <- sub(
-  "^\\d{8}\\s+(.*)$",
-  "\\1",
-  rlp_1999_gemeinderatswahlen_data_sub$Gebiet
-)
-rlp_1999_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt <- rlp_1999_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
-rlp_1999_gemeinderatswahlen_data_sub$Wähler <- rlp_1999_gemeinderatswahlen_data_sub$Waehler
-#rlp_1999_gemeinderatswahlen_data_sub$GültigeStimmen <- rlp_1999_gemeinderatswahlen_data_sub$GueltigeStimmen
-
-rlp_1999_gemeinderatswahlen_data_sub$GültigeStimmen <- rlp_1999_gemeinderatswahlen_data_sub$gueltigeStimmen
-
-rlp_1999_gemeinderatswahlen_data_sub$abs_CDU <- as.numeric(
-  rlp_1999_gemeinderatswahlen_data_sub$CDU
-)
-rlp_1999_gemeinderatswahlen_data_sub$abs_SPD <- as.numeric(
-  rlp_1999_gemeinderatswahlen_data_sub$SPD
-)
-rlp_1999_gemeinderatswahlen_data_sub$abs_DIELINKE <- as.numeric(
-  rlp_1999_gemeinderatswahlen_data_sub$DIELINKE
-)
-rlp_1999_gemeinderatswahlen_data_sub$abs_GRÜNE <- as.numeric(
-  rlp_1999_gemeinderatswahlen_data_sub$Gruene
-)
-rlp_1999_gemeinderatswahlen_data_sub$abs_AfD <- NA
-rlp_1999_gemeinderatswahlen_data_sub$abs_PIRATEN <- NA
-rlp_1999_gemeinderatswahlen_data_sub$abs_FDP <- as.numeric(
-  rlp_1999_gemeinderatswahlen_data_sub$fdp
-)
-rlp_1999_gemeinderatswahlen_data_sub$abs_DiePARTEI <- NA
-rlp_1999_gemeinderatswahlen_data_sub$abs_FREIEWÄHLER <- NA
-rlp_1999_gemeinderatswahlen_data_sub$abs_Gemeinsame_Wahlvorschläge <- NA
-rlp_1999_gemeinderatswahlen_data_sub$abs_Wählergruppen <- as.numeric(
-  rlp_1999_gemeinderatswahlen_data_sub$WG
-)
-
-
-rlp_1999_gemeinderatswahlen_data_sub$gew_CDU <- NA
-rlp_1999_gemeinderatswahlen_data_sub$gew_SPD <- NA
-rlp_1999_gemeinderatswahlen_data_sub$gew_DIELINKE <- NA
-rlp_1999_gemeinderatswahlen_data_sub$gew_GRÜNE <- NA
-rlp_1999_gemeinderatswahlen_data_sub$gew_AfD <- NA
-rlp_1999_gemeinderatswahlen_data_sub$gew_PIRATEN <- NA
-rlp_1999_gemeinderatswahlen_data_sub$gew_FDP <- NA
-rlp_1999_gemeinderatswahlen_data_sub$gew_DiePARTEI <- NA
-rlp_1999_gemeinderatswahlen_data_sub$gew_FREIEWÄHLER <- NA
-rlp_1999_gemeinderatswahlen_data_sub$gew_Gemeinsame_Wahlvorschläge <- NA
-rlp_1999_gemeinderatswahlen_data_sub$gew_Wählergruppen <- NA
-
-rlp_1999_gemeinderatswahlen_data_sub$sitze_CDU <- NA
-rlp_1999_gemeinderatswahlen_data_sub$sitze_SPD <- NA
-rlp_1999_gemeinderatswahlen_data_sub$sitze_DIELINKE <- NA
-rlp_1999_gemeinderatswahlen_data_sub$sitze_GRÜNE <- NA
-rlp_1999_gemeinderatswahlen_data_sub$sitze_AfD <- NA
-rlp_1999_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
-rlp_1999_gemeinderatswahlen_data_sub$sitze_FDP <- NA
-rlp_1999_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
-rlp_1999_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
-rlp_1999_gemeinderatswahlen_data_sub$sitze_Gemeinsame_Wahlvorschläge <- NA
-rlp_1999_gemeinderatswahlen_data_sub$sitze_Wählergruppen <- NA
-
-
-# Creating new dataframe with selected vars ----
-rlp_1999_gemeinderatswahlen_data_sub <- rlp_1999_gemeinderatswahlen_data_sub[, .(
-  AGS_8dig,
-  Bundesland,
-  Gebietsname,
-  election_year,
-  election_type,
-  IDIRB,
-  IDBA,
-  Wahlberechtigteinsgesamt,
-  Wähler,
-  GültigeStimmen,
-  abs_CDU,
-  abs_SPD,
-  abs_DIELINKE,
-  abs_GRÜNE,
-  abs_AfD,
-  abs_PIRATEN,
-  abs_FDP,
-  abs_FREIEWÄHLER,
-  abs_Gemeinsame_Wahlvorschläge,
-  abs_Wählergruppen,
-  gew_CDU,
-  gew_SPD,
-  gew_DIELINKE,
-  gew_GRÜNE,
-  gew_AfD,
-  gew_PIRATEN,
-  gew_FDP,
-  gew_FREIEWÄHLER,
-  gew_Gemeinsame_Wahlvorschläge,
-  gew_Wählergruppen,
-  sitze_CDU,
-  sitze_SPD,
-  sitze_DIELINKE,
-  sitze_GRÜNE,
-  sitze_AfD,
-  sitze_PIRATEN,
-  sitze_FDP,
-  sitze_FREIEWÄHLER,
-  sitze_Gemeinsame_Wahlvorschläge,
-  sitze_Wählergruppen
-)]
-
-# Calculating vote shares ----
-# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
-
-rlp_1999_gemeinderatswahlen_data_sub <-
-  rlp_1999_gemeinderatswahlen_data_sub %>%
-  mutate_at(
-    vars(contains('abs')),
-    .funs = list(XXX = ~ . / as.numeric(GültigeStimmen))
-  ) %>%
-  rename_at(
-    vars(matches("abs") & matches("X")),
-    list(~ paste(sub("abs_", "prop_", .), sep = "_"))
-  ) %>%
-  rename_at(vars(matches("_XXX")), list(~ paste(sub("_XXX", "", .), sep = "")))
-
-# Calculating turnout ----
-rlp_1999_gemeinderatswahlen_data_sub$Turnout <- rlp_1999_gemeinderatswahlen_data_sub$Wähler /
-  rlp_1999_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
-
-
-###### RLP 2004 Gemeinderatswahlen ----
-#### Load election data ----
-rlp_2004_gemeinderatswahlen_data <- as.data.table(read_excel(
-  "raw/rlp/rlp_2004.xlsx",
-  sheet = "summary"
-))
-
-#### Delete white space ----
-names(rlp_2004_gemeinderatswahlen_data) <- str_replace_all(
-  names(rlp_2004_gemeinderatswahlen_data),
-  fixed(" "),
-  ""
-)
-
-#### Recoding ----
-# Create new dataframe ----
-rlp_2004_gemeinderatswahlen_data_sub <- rlp_2004_gemeinderatswahlen_data
-
-names(rlp_2004_gemeinderatswahlen_data_sub)
-
-# Creating non-existing variables ----
-rlp_2004_gemeinderatswahlen_data_sub[, AGS_8dig := ""] # 8 digits with leading zero
-rlp_2004_gemeinderatswahlen_data_sub[, Bundesland := "RLP"]
-rlp_2004_gemeinderatswahlen_data_sub[, Gebietsname := ""]
-rlp_2004_gemeinderatswahlen_data_sub[, election_year := "2004"]
-rlp_2004_gemeinderatswahlen_data_sub[, election_type := "Kommunalwahlen"]
-rlp_2004_gemeinderatswahlen_data_sub[, IDIRB := ""]
-rlp_2004_gemeinderatswahlen_data_sub[, IDBA := ""]
-
-
-# Renaming existing variables ----
-rlp_2004_gemeinderatswahlen_data_sub$AGS_8dig <- rlp_2004_gemeinderatswahlen_data_sub$AGS
-rlp_2004_gemeinderatswahlen_data_sub$Gebietsname <- rlp_2004_gemeinderatswahlen_data_sub$Gemeindename
-rlp_2004_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt <- rlp_2004_gemeinderatswahlen_data_sub$Wahlberechtigte
-rlp_2004_gemeinderatswahlen_data_sub$Wähler <- rlp_2004_gemeinderatswahlen_data_sub$Waehler
-#rlp_2004_gemeinderatswahlen_data_sub$GültigeStimmen <- rlp_2004_gemeinderatswahlen_data_sub$GueltigeStimmen
-
-rlp_2004_gemeinderatswahlen_data_sub$GültigeStimmen <- rlp_2004_gemeinderatswahlen_data_sub$GueltigeStimmzettel
-
-rlp_2004_gemeinderatswahlen_data_sub$abs_CDU <- as.numeric(
-  rlp_2004_gemeinderatswahlen_data_sub$CDU_gew
-)
-rlp_2004_gemeinderatswahlen_data_sub$abs_SPD <- as.numeric(
-  rlp_2004_gemeinderatswahlen_data_sub$SPD_gew
-)
-rlp_2004_gemeinderatswahlen_data_sub$abs_DIELINKE <- as.numeric(
-  rlp_2004_gemeinderatswahlen_data_sub$DIELINKE_gew
-)
-rlp_2004_gemeinderatswahlen_data_sub$abs_GRÜNE <- as.numeric(
-  rlp_2004_gemeinderatswahlen_data_sub$GRUENE_gew
-)
-rlp_2004_gemeinderatswahlen_data_sub$abs_AfD <- NA
-rlp_2004_gemeinderatswahlen_data_sub$abs_PIRATEN <- NA
-rlp_2004_gemeinderatswahlen_data_sub$abs_FDP <- as.numeric(
-  rlp_2004_gemeinderatswahlen_data_sub$FDP_gew
-)
-rlp_2004_gemeinderatswahlen_data_sub$abs_DiePARTEI <- NA
-rlp_2004_gemeinderatswahlen_data_sub$abs_FREIEWÄHLER <- NA
-rlp_2004_gemeinderatswahlen_data_sub$abs_Gemeinsame_Wahlvorschläge <- as.numeric(
-  rlp_2004_gemeinderatswahlen_data_sub$Gemeinsame_Wahlvorschläge_gew
-)
-rlp_2004_gemeinderatswahlen_data_sub$abs_Wählergruppen <- as.numeric(
-  rlp_2004_gemeinderatswahlen_data_sub$Waehlergruppen_gew
-)
-
-
-rlp_2004_gemeinderatswahlen_data_sub$gew_CDU <- rlp_2004_gemeinderatswahlen_data_sub$CDU_gew
-rlp_2004_gemeinderatswahlen_data_sub$gew_SPD <- rlp_2004_gemeinderatswahlen_data_sub$SPD_gew
-rlp_2004_gemeinderatswahlen_data_sub$gew_DIELINKE <- rlp_2004_gemeinderatswahlen_data_sub$DIELINKE_gew
-rlp_2004_gemeinderatswahlen_data_sub$gew_GRÜNE <- rlp_2004_gemeinderatswahlen_data_sub$GRUENE_gew
-rlp_2004_gemeinderatswahlen_data_sub$gew_AfD <- NA
-rlp_2004_gemeinderatswahlen_data_sub$gew_PIRATEN <- NA
-rlp_2004_gemeinderatswahlen_data_sub$gew_FDP <- rlp_2004_gemeinderatswahlen_data_sub$FDP_gew
-rlp_2004_gemeinderatswahlen_data_sub$gew_DiePARTEI <- NA
-rlp_2004_gemeinderatswahlen_data_sub$gew_FREIEWÄHLER <- NA
-rlp_2004_gemeinderatswahlen_data_sub$gew_Gemeinsame_Wahlvorschläge <- as.numeric(
-  rlp_2004_gemeinderatswahlen_data_sub$Gemeinsame_Wahlvorschläge_gew
-)
-rlp_2004_gemeinderatswahlen_data_sub$gew_Wählergruppen <- as.numeric(
-  rlp_2004_gemeinderatswahlen_data_sub$Waehlergruppen_gew
-)
-
-rlp_2004_gemeinderatswahlen_data_sub$sitze_CDU <- rlp_2004_gemeinderatswahlen_data_sub$CDU_sitze
-rlp_2004_gemeinderatswahlen_data_sub$sitze_SPD <- rlp_2004_gemeinderatswahlen_data_sub$SPD_sitze
-rlp_2004_gemeinderatswahlen_data_sub$sitze_DIELINKE <- rlp_2004_gemeinderatswahlen_data_sub$DIELINKE_sitze
-rlp_2004_gemeinderatswahlen_data_sub$sitze_GRÜNE <- rlp_2004_gemeinderatswahlen_data_sub$GRUENE_sitze
-rlp_2004_gemeinderatswahlen_data_sub$sitze_AfD <- NA
-rlp_2004_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
-rlp_2004_gemeinderatswahlen_data_sub$sitze_FDP <- rlp_2004_gemeinderatswahlen_data_sub$FDP_sitze
-rlp_2004_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
-rlp_2004_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
-rlp_2004_gemeinderatswahlen_data_sub$sitze_Gemeinsame_Wahlvorschläge <- as.numeric(
-  rlp_2004_gemeinderatswahlen_data_sub$Gemeinsame_Wahlvorschläge_sitze
-)
-rlp_2004_gemeinderatswahlen_data_sub$sitze_Wählergruppen <- as.numeric(
-  rlp_2004_gemeinderatswahlen_data_sub$Waehlergruppen_sitze
-)
-
-
-# Creating new dataframe with selected vars ----
-rlp_2004_gemeinderatswahlen_data_sub <- rlp_2004_gemeinderatswahlen_data_sub[, .(
-  AGS_8dig,
-  Bundesland,
-  Gebietsname,
-  election_year,
-  election_type,
-  IDIRB,
-  IDBA,
-  Wahlberechtigteinsgesamt,
-  Wähler,
-  GültigeStimmen,
-  abs_CDU,
-  abs_SPD,
-  abs_DIELINKE,
-  abs_GRÜNE,
-  abs_AfD,
-  abs_PIRATEN,
-  abs_FDP,
-  abs_FREIEWÄHLER,
-  abs_Gemeinsame_Wahlvorschläge,
-  abs_Wählergruppen,
-  gew_CDU,
-  gew_SPD,
-  gew_DIELINKE,
-  gew_GRÜNE,
-  gew_AfD,
-  gew_PIRATEN,
-  gew_FDP,
-  gew_FREIEWÄHLER,
-  gew_Gemeinsame_Wahlvorschläge,
-  gew_Wählergruppen,
-  sitze_CDU,
-  sitze_SPD,
-  sitze_DIELINKE,
-  sitze_GRÜNE,
-  sitze_AfD,
-  sitze_PIRATEN,
-  sitze_FDP,
-  sitze_FREIEWÄHLER,
-  sitze_Gemeinsame_Wahlvorschläge,
-  sitze_Wählergruppen
-)]
-
-# Calculating vote shares ----
-# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
-
-rlp_2004_gemeinderatswahlen_data_sub <-
-  rlp_2004_gemeinderatswahlen_data_sub %>%
-  mutate_at(
-    vars(contains('gew')),
-    .funs = list(XXX = ~ . / as.numeric(GültigeStimmen))
-  ) %>%
-  rename_at(
-    vars(matches("gew") & matches("X")),
-    list(~ paste(sub("gew_", "prop_", .), sep = "_"))
-  ) %>%
-  rename_at(vars(matches("_XXX")), list(~ paste(sub("_XXX", "", .), sep = "")))
-
-
-# Calculating turnout ----
-rlp_2004_gemeinderatswahlen_data_sub$Turnout <- rlp_2004_gemeinderatswahlen_data_sub$Wähler /
-  rlp_2004_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
-
-
-###### RLP 2009 Gemeinderatswahlen ----
-#### Load election data ----
-rlp_2009_gemeinderatswahlen_data <- as.data.table(read_excel(
-  "raw/rlp/rlp_2009.xlsx",
-  sheet = "summary"
-))
-
-#### Delete white space ----
-names(rlp_2009_gemeinderatswahlen_data) <- str_replace_all(
-  names(rlp_2009_gemeinderatswahlen_data),
-  fixed(" "),
-  ""
-)
-
-#### Recoding ----
-# Create new dataframe ----
-rlp_2009_gemeinderatswahlen_data_sub <- rlp_2009_gemeinderatswahlen_data
-
-names(rlp_2009_gemeinderatswahlen_data_sub)
-
-# Creating non-existing variables ----
-rlp_2009_gemeinderatswahlen_data_sub[, AGS_8dig := ""] # 8 digits with leading zero
-rlp_2009_gemeinderatswahlen_data_sub[, Bundesland := "RLP"]
-rlp_2009_gemeinderatswahlen_data_sub[, Gebietsname := ""]
-rlp_2009_gemeinderatswahlen_data_sub[, election_year := "2009"]
-rlp_2009_gemeinderatswahlen_data_sub[, election_type := "Kommunalwahlen"]
-rlp_2009_gemeinderatswahlen_data_sub[, IDIRB := ""]
-rlp_2009_gemeinderatswahlen_data_sub[, IDBA := ""]
-
-# Renaming existing variables ----
-rlp_2009_gemeinderatswahlen_data_sub$AGS_8dig <- rlp_2009_gemeinderatswahlen_data_sub$AGS
-rlp_2009_gemeinderatswahlen_data_sub$Gebietsname <- rlp_2009_gemeinderatswahlen_data_sub$Gemeindename
-rlp_2009_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt <- rlp_2009_gemeinderatswahlen_data_sub$Wahlberechtigte
-rlp_2009_gemeinderatswahlen_data_sub$Wähler <- rlp_2009_gemeinderatswahlen_data_sub$Waehler
-#rlp_2009_gemeinderatswahlen_data_sub$GültigeStimmen <- rlp_2009_gemeinderatswahlen_data_sub$GueltigeStimmen
-
-# Use Stimmzettel!
-rlp_2009_gemeinderatswahlen_data_sub$GültigeStimmen <- rlp_2009_gemeinderatswahlen_data_sub$GueltigeStimmzettel
-
-rlp_2009_gemeinderatswahlen_data_sub$abs_CDU <- as.numeric(
-  rlp_2009_gemeinderatswahlen_data_sub$CDU
-)
-rlp_2009_gemeinderatswahlen_data_sub$abs_SPD <- as.numeric(
-  rlp_2009_gemeinderatswahlen_data_sub$SPD
-)
-rlp_2009_gemeinderatswahlen_data_sub$abs_DIELINKE <- as.numeric(
-  rlp_2009_gemeinderatswahlen_data_sub$DIELINKE
-)
-rlp_2009_gemeinderatswahlen_data_sub$abs_GRÜNE <- as.numeric(
-  rlp_2009_gemeinderatswahlen_data_sub$GRUENE
-)
-rlp_2009_gemeinderatswahlen_data_sub$abs_AfD <- NA
-rlp_2009_gemeinderatswahlen_data_sub$abs_PIRATEN <- NA
-rlp_2009_gemeinderatswahlen_data_sub$abs_FDP <- as.numeric(
-  rlp_2009_gemeinderatswahlen_data_sub$FDP
-)
-rlp_2009_gemeinderatswahlen_data_sub$abs_DiePARTEI <- NA
-rlp_2009_gemeinderatswahlen_data_sub$abs_FREIEWÄHLER <- NA
-rlp_2009_gemeinderatswahlen_data_sub$abs_Gemeinsame_Wahlvorschläge <- as.numeric(
-  rlp_2009_gemeinderatswahlen_data_sub$Gemeinsame_Wahlvorschläge
-)
-rlp_2009_gemeinderatswahlen_data_sub$abs_Wählergruppen <- as.numeric(
-  rlp_2009_gemeinderatswahlen_data_sub$Waehlergruppen
-)
-
-rlp_2009_gemeinderatswahlen_data_sub$gew_CDU <- NA
-rlp_2009_gemeinderatswahlen_data_sub$gew_SPD <- NA
-rlp_2009_gemeinderatswahlen_data_sub$gew_DIELINKE <- NA
-rlp_2009_gemeinderatswahlen_data_sub$gew_GRÜNE <- NA
-rlp_2009_gemeinderatswahlen_data_sub$gew_AfD <- NA
-rlp_2009_gemeinderatswahlen_data_sub$gew_PIRATEN <- NA
-rlp_2009_gemeinderatswahlen_data_sub$gew_FDP <- NA
-rlp_2009_gemeinderatswahlen_data_sub$gew_DiePARTEI <- NA
-rlp_2009_gemeinderatswahlen_data_sub$gew_FREIEWÄHLER <- NA
-rlp_2009_gemeinderatswahlen_data_sub$gew_Gemeinsame_Wahlvorschläge <- NA
-rlp_2009_gemeinderatswahlen_data_sub$gew_Wählergruppen <- NA
-
-rlp_2009_gemeinderatswahlen_data_sub$sitze_CDU <- rlp_2009_gemeinderatswahlen_data_sub$CDU_sitze
-rlp_2009_gemeinderatswahlen_data_sub$sitze_SPD <- rlp_2009_gemeinderatswahlen_data_sub$SPD_sitze
-rlp_2009_gemeinderatswahlen_data_sub$sitze_DIELINKE <- rlp_2009_gemeinderatswahlen_data_sub$DIELINKE_sitze
-rlp_2009_gemeinderatswahlen_data_sub$sitze_GRÜNE <- rlp_2009_gemeinderatswahlen_data_sub$GRUENE_sitze
-rlp_2009_gemeinderatswahlen_data_sub$sitze_AfD <- NA
-rlp_2009_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
-rlp_2009_gemeinderatswahlen_data_sub$sitze_FDP <- rlp_2009_gemeinderatswahlen_data_sub$FDP_sitze
-rlp_2009_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
-rlp_2009_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
-rlp_2009_gemeinderatswahlen_data_sub$sitze_Gemeinsame_Wahlvorschläge <- as.numeric(
-  rlp_2009_gemeinderatswahlen_data_sub$Gemeinsame_Wahlvorschläge_sitze
-)
-rlp_2009_gemeinderatswahlen_data_sub$sitze_Wählergruppen <- as.numeric(
-  rlp_2009_gemeinderatswahlen_data_sub$Waehlergruppen_sitze
-)
-
-# Creating new dataframe with selected vars ----
-rlp_2009_gemeinderatswahlen_data_sub <- rlp_2009_gemeinderatswahlen_data_sub[, .(
-  AGS_8dig,
-  Bundesland,
-  Gebietsname,
-  election_year,
-  election_type,
-  IDIRB,
-  IDBA,
-  Wahlberechtigteinsgesamt,
-  Wähler,
-  GültigeStimmen,
-  abs_CDU,
-  abs_SPD,
-  abs_DIELINKE,
-  abs_GRÜNE,
-  abs_AfD,
-  abs_PIRATEN,
-  abs_FDP,
-  abs_FREIEWÄHLER,
-  abs_Gemeinsame_Wahlvorschläge,
-  abs_Wählergruppen,
-  gew_CDU,
-  gew_SPD,
-  gew_DIELINKE,
-  gew_GRÜNE,
-  gew_AfD,
-  gew_PIRATEN,
-  gew_FDP,
-  gew_FREIEWÄHLER,
-  gew_Gemeinsame_Wahlvorschläge,
-  gew_Wählergruppen,
-  sitze_CDU,
-  sitze_SPD,
-  sitze_DIELINKE,
-  sitze_GRÜNE,
-  sitze_AfD,
-  sitze_PIRATEN,
-  sitze_FDP,
-  sitze_FREIEWÄHLER,
-  sitze_Gemeinsame_Wahlvorschläge,
-  sitze_Wählergruppen
-)]
-
-# Calculating vote shares ----
-# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
-
-rlp_2009_gemeinderatswahlen_data_sub <-
-  rlp_2009_gemeinderatswahlen_data_sub %>%
-  mutate_at(
-    vars(contains('abs')),
-    .funs = list(XXX = ~ . / as.numeric(GültigeStimmen))
-  ) %>%
-  rename_at(
-    vars(matches("abs") & matches("X")),
-    list(~ paste(sub("abs_", "prop_", .), sep = "_"))
-  ) %>%
-  rename_at(vars(matches("_XXX")), list(~ paste(sub("_XXX", "", .), sep = "")))
-
-# Calculating turnout ----
-rlp_2009_gemeinderatswahlen_data_sub$Turnout <- rlp_2009_gemeinderatswahlen_data_sub$Wähler /
-  rlp_2009_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
-
-
-###### RLP 2014 Gemeinderatswahlen ----
-#### Load election data ----
-rlp_2014_gemeinderatswahlen_data <- as.data.table(read_excel(
-  "raw/rlp/rlp_2014.xlsx",
-  sheet = "summary"
-))
-
-#### Delete white space ----
-names(rlp_2014_gemeinderatswahlen_data) <- str_replace_all(
-  names(rlp_2014_gemeinderatswahlen_data),
-  fixed(" "),
-  ""
-)
-
-#### Recoding ----
-# Create new dataframe ----
-rlp_2014_gemeinderatswahlen_data_sub <- rlp_2014_gemeinderatswahlen_data
-
-names(rlp_2014_gemeinderatswahlen_data_sub)
-
-# Creating non-existing variables ----
-rlp_2014_gemeinderatswahlen_data_sub[, AGS_8dig := ""] # 8 digits with leading zero
-rlp_2014_gemeinderatswahlen_data_sub[, Bundesland := "RLP"]
-rlp_2014_gemeinderatswahlen_data_sub[, Gebietsname := ""]
-rlp_2014_gemeinderatswahlen_data_sub[, election_year := "2014"]
-rlp_2014_gemeinderatswahlen_data_sub[, election_type := "Kommunalwahlen"]
-rlp_2014_gemeinderatswahlen_data_sub[, IDIRB := ""]
-rlp_2014_gemeinderatswahlen_data_sub[, IDBA := ""]
-
-# Renaming existing variables ----
-rlp_2014_gemeinderatswahlen_data_sub$AGS_8dig <- as.character(
-  rlp_2014_gemeinderatswahlen_data_sub$AGS
-)
-rlp_2014_gemeinderatswahlen_data_sub$Gebietsname <- rlp_2014_gemeinderatswahlen_data_sub$Gemeindename
-rlp_2014_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(
-  rlp_2014_gemeinderatswahlen_data_sub$Wahlberechtigte
-)
-rlp_2014_gemeinderatswahlen_data_sub$Wähler <- as.numeric(
-  rlp_2014_gemeinderatswahlen_data_sub$Waehler
-)
-rlp_2014_gemeinderatswahlen_data_sub$GültigeStimmen <- rlp_2014_gemeinderatswahlen_data_sub$GueltigeStimmzettel
-
-rlp_2014_gemeinderatswahlen_data_sub$abs_CDU <- as.numeric(
-  rlp_2014_gemeinderatswahlen_data_sub$CDU
-)
-rlp_2014_gemeinderatswahlen_data_sub$abs_SPD <- as.numeric(
-  rlp_2014_gemeinderatswahlen_data_sub$SPD
-)
-rlp_2014_gemeinderatswahlen_data_sub$abs_DIELINKE <- as.numeric(
-  rlp_2014_gemeinderatswahlen_data_sub$DIELINKE
-)
-rlp_2014_gemeinderatswahlen_data_sub$abs_GRÜNE <- as.numeric(
-  rlp_2014_gemeinderatswahlen_data_sub$GRUENE
-)
-rlp_2014_gemeinderatswahlen_data_sub$abs_AfD <- as.numeric(
-  rlp_2014_gemeinderatswahlen_data_sub$AfD
-)
-rlp_2014_gemeinderatswahlen_data_sub$abs_PIRATEN <- NA
-rlp_2014_gemeinderatswahlen_data_sub$abs_FDP <- as.numeric(
-  rlp_2014_gemeinderatswahlen_data_sub$FDP
-)
-rlp_2014_gemeinderatswahlen_data_sub$abs_DiePARTEI <- NA
-rlp_2014_gemeinderatswahlen_data_sub$abs_FREIEWÄHLER <- NA
-rlp_2014_gemeinderatswahlen_data_sub$abs_Gemeinsame_Wahlvorschläge <- as.numeric(
-  rlp_2014_gemeinderatswahlen_data_sub$Gemeinsame_Wahlvorschläge
-)
-rlp_2014_gemeinderatswahlen_data_sub$abs_Wählergruppen <- as.numeric(
-  rlp_2014_gemeinderatswahlen_data_sub$Waehlergruppen
-)
-
-rlp_2014_gemeinderatswahlen_data_sub$gew_CDU <- NA
-rlp_2014_gemeinderatswahlen_data_sub$gew_SPD <- NA
-rlp_2014_gemeinderatswahlen_data_sub$gew_DIELINKE <- NA
-rlp_2014_gemeinderatswahlen_data_sub$gew_GRÜNE <- NA
-rlp_2014_gemeinderatswahlen_data_sub$gew_AfD <- NA
-rlp_2014_gemeinderatswahlen_data_sub$gew_PIRATEN <- NA
-rlp_2014_gemeinderatswahlen_data_sub$gew_FDP <- NA
-rlp_2014_gemeinderatswahlen_data_sub$gew_DiePARTEI <- NA
-rlp_2014_gemeinderatswahlen_data_sub$gew_FREIEWÄHLER <- NA
-rlp_2014_gemeinderatswahlen_data_sub$gew_Gemeinsame_Wahlvorschläge <- NA
-rlp_2014_gemeinderatswahlen_data_sub$gew_Wählergruppen <- NA
-
-rlp_2014_gemeinderatswahlen_data_sub$sitze_CDU <- rlp_2014_gemeinderatswahlen_data_sub$CDU_sitze
-rlp_2014_gemeinderatswahlen_data_sub$sitze_SPD <- rlp_2014_gemeinderatswahlen_data_sub$SPD_sitze
-rlp_2014_gemeinderatswahlen_data_sub$sitze_DIELINKE <- rlp_2014_gemeinderatswahlen_data_sub$DIELINKE_sitze
-rlp_2014_gemeinderatswahlen_data_sub$sitze_GRÜNE <- rlp_2014_gemeinderatswahlen_data_sub$GRUENE_sitze
-rlp_2014_gemeinderatswahlen_data_sub$sitze_AfD <- rlp_2014_gemeinderatswahlen_data_sub$AfD_sitze
-rlp_2014_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
-rlp_2014_gemeinderatswahlen_data_sub$sitze_FDP <- rlp_2014_gemeinderatswahlen_data_sub$FDP_sitze
-rlp_2014_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
-rlp_2014_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
-rlp_2014_gemeinderatswahlen_data_sub$sitze_Gemeinsame_Wahlvorschläge <- as.numeric(
-  rlp_2014_gemeinderatswahlen_data_sub$Gemeinsame_Wahlvorschläge_sitze
-)
-rlp_2014_gemeinderatswahlen_data_sub$sitze_Wählergruppen <- as.numeric(
-  rlp_2014_gemeinderatswahlen_data_sub$Waehlergruppen_sitze
-)
-
-
-# Creating new dataframe with selected vars ----
-rlp_2014_gemeinderatswahlen_data_sub <- rlp_2014_gemeinderatswahlen_data_sub[, .(
-  AGS_8dig,
-  Bundesland,
-  Gebietsname,
-  election_year,
-  election_type,
-  IDIRB,
-  IDBA,
-  Wahlberechtigteinsgesamt,
-  Wähler,
-  GültigeStimmen,
-  abs_CDU,
-  abs_SPD,
-  abs_DIELINKE,
-  abs_GRÜNE,
-  abs_AfD,
-  abs_PIRATEN,
-  abs_FDP,
-  abs_FREIEWÄHLER,
-  abs_Gemeinsame_Wahlvorschläge,
-  abs_Wählergruppen,
-  gew_CDU,
-  gew_SPD,
-  gew_DIELINKE,
-  gew_GRÜNE,
-  gew_AfD,
-  gew_PIRATEN,
-  gew_FDP,
-  gew_FREIEWÄHLER,
-  gew_Gemeinsame_Wahlvorschläge,
-  gew_Wählergruppen,
-  sitze_CDU,
-  sitze_SPD,
-  sitze_DIELINKE,
-  sitze_GRÜNE,
-  sitze_AfD,
-  sitze_PIRATEN,
-  sitze_FDP,
-  sitze_FREIEWÄHLER,
-  sitze_Gemeinsame_Wahlvorschläge,
-  sitze_Wählergruppen
-)]
-
-# Calculating vote shares ----
-# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
-
-rlp_2014_gemeinderatswahlen_data_sub <-
-  rlp_2014_gemeinderatswahlen_data_sub %>%
-  mutate_at(
-    vars(contains('abs')),
-    .funs = list(XXX = ~ . / as.numeric(GültigeStimmen))
-  ) %>%
-  rename_at(
-    vars(matches("abs") & matches("X")),
-    list(~ paste(sub("abs_", "prop_", .), sep = "_"))
-  ) %>%
-  rename_at(vars(matches("_XXX")), list(~ paste(sub("_XXX", "", .), sep = "")))
-
-rlp_2014_gemeinderatswahlen_data_sub[AGS_8dig == "33205032"]
-
-# Calculating turnout ----
-rlp_2014_gemeinderatswahlen_data_sub$Turnout <- rlp_2014_gemeinderatswahlen_data_sub$Wähler /
-  rlp_2014_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
-
-
-# Filter Landkreise ----
-rlp_2014_gemeinderatswahlen_data_sub <- rlp_2014_gemeinderatswahlen_data_sub %>%
-  filter(!Gebietsname %in% c("Rhein-Hunsrück-Kreis", "Ahrweiler, Landkreis"))
-
-###### RLP 2019 Gemeinderatswahlen ----
-#### Load election data ----
-rlp_2019_gemeinderatswahlen_data <- as.data.table(read_excel(
-  "raw/rlp/rlp_2019.xlsx",
-  sheet = "summary"
-))
-
-#### Delete white space ----
-names(rlp_2019_gemeinderatswahlen_data) <- str_replace_all(
-  names(rlp_2019_gemeinderatswahlen_data),
-  fixed(" "),
-  ""
-)
-
-#### Recoding ----
-# Create new dataframe ----
-rlp_2019_gemeinderatswahlen_data_sub <- rlp_2019_gemeinderatswahlen_data
-
-names(rlp_2019_gemeinderatswahlen_data_sub)
-
-# Creating non-existing variables ----
-rlp_2019_gemeinderatswahlen_data_sub[, AGS_8dig := ""] # 8 digits with leading zero
-rlp_2019_gemeinderatswahlen_data_sub[, Bundesland := "RLP"]
-rlp_2019_gemeinderatswahlen_data_sub[, Gebietsname := ""]
-rlp_2019_gemeinderatswahlen_data_sub[, election_year := "2019"]
-rlp_2019_gemeinderatswahlen_data_sub[, election_type := "Kommunalwahlen"]
-rlp_2019_gemeinderatswahlen_data_sub[, IDIRB := ""]
-rlp_2019_gemeinderatswahlen_data_sub[, IDBA := ""]
-
-# Renaming existing variables ----
-rlp_2019_gemeinderatswahlen_data_sub$AGS_8dig <- rlp_2019_gemeinderatswahlen_data_sub$AGS
-rlp_2019_gemeinderatswahlen_data_sub$Gebietsname <- rlp_2019_gemeinderatswahlen_data_sub$Gemeindename
-rlp_2019_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(
-  rlp_2019_gemeinderatswahlen_data_sub$Wahlberechtigte
-)
-rlp_2019_gemeinderatswahlen_data_sub$Wähler <- as.numeric(
-  rlp_2019_gemeinderatswahlen_data_sub$Waehler
-)
-rlp_2019_gemeinderatswahlen_data_sub$GültigeStimmen <- rlp_2019_gemeinderatswahlen_data_sub$GueltigeStimmzettel
-
-rlp_2019_gemeinderatswahlen_data_sub$abs_CDU <- as.numeric(
-  rlp_2019_gemeinderatswahlen_data_sub$CDU_gew
-)
-rlp_2019_gemeinderatswahlen_data_sub$abs_SPD <- as.numeric(
-  rlp_2019_gemeinderatswahlen_data_sub$SPD_gew
-)
-rlp_2019_gemeinderatswahlen_data_sub$abs_DIELINKE <- as.numeric(
-  rlp_2019_gemeinderatswahlen_data_sub$DIELINKE_gew
-)
-rlp_2019_gemeinderatswahlen_data_sub$abs_GRÜNE <- as.numeric(
-  rlp_2019_gemeinderatswahlen_data_sub$GRUENE_gew
-)
-rlp_2019_gemeinderatswahlen_data_sub$abs_AfD <- as.numeric(
-  rlp_2019_gemeinderatswahlen_data_sub$AfD_gew
-)
-rlp_2019_gemeinderatswahlen_data_sub$abs_PIRATEN <- NA
-rlp_2019_gemeinderatswahlen_data_sub$abs_FDP <- as.numeric(
-  rlp_2019_gemeinderatswahlen_data_sub$FDP_gew
-)
-rlp_2019_gemeinderatswahlen_data_sub$abs_DiePARTEI <- as.numeric(
-  rlp_2019_gemeinderatswahlen_data_sub$DiePARTEI_gew
-)
-rlp_2019_gemeinderatswahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(
-  rlp_2019_gemeinderatswahlen_data_sub$FREIEWAEHLER_gew
-)
-rlp_2019_gemeinderatswahlen_data_sub$abs_Gemeinsame_Wahlvorschläge <- as.numeric(
-  rlp_2019_gemeinderatswahlen_data_sub$Gemeinsame_Wahlvorschläge_gew
-)
-rlp_2019_gemeinderatswahlen_data_sub$abs_Wählergruppen <- as.numeric(
-  rlp_2019_gemeinderatswahlen_data_sub$Waehlergruppen_gew
-)
-
-rlp_2019_gemeinderatswahlen_data_sub$gew_CDU <- rlp_2019_gemeinderatswahlen_data_sub$CDU_gew
-rlp_2019_gemeinderatswahlen_data_sub$gew_SPD <- rlp_2019_gemeinderatswahlen_data_sub$SPD_gew
-rlp_2019_gemeinderatswahlen_data_sub$gew_DIELINKE <- rlp_2019_gemeinderatswahlen_data_sub$DIELINKE_gew
-rlp_2019_gemeinderatswahlen_data_sub$gew_GRÜNE <- rlp_2019_gemeinderatswahlen_data_sub$GRUENE_gew
-rlp_2019_gemeinderatswahlen_data_sub$gew_AfD <- rlp_2019_gemeinderatswahlen_data_sub$AfD_gew
-rlp_2019_gemeinderatswahlen_data_sub$gew_PIRATEN <- NA
-rlp_2019_gemeinderatswahlen_data_sub$gew_FDP <- rlp_2019_gemeinderatswahlen_data_sub$FDP_gew
-rlp_2019_gemeinderatswahlen_data_sub$gew_DiePARTEI <- rlp_2019_gemeinderatswahlen_data_sub$DiePARTEI_gew
-rlp_2019_gemeinderatswahlen_data_sub$gew_FREIEWÄHLER <- rlp_2019_gemeinderatswahlen_data_sub$FREIEWAEHLER_gew
-rlp_2019_gemeinderatswahlen_data_sub$gew_Gemeinsame_Wahlvorschläge <- as.numeric(
-  rlp_2019_gemeinderatswahlen_data_sub$Gemeinsame_Wahlvorschläge_gew
-)
-rlp_2019_gemeinderatswahlen_data_sub$gew_Wählergruppen <- as.numeric(
-  rlp_2019_gemeinderatswahlen_data_sub$Waehlergruppen_gew
-)
-
-rlp_2019_gemeinderatswahlen_data_sub$sitze_CDU <- rlp_2019_gemeinderatswahlen_data_sub$CDU_sitze
-rlp_2019_gemeinderatswahlen_data_sub$sitze_SPD <- rlp_2019_gemeinderatswahlen_data_sub$SPD_sitze
-rlp_2019_gemeinderatswahlen_data_sub$sitze_DIELINKE <- rlp_2019_gemeinderatswahlen_data_sub$DIELINKE_sitze
-rlp_2019_gemeinderatswahlen_data_sub$sitze_GRÜNE <- rlp_2019_gemeinderatswahlen_data_sub$GRUENE_sitze
-rlp_2019_gemeinderatswahlen_data_sub$sitze_AfD <- rlp_2019_gemeinderatswahlen_data_sub$AfD_sitze
-rlp_2019_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
-rlp_2019_gemeinderatswahlen_data_sub$sitze_FDP <- rlp_2019_gemeinderatswahlen_data_sub$FDP_sitze
-rlp_2019_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- rlp_2019_gemeinderatswahlen_data_sub$DiePARTEI_sitze
-rlp_2019_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- rlp_2019_gemeinderatswahlen_data_sub$FREIEWAEHLER_sitze
-rlp_2019_gemeinderatswahlen_data_sub$sitze_Gemeinsame_Wahlvorschläge <- as.numeric(
-  rlp_2019_gemeinderatswahlen_data_sub$Gemeinsame_Wahlvorschläge_sitze
-)
-rlp_2019_gemeinderatswahlen_data_sub$sitze_Wählergruppen <- as.numeric(
-  rlp_2019_gemeinderatswahlen_data_sub$Waehlergruppen_sitze
-)
-
-
-# Creating new dataframe with selected vars ----
-rlp_2019_gemeinderatswahlen_data_sub <- rlp_2019_gemeinderatswahlen_data_sub[, .(
-  AGS_8dig,
-  Bundesland,
-  Gebietsname,
-  election_year,
-  election_type,
-  IDIRB,
-  IDBA,
-  Wahlberechtigteinsgesamt,
-  Wähler,
-  GültigeStimmen,
-  abs_CDU,
-  abs_SPD,
-  abs_DIELINKE,
-  abs_GRÜNE,
-  abs_AfD,
-  abs_PIRATEN,
-  abs_FDP,
-  abs_FREIEWÄHLER,
-  abs_Gemeinsame_Wahlvorschläge,
-  abs_Wählergruppen,
-  gew_CDU,
-  gew_SPD,
-  gew_DIELINKE,
-  gew_GRÜNE,
-  gew_AfD,
-  gew_PIRATEN,
-  gew_FDP,
-  gew_FREIEWÄHLER,
-  gew_Gemeinsame_Wahlvorschläge,
-  gew_Wählergruppen,
-  sitze_CDU,
-  sitze_SPD,
-  sitze_DIELINKE,
-  sitze_GRÜNE,
-  sitze_AfD,
-  sitze_PIRATEN,
-  sitze_FDP,
-  sitze_FREIEWÄHLER,
-  sitze_Gemeinsame_Wahlvorschläge,
-  sitze_Wählergruppen
-)]
-
-# Calculating vote shares ----
-# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
-
-rlp_2019_gemeinderatswahlen_data_sub <-
-  rlp_2019_gemeinderatswahlen_data_sub %>%
-  mutate_at(
-    vars(contains('gew')),
-    .funs = list(XXX = ~ . / as.numeric(GültigeStimmen))
-  ) %>%
-  rename_at(
-    vars(matches("gew") & matches("X")),
-    list(~ paste(sub("gew_", "prop_", .), sep = "_"))
-  ) %>%
-  rename_at(vars(matches("_XXX")), list(~ paste(sub("_XXX", "", .), sep = "")))
-
-# Calculating turnout ----
-rlp_2019_gemeinderatswahlen_data_sub$Turnout <- rlp_2019_gemeinderatswahlen_data_sub$Wähler /
-  rlp_2019_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
-
-
-###### RLP 2009_2019_krfr_steadte Gemeinderatswahlen ----
-#### Load election data ----
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data <- as.data.table(read_excel(
-  "raw/rlp/rlp_2009_2014_2019_krfr_Staedte.xlsx",
-  sheet = "results"
-))
-
-#### Delete white space ----
-names(rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data) <- str_replace_all(
-  names(rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data),
-  fixed(" "),
-  ""
-)
-
-#### Recoding ----
-# Create new dataframe ----
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub <- rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data
-
-names(rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub)
-
-# Creating non-existing variables ----
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub[, AGS_8dig := ""] # 8 digits with leading zero
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub[, Bundesland := "RLP"]
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub[, Gebietsname := ""]
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub[,
-  election_type := "Kommunalwahlen"
+# Build the data frame column by column: read_excel(col_names = FALSE) tibbles
+# mangle names when assigned via names<-/setNames (see CLAUDE.md).
+rlp_stala_rows <- 5:nrow(rlp_stala_raw)
+
+rlp_stala <- data.frame(
+  row.names = seq_along(rlp_stala_rows),
+  check.names = FALSE
+)
+rlp_stala[["key"]] <- as.character(rlp_stala_raw[[1]])[rlp_stala_rows]
+rlp_stala[["Gebietsname"]] <- as.character(rlp_stala_raw[[2]])[rlp_stala_rows]
+rlp_stala[["Stichtag"]] <- as.character(rlp_stala_raw[[3]])[rlp_stala_rows]
+for (i in seq_along(rlp_stala_parties)) {
+  rlp_stala[[paste0("gew__", rlp_stala_parties[i])]] <- as.numeric(
+    as.character(rlp_stala_raw[[3 + i]])[rlp_stala_rows]
+  )
+  rlp_stala[[paste0("sitze__", rlp_stala_parties[i])]] <- as.numeric(
+    as.character(rlp_stala_raw[[59 + i]])[rlp_stala_rows]
+  )
+}
+
+rlp_stala_wb_rows <- 5:nrow(rlp_stala_wb_raw)
+rlp_stala_wb <- data.frame(
+  row.names = seq_along(rlp_stala_wb_rows),
+  check.names = FALSE
+)
+rlp_stala_wb[["key"]] <- as.character(rlp_stala_wb_raw[[1]])[rlp_stala_wb_rows]
+rlp_stala_wb[["Stichtag"]] <- as.character(rlp_stala_wb_raw[[3]])[
+  rlp_stala_wb_rows
 ]
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub[, IDIRB := ""]
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub[, IDBA := ""]
-
-# Renaming existing variables ----
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$election_year <- rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$year
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$AGS_8dig <- rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$ags
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$Gebietsname <- rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gemeinde
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(
-  rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$Wahlberechtigte
+rlp_stala_wb[["Wahlberechtigteinsgesamt"]] <- as.numeric(
+  as.character(rlp_stala_wb_raw[[4]])[rlp_stala_wb_rows]
 )
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$Wähler <- as.numeric(
-  rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$Waehler
-)
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$GültigeStimmen <- rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gueltigeStimmen
-
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$abs_CDU <- as.numeric(
-  rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$CDU
-)
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$abs_SPD <- as.numeric(
-  rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$SPD
-)
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$abs_DIELINKE <- as.numeric(
-  rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$Linke
-)
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$abs_GRÜNE <- as.numeric(
-  rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$Gruene
-)
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$abs_AfD <- as.numeric(
-  rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$AfD
-)
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$abs_PIRATEN <- as.numeric(
-  rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$PIRATEN
-)
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$abs_FDP <- as.numeric(
-  rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$FDP
-)
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$abs_DiePARTEI <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$abs_FREIEWÄHLER <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$abs_Gemeinsame_Wahlvorschläge <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$abs_Wählergruppen <- as.numeric(
-  rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$WG
+rlp_stala_wb[["Wähler"]] <- as.numeric(
+  as.character(rlp_stala_wb_raw[[5]])[rlp_stala_wb_rows]
 )
 
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gew_CDU <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gew_SPD <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gew_DIELINKE <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gew_GRÜNE <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gew_AfD <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gew_PIRATEN <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gew_FDP <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gew_DiePARTEI <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gew_FREIEWÄHLER <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gew_Gemeinsame_Wahlvorschläge <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$gew_Wählergruppen <- NA
+# The Schlüssel/name are printed only once per Gemeinde block -> fill down
+rlp_stala <- rlp_stala |> tidyr::fill(key, Gebietsname, .direction = "down")
+rlp_stala_wb <- rlp_stala_wb |> tidyr::fill(key, .direction = "down")
 
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$sitze_CDU <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$sitze_SPD <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$sitze_DIELINKE <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$sitze_GRÜNE <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$sitze_AfD <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$sitze_FDP <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$sitze_Gemeinsame_Wahlvorschläge <- NA
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$sitze_Wählergruppen <- NA
+# The Wahlbeteiligung sheet additionally lists two Gemeinde-years without an
+# election (Wähler == 0: Mudersbach 2019, Hahn 1969); they have no party row, so
+# joining onto the party sheet drops them.
+rlp_stala <- rlp_stala |>
+  left_join(rlp_stala_wb, by = c("key", "Stichtag"))
+stopifnot(!anyNA(rlp_stala$Wahlberechtigteinsgesamt))
 
+rlp_stala <- rlp_stala |>
+  mutate(
+    AGS_8dig = paste0("07", substr(key, 1, 3), substr(key, 6, 8)),
+    Bundesland = "RLP",
+    election_year = substr(Stichtag, 7, 10),
+    election_type = "Kommunalwahlen",
+    IDIRB = "",
+    IDBA = "",
+    GültigeStimmen = gew__Gesamtsumme
+  )
+stopifnot(
+  all(nchar(rlp_stala$AGS_8dig) == 8),
+  !anyNA(rlp_stala$GültigeStimmen)
+)
+
+# Seats are only reported from 1984 onwards (0 in the source before that)
+rlp_stala <- rlp_stala |>
+  mutate(across(
+    starts_with("sitze__"),
+    ~ ifelse(as.numeric(election_year) < 1984, NA_real_, .x)
+  ))
+
+# Prefer the (unabbreviated) crosswalk names; the StaLA column is truncated
+rlp_stala_names <- fread("../crosswalks/final/ags_crosswalks.csv") |>
+  mutate(ags = stri_pad_left(as.character(ags), 8, 0)) |>
+  filter(year == 2020, substr(ags, 1, 2) == "07") |>
+  distinct(ags, cw_name = ags_name)
+
+rlp_stala <- rlp_stala |>
+  left_join(rlp_stala_names, by = c("AGS_8dig" = "ags")) |>
+  mutate(Gebietsname = coalesce(cw_name, Gebietsname)) |>
+  select(-cw_name)
+
+# Map the StaLA party columns onto the fixed municipal schema. Everything not
+# listed here (DKP, DS, DU, DVU, EAP, Liberale, NPD, ÖDP, REP, PP, DSU,
+# TIERSCHUTZPARTEI, Volt, BIG, LKR, III. Weg and the Mehrheitswahl column for
+# the ~1,200-1,470 Gemeinden that elect their council by majority vote) falls
+# into the residual OTHER category computed in the final merge.
+rlp_stala_party_map <- c(
+  CDU = "CDU",
+  SPD = "SPD",
+  DIELINKE = "DIE LINKE",
+  GRÜNE = "GRÜNE",
+  AfD = "AfD",
+  PIRATEN = "PIRATEN",
+  FDP = "FDP",
+  DiePARTEI = "Die PARTEI",
+  FREIEWÄHLER = "FREIE WÄHLER",
+  Wählergruppen = "Wählergruppen"
+)
+stopifnot(all(rlp_stala_party_map %in% rlp_stala_parties))
+
+for (nm in names(rlp_stala_party_map)) {
+  src <- rlp_stala_party_map[[nm]]
+  rlp_stala[[paste0("abs_", nm)]] <- rlp_stala[[paste0("gew__", src)]]
+  rlp_stala[[paste0("gew_", nm)]] <- rlp_stala[[paste0("gew__", src)]]
+  rlp_stala[[paste0("sitze_", nm)]] <- rlp_stala[[paste0("sitze__", src)]]
+}
 
 # Creating new dataframe with selected vars ----
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub <- rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub[, .(
+rlp_kommunalwahlen <- as.data.table(rlp_stala)[, .(
   AGS_8dig,
   Bundesland,
   Gebietsname,
@@ -19289,8 +18389,8 @@ rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub <- rlp_2009_2019_krfr_ste
   abs_AfD,
   abs_PIRATEN,
   abs_FDP,
+  abs_DiePARTEI,
   abs_FREIEWÄHLER,
-  abs_Gemeinsame_Wahlvorschläge,
   abs_Wählergruppen,
   gew_CDU,
   gew_SPD,
@@ -19299,8 +18399,8 @@ rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub <- rlp_2009_2019_krfr_ste
   gew_AfD,
   gew_PIRATEN,
   gew_FDP,
+  gew_DiePARTEI,
   gew_FREIEWÄHLER,
-  gew_Gemeinsame_Wahlvorschläge,
   gew_Wählergruppen,
   sitze_CDU,
   sitze_SPD,
@@ -19309,65 +18409,52 @@ rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub <- rlp_2009_2019_krfr_ste
   sitze_AfD,
   sitze_PIRATEN,
   sitze_FDP,
+  sitze_DiePARTEI,
   sitze_FREIEWÄHLER,
-  sitze_Gemeinsame_Wahlvorschläge,
   sitze_Wählergruppen
 )]
 
 # Calculating vote shares ----
-# https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
-
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub <-
-  rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub %>%
+rlp_kommunalwahlen <- rlp_kommunalwahlen %>%
   mutate_at(
-    vars(contains('abs')),
+    vars(contains('gew')),
     .funs = list(XXX = ~ . / as.numeric(GültigeStimmen))
   ) %>%
   rename_at(
-    vars(matches("abs") & matches("X")),
-    list(~ paste(sub("abs_", "prop_", .), sep = "_"))
+    vars(matches("gew") & matches("X")),
+    list(~ paste(sub("gew_", "prop_", .), sep = "_"))
   ) %>%
   rename_at(vars(matches("_XXX")), list(~ paste(sub("_XXX", "", .), sep = "")))
 
 # Calculating turnout ----
-rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$Turnout <- rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$Wähler /
-  rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub$Wahlberechtigteinsgesamt
-
-
-####### Merge files and save overall output for RLP ----
-# Merge
-rlp_kommunalwahlen <- rbind(
-  rlp_1994_gemeinderatswahlen_data_sub,
-  rlp_1999_gemeinderatswahlen_data_sub,
-  rlp_2004_gemeinderatswahlen_data_sub,
-  rlp_2009_gemeinderatswahlen_data_sub,
-  rlp_2014_gemeinderatswahlen_data_sub,
-  rlp_2019_gemeinderatswahlen_data_sub
-)
-
-# Replace - with NA
-rlp_kommunalwahlen[rlp_kommunalwahlen == "-"] <- NA
-
-
-# Fix AGS for RLP ----
-rlp_kommunalwahlen$AGS_8dig <- paste0("07", rlp_kommunalwahlen$AGS_8dig)
+rlp_kommunalwahlen$Turnout <- rlp_kommunalwahlen$Wähler /
+  rlp_kommunalwahlen$Wahlberechtigteinsgesamt
 
 rlp_kommunalwahlen <- rlp_kommunalwahlen %>%
-  filter(nchar(AGS_8dig) == 10) %>%
-  mutate(AGS_8dig = paste0(substr(AGS_8dig, 1, 5), substr(AGS_8dig, 8, 10))) %>%
-  rbind(rlp_2009_2019_krfr_steadte_gemeinderatswahlen_data_sub)
-
-# Remove LK and VG ----
-rlp_kommunalwahlen <- rlp_kommunalwahlen %>%
-  filter(
-    !grepl(", LK", Gebietsname),
-    !grepl(", VG", Gebietsname),
-    !grepl(", Landkreis", Gebietsname),
-    !AGS_8dig %in%
-      c("07141000", "07143000", "07232000", "07333000", "07338000", "07140000")
-  ) %>%
   arrange(election_year)
 
+# Sanity checks ----
+rlp_prop_cols <- grep("^prop_", names(rlp_kommunalwahlen), value = TRUE)
+stopifnot(
+  # eleven elections, ~2,300 Gemeinden each, no duplicated Gemeinde-year
+  uniqueN(rlp_kommunalwahlen$election_year) == 11,
+  nrow(rlp_kommunalwahlen) ==
+    uniqueN(paste(
+      rlp_kommunalwahlen$AGS_8dig,
+      rlp_kommunalwahlen$election_year
+    )),
+  # counts must nest: valid <= voters <= eligible
+  all(rlp_kommunalwahlen$GültigeStimmen <= rlp_kommunalwahlen$Wähler),
+  all(rlp_kommunalwahlen$Wähler <= rlp_kommunalwahlen$Wahlberechtigteinsgesamt),
+  # mapped shares never exceed 1
+  all(
+    rowSums(
+      as.data.frame(rlp_kommunalwahlen)[, rlp_prop_cols],
+      na.rm = TRUE
+    ) <=
+      1.0001
+  )
+)
 
 # Save
 #write_csv(rlp_kommunalwahlen, "processed/rlp_kommunalwahlen.csv")

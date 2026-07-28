@@ -3681,6 +3681,143 @@ df_nrw |> count(election_year) |> print()
 
 
 # =============================================================================
+# RHEINLAND-PFALZ (RP) — Gemeinde-level, 1964–2019
+# =============================================================================
+# Source: Statistisches Landesamt Rheinland-Pfalz, Sonderauswertung 111-AD26-0373
+#   "Kreistagswahlen sowie Stadtratswahlen kreisfreier Städte in Rheinland-Pfalz
+#   1964-2019" (received July 2026). Twelve elections, ~2,295 Gemeinden each.
+#
+# NOTE: the StaLA reports every election on the CURRENT (2025) municipal
+#   boundaries, i.e. this series is already boundary-harmonised at source.
+#
+# Layout (sheet KT_Gemeindeebene_Parteistimmen): four header rows, then one row
+#   per (Gemeinde, Wahltag).
+#   col 1 Schlüssel (printed once per Gemeinde block -> fill down), col 2 name,
+#   col 3 Stichtag, cols 4-29 "Gültige Stimmen" (25 parties + Gesamtsumme),
+#   cols 30-55 "Ungewichtete Stimmen" (same columns, populated from 1994).
+#   Sheet KT_Gemeindeebene_Wahlbet carries Wahlberechtigte / Wähler.
+#
+# RLP uses Kumulieren/Panaschieren: the party figures are the *gewichteten*
+#   Stimmen, rescaled so that they sum to the number of valid ballots, so
+#   Gesamtsumme is directly comparable to Wähler and the standard
+#   invalid = Wähler - gültig formula applies.
+#
+# Schlüssel = Kreis(3) + Verbandsgemeinde(2) + Gemeinde(3);
+#   AGS = "07" + Kreis + Gemeinde (the VG digits are not part of the AGS).
+
+cat("\n===== RHEINLAND-PFALZ =====\n")
+
+rp_file <- file.path(raw_dir, "Rheinland-Pfalz",
+                     "Rheinland-Pfalz_1964-2019_Kreistagswahlen_StaLA.xlsx")
+
+df_rp <- NULL
+if (file.exists(rp_file)) {
+  tryCatch({
+    rp_raw <- read_excel(rp_file, sheet = "KT_Gemeindeebene_Parteistimmen",
+                         col_names = FALSE, col_types = "text")
+    rp_wb_raw <- read_excel(rp_file, sheet = "KT_Gemeindeebene_Wahlbet",
+                            col_names = FALSE, col_types = "text")
+
+    # Party names sit in header row 4 and repeat identically in both blocks
+    rp_parties <- as.character(unlist(rp_raw[4, 4:29], use.names = FALSE))
+    stopifnot(length(rp_parties) == 26,
+              rp_parties[26] == "Gesamtsumme",
+              identical(as.character(unlist(rp_raw[4, 30:55], use.names = FALSE)),
+                        rp_parties))
+
+    # Build column by column: read_excel(col_names = FALSE) tibbles mangle names
+    # when assigned via names<-/setNames.
+    rp_rows <- 5:nrow(rp_raw)
+    rp <- data.frame(row.names = seq_along(rp_rows), check.names = FALSE)
+    rp[["key"]]      <- as.character(rp_raw[[1]])[rp_rows]
+    rp[["ags_name"]] <- as.character(rp_raw[[2]])[rp_rows]
+    rp[["stichtag"]] <- as.character(rp_raw[[3]])[rp_rows]
+    for (i in seq_along(rp_parties)) {
+      rp[[paste0("v__", rp_parties[i])]] <-
+        as.numeric(as.character(rp_raw[[3 + i]])[rp_rows])
+    }
+
+    rp_wb_rows <- 5:nrow(rp_wb_raw)
+    rp_wb <- data.frame(row.names = seq_along(rp_wb_rows), check.names = FALSE)
+    rp_wb[["key"]]             <- as.character(rp_wb_raw[[1]])[rp_wb_rows]
+    rp_wb[["stichtag"]]        <- as.character(rp_wb_raw[[3]])[rp_wb_rows]
+    rp_wb[["eligible_voters"]] <- as.numeric(as.character(rp_wb_raw[[4]])[rp_wb_rows])
+    rp_wb[["number_voters"]]   <- as.numeric(as.character(rp_wb_raw[[5]])[rp_wb_rows])
+
+    # Schlüssel/name are printed only once per Gemeinde block -> fill down
+    rp    <- rp    |> tidyr::fill(key, ags_name, .direction = "down")
+    rp_wb <- rp_wb |> tidyr::fill(key, .direction = "down")
+
+    rp <- rp |> left_join(rp_wb, by = c("key", "stichtag"))
+    stopifnot(!anyNA(rp$eligible_voters))
+
+    rp_ags <- paste0("07", substr(rp$key, 1, 3), substr(rp$key, 6, 8))
+    stopifnot(all(nchar(rp_ags) == 8))
+
+    df_rp <- data.frame(
+      ags           = rp_ags,
+      ags_name      = trimws(rp$ags_name),
+      county        = substr(rp_ags, 1, 5),
+      state         = "07",
+      election_year = as.integer(substr(rp$stichtag, 7, 10)),
+      stringsAsFactors = FALSE
+    )
+    df_rp$eligible_voters <- rp$eligible_voters
+    df_rp$number_voters   <- rp$number_voters
+    df_rp$valid_votes     <- rp[["v__Gesamtsumme"]]
+    df_rp$invalid_votes   <- df_rp$number_voters - df_rp$valid_votes
+    # Four 2009 Gemeinden in Kreis Trier-Saarburg report 1-9 more valid ballots
+    # than Wähler (Hinzert-Pölert, Longen, Naurath (Eifel), Thörnich) — a
+    # Briefwahl allocation artefact in the source. Counts are kept as reported;
+    # only the derived (negative) invalid_votes is blanked.
+    n_rp_neg <- sum(df_rp$invalid_votes < 0, na.rm = TRUE)
+    if (n_rp_neg > 0) {
+      cat("  valid_votes > number_voters in", n_rp_neg,
+          "rows (source artefact) -> invalid_votes set to NA\n")
+      df_rp$invalid_votes[df_rp$invalid_votes < 0] <- NA_real_
+    }
+    df_rp$turnout <- ifelse(!is.na(df_rp$eligible_voters) & df_rp$eligible_voters > 0,
+                            df_rp$number_voters / df_rp$eligible_voters, NA_real_)
+
+    for (p in setdiff(rp_parties, "Gesamtsumme")) {
+      pname <- normalise_party_cty(tolower(clean_header(p)))
+      sh <- ifelse(!is.na(df_rp$valid_votes) & df_rp$valid_votes > 0,
+                   rp[[paste0("v__", p)]] / df_rp$valid_votes, NA_real_)
+      df_rp[[pname]] <- if (!is.null(df_rp[[pname]]))
+        rowSums(cbind(df_rp[[pname]], sh), na.rm = TRUE) else sh
+    }
+
+    # Prefer the (unabbreviated) crosswalk names over the truncated StaLA column
+    rp_names <- fread("data/crosswalks/final/ags_crosswalks.csv") |>
+      mutate(ags = sprintf("%08d", as.integer(ags))) |>
+      filter(year == 2020, substr(ags, 1, 2) == "07") |>
+      distinct(ags, cw_name = ags_name)
+    df_rp <- df_rp |>
+      left_join(rp_names, by = "ags") |>
+      mutate(ags_name = coalesce(cw_name, ags_name)) |>
+      select(-cw_name)
+
+    stopifnot(
+      nrow(df_rp) == nrow(unique(df_rp[, c("ags", "election_year")])),
+      length(unique(df_rp$election_year)) == 12
+    )
+
+    # Two known source anomalies with Wähler > Wahlberechtigte (kept as reported;
+    # both are internally consistent, i.e. gültig < Wähler):
+    #   Börfink 1969 (07134011, 146/140) and Urbar 1989 (07137224, 3197/2197 —
+    #   the Gemeinderat sheet reports 1668 voters for the same Gemeinde/year).
+    n_rp_bad <- sum(df_rp$turnout > 1, na.rm = TRUE)
+    cat("  turnout > 1 (known source anomalies):", n_rp_bad, "\n")
+
+    cat("RP total:", nrow(df_rp), "rows x", ncol(df_rp), "cols\n")
+    cat("RP years:", paste(sort(unique(df_rp$election_year)), collapse = ", "), "\n")
+    df_rp |> count(election_year) |> as_tibble() |> print(n = 20)
+  }, error = function(e) cat("  ERROR in RP:", conditionMessage(e), "\n"))
+} else {
+  cat("  RP file not found:", rp_file, "\n")
+}
+
+# =============================================================================
 # Combine all states and write output
 # =============================================================================
 
@@ -3695,6 +3832,7 @@ if (exists("df_bw") && nrow(df_bw) > 0) all_dfs <- c(all_dfs, list(df_bw))
 if (exists("df_sh") && nrow(df_sh) > 0) all_dfs <- c(all_dfs, list(df_sh))
 if (exists("df_ni") && nrow(df_ni) > 0) all_dfs <- c(all_dfs, list(df_ni))
 if (exists("df_nrw") && nrow(df_nrw) > 0) all_dfs <- c(all_dfs, list(df_nrw))
+if (exists("df_rp") && !is.null(df_rp) && nrow(df_rp) > 0) all_dfs <- c(all_dfs, list(df_rp))
 df_all <- bind_rows(all_dfs)
 
 # Ensure AGS, county, state are character with proper zero-padding

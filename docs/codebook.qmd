@@ -160,7 +160,10 @@ Several German elections give each voter more than one vote, which changes what
   they are comparable across municipalities within a state, but not across
   states with different rules (up-to-3 cumulation in Baden-Württemberg versus
   up-to-5 in Hessen and Rheinland-Pfalz). Nordrhein-Westfalen is the main
-  exception, with a single list vote.
+  exception, with a single list vote. Two further exceptions publish
+  *gewichtete* Stimmen instead, so their `valid_votes` counts valid ballots and
+  `valid_votes / number_voters` is a genuine validity rate: Rheinland-Pfalz in
+  all years (both the municipal and the county file) and Bayern in 2026.
 - **Hamburg and Bremen since 2011** use a 5-vote personalized list system, so
   `valid_votes ~ 5 x number_voters` in state elections.
 - **Bayern** state elections count Gesamtstimmen (Erst- plus Zweitstimmen), as
@@ -345,8 +348,8 @@ and long shapes as the federal Wahlkreis files, with `stimme`, `wkr_nr`,
 
 Kommunalwahlen — municipal council (Gemeinderat / Stadtrat) elections.
 
-**Files:** `municipal_unharm` (84,829 x 42, 1984--2026), `municipal_harm`
-(73,548 x 40, 1990--2026, 2021 boundaries), `municipal_harm_25` (73,295 x 39,
+**Files:** `municipal_unharm` (96,275 x 42, 1969--2026), `municipal_harm`
+(73,538 x 50, 1990--2026, 2021 boundaries), `municipal_harm_25` (73,273 x 49,
 2025 boundaries) in `data/municipal_elections/final/`.
 
 The Bayern series (1990--2026, six-year cycle) includes the 8 March 2026
@@ -355,6 +358,15 @@ final results). For 2026 the source publishes weighted votes (gewichtete
 Stimmen, ballot-equivalent), so Bayern's 2026 `valid_votes` counts valid
 ballots rather than the cumulative individual votes of earlier years; vote
 shares are unaffected.
+
+Rheinland-Pfalz now runs 1969--2019 (eleven elections), rebuilt in July 2026
+from a single Statistisches-Landesamt series. The same weighting caveat applies
+to every RP year: the source reports *gewichtete* Stimmen, so RP `valid_votes`
+counts valid ballots, not cumulative individual votes. Two further RP-specific
+points: roughly 1,200--1,470 Gemeinden per election elect their council by
+**Mehrheitswahl** and therefore have no party shares at all (`other` = 1), and
+the RP rows are the one case where `*_unharm` is not on the election-year
+boundaries — the Landesamt back-casts the whole series onto 2025 boundaries.
 
 Unlike the other pipelines, municipal elections carry a fixed set of ten major
 parties rather than every party that ever ran. Vote shares are proportions of
@@ -406,8 +418,9 @@ municipalities is not a real council, so the harmonized files omit them.
 
 Coverage, `NA` elsewhere: Baden-Württemberg 1989--2024, Hessen 1993--2021,
 Thüringen 1994--2024, Nordrhein-Westfalen 1994--2025 (kreisfreie Städte only
-from 2025), Brandenburg 2003--2024, Rheinland-Pfalz 2004--2019 (excluding
-kreisfreie Städte), Sachsen-Anhalt 1994--2019, Mecklenburg-Vorpommern 2019 and
+from 2025), Brandenburg 2003--2024, Rheinland-Pfalz 1984--2019 (party lists
+only — the roughly 1,200--1,470 Gemeinden that elect their council by
+Mehrheitswahl have no party seats), Sachsen-Anhalt 1994--2019, Mecklenburg-Vorpommern 2019 and
 2024, Saarland 2019, Niedersachsen 2011/2016 (ordinary Gemeinden) and 2021 (the
 eight kreisfreie Städte — the two sources are complementary, never a complete
 year), Schleswig-Holstein 2018, Bremen 1991--2023, Hamburg 2025 and Bayern 2026
@@ -424,11 +437,11 @@ size, not the total.
 Kreistagswahlen — county council elections, 1948--2026, plus a separate
 county-council composition panel.
 
-**Files:** `county_elec_unharm` (41,370 x 410), `county_elec_harm_21_muni`
-(28,135 x 421), `county_elec_harm_21_cty` (2,087 x 418), `county_council_seats`
+**Files:** `county_elec_unharm` (68,937 x 411), `county_elec_harm_21_muni`
+(41,941 x 422), `county_elec_harm_21_cty` (2,303 x 419), `county_council_seats`
 (7,200 x 22) in `data/county_elections/final/`.
 
-Shared blocks apply, with 399 party columns. Results are reported at
+Shared blocks apply, with 400 party columns. Results are reported at
 municipality level in most states, so the harmonized data comes in two shapes:
 `_muni` keeps the municipality as the unit, `_cty` aggregates to the county.
 Baden-Württemberg and Bayern publish at county level and are harmonized with
@@ -445,7 +458,19 @@ county crosswalks; the other states use municipality crosswalks.
 Niedersachsen's three-vote system makes the standard formula invalid, so
 `invalid_votes` is `NA` there. Hamburg is excluded (its Bezirksversammlungswahlen
 are not comparable), as are pre-digital PDF-only years (Nordrhein-Westfalen
-1946--1994, Saarland 1974--1979).
+1946--1994, Saarland 1974--1979). Brandenburg has a parsing block but currently
+contributes no rows (a tibble name-mangling failure in its Stage 1 parser).
+
+Rheinland-Pfalz (1964--2019, twelve elections) is the longest series in the file
+and covers the 24 Kreistagswahlen plus the Stadtratswahlen of the 12 kreisfreie
+Städte. As in the municipal file, RP `valid_votes` counts valid ballots (the
+source reports gewichtete Stimmen), so `invalid_votes = number_voters -
+valid_votes` is a true invalid-ballot count there; the whole RP series is
+delivered on 2025 boundaries. Four 2009 Gemeinden in Kreis Trier-Saarburg report
+1--9 more valid ballots than voters (a Briefwahl allocation artefact); their
+counts are kept as published and only `invalid_votes` is blanked. Two rows have
+`number_voters > eligible_voters` (Börfink 1969, Urbar 1989) and are left as
+recorded.
 
 ## County council seats (`county_council_seats`)
 

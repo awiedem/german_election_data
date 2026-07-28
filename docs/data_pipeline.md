@@ -383,6 +383,31 @@ Municipal elections in Germany are organized at the state level, meaning each of
 
 **Output:** `municipal_unharm.rds` / `municipal_unharm.csv`
 
+**Rheinland-Pfalz (July 2026 rebuild):** the six per-year files that previously
+fed RP (1994–2019) were replaced by one Statistisches-Landesamt series,
+`raw/rlp/stala_hist/RLP_Gemeinderatswahlen_1969-2019_StaLA.xlsx`
+(Sonderauswertung 111-AD26-0373). It covers all **eleven** Gemeinderatswahlen
+1969–2019, supplies the 1994 party votes that were entirely missing before, and
+adds seat counts back to 1984. Same layout and AGS rule as the Kreistagswahl file
+in §8. Roughly 1,200–1,470 of the ~2,300 Gemeinden elect their council by
+**Mehrheitswahl** (no party lists); those rows carry their votes in a dedicated
+`Mehrheitswahl` column, which — like the other parties outside the fixed
+municipal schema (ÖDP, REP, NPD, DKP, PP, Tierschutzpartei, Volt, BIG, LKR,
+III. Weg, DSU, DS, DU, DVU, EAP, Liberale) — lands in the residual `other`.
+Where the two sources overlap they agree: 13,765 of 13,774 Gemeinde-years match
+the previous turnout counts exactly (the nine exceptions are municipalities the
+StaLA reports on post-merger boundaries, e.g. Ingelheim absorbing Heidesheim and
+Wackernheim), and no Gemeinde-year lost a party share it previously had.
+
+**Boundary vintage caveat (RP only):** the StaLA back-casts every election onto
+the **2025** municipal boundaries, so the RP rows in `municipal_unharm` are not
+on their own election-year boundaries like every other state. In practice this
+affects 12 of ~2,300 codes. Two of them post-date the 1990–2020 crosswalk and
+are added manually in `02_municipal_harm.R` / `02_county_elec_harm_21.R`:
+`07132502` Neitersen (already a valid 2021 code, maps to itself) and `07232503`
+Obergeckler (merged after 2023, split back onto 2021 Niedergeckler/Obergeckler
+by population, 0.25/0.75).
+
 ### 6.2 Harmonization to 2021 boundaries
 
 **Script:** `code/municipality_elections/02_municipal_harm.R`
@@ -506,6 +531,7 @@ Processing code exists in `code/county_elections/01_county_elec_unharm.R` (Stage
 | Mecklenburg-Vorpommern (MV) | 13 | 2014–2024 (3 elections) | XLSX (2014) + CSV (2019, 2024) | CSV: `Ausgabe=="A"` filter for absolute values; `x` → NA |
 | Sachsen (SN) | 14 | 1999–2024 (6 elections) | Excel (.xlsx) | Legacy (1999–2014) vs modern (2019+) format; **SN 2014 has party names in row 5 not row 4** |
 | Brandenburg (BB) | 12 | 2003–2024 (5 elections) | Excel (.xlsx) | Ballot-district level → municipality aggregation; **BB 2024 uses 12-digit ARS (not 8-digit AGS)** |
+| Rheinland-Pfalz (RP) | 07 | 1964–2019 (12 elections) | Excel (.xlsx), one StaLA file | **Longest series in the dataset.** Statistisches Landesamt Rheinland-Pfalz Sonderauswertung 111-AD26-0373 (July 2026), sheets `KT_Gemeindeebene_*`. Four header rows, `Schlüssel` printed once per Gemeinde block (fill down), two 26-column blocks (gültige / ungewichtete Stimmen). Schlüssel = Kreis(3)+VG(2)+Gemeinde(3) → **AGS = `07` + Kreis + Gemeinde** (the VG digits are *not* part of the AGS). Party figures are the *gewichteten* Stimmen (Kumulieren/Panaschieren), rescaled to sum to valid ballots, so `invalid = Wähler − gültig` applies. Every Gemeinde-year sum reconciles exactly with the file's own `KT_Kreisebene_*` subtotals (432/432 Kreis-years, all party columns). **Delivered on 2025 boundaries for every year** (already harmonised at source) |
 | Baden-Württemberg (BW) | 08 | 1994–2024 (7 elections) | Excel (.xlsx) + GENESIS flat CSV (2024) | **Kreis-level** (5-digit AGS + "000"), 35 Landkreise (Stadtkreise hold no Kreistag). 2024 from StaLA GENESIS table 14411_0002 via `parse_bw_kt_genesis()`, using raw **"Gültige Stimmen bei Verhältniswahl"** (cumulative votes). No turnout in the 2024 source → `eligible/number/invalid_votes`, `turnout` NA. The local **Wählervereinigungen** bloc is residual-backfilled into `waehlervereinigungen` for 2004–2019 (`bw_add_wv_residual()`) so per-Kreis shares sum to ~1.0 across years; 1994/1999 already break it out (`fwv`/`wv`/`gemeinsame_wv`). Named-party shares unchanged |
 
 ### Architecture
@@ -523,14 +549,16 @@ Processing code exists in `code/county_elections/01_county_elec_unharm.R` (Stage
 
 ### Remaining states (not yet implemented)
 
-| State | Format | Notes |
-|---|---|---|
-| Hessen (HE) | Excel (.xlsx) | 1 file |
-| Nordrhein-Westfalen (NRW) | ZIP archive | 1 archive |
-| Niedersachsen (NS) | ZIP archive | 1 archive |
-| Rheinland-Pfalz (RLP) | ZIP archive | 1 archive |
-| Saarland (SAR) | PDF | Requires OCR |
-| Schleswig-Holstein (SH) | PDF | Requires OCR |
+All thirteen Flächenländer now have a parsing block. The three city-states are
+out of scope: Berlin and Bremen have no Landkreise, and Hamburg holds
+Bezirksversammlungswahlen, which are not comparable to a Kreistagswahl.
+
+**Brandenburg currently produces no rows.** `parse_bb_xlsx()` hits the documented
+tibble name-mangling problem (`ags` becomes `ags....2` after
+`read_excel(col_names = FALSE)`), so the block fails with
+`Objekt 'ags' nicht gefunden` and the script skips BB with a warning. This is a
+pre-existing defect, unrelated to the RP addition; the fix is to build the data
+frame column-by-column as described under "Known pitfalls" above.
 
 ### County council seats panel (`03_county_seats.R`)
 
@@ -646,7 +674,12 @@ As of February 2026, the following data gaps remain.
 
 ### Not yet integrated (raw data exists, no processing code)
 
-**County elections (Kreistagswahlen)** — Raw data for ~10 states in `data/county_elections/raw/` (Excel + PDF). No processing scripts or final datasets exist. RLP has the richest source (time-series file covering 2000+). Some archives (TH) appear empty. This is the largest remaining gap and would require designing a new pipeline from scratch with heterogeneous state-specific formats, similar to the municipal elections pipeline.
+**County elections (Kreistagswahlen)** — This gap is closed: the pipeline
+(`01_county_elec_unharm.R` + `02_county_elec_harm_21.R`) now covers all thirteen
+Flächenländer, with Rheinland-Pfalz 1964–2019 added in July 2026 (see §8).
+Brandenburg has a parsing block but currently yields no rows (see §8). Remaining
+county-election gaps are individual cycles rather than whole states: NRW
+Kreistag 2025 and the September 2026 Niedersachsen elections.
 
 ### Partially integrated
 
