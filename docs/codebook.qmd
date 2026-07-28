@@ -424,11 +424,11 @@ size, not the total.
 Kreistagswahlen — county council elections, 1948--2026, plus a separate
 county-council composition panel.
 
-**Files:** `county_elec_unharm` (41,370 x 410), `county_elec_harm_21_muni`
-(28,135 x 421), `county_elec_harm_21_cty` (2,087 x 418), `county_council_seats`
+**Files:** `county_elec_unharm` (43,474 x 498), `county_elec_harm_21_muni`
+(30,212 x 509), `county_elec_harm_21_cty` (2,177 x 506), `county_council_seats`
 (7,200 x 22) in `data/county_elections/final/`.
 
-Shared blocks apply, with 399 party columns. Results are reported at
+Shared blocks apply, with 487 party columns. Results are reported at
 municipality level in most states, so the harmonized data comes in two shapes:
 `_muni` keeps the municipality as the unit, `_cty` aggregates to the county.
 Baden-Württemberg and Bayern publish at county level and are harmonized with
@@ -445,7 +445,27 @@ county crosswalks; the other states use municipality crosswalks.
 Niedersachsen's three-vote system makes the standard formula invalid, so
 `invalid_votes` is `NA` there. Hamburg is excluded (its Bezirksversammlungswahlen
 are not comparable), as are pre-digital PDF-only years (Nordrhein-Westfalen
-1946--1994, Saarland 1974--1979).
+1946--1994, Saarland 1974--1979, Brandenburg 1993/1998).
+
+**Brandenburg postal votes are modelled, not observed, for municipalities
+inside an Amt.** Brandenburg pools postal ballots into districts that carry no
+municipality code (3--10% of valid votes, depending on year), so they are
+distributed back over the pool's member municipalities rather than dropped;
+without this, turnout for those Gemeinden would be Urnenwahl-only and
+understated. The quality of that distribution differs sharply by year, and
+analyses sensitive to it should treat the two groups differently:
+
+- **2014, 2019, 2024**: the pool is a single Amt and the weight is each
+  Gemeinde's count of Wahlschein holders (`Wahlberechtigte A2`) — the same key
+  the federal pipeline uses for joint Briefwahlbezirke.
+- **2003, 2008**: no Wahlschein counts exist and the pooled districts identify
+  only the Landkreis, so a Kreis-wide pool (6.9% and 9.6% of valid votes) is
+  spread by eligible-voter share. This assumes postal voters are distributed
+  and vote alike across an entire Kreis.
+
+Set `bb_postal_allocation` in `01_county_elec_unharm.R` to `"amt"` to allocate
+only 2014--2024, or `"none"` to drop pooled postal votes entirely, and re-run
+stages 1--2. See `docs/data_pipeline.md` §8.
 
 ## County council seats (`county_council_seats`)
 

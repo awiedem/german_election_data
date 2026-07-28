@@ -495,7 +495,9 @@ A `02_mayoral_harm.R` script has not yet been written.
 Processing code exists in `code/county_elections/01_county_elec_unharm.R` (Stage 1 — unharm) and `02_county_elec_harm_21.R` (Stage 2 — harmonized to 2021 boundaries, split into `_muni` municipality-level and `_cty` county-level outputs). A separate script `03_county_seats.R` builds a county-year council-composition panel (see below). Work in progress; multiple states implemented (see table below).
 
 **Script:** `01_county_elec_unharm.R`
-**Output:** `data/county_elections/final/county_elec_unharm.{rds,csv}`
+**Output:** `data/county_elections/final/county_elec_unharm.{rds,csv}` — 43,474 rows × 498 columns, 12 states (`01, 03, 05, 06, 08, 09, 10, 12, 13, 14, 15, 16`)
+
+Stage 2 (`02_county_elec_harm_21.R`) yields `county_elec_harm_21_muni.{rds,csv}` (30,212 rows × 509 cols, 10 municipality-level states) and `county_elec_harm_21_cty.{rds,csv}` (2,177 rows × 506 cols, all 12 states).
 
 ### Implemented states
 
@@ -505,7 +507,7 @@ Processing code exists in `code/county_elections/01_county_elec_unharm.R` (Stage
 | Thüringen (TH) | 16 | 2004–2024 (6 elections) | Excel (.xlsx) | Two-row headers (party + Stimmart); "Kreistag" filter |
 | Mecklenburg-Vorpommern (MV) | 13 | 2014–2024 (3 elections) | XLSX (2014) + CSV (2019, 2024) | CSV: `Ausgabe=="A"` filter for absolute values; `x` → NA |
 | Sachsen (SN) | 14 | 1999–2024 (6 elections) | Excel (.xlsx) | Legacy (1999–2014) vs modern (2019+) format; **SN 2014 has party names in row 5 not row 4** |
-| Brandenburg (BB) | 12 | 2003–2024 (5 elections) | Excel (.xlsx) | Ballot-district level → municipality aggregation; **BB 2024 uses 12-digit ARS (not 8-digit AGS)** |
+| Brandenburg (BB) | 12 | 2003–2024 (5 elections) | Excel (.xlsx) | Ballot-district level → municipality aggregation, 2,104 rows (436/420/418/417/413). **BB 2024 uses 12-digit ARS (not 8-digit AGS)** — see ARS→AGS note below. Pooled postal ballots are allocated back to municipalities (`bb_postal_allocation`, see below); the 2003/2008 allocation rests on a much weaker assumption than 2014+. 1993/1998 are PDF only and not yet digitized |
 | Baden-Württemberg (BW) | 08 | 1994–2024 (7 elections) | Excel (.xlsx) + GENESIS flat CSV (2024) | **Kreis-level** (5-digit AGS + "000"), 35 Landkreise (Stadtkreise hold no Kreistag). 2024 from StaLA GENESIS table 14411_0002 via `parse_bw_kt_genesis()`, using raw **"Gültige Stimmen bei Verhältniswahl"** (cumulative votes). No turnout in the 2024 source → `eligible/number/invalid_votes`, `turnout` NA. The local **Wählervereinigungen** bloc is residual-backfilled into `waehlervereinigungen` for 2004–2019 (`bw_add_wv_residual()`) so per-Kreis shares sum to ~1.0 across years; 1994/1999 already break it out (`fwv`/`wv`/`gemeinsame_wv`). Named-party shares unchanged |
 
 ### Architecture
@@ -517,9 +519,62 @@ Processing code exists in `code/county_elections/01_county_elec_unharm.R` (Stage
 
 ### Known pitfalls encountered
 
-- **Tibble name-mangling**: When `read_excel(col_names=FALSE)` produces `...N` column names, `names<-` / `colnames<-` / `setNames` on the resulting tibble or tibble-derived data.frame can silently append `....N` suffixes (e.g., `ags` → `ags....2`). This breaks `$` lookups and `data.table` `by=` operations. **Workaround**: build data frames column-by-column with `df[["name"]] <- vec` instead of bulk renaming
+- **Tibble name-mangling**: When `read_excel(col_names=FALSE)` produces `...N` column names, `names<-` / `colnames<-` / `setNames` on the resulting tibble or tibble-derived data.frame can silently append `....N` suffixes (e.g., `ags` → `ags....2`). This breaks `$` lookups and `data.table` `by=` operations. **Workaround**: build data frames column-by-column with `df[["name"]] <- vec` instead of bulk renaming.
+  A second, subtler route into the same failure bit the BB parsers (fixed): `unlist(raw[1, ])` keeps the `...N` names, so `which(headers == "AGS")` returns a *named* integer, and `c(ags = <named 2>)` composes the names into `ags....2` — the column map is poisoned before any data frame is built, so the column-by-column pattern alone does not save you. **Always `unname()` the header vector** before using it for position lookups
 - **Header-row shifts**: Some states change which Excel row contains party names between election years (SN 2014: row 5 instead of row 4). Always validate that the detected header row actually contains party names
-- **BB 2024 ARS→AGS**: Brandenburg 2024 switched from 8-digit AGS to 12-digit ARS (Amtlicher Regionalschlüssel). AGS = first 8 characters of ARS. Also uses an "aggregated party" section (cols 30–63) separate from individual candidate results (cols 65+)
+- **BB 2024 ARS→AGS**: Brandenburg 2024 switched from 8-digit AGS to 12-digit ARS (Amtlicher Regionalschlüssel). The ARS layout is Land(2) + RB(1) + Kreis(2) + Amt/Gemeindeverband(4) + Gemeinde(3), so **AGS = `substr(ars, 1, 5)` + `substr(ars, 10, 12)`, *not* the first 8 characters** — taking the first 8 splices in the Amt code and collapses every Gemeinde of an Amt onto one key (it only looks right for the 4 kreisfreie Städte, whose Amt code is `0000`). Same rule as the 12-digit RP codes. The file also uses an "aggregated party" section (cols 30–63) separate from individual candidate results (cols 65+); the parser reads the aggregated block only, so parties are not double-counted
+- **BB 2008 Einzelbewerber**: 2003/2014/2019 carry a single EB summary column, but 2008 has one column per individual candidate (`EB Jilg`, `EB Klos`, …) and no summary. These are summed into `einzelbewerber`; skipping them dropped up to 25% of a municipality's votes and left party shares summing to as little as 0.75
+- **BB "Briefwahl" rows**: In 2003/2008 the postal ballot districts carry `Gemeindename = "Briefwahl"` instead of their municipality's name. Because aggregation groups on (`ags`, `ags_name`), they formed their own group, which the later `eligible_voters > 0` filter then silently discarded — 228k votes in 2003 and 355k in 2008. `canonical_ags_name()` now pins one name per AGS before aggregating. Cottbus 2019 needs the same care for a different reason: it is reported as two city-council Wahlkreise whose names carry an Ortsteil list after a colon, which is stripped
+- **BB pooled postal votes are allocated back to municipalities** — see the dedicated subsection below. Amtsangehörige Gemeinden pool their postal ballots into a district that carries no municipality AGS (`120xx900` in 2003/2008, an Amt code in 2014/2019/2024); left alone these rows are unattributable and were formerly dropped, costing 6.9%/9.6%/2.3%/2.8%/3.4% of all valid votes and leaving turnout structurally understated for every Gemeinde inside an Amt. The 4 kreisfreie Städte were never affected (their postal votes carry the city's own AGS)
+
+### Brandenburg postal-vote allocation
+
+Controlled by `bb_postal_allocation` at the top of the Brandenburg block in
+`01_county_elec_unharm.R`. **To change the behaviour, edit that one line and re-run
+`01` then `02`.** Three settings:
+
+| Setting | Effect |
+|---|---|
+| `"all"` (default) | Allocate every pool, all five years |
+| `"amt"` | Allocate only the Amt-level pools of 2014/2019/2024, where a Wahlschein-based weight exists; leave 2003/2008 Urnenwahl-only |
+| `"none"` | Drop all pooled postal votes (behaviour before 2026-07-28) |
+
+This mirrors what `01_federal_muni_unharm.R` does for joint Briefwahlbezirke
+(`blocked_weight = A2 / county_blocked`). The two year groups are **not** equally
+well founded, and users should treat them differently:
+
+- **2014 / 2019 / 2024 — strong.** The pool is a single Amt, and each Gemeinde
+  reports `Wahlberechtigte A2` (eligible voters holding a Wahlschein), which is the
+  same key the federal pipeline uses. Pool→member linkage is exact: 2024 reads the
+  `Amtsnummer/Verbandsgemeinde` column straight from the file; 2014/2019 match the
+  pool's Amt **by name** against the Gemeindeverzeichnis (`31122013`/`31122017`),
+  deliberately not by code, because Amt Unterspreewald's Verband code changed
+  (5112→5114) between GV vintages. Validation: summed member A2 explains pooled
+  ballots at a ratio of 0.90 (range 0.67–0.97) — the expected postal return rate.
+- **2003 / 2008 — weak, and the first thing to reconsider.** The A1/A2/A3 columns
+  exist but are entirely zero, so no Wahlschein weight is available, and the pooled
+  rows are anonymous (`Gemeindename = "Briefwahl"`, `Gemeinde = 900`,
+  `Wahlbezirk = 9001, 9002, …` running sequentially inside a Landkreis) — they
+  identify only the Kreis, never the Amt. Allocation therefore spreads a
+  **Kreis-wide** pool across every Gemeinde in that Landkreis by eligible-voter
+  share, assuming uniform postal propensity *and* uniform postal vote choice across
+  the whole Kreis. These are also the years with the most at stake (6.9% and 9.6%
+  of valid votes). Set `bb_postal_allocation <- "amt"` if that assumption is too
+  strong for your application.
+
+Implementation notes: the three 2014 pools that span several Verbände at once
+("BW 9004 Oder-Welse,Gartz", "BW 9018 NWU,Uckerland,Brüssow,Gramzow",
+"BW 9011 Lychen,Boitz.L.,Gerswalde") are pinned explicitly in
+`bb_multi_pools_2014` — name matching cannot resolve their abbreviations, and
+matching on the numeric code would have silently misassigned them (pool `12073904`
+would have landed on Amt Gartz). Any pool that cannot be resolved is a **hard
+error**, never a silent drop. Allocated party counts are integerised by largest
+remainder so they still sum exactly to the municipality's added valid votes;
+without that, every allocated municipality trips
+`flag_total_votes_incongruent` downstream. After allocation ≥99.999% of raw valid
+votes are captured in all five years (residual is integer rounding), and statewide
+turnout reconciles with the official figures: 45.8% (2003), 49.4% (2008), 46.2%
+(2014), 58.4% (2019), 66.0% (2024) — none of which was reproducible before
 
 ### Remaining states (not yet implemented)
 

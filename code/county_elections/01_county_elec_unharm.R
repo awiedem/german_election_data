@@ -1240,6 +1240,250 @@ cat("\n===== BRANDENBURG =====\n")
 
 bb_dir <- file.path(raw_dir, "Brandenburg")
 
+#' Give every ballot district of one AGS the same municipality name, so that
+#' aggregating by (ags, ags_name) cannot split a municipality across groups.
+#' Postal-vote rows labelled "Briefwahl" never win the vote for the name.
+canonical_ags_name <- function(ags, ags_name) {
+  lookup <- tapply(ags_name, ags, function(x) {
+    real <- x[!is.na(x) & x != "Briefwahl"]
+    if (length(real) > 0) real[1] else NA_character_
+  })
+  unname(lookup[ags])
+}
+
+# --- Postal-vote allocation --------------------------------------------------
+# Brandenburg pools postal ballots into districts that carry no municipality
+# AGS, so they cannot be aggregated to a Gemeinde as they stand. This setting
+# controls what happens to them. See docs/data_pipeline.md §8 for the evidence
+# behind each option and for how much of the vote each one recovers.
+#
+#   "all"  (default) allocate every pool back to its member municipalities.
+#          2014/2019/2024 use an Amt-level pool and the Wahlschein count
+#          (Wahlberechtigte A2) as the weight — the same key the federal
+#          pipeline uses. 2003/2008 have no Wahlschein counts and pool
+#          Kreis-wide, so they fall back to eligible-voter share, which
+#          assumes uniform postal propensity AND uniform postal vote choice
+#          across a whole Landkreis. That is a strong assumption: it is the
+#          part of this setting to reconsider first.
+#   "amt"  allocate only the Amt-level pools (2014/2019/2024); leave 2003/2008
+#          Urnenwahl-only. Choose this if the Kreis-wide assumption is too
+#          strong for your application.
+#   "none" drop all pooled postal votes (behaviour before 2026-07-28).
+#
+# To change it, edit this one line and re-run 01 then 02.
+bb_postal_allocation <- "all"
+stopifnot(bb_postal_allocation %in% c("all", "amt", "none"))
+
+#' Read the Gemeindeverzeichnis for one reference date and return, for
+#' Brandenburg, both the Gemeindeverband ("Amt") names and each Gemeinde's
+#' membership. Used to resolve 2014/2019 postal pools, whose rows name their
+#' Amt but carry no municipality code.
+bb_gv_verbaende <- function(gv_stem) {
+  path <- file.path("data", "covars_municipality", "raw", "municipality_sizes",
+                    paste0(gv_stem, "_Auszug_GV.xlsx"))
+  suppressMessages(
+    r <- read_excel(path, sheet = 2, col_names = FALSE, col_types = "text")
+  )
+  d <- data.frame(
+    sa = unlist(r[[1]]), land = unlist(r[[3]]), rb = unlist(r[[4]]),
+    kreis = unlist(r[[5]]), vb = unlist(r[[6]]), gem = unlist(r[[7]]),
+    nm = unlist(r[[8]]), stringsAsFactors = FALSE
+  )
+  d <- d[!is.na(d$land) & d$land == "12", ]
+  list(
+    # Satzart 50 = the Gemeindeverband itself (name we match the pool against)
+    verband = data.frame(kreis = d$kreis[d$sa == "50"], vb = d$vb[d$sa == "50"],
+                         nm = d$nm[d$sa == "50"], stringsAsFactors = FALSE),
+    # Satzart 60 = the Gemeinden, each carrying its Verband code
+    gemeinde = data.frame(
+      ags = paste0(d$land, d$rb, d$kreis, d$gem)[d$sa == "60"],
+      kreis = d$kreis[d$sa == "60"], vb = d$vb[d$sa == "60"],
+      stringsAsFactors = FALSE
+    )
+  )
+}
+
+#' Normalise an Amt / Gemeindeverband name for matching
+bb_norm_name <- function(x) {
+  x <- tolower(trimws(x))
+  gsub("\\s+", " ", x)
+}
+
+# The 2014 file has three pools that span SEVERAL Verbände at once (their names
+# list the members, partly abbreviated: "NWU" = Nordwestuckermark,
+# "Boitz.L." = Boitzenburger Land). Name matching cannot resolve these, and
+# matching on the numeric code would silently misassign them — e.g. pool
+# 12073904 would land on Amt Gartz. They are pinned explicitly by Verband code
+# within Kreis 12073 (Uckermark); codes verified against GV 31.12.2013.
+bb_multi_pools_2014 <- list(
+  "12073901" = c("5310", "5304"),                 # Oder-Welse, Gartz (Oder)
+  "12073902" = c("0429", "0579", "5303", "5306"), # Nordwestuckermark, Uckerland,
+                                                  #   Brüssow, Gramzow
+  "12073904" = c("0384", "0069", "5305")          # Lychen, Boitzenburger Land,
+                                                  #   Gerswalde
+)
+
+#' Map each postal pool to its member municipalities.
+#' Returns a data.frame(pool, ags); one row per (pool, member Gemeinde).
+#' Hard-fails if any pool cannot be resolved — a silently misassigned pool
+#' would be worse than a dropped one.
+bb_pool_members <- function(pool_ags, pool_names, muni_ags, year,
+                            amt_by_ags = NULL) {
+  # 2024: every row carries an Amtsnummer, so membership is read straight off
+  # the file — no Gemeindeverzeichnis and no name matching needed.
+  if (year == 2024) {
+    out <- do.call(rbind, lapply(seq_along(pool_ags), function(i) {
+      p <- pool_ags[i]
+      kreis <- substr(p, 1, 5)
+      members <- muni_ags[substr(muni_ags, 1, 5) == kreis &
+                            !is.na(amt_by_ags[muni_ags]) &
+                            amt_by_ags[muni_ags] == amt_by_ags[[p]]]
+      if (length(members) == 0) {
+        stop("BB 2024: pool ", p, " ('", pool_names[i],
+             "') has no member municipalities with Amtsnummer ", amt_by_ags[[p]])
+      }
+      data.frame(pool = p, ags = members, stringsAsFactors = FALSE)
+    }))
+    return(out)
+  }
+
+  # 2003/2008: pools are Kreis-wide and anonymous ("Briefwahl", Gemeinde 900).
+  # The only grouping the source identifies is the Landkreis.
+  if (year %in% c(2003, 2008)) {
+    out <- do.call(rbind, lapply(seq_along(pool_ags), function(i) {
+      kreis <- substr(pool_ags[i], 1, 5)
+      members <- muni_ags[substr(muni_ags, 1, 5) == kreis]
+      if (length(members) == 0) {
+        stop("BB ", year, ": no member municipalities for pool ", pool_ags[i])
+      }
+      data.frame(pool = pool_ags[i], ags = members, stringsAsFactors = FALSE)
+    }))
+    return(out)
+  }
+
+  # 2014/2019: pools name their Amt. Match by NAME, not by code — Amt
+  # Unterspreewald changed its Verband code (5112 -> 5114) between GV vintages,
+  # so code matching is not stable across the election/GV gap.
+  gv_stem <- if (year == 2014) "31122013" else "31122017"
+  gv <- bb_gv_verbaende(gv_stem)
+  gv$verband$key <- paste0(gv$verband$kreis, "|", bb_norm_name(gv$verband$nm))
+
+  out <- do.call(rbind, lapply(seq_along(pool_ags), function(i) {
+    p <- pool_ags[i]
+    kreis2 <- substr(p, 4, 5)   # 2-digit Kreis, as used in the GV
+    vbs <- NULL
+
+    if (!is.null(bb_multi_pools_2014[[p]]) && year == 2014) {
+      vbs <- bb_multi_pools_2014[[p]]
+    } else {
+      amt <- sub("^\\s*(BW\\s+im\\s+)?Amt\\s+", "", pool_names[i])
+      hit <- gv$verband$key == paste0(kreis2, "|", bb_norm_name(amt))
+      if (!any(hit)) {
+        stop("BB ", year, ": cannot resolve postal pool ", p,
+             " ('", pool_names[i], "') to a Gemeindeverband in GV ", gv_stem)
+      }
+      vbs <- gv$verband$vb[hit]
+    }
+
+    members <- gv$gemeinde$ags[gv$gemeinde$kreis == kreis2 &
+                                 gv$gemeinde$vb %in% vbs]
+    members <- intersect(members, muni_ags)
+    if (length(members) == 0) {
+      stop("BB ", year, ": pool ", p, " ('", pool_names[i],
+           "') resolved to no municipality present in the election data")
+    }
+    data.frame(pool = p, ags = members, stringsAsFactors = FALSE)
+  }))
+  out
+}
+
+#' Distribute pooled postal votes over the member municipalities of each pool.
+#' `df_muni` is municipality-level with absolute counts; pooled rows are those
+#' whose AGS is not a real municipality (they carry eligible_voters == 0).
+#' Weight is the Wahlschein count (a2) where the source reports it, otherwise
+#' eligible voters. Counts stay unrounded so that the vote shares derived
+#' downstream still sum to exactly 1; the caller rounds the published totals.
+bb_allocate_postal <- function(df_muni, year, party_names, dist_cols,
+                               amt_by_ags = NULL) {
+  if (bb_postal_allocation == "none") return(df_muni)
+  if (bb_postal_allocation == "amt" && year %in% c(2003, 2008)) return(df_muni)
+
+  is_muni <- nchar(df_muni$ags) == 8 & !is.na(df_muni$eligible_voters) &
+    df_muni$eligible_voters > 0
+  if (!any(!is_muni)) return(df_muni)
+
+  members <- df_muni[is_muni, ]
+  pools   <- df_muni[!is_muni, ]
+  map <- bb_pool_members(pools$ags, pools$ags_name, members$ags, year,
+                         amt_by_ags = amt_by_ags)
+
+  # Weight: Wahlschein holders where reported (2014+), else eligible voters
+  wcol <- if ("a2" %in% names(members) && sum(members$a2, na.rm = TRUE) > 0) {
+    "a2"
+  } else {
+    "eligible_voters"
+  }
+  map$w <- members[[wcol]][match(map$ags, members$ags)]
+  map$w[is.na(map$w)] <- 0
+  wsum <- tapply(map$w, map$pool, sum, na.rm = TRUE)
+  # A pool whose members report no weight at all cannot be split meaningfully
+  if (any(wsum <= 0)) {
+    stop("BB ", year, ": postal pool(s) with zero total weight: ",
+         paste(names(wsum)[wsum <= 0], collapse = ", "))
+  }
+  map$share <- map$w / unname(wsum[map$pool])
+
+  # Additions per municipality, one column per distributed variable
+  targets <- sort(unique(map$ags))
+  addm <- vapply(dist_cols, function(cl) {
+    pv <- pools[[cl]][match(map$pool, pools$ags)]
+    a <- tapply(pv * map$share, map$ags, sum, na.rm = TRUE)
+    unname(a[targets])
+  }, numeric(length(targets)))
+  addm <- matrix(addm, nrow = length(targets), dimnames = list(targets, dist_cols))
+  addm[is.na(addm)] <- 0
+
+  # Integerise. Party additions are rounded by largest remainder so that they
+  # still sum exactly to the municipality's added valid votes — otherwise
+  # rounding each party independently breaks the sum(parties) == valid_votes
+  # identity and every allocated municipality would trip
+  # flag_total_votes_incongruent downstream.
+  pcols <- intersect(party_names, dist_cols)
+  for (i in seq_len(nrow(addm))) {
+    tgt <- round(addm[i, "gueltige_stimmen"])
+    v <- addm[i, pcols]
+    fl <- floor(v)
+    need <- tgt - sum(fl)
+    if (need > 0) {
+      ord <- order(v - fl, decreasing = TRUE)
+      fl[ord[seq_len(min(need, length(fl)))]] <- fl[ord[seq_len(min(need, length(fl)))]] + 1
+    } else if (need < 0) {
+      ord <- order(v - fl, decreasing = FALSE)
+      take <- which(fl[ord] > 0)[seq_len(min(-need, sum(fl > 0)))]
+      fl[ord[take]] <- fl[ord[take]] - 1
+    }
+    addm[i, pcols] <- fl
+    addm[i, "gueltige_stimmen"] <- tgt
+  }
+  for (cl in setdiff(dist_cols, c(pcols, "gueltige_stimmen"))) {
+    addm[, cl] <- round(addm[, cl])
+  }
+
+  idx <- match(targets, members$ags)
+  for (cl in dist_cols) {
+    base <- members[[cl]][idx]
+    add <- addm[, cl]
+    # NA means "this party did not stand here". Keep it NA when the pool
+    # contributes nothing either; otherwise the pooled votes become its count.
+    members[[cl]][idx] <- ifelse(is.na(base) & add == 0, NA_real_,
+                                 ifelse(is.na(base), add, base + add))
+  }
+
+  cat(sprintf("    allocated %d pooled postal districts over %d municipalities (weight: %s)\n",
+              nrow(pools), length(targets), wcol))
+  members
+}
+
 #' Parse BB XLSX files (2003-2019)
 #' All share: Stimmart (col 1), AGS (col 2), ballot-district level
 #' Column names used for matching (positions vary slightly between years)
@@ -1254,8 +1498,10 @@ parse_bb_xlsx <- function(filepath, year) {
     raw <- read_excel(filepath, sheet = data_sheet, col_names = FALSE, col_types = "text")
   )
 
-  # Row 1 = headers
-  headers <- clean_header(unlist(raw[1, ]))
+  # Row 1 = headers. unname() is essential: unlist() on a read_excel(col_names =
+  # FALSE) tibble keeps the "...N" placeholder names, which which() then carries
+  # into the column map, so c(ags = <named 2>) would become "ags....2".
+  headers <- unname(clean_header(unlist(raw[1, ])))
 
   # Key column positions by name
   stimmart_col <- which(headers == "Stimmart")[1]
@@ -1269,6 +1515,7 @@ parse_bb_xlsx <- function(filepath, year) {
   # Party columns: everything after Gültige Stimmen
   party_positions <- c()
   party_names <- c()
+  eb_positions <- c()   # individual "EB <Name>" columns (no summary column in 2008)
   for (i in (gueltig_col + 1):ncol(raw)) {
     name <- headers[i]
     if (is.na(name) || nchar(trimws(name)) == 0) next
@@ -1281,12 +1528,14 @@ parse_bb_xlsx <- function(filepath, year) {
 
     # Handle EB (Einzelbewerber) — aggregate all individual EBs
     if (grepl("^EB\\b|^Einzelbew", clean_name)) {
-      # Check if this is a summary column
       if (grepl("Zusammenfassung|Einzelbewerbende|^Einzelbewerber$", clean_name)) {
+        # Summary column (2003, 2014, 2019) — use directly
         party_positions <- c(party_positions, i)
         party_names <- c(party_names, "einzelbewerber")
+      } else {
+        # Individual "EB <Name>" column (2008) — summed in below
+        eb_positions <- c(eb_positions, i)
       }
-      # Skip individual EB columns (EB Name)
       next
     }
 
@@ -1305,6 +1554,11 @@ parse_bb_xlsx <- function(filepath, year) {
     eligible_voters = wahlber_col, number_voters = waehler_col,
     invalid_votes = ungueltig_col, gueltige_stimmen = gueltig_col
   )
+  # Wahlberechtigte A2 = eligible voters holding a Wahlschein. Present and
+  # populated from 2014 on; it is the weight for allocating pooled postal
+  # votes (the same key the federal pipeline uses). Empty in 2003/2008.
+  a2_col <- which(headers == "Wahlberechtigte A2")[1]
+  if (!is.na(a2_col)) col_map <- c(col_map, c(a2 = unname(a2_col)))
   party_map <- setNames(party_positions, party_names)
   col_map <- c(col_map, party_map)
 
@@ -1314,34 +1568,59 @@ parse_bb_xlsx <- function(filepath, year) {
   for (k in seq_along(col_map)) {
     df[[names(col_map)[k]]] <- as.character(raw[[col_map[k]]])[2:nrow(raw)]
   }
-  cat("    names[1:5]:", paste(names(df)[1:5], collapse=", "), "\n")
+
+  # 2008 has no EB summary column, only one column per individual candidate —
+  # sum them into einzelbewerber so those votes are not silently dropped.
+  # NA is preserved where no EB stood at all (needed by the na_tracker below).
+  if (length(eb_positions) > 0 && !("einzelbewerber" %in% party_names)) {
+    eb_mat <- vapply(eb_positions, function(p) {
+      v <- as.character(raw[[p]])[2:nrow(raw)]
+      v[v %in% c("x", "-", "")] <- NA_character_
+      suppressWarnings(as.numeric(v))
+    }, numeric(n_data))
+    eb_mat <- matrix(eb_mat, nrow = n_data)
+    eb_sum <- rowSums(eb_mat, na.rm = TRUE)
+    eb_sum[rowSums(!is.na(eb_mat)) == 0] <- NA_real_
+    df[["einzelbewerber"]] <- eb_sum
+    party_names <- c(party_names, "einzelbewerber")
+    cat("    summed", length(eb_positions), "individual EB columns\n")
+  }
 
   # Filter to Kreistag rows only
   df <- df[!is.na(df[["stimmart"]]) & df[["stimmart"]] == "Kreistag", ]
   df[["stimmart"]] <- NULL
-  cat("    after filter names[1:5]:", paste(names(df)[1:5], collapse=", "), "'ags'=", "ags" %in% names(df), "\n")
+
+  # Cottbus 2019 is reported as two city-council Wahlkreise, each carrying its
+  # Ortsteil list after a colon. Strip that suffix (and collapse whitespace) so
+  # the municipality aggregates into a single row rather than two.
+  df[["ags_name"]] <- trimws(gsub("\\s+", " ", sub(":.*$", "", df[["ags_name"]])))
+
+  # Pin one canonical name per AGS before aggregating. In 2003/2008 the postal
+  # ballot districts are named "Briefwahl" rather than after their municipality;
+  # grouping on (ags, ags_name) would put them in their own group, which the
+  # later eligible_voters > 0 filter then drops — silently discarding every
+  # postal vote (228k in 2003, 355k in 2008).
+  df[["ags_name"]] <- canonical_ags_name(df[["ags"]], df[["ags_name"]])
 
   # Convert to numeric
   all_numeric <- c("eligible_voters", "number_voters", "invalid_votes",
-                    "gueltige_stimmen", party_names)
+                    "gueltige_stimmen", party_names,
+                    if ("a2" %in% names(df)) "a2")
   for (col_name in all_numeric) {
     v <- as.character(df[[col_name]])
     v[v %in% c("x", "-", "")] <- NA_character_
     df[[col_name]] <- suppressWarnings(as.numeric(v))
   }
-  cat("    after numeric names[1:5]:", paste(names(df)[1:5], collapse=", "), "'ags'=", "ags" %in% names(df), "\n")
 
   # Track all-NA parties per AGS
   na_tracker <- list()
   for (pc in party_names) {
     na_tracker[[pc]] <- tapply(df[[pc]], df[["ags"]], function(x) all(is.na(x)))
   }
-  cat("    after tapply OK\n")
 
   # Aggregate ballot districts to municipality level
   group_cols <- c("ags", "ags_name")
   dt <- as.data.table(df)
-  cat("    dt names[1:5]:", paste(names(dt)[1:5], collapse=", "), "\n")
   df_muni <- dt[, lapply(.SD, sum, na.rm = TRUE), by = group_cols, .SDcols = all_numeric]
   df_muni <- as.data.frame(df_muni)
 
@@ -1357,6 +1636,15 @@ parse_bb_xlsx <- function(filepath, year) {
   df_muni$election_year <- as.integer(year)
   df_muni$state <- "12"
   df_muni$ags <- pad_zero_conditional(df_muni$ags, 7)
+
+  # Distribute the pooled postal districts over their member municipalities
+  # (leaves df_muni with real municipalities only when allocation is on)
+  df_muni <- bb_allocate_postal(
+    df_muni, year, party_names,
+    dist_cols = c("number_voters", "invalid_votes", "gueltige_stimmen",
+                  party_names)
+  )
+  df_muni$a2 <- NULL
   df_muni$county <- substr(df_muni$ags, 1, 5)
 
   # Compute vote shares and turnout
@@ -1367,6 +1655,11 @@ parse_bb_xlsx <- function(filepath, year) {
                             df_muni[[pc]] / df_muni$gueltige_stimmen, NA_real_)
   }
   names(df_muni)[names(df_muni) == "gueltige_stimmen"] <- "valid_votes"
+  # Allocation leaves fractional counts; shares above were computed from the
+  # unrounded values so they still sum to 1. Round the published totals.
+  for (cl in c("number_voters", "invalid_votes", "valid_votes")) {
+    df_muni[[cl]] <- round(df_muni[[cl]])
+  }
 
   cat("    ->", nrow(df_muni), "municipalities\n")
   as_tibble(df_muni)
@@ -1381,8 +1674,8 @@ parse_bb_2024 <- function(filepath) {
                       col_names = FALSE, col_types = "text")
   )
 
-  # Row 1 = headers
-  headers <- clean_header(unlist(raw[1, ]))
+  # Row 1 = headers (see parse_bb_xlsx: unname() prevents "...N" name mangling)
+  headers <- unname(clean_header(unlist(raw[1, ])))
 
   # Key columns
   ars_col <- which(headers == "ARS")[1]
@@ -1426,6 +1719,12 @@ parse_bb_2024 <- function(filepath) {
     eligible_voters = wahlber_col, number_voters = waehler_col,
     invalid_votes = ungueltig_col, gueltige_stimmen = gueltig_col
   )
+  # Amtsnummer identifies which Amt a Gemeinde (or a pooled postal district)
+  # belongs to — the linkage used to allocate the pooled postal votes.
+  # A2 = Wahlberechtigte mit Wahlschein is the allocation weight.
+  amt_col <- which(headers == "Amtsnummer/Verbandsgemeinde")[1]
+  a2_col <- which(headers == "Wahlberechtigte A2")[1]
+  col_map <- c(col_map, c(amt = unname(amt_col), a2 = unname(a2_col)))
   party_map <- setNames(party_positions, party_names)
   col_map <- c(col_map, party_map)
 
@@ -1436,13 +1735,25 @@ parse_bb_2024 <- function(filepath) {
     df[[names(col_map)[k]]] <- as.character(raw[[col_map[k]]])[2:nrow(raw)]
   }
 
-  # Construct AGS from first 8 chars of ARS
-  df$ags <- substr(df[["ars"]], 1, 8)
+  # Construct AGS from the 12-digit ARS. Layout is Land(2) + RB(1) + Kreis(2) +
+  # Amt/Gemeindeverband(4) + Gemeinde(3), so the AGS is the first five digits
+  # plus the last three — NOT substr(1, 8), which would splice in the Amt code
+  # and collapse distinct Gemeinden of the same Amt onto one key.
+  # Amt-wide postal districts carry a SHORT (9-char) ARS with no Gemeinde
+  # segment; keep it verbatim so each pool stays a distinct key (several
+  # Ämter of one Kreis would otherwise collapse onto the same code).
+  df$ags <- ifelse(nchar(df[["ars"]]) == 12,
+                   paste0(substr(df[["ars"]], 1, 5), substr(df[["ars"]], 10, 12)),
+                   df[["ars"]])
   df$ars <- NULL
+  df[["ags_name"]] <- trimws(gsub("\\s+", " ", sub(":.*$", "", df[["ags_name"]])))
+  df[["ags_name"]] <- canonical_ags_name(df[["ags"]], df[["ags_name"]])
+  amt_by_ags <- tapply(df[["amt"]], df[["ags"]], function(x) x[1])
+  df$amt <- NULL
 
   # Convert to numeric
   all_numeric <- c("eligible_voters", "number_voters", "invalid_votes",
-                    "gueltige_stimmen", party_names)
+                    "gueltige_stimmen", party_names, "a2")
   for (col_name in all_numeric) {
     v <- as.character(df[[col_name]])
     v[v %in% c("x", "-", "")] <- NA_character_
@@ -1473,6 +1784,15 @@ parse_bb_2024 <- function(filepath) {
   df_muni$election_year <- 2024L
   df_muni$state <- "12"
   df_muni$ags <- pad_zero_conditional(df_muni$ags, 7)
+
+  # Distribute the Amt-wide postal districts over their member municipalities
+  df_muni <- bb_allocate_postal(
+    df_muni, 2024, party_names,
+    dist_cols = c("number_voters", "invalid_votes", "gueltige_stimmen",
+                  party_names),
+    amt_by_ags = amt_by_ags
+  )
+  df_muni$a2 <- NULL
   df_muni$county <- substr(df_muni$ags, 1, 5)
 
   # Compute vote shares and turnout
@@ -1483,47 +1803,45 @@ parse_bb_2024 <- function(filepath) {
                             df_muni[[pc]] / df_muni$gueltige_stimmen, NA_real_)
   }
   names(df_muni)[names(df_muni) == "gueltige_stimmen"] <- "valid_votes"
+  # Shares were computed from unrounded counts, so they still sum to 1;
+  # round the published totals after allocation.
+  for (cl in c("number_voters", "invalid_votes", "valid_votes")) {
+    df_muni[[cl]] <- round(df_muni[[cl]])
+  }
 
   cat("    ->", nrow(df_muni), "municipalities\n")
   as_tibble(df_muni)
 }
 
-# Process BB years — wrapped in tryCatch due to known tibble name-mangling bug
-df_bb <- tryCatch({
-  bb_results <- list()
+# Process BB years
+bb_results <- list()
 
-  bb_xlsx_files <- list(
-    list(year = 2003, file = "Brandenburg_2003_KTW.xlsx"),
-    list(year = 2008, file = "Brandenburg_2008_KTW.xlsx"),
-    list(year = 2014, file = "Brandenburg_2014_KTW.xlsx"),
-    list(year = 2019, file = "Brandenburg_2019_KTW.xlsx")
+bb_xlsx_files <- list(
+  list(year = 2003, file = "Brandenburg_2003_KTW.xlsx"),
+  list(year = 2008, file = "Brandenburg_2008_KTW.xlsx"),
+  list(year = 2014, file = "Brandenburg_2014_KTW.xlsx"),
+  list(year = 2019, file = "Brandenburg_2019_KTW.xlsx")
+)
+for (f in bb_xlsx_files) {
+  bb_results[[as.character(f$year)]] <- parse_bb_xlsx(
+    file.path(bb_dir, f$file), f$year
   )
-  for (f in bb_xlsx_files) {
-    bb_results[[as.character(f$year)]] <- parse_bb_xlsx(
-      file.path(bb_dir, f$file), f$year
-    )
-  }
-  bb_results[["2024"]] <- parse_bb_2024(
-    file.path(bb_dir, "Brandenburg_2024_KTW.xlsx")
-  )
+}
+bb_results[["2024"]] <- parse_bb_2024(
+  file.path(bb_dir, "Brandenburg_2024_KTW.xlsx")
+)
 
-  df_bb <- bind_rows(bb_results)
-  df_bb <- df_bb |> mutate(ags = pad_zero_conditional(ags, 7))
+df_bb <- bind_rows(bb_results)
+df_bb <- df_bb |> mutate(ags = pad_zero_conditional(ags, 7))
 
-  # Filter to valid municipality rows
-  n_before <- nrow(df_bb)
-  df_bb <- df_bb |> filter(nchar(ags) == 8 & eligible_voters > 0)
-  cat("  Removed", n_before - nrow(df_bb), "non-municipality rows\n")
+# Filter to valid municipality rows
+n_before <- nrow(df_bb)
+df_bb <- df_bb |> filter(nchar(ags) == 8 & eligible_voters > 0)
+cat("  Removed", n_before - nrow(df_bb), "non-municipality rows\n")
 
-  cat("BB total:", nrow(df_bb), "rows x", ncol(df_bb), "cols\n")
-  cat("BB years:", paste(sort(unique(df_bb$election_year)), collapse = ", "), "\n")
-  df_bb |> count(election_year) |> print()
-  df_bb
-}, error = function(e) {
-  cat("  BB FAILED:", conditionMessage(e), "\n")
-  cat("  Skipping BB — known tibble name-mangling issue\n")
-  NULL
-})
+cat("BB total:", nrow(df_bb), "rows x", ncol(df_bb), "cols\n")
+cat("BB years:", paste(sort(unique(df_bb$election_year)), collapse = ", "), "\n")
+df_bb |> count(election_year) |> print()
 
 
 # =============================================================================
@@ -3686,8 +4004,7 @@ df_nrw |> count(election_year) |> print()
 
 cat("\n===== COMBINING =====\n")
 
-all_dfs <- list(df_st, df_th, df_mv, df_sn)
-if (!is.null(df_bb)) all_dfs <- c(all_dfs, list(df_bb))
+all_dfs <- list(df_st, df_th, df_mv, df_sn, df_bb)
 if (exists("df_by") && nrow(df_by) > 0) all_dfs <- c(all_dfs, list(df_by))
 if (exists("df_sl") && nrow(df_sl) > 0) all_dfs <- c(all_dfs, list(df_sl))
 if (exists("df_he") && nrow(df_he) > 0) all_dfs <- c(all_dfs, list(df_he))
