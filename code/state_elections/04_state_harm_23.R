@@ -48,6 +48,18 @@ cat("Party variables found:", paste(party_vars, collapse = ", "), "\n")
 # For rows with NA valid_votes (e.g. HB pre-1999 percentage-only data),
 # impute a weight from number_voters or eligible_voters so that the
 # share→count→share round-trip preserves the original percentages.
+# Rows with no electorate at all fall through to the unit-weight placeholder in
+# the imputation below (valid_votes = 1). Mark them, so the weight-conservation
+# check further down does not mistake that placeholder for a real vote: 35
+# Bavarian gemeindefreie Gebiete carry no voters yet sit at crosswalk weight
+# sums of up to 20.
+df <- df |>
+  mutate(flag_vv_placeholder = as.integer(
+    is.na(valid_votes) &
+      !(!is.na(number_voters) & number_voters > 0) &
+      !(!is.na(eligible_voters) & eligible_voters > 0)
+  ))
+
 n_na_vv <- sum(is.na(df$valid_votes))
 if (n_na_vv > 0) {
   cat(sprintf("Imputing valid_votes weight for %d rows (using number_voters/eligible_voters)\n", n_na_vv))
@@ -130,6 +142,7 @@ df <- df |>
       ~ sum_na(.x)
     ),
     across(any_of(c("election_date", "county")), first),
+    flag_vv_placeholder = max(flag_vv_placeholder),
     .groups = "drop"
   ) |>
   arrange(ags, election_year)
@@ -320,6 +333,36 @@ if (nrow(not_merged_final) > 0) {
 
 # Filter out unmatched rows before harmonization
 df_cw <- df_cw |> filter(!is.na(ags_23))
+
+# Hard stop: every source row must hand out exactly 100% of its votes ---------
+# `ags_1990_to_2023_crosswalk.rds` is a FORWARD map: pop_cw is the share of the
+# SOURCE unit that ends up in each target, so it must sum to 1 within
+# (ags, election_year). Relabelling a forward weight as a backward one -- the
+# defect fixed in 02_federal_muni_harm_21.R and 02_municipal_harm.R in 2026-07
+# -- shows up here as a source row handing out 200%, 400% or more.
+w_chk <- df_cw |>
+  group_by(ags, election_year) |>
+  summarise(w = sum(pop_cw, na.rm = TRUE),
+            valid_votes = first(valid_votes),
+            placeholder = max(flag_vv_placeholder), .groups = "drop") |>
+  filter(abs(w - 1) > 0.01) |>
+  mutate(votes_at_risk = ifelse(placeholder > 0, 0, coalesce(valid_votes, 0)) *
+           abs(w - 1))
+# A group that carries no votes cannot fabricate any. 35 Bavarian gemeindefreie
+# Gebiete (09xxx444 and neighbours) sit at weight sums of up to 20 in
+# ags_crosswalks for every vintage 1990-2020 -- a latent defect of the same
+# class as the one repaired in the 2023->2025 artefacts in commit e27c4c1c,
+# harmless only because these territories have no electorate. Keep them visible,
+# but stop the run the moment a bad weight touches a real vote.
+if (nrow(w_chk) > 0) {
+  print(as.data.frame(w_chk |> arrange(desc(votes_at_risk), desc(abs(w - 1)))),
+        max = 2000)
+  cat("source rows whose crosswalk weights do not sum to 1:", nrow(w_chk),
+      "| of these carrying votes:", sum(w_chk$votes_at_risk > 0),
+      "| votes at risk:", round(sum(w_chk$votes_at_risk)), "\n")
+}
+stopifnot(sum(w_chk$votes_at_risk) < 0.5)
+cat("[OK] no source row fabricates or loses votes through its crosswalk weights\n")
 
 # Harmonize ----------------------------------------------------------------
 

@@ -219,6 +219,31 @@ not_merged <- df_cw %>%
 not_merged
 # now, there is no unsuccessful merge.
 
+# Hard stop: every source row must hand out exactly 100% of its votes ---------
+# `ags_1990_to_2025_crosswalk.rds` is a FORWARD map: pop_cw is the share of the SOURCE unit that ends
+# up in each target, so it must sum to 1 within one source row. Grouped on `id`
+# (the ORIGINAL ags + year), because several source rows may legitimately be
+# routed through one crosswalk entry by the remaps above. Relabelling a forward
+# weight as a backward one -- the defect fixed in the 2025 chain below --
+# shows up here as a source row handing out 200%, 400% or more. A group carrying
+# no votes cannot fabricate any, so the stop is keyed on votes, not weights.
+w_chk_pre <- df_cw |>
+  dplyr::filter(election_year < 2025, !is.na(ags_25)) |>
+  group_by(id) |>
+  summarise(w = sum(pop_cw, na.rm = TRUE),
+            valid_votes = first(valid_votes), .groups = "drop") |>
+  dplyr::filter(abs(w - 1) > 0.01) |>
+  mutate(votes_at_risk = coalesce(valid_votes, 0) * abs(w - 1))
+if (nrow(w_chk_pre) > 0) {
+  print(as.data.frame(w_chk_pre |> arrange(desc(votes_at_risk), desc(abs(w - 1)))),
+        max = 2000)
+  cat("source rows whose crosswalk weights do not sum to 1:", nrow(w_chk_pre),
+      "| of these carrying votes:", sum(w_chk_pre$votes_at_risk > 0),
+      "| votes at risk:", round(sum(w_chk_pre$votes_at_risk)), "\n")
+}
+stopifnot(sum(w_chk_pre$votes_at_risk) < 0.5)
+cat("[OK] no pre-2025 source row fabricates or loses votes via crosswalk weights\n")
+
 # Flag the cases where we had to change the ags
 df_cw <- df_cw |>
   mutate(

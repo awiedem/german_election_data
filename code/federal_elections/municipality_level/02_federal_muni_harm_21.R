@@ -235,6 +235,31 @@ not_merged <- df_cw %>%
 not_merged
 # now, there is no unsuccessful merge.
 
+# Hard stop: every source row must hand out exactly 100% of its votes ---------
+# `ags_crosswalks.csv` is a FORWARD map: pop_cw is the share of the SOURCE unit that ends
+# up in each target, so it must sum to 1 within one source row. Grouped on `id`
+# (the ORIGINAL ags + year), because several source rows may legitimately be
+# routed through one crosswalk entry by the remaps above. Relabelling a forward
+# weight as a backward one -- the defect fixed in the 2021 chain below --
+# shows up here as a source row handing out 200%, 400% or more. A group carrying
+# no votes cannot fabricate any, so the stop is keyed on votes, not weights.
+w_chk_pre <- df_cw |>
+  dplyr::filter(election_year < 2021, !is.na(ags_21)) |>
+  group_by(id) |>
+  summarise(w = sum(pop_cw, na.rm = TRUE),
+            valid_votes = first(valid_votes), .groups = "drop") |>
+  dplyr::filter(abs(w - 1) > 0.01) |>
+  mutate(votes_at_risk = coalesce(valid_votes, 0) * abs(w - 1))
+if (nrow(w_chk_pre) > 0) {
+  print(as.data.frame(w_chk_pre |> arrange(desc(votes_at_risk), desc(abs(w - 1)))),
+        max = 2000)
+  cat("source rows whose crosswalk weights do not sum to 1:", nrow(w_chk_pre),
+      "| of these carrying votes:", sum(w_chk_pre$votes_at_risk > 0),
+      "| votes at risk:", round(sum(w_chk_pre$votes_at_risk)), "\n")
+}
+stopifnot(sum(w_chk_pre$votes_at_risk) < 0.5)
+cat("[OK] no pre-2021 source row fabricates or loses votes via crosswalk weights\n")
+
 # Flag the cases where we had to change the ags
 df_cw <- df_cw |>
   mutate(
@@ -311,77 +336,132 @@ cw_2023_25 <- read_rds("data/crosswalks/final/crosswalk_ags_2023_to_2025.rds")
 cw_21_23 <- read_rds("data/crosswalks/final/crosswalk_ags_2021_to_2023.rds")
 
 
-# Build 2025-->2023 dis-aggregation table
-# (invert 2023-->2025 file)
-cw_25_to_23 <- cw_2023_25 %>% # year == 2023 rows
+# Build 2025 -> 2021 crosswalk chain ---------------------------------------
+# crosswalk_ags_2021_to_2023 and crosswalk_ags_2023_to_2025 are FORWARD maps:
+# their weights are the share of the SOURCE unit that ends up in each target.
+# They cannot be turned into backward weights by relabelling the columns — which
+# is what this script did until 2026-07. The claim that pop_cw "already sums to 1
+# within ags_25" was never true: 20 ags_25 codes had donor weights summing to as
+# much as 11. Every 2021 constituent of a post-2021 merger was therefore handed a
+# FULL-VALUE copy of its 2025 unit's result, fabricating votes in BTW 2025:
+# Thüringen +118,569 (+8.95%), Brandenburg +63,352 (+3.85%), Bayern +10,719,
+# Hessen +4,632, Schleswig-Holstein +3,528, Sachsen +3,145, Mecklenburg-Vorpommern
+# +2,846 — 33 ags_25 codes in all, one of them (16061119 Uder) at weight 11.0.
+# Correct inversion: chain the two forward maps into 2021 -> 2025, weight each
+# 2021 unit by its 2021 population, and normalise WITHIN the 2025 unit, i.e.
+#   backward weight = pop_21_constituent / pop_25_unit
+# This is the same construction as code/municipality_elections/02_municipal_harm.R.
+
+# Step 1: forward chain 2021 -> 2023 -> 2025
+cw_21_to_25 <- cw_21_23 |>
   transmute(
-    ags_25 = ags_25, # 2025 code  (was ‘target’)
-    ags_23 = ags, # 2023 donor
-    pop_w_25_23 = pop_cw, # population share (already sums to 1 within ags_25)
-    area_w_25_23 = area_cw,
-    population = population,
-    area = area
-  )
-
-glimpse(cw_25_to_23)
-
-
-# Map 2023-->2021 using old cross-walks
-# (keep only one row per 2023 code and its weight toward a 2021 unit)
-cw_23_to_21 <- cw_21_23 %>% # ags_crosswalks.csv  (1990–2021 → 2021)
-  transmute(
-    ags_23 = ags_2023, # source = 2023 code  (mostly unchanged since 2021)
-    ags_21 = ags_2021,
-    pop_w_23_21 = w_pop,
-    area_w_23_21 = w_area
-  )
-
-glimpse(cw_23_to_21)
-
-# For the handful of municipalities born between 2021-01-01 and 2023-12-31 (≈90 units)
-# cw_23_to_21 is missing rows.  They all merge into 2021 units later, never split them, so we can safely set their 2021 weight to 1:
-cw_23_to_21 <- bind_rows(
-  cw_23_to_21,
-  cw_25_to_23 %>%
-    anti_join(cw_23_to_21, by = "ags_23") %>% # 2023 codes missing in 2021 map
-    transmute(
-      ags_23,
-      ags_21        = ags_23, # identity
-      pop_w_23_21   = 1,
-      area_w_23_21  = 1
-    )
-)
-
-
-# Create a fully-chained 2025 → 2021 cross-walk
-cw_25_to_21 <- cw_25_to_23 %>%
-  left_join(cw_23_to_21, by = "ags_23") %>%
+    ags_21       = ags_2021,
+    ags_23       = ags_2023,
+    pop_w_21_23  = w_pop,
+    area_w_21_23 = w_area
+  ) |>
+  left_join(
+    cw_2023_25 |>
+      transmute(ags_23 = ags, ags_25, pop_w_23_25 = pop_cw, area_w_23_25 = area_cw),
+    by = "ags_23", relationship = "many-to-many"
+  ) |>
   mutate(
-    pop_w_25_21  = pop_w_25_23 * pop_w_23_21,
-    area_w_25_21 = area_w_25_23 * area_w_23_21
-  ) %>%
-  group_by(ags_25, ags_21) %>% # collapse double paths (rare)
+    ags_25       = coalesce(ags_25, ags_23), # 2023 code unchanged in 2025
+    pop_w_21_25  = pop_w_21_23 * coalesce(pop_w_23_25, 1),
+    area_w_21_25 = area_w_21_23 * coalesce(area_w_23_25, 1)
+  ) |>
+  group_by(ags_21, ags_25) |>
   summarise(
-    pop_w_25_21 = sum(pop_w_25_21, na.rm = TRUE),
-    area_w_25_21 = sum(area_w_25_21, na.rm = TRUE),
-    population = sum(population, na.rm = TRUE),
-    area = sum(area, na.rm = TRUE),
+    pop_w_21_25  = sum(pop_w_21_25, na.rm = TRUE),
+    area_w_21_25 = sum(area_w_21_25, na.rm = TRUE),
     .groups = "drop"
   )
-# Weights still sum to 1 within every 2025 source.
+
+# 2023 units without a 2021 ancestor map to themselves. These are the three
+# extra-municipal territories the GV extract carries (07000999 / 10042999
+# deutsch-luxemburgisches Hoheitsgebiet, 13000999 Küstengewässer).
+cw_21_to_25 <- bind_rows(
+  cw_21_to_25,
+  cw_2023_25 |>
+    dplyr::filter(!ags %in% cw_21_23$ags_2023) |>
+    transmute(ags_21 = ags, ags_25, pop_w_21_25 = pop_cw, area_w_21_25 = area_cw)
+)
+
+# Hard stop: every 2021 unit must give away exactly 100% of itself going forward.
+fwd_chk <- cw_21_to_25 |>
+  group_by(ags_21) |>
+  summarise(pop_sum = sum(pop_w_21_25), .groups = "drop") |>
+  dplyr::filter(abs(pop_sum - 1) > 0.01)
+if (nrow(fwd_chk) > 0) print(as.data.frame(fwd_chk), max = 500)
+stopifnot(nrow(fwd_chk) == 0)
+
+# Step 2: invert by 2021 population mass.
+# The 2021 Gemeindeverzeichnis is read again further down as `ags21` (to fill
+# area/population for the 2021 rows); here we only need the population mass that
+# turns the forward chain into a backward one, so keep it a separate, minimal read.
+pop_21 <- read_excel(path = "data/crosswalks/raw/31122021_Auszug_GV.xlsx", sheet = 2) |>
+  dplyr::select(
+    Land = `...3`, RB = `...4`, Kreis = `...5`, Gemeinde = `...7`,
+    area = `...9`, population = `...10`
+  ) |>
+  mutate(
+    Land = pad_zero_conditional(Land, 1),
+    Kreis = pad_zero_conditional(Kreis, 1),
+    Gemeinde = pad_zero_conditional(Gemeinde, 1, "00"),
+    Gemeinde = pad_zero_conditional(Gemeinde, 2, "0"),
+    ags_21 = paste0(Land, RB, Kreis, Gemeinde),
+    population_21 = as.numeric(population) / 1000,
+    area_21 = as.numeric(area)
+  ) |>
+  slice(6:16065) |>
+  dplyr::filter(!is.na(Gemeinde)) |>
+  dplyr::select(ags_21, population_21, area_21)
+
+cw_25_to_21 <- cw_21_to_25 |>
+  left_join(pop_21, by = "ags_21") |>
+  mutate(
+    mass_pop  = coalesce(population_21, 0) * pop_w_21_25,
+    mass_area = coalesce(area_21, 0) * area_w_21_25
+  ) |>
+  group_by(ags_25) |>
+  mutate(
+    tot_pop  = sum(mass_pop),
+    tot_area = sum(mass_area),
+    n_parts  = n(),
+    pop_w_25_21 = case_when(
+      tot_pop > 0  ~ mass_pop / tot_pop,
+      tot_area > 0 ~ mass_area / tot_area, # unpopulated 2025 units
+      TRUE         ~ 1 / n_parts
+    ),
+    area_w_25_21 = case_when(
+      tot_area > 0 ~ mass_area / tot_area,
+      TRUE         ~ 1 / n_parts
+    )
+  ) |>
+  ungroup() |>
+  # a 2021 constituent without inhabitants receives no votes; keeping it would
+  # add an all-zero row for the 2025 election
+  dplyr::filter(pop_w_25_21 > 0) |>
+  transmute(
+    ags_25, ags_21, pop_w_25_21, area_w_25_21,
+    population = tot_pop, area = tot_area
+  )
+
+# Hard stop: every 2025 unit must hand out exactly 100% of its result.
+chain_chk <- cw_25_to_21 |>
+  group_by(ags_25) |>
+  summarise(pop_sum = sum(pop_w_25_21), .groups = "drop") |>
+  dplyr::filter(abs(pop_sum - 1) > 0.01)
+if (nrow(chain_chk) > 0) print(as.data.frame(chain_chk), max = 500)
+stopifnot(nrow(chain_chk) == 0)
+# (area weights may fall slightly short of 1 where an unpopulated sliver was
+#  dropped above; that is intended and affects no vote count.)
 
 glimpse(cw_25_to_21)
 
-# check
-cw_25_to_21 %>%
-  filter(pop_w_25_21 < 1) %>%
-  print(n = Inf)
-
-glimpse(df_cw)
-
 # Distribute raw 2025 votes to 2021 borders
 df25 <- df %>% # one row per 2025 AGS, votes already in counts
-  filter(election_year == 2025) %>%
+  dplyr::filter(election_year == 2025) %>%
   left_join(cw_25_to_21, by = c("ags" = "ags_25")) %>%
   mutate(
     ags_21 = as.character(ags_21),
@@ -391,28 +471,31 @@ df25 <- df %>% # one row per 2025 AGS, votes already in counts
     area_cw = area_w_25_21
   )
 
-# check
-names(df25)
-glimpse(df25)
+# HARD STOP: an AGS the chain cannot place is silently deleted from the output
+# together with all of its votes.
+allowed_unmatched_25 <- character(0) # (ags, election_year) ids allowed to fail
+not_merged_25 <- df25 |>
+  dplyr::filter(is.na(ags_21)) |>
+  dplyr::select(ags, election_year, id, valid_votes) |>
+  distinct()
+if (nrow(not_merged_25) > 0) {
+  print(as.data.frame(not_merged_25 %>% arrange(ags)), max = 2000)
+  cat("unmatched 2025 rows:", nrow(not_merged_25),
+      "| valid votes at stake:", sum(not_merged_25$valid_votes, na.rm = TRUE), "\n")
+}
+stopifnot(all(not_merged_25$id %in% allowed_unmatched_25))
 
-
-
-df25 %>%
-  filter(pop_cw < 1) %>%
-  select(ags, election_year, ags_21, population, pop_cw, area, area_cw) %>%
-  print(n = Inf)
-
-# check those that are not in 2021
-names(df25)
-df25 %>%
-  anti_join(df |> filter(election_year == 2021), by = c("ags_21" = "ags")) %>%
-  select(ags, election_year, ags_21, population, pop_cw, area, area_cw) %>%
-  print(n = Inf)
-
-df25 %>%
-  filter(ags_21 == "1001000") %>%
-  select(ags_21, year = election_year, pop = population, p_w = pop_cw, area, aa_w = area_cw, cdu, voters = eligible_voters) %>%
-  print(n = Inf)
+# Every source row must hand out exactly 100% of itself across its 2021 targets.
+# Grouped on `id` (the ORIGINAL ags + year), not on the possibly remapped ags:
+# several source rows may legitimately be routed through one crosswalk entry.
+w_chk_25 <- df25 |>
+  dplyr::filter(!is.na(ags_21)) |>
+  group_by(id) |>
+  summarise(w = sum(pop_cw, na.rm = TRUE), .groups = "drop") |>
+  dplyr::filter(abs(w - 1) > 0.01)
+if (nrow(w_chk_25) > 0) print(as.data.frame(w_chk_25), max = 2000)
+stopifnot(nrow(w_chk_25) == 0)
+cat("[OK] 2025 -> 2021 chain conserves every source row's votes\n")
 
 glimpse(df25)
 
