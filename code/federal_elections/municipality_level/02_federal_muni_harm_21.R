@@ -22,8 +22,19 @@ cw <- fread("data/crosswalks/final/ags_crosswalks.csv") |>
   mutate(
     ags = pad_zero_conditional(ags, 7),
     # fread may infer ags_21 as numeric when values look like integers —
-    # coerce to character to avoid type mismatches with df25$ags_21 later
-    ags_21 = pad_zero_conditional(as.character(ags_21), 8)
+    # coerce to character to avoid type mismatches with df25$ags_21 later.
+    # The second argument of pad_zero_conditional() is the length to MATCH, not
+    # the width to pad TO: it prepends a "0" iff nchar(x) == str_len. Passing 8
+    # here (as this line did from 2026-04 to 2026-07) therefore left states
+    # 01-09 — which fread strips to 7 digits — untouched, and prepended a zero
+    # to states 10-16, which keep all 8. Saarland 10041100 became "010041100",
+    # a 9-character code that merely looks like Schleswig-Holstein. The result:
+    # Saarland, Berlin, Brandenburg, Mecklenburg-Vorpommern, Sachsen,
+    # Sachsen-Anhalt and Thüringen had NO rows under their real AGS in any
+    # election from 1990 to 2017 — 2,463 municipalities x 8 years = 19,704 rows,
+    # some 11 million votes per year, filed under a Schleswig-Holstein prefix.
+    # The nchar(ags) == 8 hard stop before the save would have caught it.
+    ags_21 = pad_zero_conditional(as.character(ags_21), 7)
   )
 
 # how many ags_21 for each year?
@@ -933,6 +944,112 @@ df_harm <- df_harm |>
   dplyr::relocate(ags, election_year, election_date, ags_name, state_name, state)
 
 stopifnot(sum(grepl("^ags_name", names(df_harm))) == 1)
+
+
+# Hard stop: every published AGS is a real 2021 municipality -----------------
+# A file harmonised to 2021 borders may only carry 8-character 2021
+# Gemeindeschlüssel. Both halves of that are asserted, because either alone is
+# blind to half the failure modes: a width check misses a well-formed code that
+# no longer exists in 2021, and a set-membership check misses nothing here only
+# because the width check runs first — a mis-padded code is not in the universe
+# either, so the two together pin the identifier down completely.
+# This is the invariant that would have caught the mis-padding fixed at the top
+# of this script, which for three months filed every municipality of Saarland,
+# Berlin, Brandenburg, Mecklenburg-Vorpommern, Sachsen, Sachsen-Anhalt and
+# Thüringen under a 9-character Schleswig-Holstein code in 1990-2017.
+# Mirrors the identifier invariant in docs/audit_2026-07_mayoral_council.md §7.
+ags21_universe <- unique(ags21$ags)
+stopifnot(length(ags21_universe) > 10000, all(nchar(ags21_universe) == 8))
+
+id_chk <- df_harm |>
+  dplyr::mutate(problem = dplyr::case_when(
+    is.na(ags) ~ "ags missing",
+    nchar(ags) != 8 ~ "ags not 8 characters",
+    !ags %in% ags21_universe ~ "ags not a 2021 municipality",
+    TRUE ~ NA_character_
+  )) |>
+  dplyr::filter(!is.na(problem)) |>
+  dplyr::count(problem, ags, name = "n_rows", sort = TRUE)
+if (nrow(id_chk) > 0) {
+  print(as.data.frame(head(id_chk, 50)))
+  cat("offending AGS codes:", nrow(id_chk), "| rows:", sum(id_chk$n_rows), "\n")
+}
+stopifnot(nrow(id_chk) == 0)
+cat("[OK] every AGS is an 8-character 2021 municipality\n")
+
+dup_chk <- df_harm |>
+  dplyr::count(ags, election_year) |>
+  dplyr::filter(n > 1)
+if (nrow(dup_chk) > 0) print(as.data.frame(head(dup_chk, 50)))
+stopifnot(nrow(dup_chk) == 0)
+cat("[OK] (ags, election_year) is unique\n")
+
+
+# Hard stop: harmonisation reallocates votes, it never creates or loses them --
+# Nationally the harmonised total must equal the unharmonised one to rounding.
+# Per state-year it need not, but only in 1990 and only because harmonising to
+# 2021 borders moves territory that has since changed Land: Amt Neuhaus from
+# Mecklenburg-Vorpommern to Niedersachsen, plus a few municipalities across the
+# MV/BB and TH/SN lines. Those transfers balance against each other — 1990:
+# MV -9,598 against BB +5,901 and NI +3,696 (one vote short, from rounding), and
+# TH -7,247 against SN +7,247 — so they cancel nationally and are real
+# reallocation, not loss. Measured against `df`, which already carries the 1990
+# ags remaps above, so Sachsen-Anhalt reconciles exactly here even though it
+# gains Wolmersdorf's 63 votes relative to the raw unharmonised file.
+# From 1994 on no such transfer remains, so every state-year there is held to
+# the national tolerance.
+# A state that silently vanished from the output would show here as -100 %, and
+# one that absorbed another's rows as a large positive: this check fails on the
+# mis-padding defect independently of the identifier check above.
+recon <- dplyr::full_join(
+  df |>
+    dplyr::transmute(st = substr(ags, 1, 2), election_year, valid_votes) |>
+    dplyr::group_by(st, election_year) |>
+    dplyr::summarise(unharm = sum(valid_votes, na.rm = TRUE), .groups = "drop"),
+  df_harm |>
+    dplyr::transmute(st = substr(ags, 1, 2), election_year, valid_votes) |>
+    dplyr::group_by(st, election_year) |>
+    dplyr::summarise(harm = sum(valid_votes, na.rm = TRUE), .groups = "drop"),
+  by = c("st", "election_year")
+) |>
+  dplyr::mutate(
+    unharm = dplyr::coalesce(unharm, 0),
+    harm = dplyr::coalesce(harm, 0),
+    # a state-year present in the output but absent upstream is fabrication, and
+    # has no denominator: report it as infinite rather than dividing by zero
+    pct = dplyr::case_when(
+      unharm > 0 ~ 100 * (harm - unharm) / unharm,
+      harm > 0 ~ Inf,
+      TRUE ~ 0
+    ),
+    tol = ifelse(election_year == 1990, 1.5, 0.01)
+  )
+
+recon_bad <- recon |>
+  dplyr::filter(!is.finite(pct) | abs(pct) > tol) |>
+  dplyr::arrange(dplyr::desc(abs(pct)))
+print(as.data.frame(recon |>
+  dplyr::filter(abs(pct) > 0.001) |>
+  dplyr::arrange(dplyr::desc(abs(pct)))))
+if (nrow(recon_bad) > 0) {
+  cat("state-years outside tolerance:", nrow(recon_bad), "\n")
+}
+stopifnot(nrow(recon_bad) == 0)
+cat("[OK] valid_votes reconcile to the unharmonised file in every state-year\n")
+
+nat <- dplyr::full_join(
+  df |>
+    dplyr::group_by(election_year) |>
+    dplyr::summarise(unharm = sum(valid_votes, na.rm = TRUE), .groups = "drop"),
+  df_harm |>
+    dplyr::group_by(election_year) |>
+    dplyr::summarise(harm = sum(valid_votes, na.rm = TRUE), .groups = "drop"),
+  by = "election_year"
+) |>
+  dplyr::mutate(pct = 100 * (harm - unharm) / unharm)
+print(as.data.frame(nat))
+stopifnot(nrow(nat) > 0, all(is.finite(nat$pct)), max(abs(nat$pct)) < 0.01)
+cat("[OK] national valid_votes reconcile to the unharmonised file in every year\n")
 
 
 # Save --------------------------------------------------------------------
