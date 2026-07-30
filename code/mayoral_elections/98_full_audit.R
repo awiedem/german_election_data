@@ -39,7 +39,19 @@ if (nrow(mu[!round %in% c("hauptwahl","stichwahl")])) rep("ERROR","unharm.round"
 if (nrow(mu[!is.na(winner_votes)&!is.na(valid_votes)&winner_votes>valid_votes])) rep("ERROR","unharm.winner_le_valid","winner_votes>valid", mu[winner_votes>valid_votes,.(ags,election_date,winner_votes,valid_votes)]) else ok("unharm.winner_le_valid","winner_votes<=valid_votes")
 if (nrow(mu[!is.na(winner_voteshare)&(winner_voteshare< -0.001|winner_voteshare>1.01)])) rep("ERROR","unharm.share_range","winner_voteshare out of [0,1.01]") else ok("unharm.share_range","winner_voteshare in [0,1.01]")
 to <- mu[!is.na(turnout)&(turnout<=0|turnout>1.05)]; if (nrow(to)) rep("WARN","unharm.turnout","turnout out of (0,1.05]", to[,.(ags,election_date,state,turnout)]) else ok("unharm.turnout","turnout in (0,1.05]")
-dup <- mu[,.N,.(ags,election_date,round)][N>1]; if (nrow(dup)) rep("ERROR","unharm.dup","duplicate (ags,date,round)", dup) else ok("unharm.dup","no duplicate (ags,date,round)")
+# Three 1994-2001 Sachsen-Anhalt elections are two DIFFERENT Gemeinden that the
+# StaLA source stamped with one AGS; they are kept as separate elections (the
+# alternative silently deleted three real elections and erased three real
+# mayors) and marked with flag_shared_ags, so ags_name is part of the key there.
+dupkey <- if ("flag_shared_ags" %in% names(mu)) c("ags","ags_name","election_date","round") else c("ags","election_date","round")
+dup <- mu[, .N, by = dupkey][N > 1]
+if (nrow(dup)) rep("ERROR","unharm.dup","duplicate (ags,ags_name,date,round)", dup) else ok("unharm.dup","no duplicate election keys")
+if ("flag_shared_ags" %in% names(mu)) {
+  shd <- mu[, .N, .(ags, election_date, round)][N > 1]
+  if (nrow(shd) > 0 && !all(mu[shd, on=.(ags,election_date,round)]$flag_shared_ags %in% TRUE))
+    rep("ERROR","unharm.dup_unflagged","an AGS is shared without flag_shared_ags", shd) else
+    ok("unharm.dup_shared", sprintf("%d shared-AGS election(s), all flagged", nrow(shd)))
+}
 sc <- mu[!is.na(winner_voteshare)&!is.na(winner_votes)&!is.na(valid_votes)&valid_votes>0][abs(winner_votes/valid_votes-winner_voteshare)>0.02]
 if (nrow(sc)) rep("ERROR","unharm.share_calc",sprintf("%d rows winner_voteshare != votes/valid",nrow(sc)), sc[,.(ags,election_date,state,winner_votes,valid_votes,winner_voteshare)]) else ok("unharm.share_calc","winner_voteshare = votes/valid")
 
@@ -70,7 +82,11 @@ hw <- mc[!is.na(candidate_votes_hw),.(cmax=max(candidate_votes_hw)),.(ags,electi
 sw <- mc[has_stichwahl==TRUE & !is.na(candidate_votes_sw),.(cmax=max(candidate_votes_sw)),.(ags,election_date=election_date_sw)][,round:="stichwahl"]
 mwin <- merge(mu[!is.na(winner_votes),.(ags,election_date,round,st=sn[substr(ags,1,2)],winner_votes)], rbind(hw,sw), by=c("ags","election_date","round"))
 # NI (top-candidates-only) & SL legitimately differ; everything else must match
-crit <- mwin[abs(winner_votes-cmax)>2 & !st %in% c("NI","SL")]
+# Shared-AGS elections pool two Gemeinden's candidates under one key, so the
+# per-Gemeinde winner is legitimately below the pooled maximum.
+shared_keys <- if ("flag_shared_ags" %in% names(mu)) unique(mu[flag_shared_ags %in% TRUE, .(ags, election_date)]) else mu[0, .(ags, election_date)]
+crit <- mwin[abs(winner_votes-cmax)>2 & !st %in% c("NI","SL")][
+  !shared_keys, on = .(ags, election_date)]
 if (nrow(crit)) rep("ERROR","recon.winner_votes",sprintf("%d unharm winner_votes != candidates max",nrow(crit)), crit[,.N,st]) else ok("recon.winner_votes","unharm winner_votes = candidates max (excl. NI/SL top-only)")
 
 cat("\n========== D. mayoral_harm ==========\n")
@@ -148,11 +164,19 @@ if (!all(kfs %in% st_ob_ags)) rep("ERROR","st.kfs_ob","kfS missing from OB set")
   ok("st.kfs_ob","all 3 kreisfreie Städte classified as OB")
 
 # One winner per election
-st_winners <- st_mc[, .(w = sum(is_winner, na.rm=TRUE)), .(ags, election_date)]
-if (any(st_winners$w != 1)) rep("ERROR","st.one_winner",
-  sprintf("%d ST elections with ≠ 1 winner",sum(st_winners$w != 1)),
-  st_winners[w != 1]) else
-  ok("st.one_winner", sprintf("exactly 1 winner per election (%d elections)",nrow(st_winners)))
+# A few 1994-2008 ST elections carry no votes, no shares and no source winner
+# flag; is_winner is NA there rather than assigned to whichever candidate was
+# listed first, so those legitimately have no winner. Two winners is an error.
+st_winners <- st_mc[, .(w = sum(is_winner, na.rm=TRUE),
+                        determinable = any(!is.na(is_winner))), .(ags, election_date)]
+if (any(st_winners$w > 1)) rep("ERROR","st.one_winner",
+  sprintf("%d ST elections with more than one winner", sum(st_winners$w > 1)),
+  st_winners[w > 1]) else
+  ok("st.one_winner", sprintf("never more than one winner (%d elections)", nrow(st_winners)))
+if (any(st_winners$w != 1 & st_winners$determinable)) rep("ERROR","st.winner_determinable",
+  sprintf("%d determinable ST elections without a winner",
+          sum(st_winners$w != 1 & st_winners$determinable))) else
+  ok("st.winner_determinable", "every determinable ST election has exactly one winner")
 
 # Winner votes = candidate max (winner is the top scorer of the decisive round)
 st_recon <- merge(
@@ -165,7 +189,8 @@ st_recon <- merge(
 )
 # For SW rounds match cand_max_sw; for HW rounds match cand_max_hw
 st_recon[, expected := ifelse(round == "stichwahl", cand_max_sw, cand_max_hw)]
-mm <- st_recon[!is.na(expected) & !is.na(winner_votes) & winner_votes != expected]
+mm <- st_recon[!is.na(expected) & !is.na(winner_votes) & winner_votes != expected][
+  !shared_keys, on = .(ags, election_date)]   # shared-AGS pools two Gemeinden
 if (nrow(mm)) rep("ERROR","st.winner_reconcile",
   sprintf("%d ST rows: unharm winner_votes != candidates max",nrow(mm)),
   head(mm[, .(ags, election_date, round, winner_votes, expected)],5)) else
@@ -365,10 +390,17 @@ if (all(c("candidate_votes_sw","n_candidates_sw") %in% names(mc))) {
     ok("cand.sw_smear","no election carries more SW results than SW candidates")
 }
 if ("candidate_rank_sw" %in% names(mc)) {
-  dup_rank <- mc[candidate_rank_sw == 1, .N, .(ags, election_date, election_type)][N > 1]
+  # An exact tie is a real outcome (Bavaria 1956 Sulzemoos 259:259, resolved by
+  # a repeat election; Wuerzburg 2008 673:673), so several candidates may share
+  # rank 1 — but only if they polled the SAME number of votes. Differing votes
+  # at the same rank means the runoff result was copied across candidates.
+  dup_rank <- mc[candidate_rank_sw == 1,
+                 .(n = .N, n_distinct_votes = uniqueN(candidate_votes_sw)),
+                 .(ags, election_date, election_type)][n > 1 & n_distinct_votes > 1]
   if (nrow(dup_rank)) rep("ERROR","cand.sw_rank1",
-    sprintf("%d elections have more than one candidate at Stichwahl rank 1", nrow(dup_rank)),
-    dup_rank[order(-N)]) else ok("cand.sw_rank1","one rank-1 candidate per Stichwahl")
+    sprintf("%d elections have rank-1 candidates with differing Stichwahl votes", nrow(dup_rank)),
+    dup_rank[order(-n)]) else
+    ok("cand.sw_rank1","rank-1 Stichwahl candidates share rank only on an exact tie")
 }
 
 # G3. The winner named in mayoral_unharm must be the candidate with the most

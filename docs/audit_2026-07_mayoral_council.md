@@ -367,6 +367,89 @@ then Stage 2 and the panel. Within a tier, items are independent.
 
 ---
 
+## 5b. Outcome — what the re-run produced
+
+Every fix below was verified against the rebuilt outputs, not merely applied.
+
+### Wrong values corrected
+
+| Fixture | Before | After |
+|---|---|---|
+| Frankfurt 2012 mayoral winner | CDU (first-round leader) | **SPD**, Feldmann, 92,215 runoff votes |
+| Runoff results smeared onto non-participants | 645 elections | **0** |
+| Thüringen Landrat wrong winners | 4 | **0** (Schmidt-Rose 60.4 %, Brodführer 63.0 %, Schmidt-Rose 58.6 %, Hochwind-Schneider 58.6 %) |
+| Kyffhäuserkreis 2024 runoff | absent | present, 20,951 votes |
+| Leiningerland 2025 | SPD 46.6 % | **CDU 53.4 %** |
+| Völklingen 2024 (both rounds) | SPD | **WIR BÜRGER Völklingen** |
+| Neunkirchen 2024 winner share | 0.09 | **0.529** |
+| Sachsen county valid/voters ratio | 0.02 | **0.976 / 0.979** |
+| Hessen county 2016 turnout | 58.37 % | **50.10 %** |
+| MV county 2024 turnout | 61.71 % | **64.21 %** |
+| Hamburg 2025 electorate | 2,626,086 | **1,313,043** (BSW 0.89 % → 1.76 %) |
+| Munich 2020 municipal Linke | NA | **3.27 %** |
+| Bad Neuenahr-Ahrweiler 2019 (harm_25) | 6,916 (halved into Dernau) | **13,814** |
+| RP Tiefenbach 1994 | 6,706 | **487** |
+
+### Silent losses recovered
+
+| Item | Before | After |
+|---|---|---|
+| Bayern Landrat runoffs without their Hauptwahl | 119 of 148 | **0 of 149** |
+| `landrat_unharm` rows | 1,966 | **2,105** |
+| Sachsen Große-Kreisstadt electorate (2024) | dropped | **363,834** recovered; state total 2,166,357 |
+| MV pooled postal votes (2024) | dropped | **33,722 voters / 98,888 votes** allocated |
+| RP pre-1990 rows in `municipal_harm_25` | 0 | **11,474** |
+| RP elections swallowed by a blank Wahltag | 8 lost | recovered |
+| SH 2024 Stichwahlen | 3 missing | present |
+| Hessen county `invalid_votes` NA | 2,516 rows | **1** |
+
+### Fabricated values removed
+
+| Item | Before | After |
+|---|---|---|
+| `municipal_harm` deviation from unharmonised totals | TH 2024 **+11.09 %**, BB 2024 +3.73 % | **0.000 % in every state-year** |
+| Crosswalk weight groups ≠ 1 | 101 across four artefacts | **0** |
+| Duplicate crosswalk keys | 231 | **0** |
+| Duplicate `(ags, year)` in `municipal_harm_25` | 12 | **0** |
+| Annual-panel rows predating their own election | 1,978 | **0** |
+| Duplicated municipality-years in the annual panel | 1,978 | **0** |
+| Bayern Landrat terms in `mayor_panel` | 1,063 | **0** |
+| Hessen pseudo-persons in the panel | 1,995 elections → 426 people | 435 rows → **429 people** |
+| Elections given an arbitrary winner | 545 | **7** (all genuinely undeterminable, left NA) |
+| Named Sachsen-Anhalt losers in `landrat_candidates` | 85 | **0** |
+| Non-Sunday Thüringen dates | all 99 Landrat + 40 OB rows | **0** |
+
+### Two regressions caught during verification, before they shipped
+
+Both were introduced by fixes in this pass and found by re-running the suites:
+
+1. Declining to guess a winner when no votes exist correctly stopped inventing
+   one for multi-candidate elections — but also stripped the winner from **538
+   uncontested single-candidate elections**, where the sole candidate is the
+   winner by definition and `mayoral_unharm` still named one. A sole candidate
+   is now flagged; the two files agree again.
+2. The audit's BW elected-women fixture filtered `candidate_gender == "female"`,
+   which only selected StaLA values because predictions used a different
+   vocabulary. Unifying the vocabulary would have turned that 114 into 300
+   silently; the check now keys on `candidate_gender_source == "raw"`.
+
+### Audit-suite status
+
+All three suites pass on the rebuilt outputs (0 errors). Five checks were
+corrected rather than satisfied, because they asserted behaviour the audit
+proved wrong:
+
+- an exact tie is a real outcome, so two candidates may share runoff rank 1 —
+  but only when they polled the same number of votes (Sulzemoos 1956 259:259,
+  resolved by a repeat election; Würzburg 2008 673:673);
+- three Sachsen-Anhalt elections are two different Gemeinden sharing one source
+  AGS, so `ags_name` is part of the key there and the pooled candidate maximum
+  is not the per-Gemeinde winner;
+- an election with no votes, no shares and no source flag has no winner, rather
+  than one assigned by row order;
+- Sachsen-Anhalt losing candidates must be anonymised in `landrat_candidates`
+  too, so a missing name there is required rather than a defect.
+
 ## 6. Source anomalies to document, not fix
 
 Bavaria 2026 XLSX turnout contradicts its own counts in 3 rows · Bavaria 2026 leaves `Stichwahl`

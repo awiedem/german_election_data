@@ -437,13 +437,22 @@ check(sum(genthin$is_winner, na.rm = TRUE) == 1 &&
       "ST regression: Turian is the winner in Genthin 2024",
       "ST regression: wrong / missing winner for Genthin 2024")
 
-# ONE winner per (ags, election_date) — no ambiguous or duplicate winner rows.
+# At most ONE winner per (ags, election_date) — never two, and never an
+# arbitrary one. A handful of 1994-2008 ST elections carry no votes, no shares
+# and no winner flag in the source; is_winner is NA there rather than being
+# assigned to whichever candidate happened to be listed first, so those
+# elections legitimately have zero winners. Two winners is still an error.
 per_elec_st <- st_c %>%
   group_by(ags, election_date) %>%
-  summarise(n_wins = sum(is_winner, na.rm = TRUE), .groups = "drop")
-check(all(per_elec_st$n_wins == 1),
-      sprintf("ST: exactly one winner per election (%d elections checked)", nrow(per_elec_st)),
-      sprintf("ST: %d elections with ≠ 1 winner", sum(per_elec_st$n_wins != 1)))
+  summarise(n_wins = sum(is_winner, na.rm = TRUE),
+            determinable = any(!is.na(is_winner)), .groups = "drop")
+check(all(per_elec_st$n_wins <= 1),
+      sprintf("ST: never more than one winner per election (%d checked)", nrow(per_elec_st)),
+      sprintf("ST: %d elections with more than one winner", sum(per_elec_st$n_wins > 1)))
+check(all(per_elec_st$n_wins == 1 | !per_elec_st$determinable),
+      "ST: every election whose winner is determinable has exactly one",
+      sprintf("ST: %d determinable elections without a winner",
+              sum(per_elec_st$n_wins != 1 & per_elec_st$determinable)))
 
 # Ehrenamtliche Bürgermeister — the StaLA source lists them (ART=leer). Almost
 # all of them ran as Einzelbewerber (winner_party empty). Confirm the winner_party
