@@ -428,7 +428,15 @@ process_nrw_candidates <- function(file, skip_rows, default_election_type) {
   nrw_clean <- nrw_clean %>%
     mutate(
       gkz_clean = str_pad(gsub("[^0-9]", "", gkz), width = 6, side = "left", pad = "0"),
-      ags = paste0("05", gkz_clean),
+      # IT.NRW still lists Aachen under its pre-reform code 313000 in every
+      # file. The kreisfreie Stadt was dissolved into the Staedteregion on
+      # 21.10.2009 and the city's code has been 05334002 since; 05313000 exists
+      # in no crosswalk year after 2008, so the 2014 and 2020 elections were
+      # silently dropped at harmonisation and 2025 was published under a code
+      # that no longer exists. Recode everything after the reform.
+      # (the 2009 election fell on 30 August, before the 21 October reform)
+      ags = ifelse(gkz_clean == "313000" & election_year > 2009,
+                   "05334002", paste0("05", gkz_clean)),
       state = "05",
       state_name = "Nordrhein-Westfalen",
       ags_name = gemeinde,
@@ -2989,6 +2997,7 @@ mayoral_candidates <- as_tibble(mayoral_candidates) %>%
     ),
     .n_src_win = sum(is_winner, na.rm = TRUE),   # winners the SOURCE declared
     .has_metric = any(!is.na(.metric)),
+    .sole = n() == 1,                            # only one candidate stood
     .win_rid = .rid[which.max(ifelse(is.na(.metric), -Inf, .metric))]  # global id of the group max
   ) %>%
   ungroup() %>%
@@ -2996,10 +3005,14 @@ mayoral_candidates <- as_tibble(mayoral_candidates) %>%
     is_winner = case_when(
       .n_src_win == 1 ~ dplyr::coalesce(is_winner, FALSE),  # source knows: keep it
       .has_metric     ~ .rid == .win_rid,                   # 0 or >1 flags: most votes
+      # A sole candidate won by definition, whether or not the early-postwar
+      # Bayern records give a vote count. Without this, 538 uncontested
+      # elections would carry no winner at all while mayoral_unharm names one.
+      .sole           ~ TRUE,
       TRUE            ~ NA                                  # unknowable — do not guess
     )
   ) %>%
-  select(-.rid, -.any_sw, -.metric, -.n_src_win, -.has_metric, -.win_rid)
+  select(-.rid, -.any_sw, -.metric, -.n_src_win, -.has_metric, -.sole, -.win_rid)
 
 # Safety net: guarantee at least one winner per election (covers rare edge cases
 # where the deciding-round metric is degenerate). Flags the highest-vote row.

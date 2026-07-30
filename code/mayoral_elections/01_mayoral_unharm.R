@@ -339,7 +339,15 @@ process_nrw_file <- function(file, skip_rows, default_election_type) {
   nrw_clean <- nrw_clean %>%
     mutate(
       gkz_clean = str_pad(gsub("[^0-9]", "", gkz), width = 6, side = "left", pad = "0"),
-      ags = paste0("05", gkz_clean),
+      # IT.NRW still lists Aachen under its pre-reform code 313000 in every
+      # file. The kreisfreie Stadt was dissolved into the Staedteregion on
+      # 21.10.2009 and the city's code has been 05334002 since; 05313000 exists
+      # in no crosswalk year after 2008, so the 2014 and 2020 elections were
+      # silently dropped at harmonisation and 2025 was published under a code
+      # that no longer exists. Recode everything after the reform.
+      # (the 2009 election fell on 30 August, before the 21 October reform)
+      ags = ifelse(gkz_clean == "313000" & election_year > 2009,
+                   "05334002", paste0("05", gkz_clean)),
       state = "05",
       state_name = "Nordrhein-Westfalen",
       # Determine election type from the gemeinde (name) column. The AGS suffix
