@@ -125,8 +125,16 @@ parse_th_sheet <- function(file, sheet) {
   for (try_row in (k_idx[1] - 1):max(1, k_idx[1] - 6)) {
     if (try_row < 1) break
     candidate_hdr <- as.character(d[try_row, ])
-    # Look for typical candidate-name pattern: contains comma + alphabetic
-    name_like <- grepl("^\\s*[A-ZÄÖÜ][\\w\\s.\\-äöüÄÖÜß]+,\\s+[A-ZÄÖÜ]", candidate_hdr)
+    # Look for typical candidate-name pattern: contains comma + alphabetic.
+    # NB: perl = TRUE is REQUIRED. R's default TRE engine does not honour
+    # \w / \s inside a bracket expression, so a class like [\\w\\s.\\-äöü...]
+    # silently degrades to a literal set plus the range \ (0x5C) - ä (0xE4),
+    # which excludes space, hyphen, digits and A-Z. That dropped every
+    # hyphenated ("Schmidt-Rose, Christiane") and title-prefixed ("Dr.
+    # Brodführer, Michael") candidate, and whole sheets where all candidates
+    # were of that shape. "[^,]*" + perl is both simpler and correct; it still
+    # rejects "Sonstige Wahlvorschläge", "Anzahl" and "%".
+    name_like <- grepl("^\\s*[A-ZÄÖÜ][^,]*,\\s+[A-ZÄÖÜ]", candidate_hdr, perl = TRUE)
     cols <- which(name_like)
     if (length(cols) >= 1) {
       cand_cols <- cols
@@ -173,10 +181,16 @@ parse_th_sheet <- function(file, sheet) {
       number_voters = voters,
       valid_votes = valid,
       invalid_votes = invalid,
-      turnout = ifelse(!is.na(eligible) & eligible > 0,
-                       voters / eligible, NA_real_),
-      candidate_voteshare = ifelse(!is.na(valid) & valid > 0,
-                                    candidate_votes / valid, NA_real_)
+      # NB: `eligible` / `valid` are length-1 scalars, so ifelse() would return
+      # a length-1 result and mutate() would RECYCLE the first candidate's value
+      # onto every candidate in the sheet. Use scalar `if`/`else` on the scalar
+      # condition and let the vectorised division do the work.
+      turnout = if (!is.na(eligible) && eligible > 0) {
+        voters / eligible
+      } else NA_real_,
+      candidate_voteshare = if (!is.na(valid) && valid > 0) {
+        candidate_votes / valid
+      } else NA_real_
     )
 }
 
