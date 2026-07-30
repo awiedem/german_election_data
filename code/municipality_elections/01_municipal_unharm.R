@@ -42,6 +42,20 @@ options(scipen = 999)
 
 ########## DATA PROCESSING ----
 ######### BAYERN ----
+
+# The Bayern raw files carry the Linke vote in TWO columns, DIELINKE and
+# DIELINKE2 (the second holds the bulk of the votes: 2002 10,110; 2008 32,493;
+# 2014 22,441; 2020 49,071 that were previously lost to "other"). Sum the two,
+# but keep NA when BOTH are missing - a plain rowSums(na.rm = TRUE) would turn
+# "party did not run" into a hard 0 and defeat the zero -> NA recoding below.
+by_linke_total <- function(x1, x2) {
+  x1 <- suppressWarnings(as.numeric(x1))
+  x2 <- suppressWarnings(as.numeric(x2))
+  out <- rowSums(cbind(x1, x2), na.rm = TRUE)
+  out[is.na(x1) & is.na(x2)] <- NA_real_
+  out
+}
+
 #### Load election data ----
 bayern_kommunalwahlen_data <- as.data.table(read_excel(
   "raw/bayern/bayern_all_parties_copy.xlsx",
@@ -542,7 +556,10 @@ bayern_2002_kommunalwahlen_data_sub$GültigeStimmen <- bayern_2002_kommunalwahle
 
 bayern_2002_kommunalwahlen_data_sub$abs_CDU <- bayern_2002_kommunalwahlen_data_sub$CSU
 bayern_2002_kommunalwahlen_data_sub$abs_SPD <- bayern_2002_kommunalwahlen_data_sub$SDP
-bayern_2002_kommunalwahlen_data_sub$abs_DIELINKE <- bayern_2002_kommunalwahlen_data_sub$DIELINKE
+bayern_2002_kommunalwahlen_data_sub$abs_DIELINKE <- by_linke_total(
+  bayern_2002_kommunalwahlen_data_sub$DIELINKE,
+  bayern_2002_kommunalwahlen_data_sub$DIELINKE2
+)
 bayern_2002_kommunalwahlen_data_sub$abs_GRÜNE <- bayern_2002_kommunalwahlen_data_sub$GRUENE
 bayern_2002_kommunalwahlen_data_sub$abs_AfD <- bayern_2002_kommunalwahlen_data_sub$AfD
 bayern_2002_kommunalwahlen_data_sub$abs_PIRATEN <- bayern_2002_kommunalwahlen_data_sub$PIRATEN
@@ -670,7 +687,10 @@ bayern_2008_kommunalwahlen_data_sub$GültigeStimmen <- bayern_2008_kommunalwahle
 
 bayern_2008_kommunalwahlen_data_sub$abs_CDU <- bayern_2008_kommunalwahlen_data_sub$CSU
 bayern_2008_kommunalwahlen_data_sub$abs_SPD <- bayern_2008_kommunalwahlen_data_sub$SDP
-bayern_2008_kommunalwahlen_data_sub$abs_DIELINKE <- bayern_2008_kommunalwahlen_data_sub$DIELINKE
+bayern_2008_kommunalwahlen_data_sub$abs_DIELINKE <- by_linke_total(
+  bayern_2008_kommunalwahlen_data_sub$DIELINKE,
+  bayern_2008_kommunalwahlen_data_sub$DIELINKE2
+)
 bayern_2008_kommunalwahlen_data_sub$abs_GRÜNE <- bayern_2008_kommunalwahlen_data_sub$GRUENE
 bayern_2008_kommunalwahlen_data_sub$abs_AfD <- bayern_2008_kommunalwahlen_data_sub$AfD
 bayern_2008_kommunalwahlen_data_sub$abs_PIRATEN <- bayern_2008_kommunalwahlen_data_sub$PIRATEN
@@ -798,7 +818,10 @@ bayern_2014_kommunalwahlen_data_sub$GültigeStimmen <- bayern_2014_kommunalwahle
 
 bayern_2014_kommunalwahlen_data_sub$abs_CDU <- bayern_2014_kommunalwahlen_data_sub$CSU
 bayern_2014_kommunalwahlen_data_sub$abs_SPD <- bayern_2014_kommunalwahlen_data_sub$SDP
-bayern_2014_kommunalwahlen_data_sub$abs_DIELINKE <- bayern_2014_kommunalwahlen_data_sub$DIELINKE
+bayern_2014_kommunalwahlen_data_sub$abs_DIELINKE <- by_linke_total(
+  bayern_2014_kommunalwahlen_data_sub$DIELINKE,
+  bayern_2014_kommunalwahlen_data_sub$DIELINKE2
+)
 bayern_2014_kommunalwahlen_data_sub$abs_GRÜNE <- bayern_2014_kommunalwahlen_data_sub$GRUENE
 bayern_2014_kommunalwahlen_data_sub$abs_AfD <- bayern_2014_kommunalwahlen_data_sub$AfD
 bayern_2014_kommunalwahlen_data_sub$abs_PIRATEN <- bayern_2014_kommunalwahlen_data_sub$PIRATEN
@@ -926,7 +949,10 @@ bayern_2020_kommunalwahlen_data_sub$GültigeStimmen <- bayern_2020_kommunalwahle
 
 bayern_2020_kommunalwahlen_data_sub$abs_CDU <- bayern_2020_kommunalwahlen_data_sub$CSU
 bayern_2020_kommunalwahlen_data_sub$abs_SPD <- bayern_2020_kommunalwahlen_data_sub$SDP
-bayern_2020_kommunalwahlen_data_sub$abs_DIELINKE <- bayern_2020_kommunalwahlen_data_sub$DIELINKE
+bayern_2020_kommunalwahlen_data_sub$abs_DIELINKE <- by_linke_total(
+  bayern_2020_kommunalwahlen_data_sub$DIELINKE,
+  bayern_2020_kommunalwahlen_data_sub$DIELINKE2
+)
 bayern_2020_kommunalwahlen_data_sub$abs_GRÜNE <- bayern_2020_kommunalwahlen_data_sub$GRUENE
 bayern_2020_kommunalwahlen_data_sub$abs_AfD <- bayern_2020_kommunalwahlen_data_sub$AfD
 bayern_2020_kommunalwahlen_data_sub$abs_PIRATEN <- bayern_2020_kommunalwahlen_data_sub$PIRATEN
@@ -1245,7 +1271,13 @@ thueringen_1994_kommunalwahlen_data_sub[, IDBA := ""]
 
 # Renaming existing variables ----
 thueringen_1994_kommunalwahlen_data_sub$AGS_8dig <- thueringen_1994_kommunalwahlen_data_sub$Gemeinde
-thueringen_1994_kommunalwahlen_data_sub$Gebietsname <- thueringen_1994_kommunalwahlen_data_sub$Gemeindename
+# Gebietsname comes from the SITZE file, not the votes file: in every TH votes
+# xlsx the Gemeindename column is shifted relative to its own Gemeinde (AGS)
+# column, so it names the wrong municipality (it matches ags_crosswalks for only
+# 5-15% of rows, vs 96-99% for the sitze file). The Gemeinde code - and hence all
+# vote data - is correct; only the name column was wrong. Fixture: 2019 Gemeinde
+# 70029 is "Ilmenau, Stadt", not "Osthausen-Wuelfershausen".
+thueringen_1994_kommunalwahlen_data_sub$Gebietsname <- thueringen_1994_kommunalwahlen_data_sub$Gemeindename_sitze
 thueringen_1994_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(
   thueringen_1994_kommunalwahlen_data_sub$Wahlberechtigte
 )
@@ -1459,7 +1491,8 @@ thueringen_1999_kommunalwahlen_data_sub[, IDBA := ""]
 
 # Renaming existing variables ----
 thueringen_1999_kommunalwahlen_data_sub$AGS_8dig <- thueringen_1999_kommunalwahlen_data_sub$Gemeinde
-thueringen_1999_kommunalwahlen_data_sub$Gebietsname <- thueringen_1999_kommunalwahlen_data_sub$Gemeindename
+# name from the SITZE file - the votes file's Gemeindename column is shifted
+thueringen_1999_kommunalwahlen_data_sub$Gebietsname <- thueringen_1999_kommunalwahlen_data_sub$Gemeindename_sitze
 thueringen_1999_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(
   thueringen_1999_kommunalwahlen_data_sub$Wahlberechtigte
 )
@@ -1678,7 +1711,8 @@ thueringen_2004_kommunalwahlen_data_sub[, IDBA := ""]
 
 # Renaming existing variables ----
 thueringen_2004_kommunalwahlen_data_sub$AGS_8dig <- thueringen_2004_kommunalwahlen_data_sub$Gemeinde
-thueringen_2004_kommunalwahlen_data_sub$Gebietsname <- thueringen_2004_kommunalwahlen_data_sub$Gemeindename
+# name from the SITZE file - the votes file's Gemeindename column is shifted
+thueringen_2004_kommunalwahlen_data_sub$Gebietsname <- thueringen_2004_kommunalwahlen_data_sub$Gemeindename_sitze
 thueringen_2004_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(
   thueringen_2004_kommunalwahlen_data_sub$Wahlberechtigte
 )
@@ -1897,7 +1931,8 @@ thueringen_2009_kommunalwahlen_data_sub[, IDBA := ""]
 
 # Renaming existing variables ----
 thueringen_2009_kommunalwahlen_data_sub$AGS_8dig <- thueringen_2009_kommunalwahlen_data_sub$Gemeinde
-thueringen_2009_kommunalwahlen_data_sub$Gebietsname <- thueringen_2009_kommunalwahlen_data_sub$Gemeindename
+# name from the SITZE file - the votes file's Gemeindename column is shifted
+thueringen_2009_kommunalwahlen_data_sub$Gebietsname <- thueringen_2009_kommunalwahlen_data_sub$Gemeindename_sitze
 thueringen_2009_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(
   thueringen_2009_kommunalwahlen_data_sub$Wahlberechtigte
 )
@@ -2119,7 +2154,8 @@ thueringen_2014_kommunalwahlen_data_sub[, IDBA := ""]
 
 # Renaming existing variables ----
 thueringen_2014_kommunalwahlen_data_sub$AGS_8dig <- thueringen_2014_kommunalwahlen_data_sub$Gemeinde
-thueringen_2014_kommunalwahlen_data_sub$Gebietsname <- thueringen_2014_kommunalwahlen_data_sub$Gemeindename
+# name from the SITZE file - the votes file's Gemeindename column is shifted
+thueringen_2014_kommunalwahlen_data_sub$Gebietsname <- thueringen_2014_kommunalwahlen_data_sub$Gemeindename_sitze
 thueringen_2014_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(
   thueringen_2014_kommunalwahlen_data_sub$Wahlberechtigte
 )
@@ -2338,7 +2374,8 @@ thueringen_2019_kommunalwahlen_data_sub[, IDBA := ""]
 
 # Renaming existing variables ----
 thueringen_2019_kommunalwahlen_data_sub$AGS_8dig <- thueringen_2019_kommunalwahlen_data_sub$Gemeinde
-thueringen_2019_kommunalwahlen_data_sub$Gebietsname <- thueringen_2019_kommunalwahlen_data_sub$Gemeindename
+# name from the SITZE file - the votes file's Gemeindename column is shifted
+thueringen_2019_kommunalwahlen_data_sub$Gebietsname <- thueringen_2019_kommunalwahlen_data_sub$Gemeindename_sitze
 thueringen_2019_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(
   thueringen_2019_kommunalwahlen_data_sub$Wahlberechtigte
 )
@@ -3697,9 +3734,11 @@ hamburg_2025_buergerschaftswahl_data_sub <- hamburg_2025_buergerschaftswahl_data
   filter(!is.na(Merkmal)) |>
 
   mutate(
-    votes_total = as.numeric(Landesliste) |>
-      replace_na(0) +
-      as.numeric(Wahlkreislisten) |> replace_na(0),
+    # Landesliste ONLY: the Wahlkreislisten column repeats the identical
+    # Wahlberechtigte/Wählende figures, so adding the two blocks doubled the
+    # electorate and blended the two ballots' vote shares (parties that ran no
+    # Wahlkreisliste, e.g. BSW 2025, were halved). "–" (en-dash) = did not run.
+    votes_total = as.numeric(Landesliste) |> replace_na(0),
     AGS_8dig = "02000000",
     Gebietsname = "Hamburg",
     across(2:8, ~ str_replace(.x, "×", NA_character_)),
@@ -14349,8 +14388,14 @@ niedersachsen_2021_gemeinderatswahlen_data <- as.data.table(read_xlsx(
     Gebietsname = Gebietsname |> str_remove_all("[:digit:]") |> str_squish()
   ) |>
 
-  # no samtgemeinden
-  filter(!str_detect(Gebietsname, ", SG"))
+  # no samtgemeinden -- keyed on the AGS suffix (400-499), NOT on the name:
+  # the raw Gebietsname column is width-truncated, so three SG rows lose their
+  # ", SG" suffix ("Eschershausen-Stadtold.,S", "Lüchow (Wendland),SG",
+  # "Oldendorf-Himmelpforten,S") and survived the old name test, double
+  # counting 87,021 valid votes on top of their member Gemeinden.
+  # (gemeindefreie Bezirke, suffix 501, are already removed by the
+  # "gemfr\\." filter above.)
+  filter(!(as.integer(str_sub(AGS_8dig, 6, 8)) %in% 400:499))
 
 
 niedersachsen_2021_gemeinderatswahlen_data_sub <- niedersachsen_2021_gemeinderatswahlen_data
