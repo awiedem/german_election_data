@@ -152,11 +152,27 @@ cat("After AGS corrections:", nrow(df), "rows\n")
 # Split into county-level (BW, BY) and municipality-level (all others)
 # ==========================================================================
 
-county_level_states <- c("08", "09")  # BW and BY
-df_cty <- df |> filter(state %in% county_level_states)
-df_muni <- df |> filter(!state %in% county_level_states)
+county_level_states <- c("08", "09")  # BW and BY, county-level in every year
 
-cat("\nCounty-level data (BW, BY):", nrow(df_cty), "rows\n")
+# Granularity is a property of the SOURCE, not only of the state: IT.NRW
+# published 1999-2020 as Stimmbezirk tables that 01 aggregates to
+# municipalities, but released 2025 only as a Kreis-level summary. Those rows
+# carry a Kreis pseudo-AGS (05154000) that is not a municipality, so they must
+# take the county crosswalk like BW and BY rather than the municipality one.
+county_level_years <- list(c(state = "05", election_year = "2025"))
+
+is_county_level <- function(state, election_year) {
+  out <- state %in% county_level_states
+  for (k in county_level_years) {
+    out <- out | (state == k[["state"]] & as.character(election_year) == k[["election_year"]])
+  }
+  out
+}
+
+df_cty <- df |> filter(is_county_level(state, election_year))
+df_muni <- df |> filter(!is_county_level(state, election_year))
+
+cat("\nCounty-level data (BW, BY, NRW 2025):", nrow(df_cty), "rows\n")
 cat("Municipality-level data:", nrow(df_muni), "rows\n")
 
 # ==========================================================================
@@ -549,7 +565,7 @@ cat("Rows with incongruent total vote share:",
 
 cat("\n--- Output 1: Municipality-level ---\n")
 
-df_muni_out <- df_harm |> filter(!state %in% county_level_states)
+df_muni_out <- df_harm |> filter(!is_county_level(state, election_year))
 
 # Add municipality-level covariates
 area_pop <- read_rds("data/covars_municipality/final/ags_area_pop_emp.rds") |>

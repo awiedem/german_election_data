@@ -266,6 +266,7 @@ normalise_party_cty <- function(x) {
     "statt partei die unabh\u00e4ngigen"      = "statt_partei",
     "die grauen - graue panther"              = "graue",
     "die gerechtigkeitspartei - team todenh\u00f6fer" = "team_todenhofer",
+    "team todenh\u00f6fer"                     = "team_todenhofer",
 
     # NI-specific
     "b\u00fcndnis c"              = "buendnis_c",
@@ -297,6 +298,8 @@ normalise_party_cty <- function(x) {
     "die rechte"                  = "die_rechte",
     "die violetten"               = "die_violetten",
     "tierschutz hier!"            = "tierschutz_hier",
+    # IT.NRW spaces the letters out in the 2025 Kreistagswahl export.
+    "t i e r s c h u t z"         = "tierschutz_hier",
     "aufbruch c"                  = "aufbruch_c",
     "b\u00fcndnis c"              = "buendnis_c",
     "basisdemokratie jetzt"       = "basisdemokratie_jetzt",
@@ -4480,6 +4483,117 @@ for (yr in c(2014, 2020)) {
 }
 
 nrw_results <- nrw_results[!sapply(nrw_results, is.null)]
+
+# --- NRW 2025: Kreis-level export -------------------------------------------
+# 1999-2020 come as Stimmbezirk tables that this script aggregates to
+# municipalities. For 2025 IT.NRW published only a Kreis-level summary, so this
+# block is COUNTY-LEVEL AGGREGATE: the 23 kreisfreie Städte are genuine
+# municipalities (a kreisfreie Stadt is its own Kreis) but the 31 Kreis rows
+# cover many municipalities each and cannot populate the municipality-level
+# harmonised output. Same treatment as NRW 1947-1970 in the state pipeline.
+#
+# The file is read by 01_municipal_unharm.R too, which keeps only the "Krfr."
+# rows for the municipal-council dataset and discards the Kreise — this block is
+# what puts the Kreistag result itself into the county dataset.
+#
+# No tryCatch here: a missing or changed file must fail loudly rather than
+# silently reduce NRW to its pre-2025 years (the Brandenburg-absence class).
+nrw_2025_file <- "data/municipal_elections/raw/nrw/nrw_2025_kreise.csv"
+if (file.exists(nrw_2025_file)) {
+  cat("  NRW 2025 ...")
+  n25 <- read.csv2(nrw_2025_file, fileEncoding = "UTF-8", check.names = FALSE,
+                   colClasses = "character", stringsAsFactors = FALSE)
+
+  num <- function(x) suppressWarnings(as.numeric(gsub("[^0-9-]", "", x)))
+
+  # Keep the Land row aside as a reconciliation target, then drop it.
+  land25 <- n25[n25[[1]] == "000000", , drop = FALSE]
+  n25 <- n25[n25[[1]] != "000000", , drop = FALSE]
+
+  # Aachen has been part of the Städteregion since 21.10.2009 but IT.NRW still
+  # lists it as "Krfr. Stadt Aachen" (313000) IN ADDITION TO "Städteregion
+  # Aachen" (334000), whose figures already contain it: the 54 rows exceed the
+  # Land total by exactly Aachen's 185,023 electors and 108,358 valid votes.
+  # The county unit for the Städteregionstag is the Städteregion, so the city
+  # row is dropped; keeping it would double-count Aachen statewide.
+  n25 <- n25[n25[[1]] != "313000", , drop = FALSE]
+
+  d25 <- data.frame(
+    ags      = paste0("05", n25[[1]]),
+    ags_name = trimws(n25[[2]]),
+    # "Wahlberechtigte insgesamt", NOT one of the Sperrvermerk sub-columns —
+    # picking a subset is what overstated Hessen's turnout by up to 8 points.
+    eligible_voters = num(n25[["Wahlberechtigte insgesamt"]]),
+    number_voters   = num(n25[["Wähler/-innen"]]),
+    invalid_votes   = num(n25[["Ungültige Stimmen"]]),
+    valid_votes     = num(n25[["Gültige Stimmen"]]),
+    stringsAsFactors = FALSE, check.names = FALSE
+  )
+
+  # Party columns: everything after "Gültige Stimmen". "Wählergruppen zusammen"
+  # is an aggregate and is skipped — the five individual Wählergruppe columns
+  # plus the named parties and Einzelbewerber reconcile to Gültige Stimmen
+  # exactly, so including it would double-count.
+  first_party <- which(names(n25) == "Gültige Stimmen") + 1L
+  p_cols <- names(n25)[first_party:ncol(n25)]
+  wg_cols <- grep("^Wählergruppe [0-9]+$", p_cols, value = TRUE)
+  skip_cols <- c(wg_cols, "Wählergruppen zusammen")
+
+  for (pc in setdiff(p_cols, skip_cols)) {
+    pname <- normalise_party_cty(pc)
+    v <- num(n25[[pc]])
+    d25[[pname]] <- if (pname %in% names(d25)) d25[[pname]] + ifelse(is.na(v), 0, v) else v
+  }
+  if (length(wg_cols) > 0) {
+    wg_mat <- sapply(wg_cols, function(cc) num(n25[[cc]]))
+    wg_sum <- rowSums(wg_mat, na.rm = TRUE)
+    wg_sum[rowSums(!is.na(wg_mat)) == 0] <- NA_real_
+    d25$waehlergruppen <- wg_sum
+  }
+
+  # The source decomposes the valid vote exactly; assert it before we divide.
+  vote_cols_25 <- setdiff(names(d25), c("ags", "ags_name", "eligible_voters",
+                                        "number_voters", "invalid_votes", "valid_votes"))
+  recon <- rowSums(d25[vote_cols_25], na.rm = TRUE) - d25$valid_votes
+  if (max(abs(recon), na.rm = TRUE) > 0) {
+    stop("NRW 2025: party votes do not sum to Gültige Stimmen (max deviation ",
+         max(abs(recon), na.rm = TRUE), ") — check for a new or renamed column.")
+  }
+  stopifnot(all(nchar(d25$ags) == 8), !any(duplicated(d25$ags)),
+            all(d25$number_voters <= d25$eligible_voters))
+
+  # Reconcile against the file's own Land row. This is what catches a unit being
+  # listed twice (as Aachen was) or a Kreis going missing from the export.
+  for (chk in list(c("eligible_voters", "Wahlberechtigte insgesamt"),
+                   c("number_voters",   "Wähler/-innen"),
+                   c("valid_votes",     "Gültige Stimmen"))) {
+    got <- sum(d25[[chk[1]]], na.rm = TRUE)
+    want <- num(land25[[chk[2]]])
+    if (!isTRUE(all.equal(got, want))) {
+      stop("NRW 2025: ", chk[1], " sums to ", got, " but the Land row says ", want,
+           " (difference ", got - want, ") — a unit is duplicated or missing.")
+    }
+  }
+
+  for (pc in vote_cols_25) {
+    d25[[pc]] <- ifelse(!is.na(d25$valid_votes) & d25$valid_votes > 0,
+                        d25[[pc]] / d25$valid_votes, NA_real_)
+  }
+  share_sum_25 <- rowSums(d25[vote_cols_25], na.rm = TRUE)
+  d25$other <- pmax(1 - share_sum_25, 0)
+  d25$other[is.na(d25$valid_votes) | d25$valid_votes == 0] <- NA_real_
+  d25$turnout <- ifelse(!is.na(d25$eligible_voters) & d25$eligible_voters > 0,
+                        d25$number_voters / d25$eligible_voters, NA_real_)
+  d25$county <- substr(d25$ags, 1, 5)
+  d25$state <- "05"
+  d25$election_year <- 2025L
+
+  cat(nrow(d25), "Kreise/kreisfreie Städte (reconciles to the Land row)\n")
+  nrw_results[["2025"]] <- as_tibble(d25)
+} else {
+  stop("NRW 2025 file not found: ", nrw_2025_file)
+}
+
 df_nrw <- bind_rows(nrw_results)
 cat("NRW total:", nrow(df_nrw), "rows x", ncol(df_nrw), "cols\n")
 cat("NRW years:", paste(sort(unique(df_nrw$election_year)), collapse = ", "), "\n")
