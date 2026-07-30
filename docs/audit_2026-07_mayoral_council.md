@@ -450,6 +450,41 @@ proved wrong:
 - Sachsen-Anhalt losing candidates must be anonymised in `landrat_candidates`
   too, so a missing name there is required rather than a defect.
 
+## 5c. Follow-up: the federal pipeline (2026-07-30)
+
+The report originally said the harmonisation-inversion defect was "still live in the
+federal/state pipelines". A follow-up measured that rather than assuming it, and the claim
+was half wrong:
+
+- **Federal, confirmed and fixed** (`02_federal_muni_harm_21.R`, commit `86ce618a`):
+  BTW 2025 was inflated by **207,993 valid votes** (TH +8.95 %, BB +3.85 %), with 33
+  `ags_25` codes whose chain weight exceeded 1 — worst Uder at 11.0. After the fix the
+  whole file is **+2 votes**. The damage was smaller than the municipal pipeline's
+  +11.1 % only because the crosswalk artefacts had already been normalised per donor.
+- **State, refuted.** `03_federal_muni_harm_25.R` and all three state harm scripts read
+  the same artefacts but only ever forwards, so they never inverted anything. No state-year
+  deviated by more than 0.13 % before any change.
+- All five harm scripts now stop if a source row's weights fail to hand out exactly 100 %
+  of its votes — keyed on *votes* rather than weights, because rows with no electorate hit
+  a unit-weight placeholder that made a weight-based guard report 148 false positives.
+- Regenerating the crosswalks had left two `*_harm_25` outputs stale; both were rebuilt.
+  Worth checking sibling outputs after any crosswalk rebuild.
+
+### Found while verifying that fix, and still open
+
+`federal_muni_harm_21` contains **19,704 rows with a 9-character AGS** — all
+Schleswig-Holstein, exactly 2,463 per year across 1990-2017, `ags_name` NA. For SH 1990 the
+8-character rows already sum to 1,624,679, exactly the unharmonised total, while the
+9-character rows add a further **11,027,320 phantom votes**. The crosswalks are not the
+cause (all uniformly 8-character), and `federal_muni_harm_25` is clean, so the defect sits
+in this script's own path and almost certainly predates both fixes. Being handled
+separately.
+
+`ags_crosswalks` itself still carries **909 `(ags, year)` weight groups summing to as much
+as 20** — Bavarian gemeindefreie Gebiete across every vintage 1990-2020. Harmless only
+because those territories have no electorate; the audit's own sweep confirmed none appears
+in `municipal_unharm`. It feeds the municipal, county, mayoral and federal pipelines.
+
 ## 6. Source anomalies to document, not fix
 
 Bavaria 2026 XLSX turnout contradicts its own counts in 3 rows · Bavaria 2026 leaves `Stichwahl`
