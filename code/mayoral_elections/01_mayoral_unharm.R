@@ -1352,7 +1352,10 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
     "Cappeln" = "03453003",
     "Dahlenburg" = "03355401",
     "Faßberg" = "03351010",          # was 03350007 = not a 2013 code
-    "Goslar" = "03153017",
+    # Goslar, Stadt is 03153005 until the 2014 Kreis reform and 03153017 from
+    # 2014; this lookup serves the 2013 election, and the 2006 and 2011 rows
+    # already use 03153005. Harmonisation converges on 03153017 either way.
+    "Goslar" = "03153005",
     "Hameln-Pyrmont" = "03252000",
     "Hannover" = "03241001",
     "Hildesheim" = "03254021",

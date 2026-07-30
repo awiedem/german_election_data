@@ -287,15 +287,7 @@ df <- df |>
       id == "01051141_2008" ~ "01051111", # Süderheistedt 
       id == "01059186_2008" ~ "01059165", # Steinbergkirche 
       id == "01059187_2008" ~ "01059011", # Boren
-      # TODO(audit 2026-07): this looks wrong. 03361013 is Gemeinde
-      # Thedinghausen (so named in 2006-2021, and the crosswalk knows it from
-      # 2006 with 7,560 inhabitants); only the 2001 row of the raw file carries
-      # the name "Riede". Routing it through Riede 03361010 ADDS its 9,595 valid
-      # votes / 5,773 electors to Riede's own 2001 row (3,262 / 2,079) in both
-      # harm files, and leaves Thedinghausen without a 2001 observation. The
-      # likely fix is year_cw = 2006 with no ags change. Not touched here
-      # because it is outside the verified-findings scope of this pass.
-      id == "03361013_2001" ~ "03361010", # Riede
+      # 03361013_2001 is NOT remapped: see the year_cw override below.
       id == "05313000_2009" ~ "05334002", # Aachen
       id == "05313000_2014" ~ "05334002", # Aachen
       id == "05313000_2020" ~ "05334002", # Aachen
@@ -390,6 +382,15 @@ df <- df |>
       # X. change year manually
       # NS
       id == "03355049_1991" ~ 1993, # Amt Neuhaus
+      # Thedinghausen 03361013 enters the crosswalk in 2006, so its 2001
+      # election cannot join at year_cw = 2001. It used to be remapped onto
+      # neighbouring Riede 03361010, which added Thedinghausen's 5,773 electors
+      # and 9,595 valid votes to Riede's own 2,079 / 3,262 and left
+      # Thedinghausen with no 2001 observation. Only the NAME is wrong in the
+      # 2001 source row ("Riede"); the code is right, and the electorate is
+      # continuous with Thedinghausen's 6,058 in 2006. Join at the nearest
+      # crosswalk vintage instead of moving the votes.
+      id == "03361013_2001" ~ 2006,
       # # MV
       # id == "13053024_1999" ~ 1998, # Groß Nieköhr
       # id == "13053079_1999" ~ 1998, # Sabel

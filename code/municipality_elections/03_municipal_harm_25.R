@@ -184,11 +184,7 @@ df <- df |>
       id == "01051141_2008" ~ "01051111", # Süderheistedt
       id == "01059186_2008" ~ "01059165", # Steinbergkirche
       id == "01059187_2008" ~ "01059011", # Boren
-      # TODO(audit 2026-07): see the same line in 02_municipal_harm.R — 03361013
-      # is Gemeinde Thedinghausen (only its 2001 row is named "Riede"), so this
-      # remap adds 9,595 valid votes to Riede 03361010 in 2001 and leaves
-      # Thedinghausen without a 2001 observation. Likely fix: year_cw = 2006.
-      id == "03361013_2001" ~ "03361010", # Riede
+      # 03361013_2001 is NOT remapped: see the year_cw override below.
       id == "05313000_2009" ~ "05334002", # Aachen
       id == "05313000_2014" ~ "05334002", # Aachen
       id == "05313000_2020" ~ "05334002", # Aachen
@@ -283,6 +279,13 @@ df <- df |>
     year_cw = case_when(
       # NS
       id == "03355049_1991" ~ 1993, # Amt Neuhaus
+      # Thedinghausen 03361013 enters the crosswalk in 2006, so its 2001
+      # election cannot join at year_cw = 2001. It used to be remapped onto
+      # neighbouring Riede 03361010, which added Thedinghausen's votes to
+      # Riede's own and left Thedinghausen with no 2001 observation. Only the
+      # NAME is wrong in the 2001 source row; join at the nearest crosswalk
+      # vintage instead of moving the votes.
+      id == "03361013_2001" ~ 2006,
       # MV
       id == "13053108_2004" ~ 2004, # Prebberede
       # SA
