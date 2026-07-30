@@ -30,12 +30,19 @@ df <- read_rds("data/county_elections/final/county_elec_unharm.rds") |>
   as_tibble() |>
   filter(election_year >= 1990) |>
   mutate(
-    # Fix 11-digit AGS from HE 2021 → truncate to 8
-    ags = ifelse(nchar(ags) > 8, substr(ags, 1, 8), ags),
     ags = pad_zero_conditional(ags, 7),
     county = str_sub(ags, 1, 5)
   ) |>
   arrange(ags, election_year)
+
+# The HE 2021 block used to emit 11-character AGS, patched here by truncation.
+# That is fixed at source in 01 now, so assert instead of silently repairing —
+# a malformed key must fail loudly rather than be trimmed into a plausible one.
+bad_ags <- unique(df$ags[nchar(df$ags) != 8])
+if (length(bad_ags) > 0) {
+  stop(sprintf("%d AGS are not 8 characters (e.g. %s). Fix them in 01, not here.",
+               length(bad_ags), paste(head(bad_ags, 5), collapse = ", ")))
+}
 
 cat("Loaded:", nrow(df), "rows,", ncol(df), "columns\n")
 cat("States:", paste(sort(unique(df$state)), collapse = ", "), "\n")
@@ -55,12 +62,27 @@ cat("Party variables found:", length(party_vars), "\n")
 n_na_vv <- sum(is.na(df$valid_votes))
 if (n_na_vv > 0) {
   cat(sprintf("Imputing valid_votes weight for %d rows\n", n_na_vv))
+  # Rows with no count at all carry no information to weight by. They used to
+  # fall through to weight 1, which published them as valid_votes = 1 with a
+  # full set of zero shares — a fabricated result indistinguishable from a real
+  # one (Ruesselsheim 2021, whose source row is empty for every metric, and one
+  # NI 1991 row). Drop them instead, loudly.
+  no_weight <- df |>
+    filter(is.na(valid_votes), is.na(number_voters) | number_voters == 0,
+           is.na(eligible_voters) | eligible_voters == 0)
+  if (nrow(no_weight) > 0) {
+    cat(sprintf("Dropping %d row(s) with no usable weight (all counts NA/0): %s\n",
+                nrow(no_weight),
+                paste(sprintf("%s/%d", no_weight$ags, no_weight$election_year),
+                      collapse = ", ")))
+    df <- df |>
+      anti_join(no_weight |> select(ags, election_year), by = c("ags", "election_year"))
+  }
   df <- df |>
     mutate(valid_votes = case_when(
       !is.na(valid_votes) ~ valid_votes,
       !is.na(number_voters) & number_voters > 0 ~ number_voters,
-      !is.na(eligible_voters) & eligible_voters > 0 ~ eligible_voters,
-      TRUE ~ 1
+      !is.na(eligible_voters) & eligible_voters > 0 ~ eligible_voters
     ))
 }
 
@@ -98,13 +120,26 @@ df <- df |>
     )
   )
 
+# ---------------------------------------------------------------------------
+# sum_keep_na(): sum that does NOT invent a zero out of nothing
+# ---------------------------------------------------------------------------
+# sum(x, na.rm = TRUE) returns 0 when every input is NA, so a documented
+# all-missing column (Niedersachsen's invalid_votes, which its three-vote
+# system makes undefined; BW 2024's eligible/number_voters) was published as a
+# hard 0 in every harmonised row — 9,073 municipality rows across 21
+# state-years. Aggregate to NA when nothing was observed, and otherwise sum the
+# observations as before.
+sum_keep_na <- function(x) {
+  if (all(is.na(x))) NA_real_ else sum(x, na.rm = TRUE)
+}
+
 # After correcting AGS codes, aggregate any duplicates
 df <- df |>
   group_by(ags, election_year, state) |>
   summarise(
     across(
       c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
-      ~ sum(.x, na.rm = TRUE)
+      ~ sum_keep_na(.x)
     ),
     across(any_of(c("ags_name", "county")), first),
     .groups = "drop"
@@ -285,7 +320,7 @@ votes_muni <- df_cw |>
   summarise(
     across(
       c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
-      ~ sum(.x * pop_cw, na.rm = TRUE)
+      ~ if (all(is.na(.x))) NA_real_ else sum(.x * pop_cw, na.rm = TRUE)
     ),
     .groups = "drop"
   ) |>
@@ -394,7 +429,7 @@ votes_cty <- df_cty_cw |>
   summarise(
     across(
       c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
-      ~ sum(.x * pop_cw, na.rm = TRUE)
+      ~ if (all(is.na(.x))) NA_real_ else sum(.x * pop_cw, na.rm = TRUE)
     ),
     .groups = "drop"
   ) |>
@@ -553,7 +588,7 @@ df_cty_agg <- df_harm_counts |>
   summarise(
     across(
       c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
-      ~ sum(.x, na.rm = TRUE)
+      ~ sum_keep_na(.x)
     ),
     flag_unsuccessful_naive_merge = max(flag_unsuccessful_naive_merge, na.rm = TRUE),
     .groups = "drop"
