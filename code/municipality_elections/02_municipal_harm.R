@@ -69,55 +69,131 @@ cw_25_full <- read_rds("data/crosswalks/final/ags_1990_to_2025_crosswalk.rds") |
 cw_2023_25 <- read_rds("data/crosswalks/final/crosswalk_ags_2023_to_2025.rds")
 cw_21_23   <- read_rds("data/crosswalks/final/crosswalk_ags_2021_to_2023.rds")
 
-# Build 2025 → 2021 crosswalk chain (following federal pipeline pattern)
-# Step 1: Invert 2023→2025 to get 2025→2023
-cw_25_to_23 <- cw_2023_25 %>%
-  transmute(
-    ags_25       = ags_25,
-    ags_23       = ags,
-    pop_w_25_23  = pop_cw,
-    area_w_25_23 = area_cw,
-    population   = population,
-    area         = area
-  )
-
-# Step 2: Invert 2021→2023 to get 2023→2021
-cw_23_to_21 <- cw_21_23 %>%
-  transmute(
-    ags_23       = ags_2023,
-    ags_21       = ags_2021,
-    pop_w_23_21  = w_pop,
-    area_w_23_21 = w_area
-  )
-
-# Handle 2023 codes missing from 2021 map (identity mapping, weight = 1)
-cw_23_to_21 <- bind_rows(
-  cw_23_to_21,
-  cw_25_to_23 %>%
-    anti_join(cw_23_to_21, by = "ags_23") %>%
-    transmute(
-      ags_23,
-      ags_21       = ags_23,
-      pop_w_23_21  = 1,
-      area_w_23_21 = 1
-    )
-)
-
-# Step 3: Chain 2025 → 2023 → 2021
-cw_25_to_21 <- cw_25_to_23 %>%
-  left_join(cw_23_to_21, by = "ags_23") %>%
+# Population & area of the 2021 municipalities (needed both to invert the
+# post-2021 crosswalks below and to fill area/population at the very end)
+ags21 <- read_excel(path = "data/crosswalks/raw/31122021_Auszug_GV.xlsx", sheet = 2) |>
+  select(
+    Land = `...3`,
+    RB = `...4`,
+    Kreis = `...5`,
+    Gemeinde = `...7`,
+    area = `...9`,
+    population = `...10`
+  ) |>
   mutate(
-    pop_w_25_21  = pop_w_25_23 * pop_w_23_21,
-    area_w_25_21 = area_w_25_23 * area_w_23_21
-  ) %>%
-  group_by(ags_25, ags_21) %>%
+    Land = pad_zero_conditional(Land, 1),
+    Kreis = pad_zero_conditional(Kreis, 1),
+    Gemeinde = pad_zero_conditional(Gemeinde, 1, "00"),
+    Gemeinde = pad_zero_conditional(Gemeinde, 2, "0"),
+    ags = as.numeric(paste0(Land, RB, Kreis, Gemeinde)),
+    year = 2021,
+    population = as.numeric(population) / 1000,
+    area = as.numeric(area)
+  ) |>
+  slice(6:16065) |>
+  filter(!is.na(Gemeinde)) |>
+  select(ags, year, area, population)
+
+# Build 2025 → 2021 crosswalk chain ----------------------------------------
+# crosswalk_ags_2021_to_2023 and crosswalk_ags_2023_to_2025 are FORWARD maps:
+# their weights are the share of the SOURCE unit that ends up in each target.
+# They cannot be turned into backward weights by relabelling the columns — which
+# is what this script did until 2026-07, handing every 2021 constituent a
+# FULL-VALUE copy of its 2025 unit's result (TH 2024 +284,271 votes = +11.1%,
+# BB 2024 +153,130 = +3.7%, Allendorf (Eder) duplicated onto Bromskirchen, and
+# 27 ags_25 codes with chain weights up to 4.0).
+# Correct inversion: chain the two forward maps into 2021 → 2025, weight each
+# 2021 unit by its 2021 population, and normalise WITHIN the 2025 unit, i.e.
+#   backward weight = pop_21_constituent / pop_25_unit
+# (the same construction the manual cw_rp_2025 patch above uses by hand).
+
+# Step 1: forward chain 2021 → 2023 → 2025
+cw_21_to_25 <- cw_21_23 |>
+  transmute(
+    ags_21       = ags_2021,
+    ags_23       = ags_2023,
+    pop_w_21_23  = w_pop,
+    area_w_21_23 = w_area
+  ) |>
+  left_join(
+    cw_2023_25 |>
+      transmute(ags_23 = ags, ags_25, pop_w_23_25 = pop_cw, area_w_23_25 = area_cw),
+    by = "ags_23", relationship = "many-to-many"
+  ) |>
+  mutate(
+    ags_25       = coalesce(ags_25, ags_23), # 2023 code unchanged in 2025
+    pop_w_21_25  = pop_w_21_23 * coalesce(pop_w_23_25, 1),
+    area_w_21_25 = area_w_21_23 * coalesce(area_w_23_25, 1)
+  ) |>
+  group_by(ags_21, ags_25) |>
   summarise(
-    pop_w_25_21  = sum(pop_w_25_21, na.rm = TRUE),
-    area_w_25_21 = sum(area_w_25_21, na.rm = TRUE),
-    population   = sum(population, na.rm = TRUE),
-    area         = sum(area, na.rm = TRUE),
+    pop_w_21_25  = sum(pop_w_21_25, na.rm = TRUE),
+    area_w_21_25 = sum(area_w_21_25, na.rm = TRUE),
     .groups = "drop"
   )
+
+# 2023 units without a 2021 ancestor map to themselves. These are the three
+# extra-municipal territories the GV extract carries (07000999 / 10042999
+# deutsch-luxemburgisches Hoheitsgebiet, 13000999 Küstengewässer).
+cw_21_to_25 <- bind_rows(
+  cw_21_to_25,
+  cw_2023_25 |>
+    filter(!ags %in% cw_21_23$ags_2023) |>
+    transmute(ags_21 = ags, ags_25, pop_w_21_25 = pop_cw, area_w_21_25 = area_cw)
+)
+
+stopifnot(all(abs(
+  (cw_21_to_25 |> group_by(ags_21) |> summarise(w = sum(pop_w_21_25)) |> pull(w)) - 1
+) < 0.01))
+
+# Step 2: invert by 2021 population mass
+pop_21 <- ags21 |>
+  transmute(
+    ags_21        = pad_zero_conditional(ags, 7),
+    population_21 = population,
+    area_21       = area
+  )
+
+cw_25_to_21 <- cw_21_to_25 |>
+  left_join(pop_21, by = "ags_21") |>
+  mutate(
+    mass_pop  = coalesce(population_21, 0) * pop_w_21_25,
+    mass_area = coalesce(area_21, 0) * area_w_21_25
+  ) |>
+  group_by(ags_25) |>
+  mutate(
+    tot_pop  = sum(mass_pop),
+    tot_area = sum(mass_area),
+    n_parts  = n(),
+    pop_w_25_21 = case_when(
+      tot_pop > 0  ~ mass_pop / tot_pop,
+      tot_area > 0 ~ mass_area / tot_area, # unpopulated 2025 units
+      TRUE         ~ 1 / n_parts
+    ),
+    area_w_25_21 = case_when(
+      tot_area > 0 ~ mass_area / tot_area,
+      TRUE         ~ 1 / n_parts
+    )
+  ) |>
+  ungroup() |>
+  # a 2021 constituent without inhabitants receives no votes; keeping it would
+  # add an all-zero, turnout-NaN row for every post-2021 election (the eight
+  # 09xxxxxx junk rows that used to sit in Bayern 2026)
+  filter(pop_w_25_21 > 0) |>
+  transmute(
+    ags_25, ags_21, pop_w_25_21, area_w_25_21,
+    population = tot_pop, area = tot_area
+  )
+
+# Hard stop: every 2025 unit must hand out exactly 100% of its result.
+chain_chk <- cw_25_to_21 |>
+  group_by(ags_25) |>
+  summarise(pop_sum = sum(pop_w_25_21), .groups = "drop") |>
+  filter(abs(pop_sum - 1) > 0.01)
+if (nrow(chain_chk) > 0) print(as.data.frame(chain_chk), n = 50)
+stopifnot(nrow(chain_chk) == 0)
+# (area weights may fall slightly short of 1 where an unpopulated sliver was
+#  dropped above; that is intended and affects no vote count.)
 
 # Merge with unharmonized election data -----------------------------------
 
@@ -211,23 +287,32 @@ df <- df |>
       id == "01051141_2008" ~ "01051111", # Süderheistedt 
       id == "01059186_2008" ~ "01059165", # Steinbergkirche 
       id == "01059187_2008" ~ "01059011", # Boren
+      # TODO(audit 2026-07): this looks wrong. 03361013 is Gemeinde
+      # Thedinghausen (so named in 2006-2021, and the crosswalk knows it from
+      # 2006 with 7,560 inhabitants); only the 2001 row of the raw file carries
+      # the name "Riede". Routing it through Riede 03361010 ADDS its 9,595 valid
+      # votes / 5,773 electors to Riede's own 2001 row (3,262 / 2,079) in both
+      # harm files, and leaves Thedinghausen without a 2001 observation. The
+      # likely fix is year_cw = 2006 with no ags change. Not touched here
+      # because it is outside the verified-findings scope of this pass.
       id == "03361013_2001" ~ "03361010", # Riede
       id == "05313000_2009" ~ "05334002", # Aachen
       id == "05313000_2014" ~ "05334002", # Aachen
       id == "05313000_2020" ~ "05334002", # Aachen
       id == "05313000_2025" ~ "05334002", # Aachen
-      id == "07140502_1994" ~ "07135050", # Lahr
-      id == "07140502_1999" ~ "07135050", # Lahr
-      id == "07140503_1994" ~ "07135063", # Mörsdorf
-      id == "07140503_1999" ~ "07135063", # Mörsdorf
-      id == "07140504_1994" ~ "07135094", # Zilshausen
-      id == "07140504_1999" ~ "07135094", # Zilshausen
-      id == "07232502_1994" ~ "07232021", # Brimingen
-      id == "07232502_1999" ~ "07232021", # Brimingen
-      id == "07235207_1994" ~ "07231207", # Trittenheim
-      id == "07235207_1999" ~ "07231207", # Trittenheim
-      id == "07235207_2004" ~ "07231207", # Trittenheim
-      id == "07235207_2009" ~ "07231207", # Trittenheim
+      # Rheinland-Pfalz: the StaLA Sonderauswertung reports the whole 1969-2019
+      # series on 2025 boundaries, so these five Gemeinden appear under codes
+      # that only enter the crosswalk part-way through its span (07140502/03/04
+      # from 2014, 07232502 from 2018, 07235207 from 2012). EVERY earlier
+      # election has to be looked up under the code of the day. Keying this on
+      # the id (= ags + year) covered only 1994/1999 (1994-2009 for Trittenheim),
+      # so 2004/2009/2014 matched nothing and were dropped without a trace
+      # (harm21 RP: -662 in 2004, -613 in 2009, -57 in 2014).
+      ags == "07140502" & election_year >= 1990 & election_year < 2014 ~ "07135050", # Lahr
+      ags == "07140503" & election_year >= 1990 & election_year < 2014 ~ "07135063", # Mörsdorf
+      ags == "07140504" & election_year >= 1990 & election_year < 2014 ~ "07135094", # Zilshausen
+      ags == "07232502" & election_year >= 1990 & election_year < 2018 ~ "07232021", # Brimingen
+      ags == "07235207" & election_year >= 1990 & election_year < 2012 ~ "07231207", # Trittenheim
       id == "13053108_2004" ~ "13053109", # Prebberede
       # SA 1994
       id == "15159029_1994" ~ "15126310", # Merzien
@@ -265,7 +350,9 @@ df <- df |>
       id == "14030730_1994" ~ "14083320", # Thümmlitzwalde
       id == "14032510_1994" ~ "14082210", # Kriebstein
       id == "14032520_1994" ~ "14082410", # Striegistal
-      id == "14032530_1994" ~ "07140150", # Tiefenbach
+      # Tiefenbach b. Döbeln. Was mapped onto 07140150 (Tiefenbach in
+      # Rheinland-Pfalz!) until 2026-07, which moved 6,219 Saxon votes into RP.
+      id == "14032530_1994" ~ "14082450", # Tiefenbach -> ags_21 14522540 Striegistal
       id == "14033310_1994" ~ "14073040", # Chursbachtal
       id == "14035810_1994" ~ "14092480", # Schönteichen
       id == "14037710_1994" ~ "14079070", # Bienitz
@@ -407,6 +494,34 @@ df <- df |>
     )
   )
 
+# Guard the manual AGS remaps ---------------------------------------------
+# Every hand-written remap above must (a) stay inside its own Bundesland and
+# (b) point at a code the crosswalk actually knows for the year it is looked up
+# in. This is what would have caught the one cross-state slip in the list:
+# Saxon Tiefenbach 14032530 was rewritten to 07140150 — Tiefenbach in
+# Rheinland-Pfalz — which parked 6,219 Saxon votes in RP in both harm files.
+cw_keys <- cw |> distinct(ags, year)
+remapped <- df |>
+  mutate(ags_orig = str_sub(id, 1, 8)) |>
+  filter(ags != ags_orig) |>
+  distinct(ags_orig, ags, election_year, year_cw)
+bad_remap <- bind_rows(
+  remapped |>
+    filter(str_sub(ags, 1, 2) != str_sub(ags_orig, 1, 2)) |>
+    mutate(problem = "remap crosses state border"),
+  remapped |>
+    # only pre-2021 rows are looked up in `cw`; 2021 is kept unharmonised and
+    # later years go through the 2025 -> 2021 chain further down
+    filter(election_year < 2021) |>
+    anti_join(cw_keys, by = c("ags", "year_cw" = "year")) |>
+    mutate(problem = "remap target absent from crosswalk at year_cw")
+)
+if (nrow(bad_remap) > 0) {
+  print(as.data.frame(bad_remap %>% arrange(ags_orig)))
+  stop(nrow(bad_remap), " invalid manual AGS remap(s) — see table above")
+}
+cat("[OK] all", nrow(remapped), "manual AGS remaps stay in-state and resolve in the crosswalk\n")
+
 # Merge crosswalks with election data -------------------------------------
 
 # Merge crosswalks
@@ -417,16 +532,22 @@ df_cw <- df |>
 glimpse(df_cw)
 
 # is there any ags that did not get merged to ags_21?
+# HARD STOP: an AGS the crosswalk cannot place is silently deleted from the
+# output together with all of its votes (this is how the four Rheinland-Palatine
+# StaLA codes lost 2004/2009/2014). Nothing may be dropped without being listed
+# here on purpose.
+allowed_unmatched <- character(0) # (ags, election_year) ids allowed to fail
 not_merged <- df_cw %>%
   filter(election_year < 2021) %>%
   filter(is.na(ags_21)) %>%
-  select(ags, election_year, id, year_cw) %>%
+  select(ags, ags_name.x, election_year, id, year_cw, valid_votes) %>%
   distinct()
-not_merged %>%
-  select(ags, election_year) %>%
-  arrange(ags, election_year) %>%
-  print(n=Inf)
-# now, there is no unsuccessful merge.
+if (nrow(not_merged) > 0) {
+  print(as.data.frame(not_merged %>% arrange(ags, election_year)), max = 2000)
+  cat("unmatched rows:", nrow(not_merged),
+      "| valid votes at stake:", sum(not_merged$valid_votes, na.rm = TRUE), "\n")
+}
+stopifnot(all(not_merged$id %in% allowed_unmatched))
 
 # Flag the cases where we had to change the ags
 df_cw <- df_cw |>
@@ -549,12 +670,32 @@ df_post21_25 <- df |>
 df_post21_cw <- bind_rows(df_post21_pre25, df_post21_25)
 
 # Check for unsuccessful merges in post-2021 data
+# HARD STOP, as above: an unplaced AGS disappears from the output with all of
+# its votes. (This is what swallowed the three Niedersachsen Samtgemeinde
+# aggregates in 2021 without a word.)
+allowed_unmatched_post21 <- character(0)
 not_merged_post21 <- df_post21_cw |>
   filter(is.na(ags_21)) |>
-  select(ags, ags_25, election_year) |>
-  distinct()
+  select(ags, ags_name, ags_25, election_year, valid_votes) |>
+  distinct() |>
+  mutate(id = paste0(ags, "_", election_year))
 cat("Post-2021 unsuccessful merges:", nrow(not_merged_post21), "\n")
-if (nrow(not_merged_post21) > 0) print(not_merged_post21, n = Inf)
+if (nrow(not_merged_post21) > 0) {
+  print(as.data.frame(not_merged_post21 %>% arrange(ags, election_year)), max = 2000)
+  cat("valid votes at stake:", sum(not_merged_post21$valid_votes, na.rm = TRUE), "\n")
+}
+stopifnot(all(not_merged_post21$id %in% allowed_unmatched_post21))
+
+# Every source row must hand out exactly 100% of itself across its 2021 targets.
+# Grouped on `id` (the ORIGINAL ags + year), not on the possibly remapped ags:
+# several source rows may legitimately be routed through one crosswalk entry.
+w_chk <- df_post21_cw |>
+  filter(!is.na(ags_21)) |>
+  group_by(id) |>
+  summarise(w = sum(final_pop_cw, na.rm = TRUE), .groups = "drop") |>
+  filter(abs(w - 1) > 0.01)
+if (nrow(w_chk) > 0) print(as.data.frame(w_chk), max = 2000)
+stopifnot(nrow(w_chk) == 0)
 
 # Weighted sums for voter counts
 sums_post21 <- df_post21_cw |>
@@ -632,30 +773,6 @@ df_harm_post21 <- sums_post21 |>
   left_join_check_obs(area_pop_post21, by = c("ags", "year")) |>
   mutate(ags = as.numeric(ags))
 
-
-# Get population & area for 2021
-ags21 <- read_excel(path = "data/crosswalks/raw/31122021_Auszug_GV.xlsx", sheet = 2) |>
-  select(
-    Land = `...3`,
-    RB = `...4`,
-    Kreis = `...5`,
-    Gemeinde = `...7`,
-    area = `...9`,
-    population = `...10`
-  ) |>
-  mutate(
-    Land = pad_zero_conditional(Land, 1),
-    Kreis = pad_zero_conditional(Kreis, 1),
-    Gemeinde = pad_zero_conditional(Gemeinde, 1, "00"),
-    Gemeinde = pad_zero_conditional(Gemeinde, 2, "0"),
-    ags = as.numeric(paste0(Land, RB, Kreis, Gemeinde)),
-    year = 2021,
-    population = as.numeric(population) / 1000,
-    area = as.numeric(area)
-  ) |>
-  slice(6:16065) |>
-  filter(!is.na(Gemeinde)) |>
-  select(ags, year, area, population)
 
 # Create full df ----------------------------------------------------------
 

@@ -16,6 +16,99 @@ setwd(here::here())
 cw <- read_rds("data/crosswalks/final/ags_1990_to_2025_crosswalk.rds") |>
   mutate(ags = pad_zero_conditional(ags, 7))
 
+# Add the two post-2020 RLP codes manually (mirrors 02_municipal_harm.R). The
+# Statistisches Landesamt Rheinland-Pfalz delivers its whole 1969-2019
+# Gemeinderatswahl series on 2025 boundaries, so two Gemeinden carry codes the
+# 1990-2020 part of the crosswalk does not know:
+#   07132502 Neitersen   (= Neitersen + Obernau, merged 2021)
+#   07232503 Obergeckler (= Niedergeckler + Obergeckler, merged 2025)
+# Both ARE valid 2025 units, so on 2025 boundaries they simply map to
+# themselves.  Without this block they had zero rows in municipal_harm_25 in
+# every election year.
+cw_rp_2025 <- expand.grid(
+  year   = sort(unique(cw$year)),
+  ags_25 = c("07132502", "07232503"),
+  stringsAsFactors = FALSE
+) |>
+  mutate(
+    ags         = ags_25,
+    ags_name    = c("07132502" = "Neitersen", "07232503" = "Obergeckler")[ags_25],
+    ags_name_25 = ags_name,
+    pop_cw      = 1,
+    area_cw     = 1,
+    # area/population are the sums of the merged constituents
+    area        = c("07132502" = 7.14, "07232503" = 7.75)[ags_25],
+    population  = c("07132502" = 1.10, "07232503" = 0.20)[ags_25]
+  )
+for (col in names(cw)) {
+  if (!col %in% names(cw_rp_2025)) cw_rp_2025[[col]] <- NA
+  cw_rp_2025[[col]] <- methods::as(cw_rp_2025[[col]], class(cw[[col]])[1])
+}
+cw <- bind_rows(
+  cw,
+  cw_rp_2025[, names(cw)] |>
+    # never shadow a code the real crosswalk already carries for that year
+    anti_join(cw |> distinct(ags, year), by = c("ags", "year"))
+)
+
+# Get population & area for 2025 (also used to describe the pre-1990 RP rows
+# added below)
+ags25 <- read_excel(
+  "data/covars_municipality/raw/municipality_sizes/AuszugGV4QAktuell_2024.xlsx",
+  sheet = 2
+) |>
+  slice(9:16018) |>
+  select(
+    Land = `...3`,
+    RB   = `...4`,
+    Kreis = `...5`,
+    Gemeinde = `...7`,
+    area = `...9`,
+    population  = `...10`
+  ) |>
+  filter(!is.na(Gemeinde)) |>
+  mutate(
+    Land     = pad_zero_conditional(Land, 1),
+    Kreis    = pad_zero_conditional(Kreis, 1),
+    Gemeinde = pad_zero_conditional(Gemeinde, 1, "00"),
+    Gemeinde = pad_zero_conditional(Gemeinde, 2, "0"),
+    ags = as.numeric(paste0(Land, RB, Kreis, Gemeinde)),
+    year = 2025,
+    population = as.numeric(population) / 1000,
+    area = as.numeric(area)
+  ) |>
+  filter(!is.na(Gemeinde)) |>
+  select(ags, year, area, population)
+
+# Rheinland-Pfalz before 1990: the StaLA Sonderauswertung back-casts the whole
+# 1969-2019 series onto 2025 boundaries, so the pre-1990 rows are ALREADY
+# harmonised and only need to be carried through as identity — exactly the
+# treatment the >= 2025 rows get at the end of this script. They were dropped
+# outright before (11,474 rows, 1969-1989). Restricted to state 07: pre-1990
+# rows of every other state (HE 1989, BW 1989, SL 1984/1989) are on their own
+# election-year boundaries and must NOT be passed through.
+rp_pre1990_years <- c(1969, 1974, 1979, 1984, 1989)
+cw_rp_pre1990 <- cw |>
+  filter(str_sub(ags_25, 1, 2) == "07") |>
+  distinct(ags_25, ags_name_25) |>
+  group_by(ags_25) |>
+  slice(1) |>
+  ungroup() |>
+  tidyr::crossing(year = rp_pre1990_years) |>
+  transmute(
+    ags = ags_25, ags_name = ags_name_25, year = as.integer(year),
+    ags_25, ags_name_25, pop_cw = 1, area_cw = 1
+  ) |>
+  left_join(
+    ags25 |> transmute(ags_25 = pad_zero_conditional(ags, 7), area, population),
+    by = "ags_25"
+  )
+for (col in names(cw)) {
+  if (!col %in% names(cw_rp_pre1990)) cw_rp_pre1990[[col]] <- NA
+  cw_rp_pre1990[[col]] <- methods::as(cw_rp_pre1990[[col]], class(cw[[col]])[1])
+}
+cw <- bind_rows(cw, cw_rp_pre1990[, names(cw)])
+
 # how many ags_25 for each year?
 cw |>
   distinct(ags_25, year) |>
@@ -25,9 +118,14 @@ cw |>
 # Merge with unharmonized election data -----------------------------------
 
 df <- readr::read_rds("data/municipal_elections/final/municipal_unharm.rds") |>
-  # filter years before 1990: no crosswalks available
-  filter(election_year >= 1990) |>
-  mutate(election_year = as.numeric(election_year))
+  mutate(election_year = as.numeric(election_year)) |>
+  # Years before 1990 have no crosswalk, EXCEPT Rheinland-Pfalz: the StaLA
+  # Sonderauswertung reports its 1969-1989 Gemeinderatswahlen on 2025
+  # boundaries, so those rows pass through as identity (cw_rp_pre1990 above).
+  filter(
+    election_year >= 1990 |
+      (str_sub(ags, 1, 2) == "07" & election_year %in% rp_pre1990_years)
+  )
 
 # look at how many observations for each state and year
 df |>
@@ -86,23 +184,29 @@ df <- df |>
       id == "01051141_2008" ~ "01051111", # Süderheistedt
       id == "01059186_2008" ~ "01059165", # Steinbergkirche
       id == "01059187_2008" ~ "01059011", # Boren
+      # TODO(audit 2026-07): see the same line in 02_municipal_harm.R — 03361013
+      # is Gemeinde Thedinghausen (only its 2001 row is named "Riede"), so this
+      # remap adds 9,595 valid votes to Riede 03361010 in 2001 and leaves
+      # Thedinghausen without a 2001 observation. Likely fix: year_cw = 2006.
       id == "03361013_2001" ~ "03361010", # Riede
       id == "05313000_2009" ~ "05334002", # Aachen
       id == "05313000_2014" ~ "05334002", # Aachen
       id == "05313000_2020" ~ "05334002", # Aachen
       id == "05313000_2025" ~ "05334002", # Aachen
-      id == "07140502_1994" ~ "07135050", # Lahr
-      id == "07140502_1999" ~ "07135050", # Lahr
-      id == "07140503_1994" ~ "07135063", # Mörsdorf
-      id == "07140503_1999" ~ "07135063", # Mörsdorf
-      id == "07140504_1994" ~ "07135094", # Zilshausen
-      id == "07140504_1999" ~ "07135094", # Zilshausen
-      id == "07232502_1994" ~ "07232021", # Brimingen
-      id == "07232502_1999" ~ "07232021", # Brimingen
-      id == "07235207_1994" ~ "07231207", # Trittenheim
-      id == "07235207_1999" ~ "07231207", # Trittenheim
-      id == "07235207_2004" ~ "07231207", # Trittenheim
-      id == "07235207_2009" ~ "07231207", # Trittenheim
+      # Rheinland-Pfalz: the StaLA Sonderauswertung reports the whole 1969-2019
+      # series on 2025 boundaries, so these five Gemeinden appear under codes
+      # that only enter the crosswalk part-way through its span (07140502/03/04
+      # from 2014, 07232502 from 2018, 07235207 from 2012). Election years
+      # between 1990 and that cut-off have to be looked up under the code of the
+      # day; keying this on the id (= ags + year) covered only 1994/1999
+      # (1994-2009 for Trittenheim) and dropped 2004/2009/2014 silently.
+      # Pre-1990 RP rows are excluded: they pass through as identity because the
+      # source already reports them on 2025 boundaries.
+      ags == "07140502" & election_year >= 1990 & election_year < 2014 ~ "07135050", # Lahr
+      ags == "07140503" & election_year >= 1990 & election_year < 2014 ~ "07135063", # Mörsdorf
+      ags == "07140504" & election_year >= 1990 & election_year < 2014 ~ "07135094", # Zilshausen
+      ags == "07232502" & election_year >= 1990 & election_year < 2018 ~ "07232021", # Brimingen
+      ags == "07235207" & election_year >= 1990 & election_year < 2012 ~ "07231207", # Trittenheim
       id == "13053108_2004" ~ "13053109", # Prebberede
       # SA 1994
       id == "15159029_1994" ~ "15126310", # Merzien
@@ -140,7 +244,9 @@ df <- df |>
       id == "14030730_1994" ~ "14083320", # Thümmlitzwalde
       id == "14032510_1994" ~ "14082210", # Kriebstein
       id == "14032520_1994" ~ "14082410", # Striegistal
-      id == "14032530_1994" ~ "07140150", # Tiefenbach
+      # Tiefenbach b. Döbeln. Was mapped onto 07140150 (Tiefenbach in
+      # Rheinland-Pfalz!) until 2026-07, which moved 6,219 Saxon votes into RP.
+      id == "14032530_1994" ~ "14082450", # Tiefenbach -> Striegistal
       id == "14033310_1994" ~ "14073040", # Chursbachtal
       id == "14035810_1994" ~ "14092480", # Schönteichen
       id == "14037710_1994" ~ "14079070", # Bienitz
@@ -261,6 +367,34 @@ df <- df |>
     )
   )
 
+# Guard the manual AGS remaps ---------------------------------------------
+# Every hand-written remap above must (a) stay inside its own Bundesland and
+# (b) point at a code the crosswalk knows for the year it is looked up in. This
+# is what would have caught Saxon Tiefenbach 14032530 being rewritten to
+# 07140150 — Tiefenbach in Rheinland-Pfalz — which parked 6,219 Saxon votes in
+# RP in both harm files.
+cw_keys <- cw |> distinct(ags, year)
+remapped <- df |>
+  mutate(ags_orig = str_sub(id, 1, 8)) |>
+  filter(ags != ags_orig) |>
+  distinct(ags_orig, ags, election_year, year_cw)
+bad_remap <- bind_rows(
+  remapped |>
+    filter(str_sub(ags, 1, 2) != str_sub(ags_orig, 1, 2)) |>
+    mutate(problem = "remap crosses state border"),
+  remapped |>
+    # only pre-2025 rows are looked up in `cw`; 2025+ is already on 2025
+    # boundaries and is bound unharmonised further down
+    filter(election_year < 2025) |>
+    anti_join(cw_keys, by = c("ags", "year_cw" = "year")) |>
+    mutate(problem = "remap target absent from crosswalk at year_cw")
+)
+if (nrow(bad_remap) > 0) {
+  print(as.data.frame(bad_remap %>% arrange(ags_orig)))
+  stop(nrow(bad_remap), " invalid manual AGS remap(s) — see table above")
+}
+cat("[OK] all", nrow(remapped), "manual AGS remaps stay in-state and resolve in the crosswalk\n")
+
 # Merge crosswalks with election data -------------------------------------
 
 # Merge crosswalks
@@ -271,15 +405,39 @@ df_cw <- df |>
 glimpse(df_cw)
 
 # is there any ags that did not get merged to ags_25?
+# HARD STOP: an AGS the crosswalk cannot place is silently deleted from the
+# output together with all of its votes (this is how Neitersen and Obergeckler
+# went missing from every year of municipal_harm_25, and the four other
+# Rheinland-Palatine StaLA codes from 2004/2009/2014).
+# NOTE: until 01_municipal_unharm.R drops them, this fires on the three
+# Niedersachsen Samtgemeinde AGGREGATES that escape the ", SG" name filter
+# because the raw name column is width-truncated (03255409 Eschershausen-
+# Stadtoldendorf 22,270, 03354407 Lüchow (Wendland) 36,809, 03359409
+# Oldendorf-Himmelpforten 27,942 = 87,021 double-counted votes in 2021). They
+# must be removed at source, NOT allowlisted here.
+allowed_unmatched <- character(0) # (ags, election_year) ids allowed to fail
 not_merged <- df_cw %>%
   filter(election_year < 2025) %>%
   filter(is.na(ags_25)) %>%
-  select(ags, election_year, id, year_cw) %>%
+  select(ags, ags_name.x, election_year, id, year_cw, valid_votes) %>%
   distinct()
-not_merged %>%
-  select(ags, election_year) %>%
-  arrange(ags, election_year) %>%
-  print(n = Inf)
+if (nrow(not_merged) > 0) {
+  print(as.data.frame(not_merged %>% arrange(ags, election_year)), max = 2000)
+  cat("unmatched rows:", nrow(not_merged),
+      "| valid votes at stake:", sum(not_merged$valid_votes, na.rm = TRUE), "\n")
+}
+stopifnot(all(not_merged$id %in% allowed_unmatched))
+
+# Every source row must hand out exactly 100% of itself across its 2025 targets.
+# Grouped on `id` (the ORIGINAL ags + year), not on the possibly remapped ags:
+# several source rows may legitimately be routed through one crosswalk entry.
+w_chk <- df_cw %>%
+  filter(election_year < 2025, !is.na(ags_25)) %>%
+  group_by(id) %>%
+  summarise(w = sum(pop_cw, na.rm = TRUE), .groups = "drop") %>%
+  filter(abs(w - 1) > 0.01)
+if (nrow(w_chk) > 0) print(as.data.frame(w_chk), max = 2000)
+stopifnot(nrow(w_chk) == 0)
 
 # Flag the cases where we had to change the ags
 df_cw <- df_cw |>
@@ -295,19 +453,32 @@ glimpse(df_cw)
 
 # Harmonize ---------------------------------------------------------------
 
+# Canonical 2025 name per code. The name must NEVER be part of the grouping
+# key: a stray variant ("Glowe, Seebad" alongside "Glowe, Ostseebad") split the
+# group and left the municipality as two half-sized duplicate rows — the only
+# duplicate (ags, election_year) keys the harmonised files ever had.
+ags_names_25 <- df_cw |>
+  filter(!is.na(ags_25)) |>
+  distinct(ags_25, ags_name_25) |>
+  group_by(ags_25) |>
+  slice(1) |>
+  ungroup()
+
 # Weighted sums
 sums <- df_cw |>
   filter(election_year < 2025) |>  # Only harmonize years before 2025
-  group_by(ags_25, ags_name_25, election_year) |>
+  group_by(ags_25, election_year) |>
   summarize_at(
     # 1+2+3: Weighted sum
     vars(eligible_voters:valid_votes),
     ~ sum(.x * pop_cw, na.rm = TRUE)
   ) |>
+  ungroup() |>
+  left_join(ags_names_25, by = "ags_25") |>
   rename(
     ags = ags_25, year = election_year, ags_name = ags_name_25
   ) |>
-  ungroup() |>
+  relocate(ags_name, .after = ags) |>
   mutate(
     turnout = number_voters / eligible_voters
   )
@@ -360,34 +531,6 @@ area_pop <- df_cw |>
   ) |>
   ungroup() |>
   rename(ags = ags_25, year = election_year)
-
-# Get population & area for 2025
-ags25 <- read_excel(
-  "data/covars_municipality/raw/municipality_sizes/AuszugGV4QAktuell_2024.xlsx",
-  sheet = 2
-) |>
-  slice(9:16018) |>
-  select(
-    Land = `...3`,
-    RB   = `...4`,
-    Kreis = `...5`,
-    Gemeinde = `...7`,
-    area = `...9`,
-    population  = `...10`
-  ) |>
-  filter(!is.na(Gemeinde)) |>
-  mutate(
-    Land     = pad_zero_conditional(Land, 1),
-    Kreis    = pad_zero_conditional(Kreis, 1),
-    Gemeinde = pad_zero_conditional(Gemeinde, 1, "00"),
-    Gemeinde = pad_zero_conditional(Gemeinde, 2, "0"),
-    ags = as.numeric(paste0(Land, RB, Kreis, Gemeinde)),
-    year = 2025,
-    population = as.numeric(population) / 1000,
-    area = as.numeric(area)
-  ) |>
-  filter(!is.na(Gemeinde)) |>
-  select(ags, year, area, population)
 
 # Create full df ----------------------------------------------------------
 
