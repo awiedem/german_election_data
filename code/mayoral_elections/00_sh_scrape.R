@@ -39,16 +39,21 @@
 #     → Used for Stichwahl pages (e.g., Pinneberg 2023)
 #
 # AGS assignment:
-#   Municipality names from the page header are matched to AGS codes via
-#   the crosswalk file. Manual overrides handle non-standard name formats.
+#   Municipality names are resolved against the authoritative 2021 register
+#   (ags_crosswalks: ags_21 / ags_name_21) by a normalised name join, and the
+#   result is asserted. There is deliberately NO hardcoded code table — see
+#   the AGS MAPPING section for why.
 #
 # ============================================================================
 # ELECTION URL REGISTRY
 # ============================================================================
 #
 # The index page (andere_wahlen.html) links to ~36 elections. However, some
-# Hauptwahl pages are not listed when only the Stichwahl is linked. These
-# "hidden" Hauptwahl pages were discovered by probing URLs.
+# Hauptwahl pages are not listed when only the Stichwahl is linked, and some
+# Stichwahl pages are not listed when only the Hauptwahl is linked (the 2024
+# runoffs live under "bgm_stichwahl_<year>_<name>" and appear nowhere on the
+# index). These "hidden" pages were discovered by probing URLs; the integrity
+# check at the end of the script fails loudly if another one is missing.
 #
 # Each entry below specifies:
 #   - url_slug: path segment after wahlen-sh.de/
@@ -110,14 +115,17 @@ elections <- tribble(
   "bgm_2024_brunsbuettel",               "hauptwahl",  "Brunsbüttel",         2024L, "",
   "bgm_2024_buesum",                     "hauptwahl",  "Büsum",               2024L, "",
   "bgm_2024_Flintbek",                   "hauptwahl",  "Flintbek",            2024L, "",
+  "bgm_stichwahl_2024_Flintbek",         "stichwahl",  "Flintbek",            2024L, "",
   "bgm_2024_harrislee",                  "hauptwahl",  "Harrislee",           2024L, "",
   "bgmwahl_2024_kronshagen",             "hauptwahl",  "Kronshagen",          2024L, "",
   "bgm_2024_luetjenburg",                "hauptwahl",  "Lütjenburg",          2024L, "",
   "bgm_2024_neustadt_in_holstein",        "hauptwahl",  "Neustadt in Holstein", 2024L, "",
   "bgm_2024_sankt_peter-ording",          "hauptwahl",  "Sankt Peter-Ording",  2024L, "",
+  "bgm_stichwahl_2024_sankt_peter-ording", "stichwahl", "Sankt Peter-Ording",  2024L, "",
   "bm_wahl_2024_Stockelsdorf",           "hauptwahl",  "Stockelsdorf",        2024L, "",
   "bm_2024_Wahlstedt",                   "hauptwahl",  "Wahlstedt",           2024L, "",
   "bgmwahl_2024_wedel",                  "hauptwahl",  "Wedel",               2024L, "",
+  "bgm_stichwahl_2024_wedel",            "stichwahl",  "Wedel",               2024L, "",
   # ---- 2025 ----
   "bgmwahl_2025_barmstedt",              "hauptwahl",  "Barmstedt",           2025L, "ergebnisse_gemeinde_010560002002.html",
   "bgmstichwahl_2025_barmstedt",         "stichwahl",  "Barmstedt",           2025L, "ergebnisse_gemeinde_010560002002.html",
@@ -148,63 +156,104 @@ elections <- tribble(
 # ============================================================================
 # AGS MAPPING
 # ============================================================================
-# Map municipality names to 8-digit AGS codes. Names are matched against
-# the crosswalk file first; manual overrides handle non-standard formats.
+# Municipality names from the registry above are resolved to 8-digit 2021 AGS
+# codes by joining against the authoritative register (ags_crosswalks:
+# ags_21 / ags_name_21, restricted to state 01).
+#
+# DO NOT replace this with a hand-written lookup table. The table that stood
+# here until July 2026 had 24 of its 37 codes wrong, and 21 of those were the
+# valid code of a DIFFERENT Schleswig-Holstein Gemeinde — so those elections
+# were silently filed under the wrong municipality in every harmonised output
+# (several of the errors were chained: Oldenburg i.H. sat on Ratekau's code,
+# Ratekau on Schönwalde's, Stockelsdorf on Scharbeutz's, Scharbeutz on
+# Süsel's). The assertions below make any future mismatch fail loudly.
 
-# Load crosswalk for AGS lookup
+#' Normalise a Schleswig-Holstein municipality name for register matching
+#'
+#' Drops the administrative suffix after the comma (", Stadt", ", Hansestadt",
+#' ", Landeshauptstadt", ", Kirchspiel"), drops parenthetical qualifiers
+#' ("(Ostsee)"), expands "i. H." -> "in Holstein" and "St." -> "Sankt",
+#' transliterates umlauts, and strips everything that is not alphanumeric.
+#'
+#' @param x Character vector of municipality names
+#' @return Character vector of normalised match keys
+normalise_sh_name <- function(x) {
+  x <- as.character(x)
+  x <- sub(",.*$", "", x)                       # ", Stadt" / ", Hansestadt" / ...
+  x <- gsub("\\s*\\([^)]*\\)", "", x)           # "(Ostsee)", "(Forstgutsbez.)"
+  x <- gsub("\\bi\\.?\\s*H\\.?\\b", "in Holstein", x, ignore.case = TRUE)
+  x <- gsub("\\bSt\\.\\s*", "Sankt ", x)
+  x <- gsub("Ä", "Ae", x)
+  x <- gsub("Ö", "Oe", x)
+  x <- gsub("Ü", "Ue", x)
+  x <- gsub("ä", "ae", x)
+  x <- gsub("ö", "oe", x)
+  x <- gsub("ü", "ue", x)
+  x <- gsub("ß", "ss", x)
+  x <- tolower(x)
+  gsub("[^a-z0-9]", "", x)
+}
+
+# Authoritative 2021 register of Schleswig-Holstein municipalities
 xwalk <- readRDS("data/crosswalks/final/ags_crosswalks.rds")
-sh_ags <- xwalk %>%
-  filter(ags < 2000000) %>%
-  mutate(ags_str = sprintf("%08d", ags)) %>%
-  # Take the most recent year for each AGS
-  group_by(ags_str) %>%
-  filter(year == max(year)) %>%
-  ungroup() %>%
-  select(ags_str, ags_name) %>%
-  distinct()
 
-# Manual AGS mapping for municipalities on wahlen-sh.de
-# These are looked up from the crosswalk or official AGS registry
-ags_map <- tribble(
-  ~municipality,            ~ags,
-  "Ahrensbök",              "01055001",
-  "Bad Bramstedt",          "01060005",
-  "Barmstedt",              "01056002",
-  "Barsbüttel",             "01062005",
-  "Bredstedt",              "01054015",
-  "Brunsbüttel",            "01051011",
-  "Büsum",                  "01051012",
-  "Elmshorn",               "01056015",
-  "Flintbek",               "01058043",
-  "Glinde",                 "01062019",
-  "Glücksburg",             "01059027",
-  "Großhansdorf",           "01062022",
-  "Handewitt",              "01059033",
-  "Harrislee",              "01059035",
-  "Heiligenhafen",          "01055019",
-  "Hohenwestedt",           "01058072",
-  "Kaltenkirchen",          "01060044",
-  "Kiel",                   "01002000",
-  "Kronshagen",             "01058087",
-  "Laboe",                  "01057035",
-  "Lübeck",                 "01003000",
-  "Lütjenburg",             "01057037",
-  "Meldorf",                "01051076",
-  "Neustadt in Holstein",   "01055032",
-  "Norderstedt",            "01060063",
-  "Oldenburg in Holstein",  "01055035",
-  "Pinneberg",              "01056039",
-  "Ratekau",                "01055038",
-  "Sankt Peter-Ording",     "01054116",
-  "Scharbeutz",             "01055041",
-  "Schleswig",              "01059075",
-  "Schwentinental",         "01057050",
-  "Stockelsdorf",           "01055044",
-  "Sylt",                   "01054168",
-  "Tornesch",               "01056047",
-  "Wahlstedt",              "01060085",
-  "Wedel",                  "01056050"
+sh_register <- xwalk %>%
+  filter(substr(ags_21, 1, 2) == "01") %>%
+  distinct(ags_21, ags_name_21) %>%
+  # gemeindefreie Gebiete are not municipalities and never hold a mayoral
+  # election; keeping them would create spurious name ambiguity ("Buchholz")
+  filter(!grepl("gemfr\\. Gebiet", ags_name_21)) %>%
+  mutate(name_key = normalise_sh_name(ags_name_21))
+
+ags_map <- tibble(municipality = sort(unique(elections$municipality))) %>%
+  mutate(name_key = normalise_sh_name(municipality)) %>%
+  left_join(sh_register, by = "name_key")
+
+# --- hard assertions: a name that stops resolving must fail, not mis-file ---
+unresolved <- ags_map$municipality[is.na(ags_map$ags_21)]
+if (length(unresolved) > 0) {
+  stop("AGS lookup failed for: ", paste(unresolved, collapse = ", "),
+       "\n  -> fix the spelling in the election registry, or extend",
+       " normalise_sh_name() to cover the new name form.")
+}
+ambiguous <- unique(ags_map$municipality[duplicated(ags_map$municipality)])
+if (length(ambiguous) > 0) {
+  stop("AGS lookup is ambiguous (several SH Gemeinden share the name): ",
+       paste(ambiguous, collapse = ", "),
+       "\n  -> disambiguate with a Kreis-qualified name or an explicit override.")
+}
+
+stopifnot(
+  nrow(ags_map) == n_distinct(elections$municipality),
+  is.character(ags_map$ags_21),
+  all(nchar(ags_map$ags_21) == 8),
+  all(substr(ags_map$ags_21, 1, 2) == "01"),
+  all(ags_map$ags_21 %in% sh_register$ags_21),          # exists in 2021 register
+  !any(duplicated(ags_map$ags_21)),                     # no two names, one code
+  all(normalise_sh_name(ags_map$ags_name_21) ==         # register name == scraped name
+        normalise_sh_name(ags_map$municipality))
 )
+
+# Regression fixture: the four chained mis-assignments of the old hardcoded
+# table (each sat on the next municipality's real code) plus the two city AGS.
+sh_ags_fixture <- c(
+  "Kiel"                  = "01002000",
+  "Lübeck"                = "01003000",
+  "Oldenburg in Holstein" = "01055033",
+  "Ratekau"               = "01055035",
+  "Scharbeutz"            = "01055044",
+  "Stockelsdorf"          = "01055040"
+)
+fixture_present <- intersect(names(sh_ags_fixture), ags_map$municipality)
+stopifnot(all(
+  ags_map$ags_21[match(fixture_present, ags_map$municipality)] ==
+    sh_ags_fixture[fixture_present]
+))
+
+ags_map <- ags_map %>%
+  select(municipality, ags = ags_21, register_name = ags_name_21)
+
+cat("AGS lookup resolved", nrow(ags_map), "municipalities from the 2021 register\n")
 
 # ============================================================================
 # SCRAPING FUNCTIONS
@@ -572,7 +621,9 @@ standardise_sh_party <- function(party) {
     }
 
     # Check if it's an Einzelbewerber variant
-    if (grepl("Einzelbewerber|unabh.ngiger Bewerber|Einzelbewerberin", p, ignore.case = TRUE)) {
+    # (the optional "e" also catches the site's "Einzelbwerber" typo on
+    #  bgm_stichwahl_2024_sankt_peter-ording; "Einzelbewerberin" matches too)
+    if (grepl("Einzelbe?werber|unabh.ngiger Bewerber", p, ignore.case = TRUE)) {
       result[i] <- "EB"
       next
     }
@@ -746,9 +797,16 @@ cat("\n=== Combining results ===\n")
 sh_raw <- bind_rows(all_results)
 
 # Remove upcoming elections with no results (EV = 0 and all votes = 0)
+# NA-safe: eligible_voters is NA whenever the <tfoot> turnout block failed to
+# parse. A bare `!(eligible_voters == 0 & ...)` evaluates to NA for those rows
+# and filter() DROPS NA, silently deleting elections that were scraped fine
+# apart from the turnout block. coalesce(..., FALSE) makes NA mean "keep".
 n_before <- nrow(sh_raw)
 sh_raw <- sh_raw %>%
-  filter(!(eligible_voters == 0 & (is.na(candidate_votes) | candidate_votes == 0)))
+  filter(!coalesce(
+    eligible_voters == 0 & (is.na(candidate_votes) | candidate_votes == 0),
+    FALSE
+  ))
 n_upcoming <- n_before - nrow(sh_raw)
 if (n_upcoming > 0) {
   cat("Removed", n_upcoming, "rows from upcoming elections (no results yet)\n")
@@ -773,6 +831,67 @@ cat("\nBy election_type:\n")
 print(table(sh_raw$election_type))
 
 cat("\nMunicipalities scraped:", n_distinct(sh_raw$ags), "\n")
+
+# ============================================================================
+# INTEGRITY CHECK — every sub-50 % Hauptwahl needs a paired Stichwahl
+# ============================================================================
+# In Schleswig-Holstein a mayor is only elected in the Hauptwahl with an
+# absolute majority; otherwise a Stichwahl follows. So a Hauptwahl whose
+# leading candidate polled < 50 % and for which no Stichwahl was scraped means
+# the runoff page is MISSING from the registry above — downstream that seats
+# the Hauptwahl leader as mayor, i.e. the wrong person.
+#
+# This is not hypothetical: the runoffs for Flintbek, Sankt Peter-Ording and
+# Wedel (all 2024) were absent for exactly this reason. SH publishes them under
+# a slug the index page does not link, "bgm_stichwahl_<year>_<name>" — and the
+# name token sometimes keeps the capitalisation of the Hauptwahl slug
+# (".../bgm_stichwahl_2024_Flintbek").
+
+sw_rounds <- sh_raw %>%
+  filter(round == "stichwahl") %>%
+  distinct(ags, election_year, election_date)
+
+hw_leaders <- sh_raw %>%
+  filter(round == "hauptwahl", !is.na(candidate_votes)) %>%
+  group_by(ags, ags_name, election_year) %>%
+  slice_max(candidate_votes, n = 1, with_ties = FALSE) %>%
+  ungroup() %>%
+  mutate(lead_share = coalesce(
+    candidate_voteshare,
+    ifelse(!is.na(valid_votes) & valid_votes > 0, candidate_votes / valid_votes, NA_real_)
+  ))
+
+missing_sw <- hw_leaders[0, ]
+for (i in seq_len(nrow(hw_leaders))) {
+  hw <- hw_leaders[i, ]
+  if (is.na(hw$lead_share) || hw$lead_share >= 0.5) next
+  sw <- sw_rounds %>% filter(ags == hw$ags)
+  # a Stichwahl in the same election year, or within 90 days of the Hauptwahl
+  paired <- any(sw$election_year == hw$election_year) ||
+    (!is.na(hw$election_date) &&
+       any(!is.na(sw$election_date) &
+             sw$election_date >= hw$election_date &
+             sw$election_date <= hw$election_date + 90))
+  if (!paired) missing_sw <- bind_rows(missing_sw, hw)
+}
+
+if (nrow(missing_sw) > 0) {
+  detail <- paste(sprintf(
+    "  %s (%s, %d, %s): %s led with %.1f%% — no Stichwahl scraped",
+    missing_sw$ags_name, missing_sw$ags, missing_sw$election_year,
+    ifelse(is.na(missing_sw$election_date), "date NA",
+           as.character(missing_sw$election_date)),
+    missing_sw$candidate_name, missing_sw$lead_share * 100
+  ), collapse = "\n")
+  stop("INTEGRITY FAILURE: ", nrow(missing_sw),
+       " Hauptwahl(en) below 50 % with no paired Stichwahl.\n", detail,
+       "\nThe runoff page is missing from the ELECTION REGISTRY. Probe\n",
+       "  http://wahlen-sh.de/bgm_stichwahl_<year>_<name>/  (and the\n",
+       "  bgmstichwahl_<year>_<name> / bgmstichwahl<yy>01_<name> variants),\n",
+       "  keeping the capitalisation used by the Hauptwahl slug, then add it.")
+}
+
+cat("Integrity check passed: no sub-50% Hauptwahl without a Stichwahl\n")
 
 # ============================================================================
 # SAVE RAW DATA
