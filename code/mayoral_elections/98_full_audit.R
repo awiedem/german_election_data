@@ -334,6 +334,113 @@ if (any(is.na(st_mc$candidate_party))) rep("ERROR","st.party_sanity",
                length(pv[nzchar(pv)])))
 }
 
+cat("\n========== G. Invariants added by the July-2026 audit ==========\n")
+# Each check here corresponds to a defect class that shipped undetected because
+# no suite asserted the invariant. See docs/audit_2026-07_mayoral_council.md.
+
+# G1. Election dates must be Sundays. German elections are held on Sundays; a
+# weekday date means a report timestamp or a parse slip has been stored as the
+# election date (this is how every Thueringen Landrat date was wrong).
+wd_ok <- c("Sonntag", "Sunday")
+nonsun <- mu[!is.na(election_date) & !weekdays(election_date) %in% wd_ok,
+             .N, .(st = sn[substr(ags,1,2)])][order(-N)]
+if (nrow(nonsun)) rep("WARN","dates.sunday",
+  sprintf("%d rows on a non-Sunday (source misprints are documented; a whole state here means a parse bug)",
+          sum(nonsun$N)), nonsun) else ok("dates.sunday","all election dates are Sundays")
+lu_nonsun <- lu[!is.na(election_date) & !weekdays(election_date) %in% wd_ok, .N]
+if (lu_nonsun > 0) rep("WARN","dates.sunday_landrat",
+  sprintf("%d landrat rows on a non-Sunday", lu_nonsun)) else
+  ok("dates.sunday_landrat","all landrat dates are Sundays")
+
+# G2. Runoff results must not be smeared across candidates who were not in the
+# runoff: an election cannot have more rows carrying a Stichwahl result than it
+# had runoff candidates, and no two candidates can share rank 1 in a round.
+if (all(c("candidate_votes_sw","n_candidates_sw") %in% names(mc))) {
+  smear <- mc[!is.na(candidate_votes_sw),
+              .(carriers = .N, n_sw = first(n_candidates_sw)),
+              .(ags, election_date, election_type)][!is.na(n_sw) & carriers > n_sw]
+  if (nrow(smear)) rep("ERROR","cand.sw_smear",
+    sprintf("%d elections carry more Stichwahl results than they had runoff candidates",
+            nrow(smear)), smear[order(-carriers)]) else
+    ok("cand.sw_smear","no election carries more SW results than SW candidates")
+}
+if ("candidate_rank_sw" %in% names(mc)) {
+  dup_rank <- mc[candidate_rank_sw == 1, .N, .(ags, election_date, election_type)][N > 1]
+  if (nrow(dup_rank)) rep("ERROR","cand.sw_rank1",
+    sprintf("%d elections have more than one candidate at Stichwahl rank 1", nrow(dup_rank)),
+    dup_rank[order(-N)]) else ok("cand.sw_rank1","one rank-1 candidate per Stichwahl")
+}
+
+# G3. The winner named in mayoral_unharm must be the candidate with the most
+# votes in the decisive round of the same election.
+# Compare like with like: mayoral_unharm has one row per ROUND, while the
+# candidate file is wide, so a Hauptwahl row must be checked against the
+# Hauptwahl column and a Stichwahl row against the Stichwahl column.
+mc_round_max <- rbind(
+  mc[!is.na(candidate_votes_hw),
+     .(round = "hauptwahl", max_votes = max(candidate_votes_hw, na.rm = TRUE)),
+     .(ags, election_date, election_type)],
+  mc[!is.na(candidate_votes_sw),
+     .(round = "stichwahl", max_votes = max(candidate_votes_sw, na.rm = TRUE)),
+     .(ags, election_date, election_type)])
+wcheck <- merge(
+  mu[!is.na(winner_votes), .(ags, election_date, election_type, round, winner_votes)],
+  mc_round_max, by = c("ags","election_date","election_type","round"))
+wbad <- wcheck[is.finite(max_votes) & max_votes > 0 & winner_votes != max_votes]
+if (nrow(wbad)) rep("WARN","cross.winner_is_max",
+  sprintf("%d rounds where unharm winner_votes != max candidate votes in that round", nrow(wbad)),
+  wbad[order(-abs(winner_votes - max_votes))]) else
+  ok("cross.winner_is_max","unharm winner_votes = max candidate votes")
+
+# G4. Harmonised AGS must be real 2021 municipalities. A code that is merely
+# copied through unchecked (the identity path for recent years) silently files
+# elections under municipalities that do not exist.
+cwf <- "data/crosswalks/final/ags_crosswalks.csv"
+if (file.exists(cwf)) {
+  u21 <- unique(as.character(fread(cwf, colClasses = list(character = c("ags","ags_21")))$ags_21))
+  u21 <- sprintf("%08s", u21[!is.na(u21)])
+  bad21 <- mh[!ags %in% u21, .N, ags][order(-N)]
+  if (nrow(bad21)) rep("WARN","harm.ags21_universe",
+    sprintf("%d harmonised AGS are not 2021 municipalities", nrow(bad21)), bad21) else
+    ok("harm.ags21_universe","all harmonised AGS are 2021 municipalities")
+}
+
+# G5. Gender vocabulary. The codebook documents m/w; BW and BY-2026 parsers once
+# emitted male/female, which silently halved every "count the women" query.
+if ("candidate_gender" %in% names(mc)) {
+  gv <- setdiff(unique(mc$candidate_gender), c(NA, "m", "w"))
+  if (length(gv)) rep("ERROR","cand.gender_vocab",
+    sprintf("candidate_gender uses %s outside the documented m/w",
+            paste(sprintf('"%s"', gv), collapse = ", "))) else
+    ok("cand.gender_vocab","candidate_gender is m/w only")
+}
+
+# G6. The panel must not contain Landrat elections, and no municipality may have
+# two mayors in the same year.
+lk_pat <- "^09[0-9]{3}000$"
+mp_lk <- mp[grepl(lk_pat, ags) & !substr(ags,3,5) %in%
+              c("161","162","163","261","262","263","271","272","273","274",
+                "361","362","363","364","371","372","373","374","375","376","377"), .N]
+if (mp_lk > 0) rep("ERROR","panel.no_landrat",
+  sprintf("%d panel rows sit on a Bayern Landkreis AGS", mp_lk)) else
+  ok("panel.no_landrat","no Bayern Landkreis rows in the panel")
+mpa_f <- paste0(F, "mayor_panel_annual.rds")
+if (file.exists(mpa_f)) {
+  mpa <- as.data.table(readRDS(mpa_f))
+  if (all(c("ags","year") %in% names(mpa))) {
+    dupy <- mpa[, .N, .(ags, year)][N > 1]
+    if (nrow(dupy)) rep("ERROR","panel.annual_dup",
+      sprintf("%d municipality-years hold more than one mayor", nrow(dupy)),
+      dupy[order(-N)]) else ok("panel.annual_dup","one mayor per municipality-year")
+    if ("election_year" %in% names(mpa)) {
+      pre <- mpa[year < election_year, .N]
+      if (pre > 0) rep("ERROR","panel.annual_pre_election",
+        sprintf("%d annual rows predate their own election", pre)) else
+        ok("panel.annual_pre_election","no annual row predates its election")
+    }
+  }
+}
+
 cat("\n========== F. Coverage by state ==========\n")
 print(mu[election_type %in% mtypes, .(elec=uniqueN(paste(ags,election_date)), munis=uniqueN(ags),
         yrs=paste0(min(election_year),"-",max(election_year))), .(st=sn[substr(ags,1,2)])][order(st)])
