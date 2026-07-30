@@ -56,16 +56,26 @@ parse_nk_2024 <- function(pdf_path) {
     str_extract(txt, "Gültige\\s+([\\d.]+)") %>%
       str_extract("[\\d.]+$")))
 
-  # Candidates: "Nr. N <name> -<party>- <votes> ... <pct> %"
+  # Candidates: "Nr. N <name> -<party>- <votes> gültige ... <pct> %"
+  # The printed percentage is NOT captured: the Bekanntmachung sets it as
+  # "19.639 gültige  29,83 %", and a trailing ([\d,]+) capture lands on a
+  # fragment of it (yielding 3 / 8 / 9 for 29,83 / 52,88 / 17,29), which then
+  # became the published candidate_voteshare and, via max(), a winner_voteshare
+  # of 0.09 for a candidate who won with 52.9%. Compute the share from the vote
+  # counts instead — those parse correctly.
   candidates <- str_match_all(txt,
-    "Nr\\.\\s*\\d+\\s+([^-]+?)\\s*-([^-]+)-\\s+([\\d.]+)\\s+\\S+\\s+\\S*\\s*([\\d,]+)\\s*%")[[1]]
+    "Nr\\.\\s*\\d+\\s+([^-]+?)\\s*-([^-]+)-\\s+([\\d.]+)")[[1]]
   if (nrow(candidates) == 0) return(NULL)
 
+  cand_votes <- as.numeric(gsub("\\.", "", candidates[, 4]))
   tibble(
-    candidate_name = str_squish(candidates[, 2]),
+    # The Bekanntmachung wraps long forenames onto a following line, so some
+    # names arrive truncated at the comma ("Schaufert,"); drop the dangling
+    # separator rather than publish it.
+    candidate_name = str_remove(str_squish(candidates[, 2]), ",\\s*$"),
     candidate_party = str_squish(candidates[, 3]),
-    candidate_votes = as.numeric(gsub("\\.", "", candidates[, 4])),
-    candidate_voteshare = as.numeric(gsub(",", ".", candidates[, 5])) / 100
+    candidate_votes = cand_votes,
+    candidate_voteshare = if (!is.na(valid) && valid > 0) cand_votes / valid else NA_real_
   ) %>% mutate(
     ags = "10043000", ags_name = "Landkreis Neunkirchen",
     state = "10", state_name = "Saarland",

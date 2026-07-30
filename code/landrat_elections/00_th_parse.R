@@ -234,6 +234,86 @@ if (length(all_rows) == 0) {
 
 th_data <- bind_rows(all_rows)
 
+# ---------------------------------------------------------------------------
+# Correct election_date: the sheets carry only a report timestamp
+# ---------------------------------------------------------------------------
+# The "erstellt am:"/"Stand:" line is the date the report was GENERATED, always
+# a few days to three weeks AFTER polling day, and it is the only dd.mm.yyyy
+# token anywhere in these workbooks — the true Wahltag is simply not in the
+# file. Left uncorrected, every Thüringen Landrat date is a weekday (41 Thu,
+# 36 Fri, 13 Mon, 6 Wed) and the three sheets with no timestamp at all fall
+# back to 1 January.
+#
+# The true polling days are recoverable from the Gemeinde-level Bürgermeister
+# scrape, which covers the same statewide Kommunalwahl days: for each round we
+# take the latest polling day of that round on or before the timestamp. Where a
+# sheet has no timestamp we fall back to that year's modal polling day, which is
+# correct for the mid-term Kreise that voted with the statewide cycle.
+th_bm_file <- "data/mayoral_elections/raw/thueringen_bm/th_bm_scraped.csv"
+if (!file.exists(th_bm_file)) {
+  stop("Cannot correct Thüringen election dates: ", th_bm_file, " is missing. ",
+       "Run code/mayoral_elections/00_th_scrape.py first.")
+}
+th_polling <- readr::read_csv(th_bm_file, show_col_types = FALSE) %>%
+  mutate(election_date = as.Date(election_date)) %>%
+  count(election_date, round, name = "n_gemeinden") %>%
+  filter(n_gemeinden >= 3)   # drop one-off single-Gemeinde dates
+
+correct_th_date <- function(stamp, rnd, yr) {
+  cands <- th_polling$election_date[th_polling$round == rnd]
+  if (is.na(stamp) || format(stamp, "%m-%d") == "01-01") {
+    # no timestamp in the sheet: use that year's modal polling day for the round
+    same_yr <- th_polling[th_polling$round == rnd &
+                            format(th_polling$election_date, "%Y") == as.character(yr), ]
+    if (nrow(same_yr) == 0) return(NA_Date_)
+    return(same_yr$election_date[which.max(same_yr$n_gemeinden)])
+  }
+  prior <- cands[cands <= stamp & as.numeric(stamp - cands) <= 30]
+  if (length(prior) == 0) return(NA_Date_)
+  max(prior)
+}
+
+th_data <- th_data %>%
+  mutate(
+    election_date_stand = election_date,
+    election_date = as.Date(mapply(correct_th_date, election_date, round, election_year,
+                                   SIMPLIFY = TRUE), origin = "1970-01-01")
+  )
+
+# A single-Kreis runoff need not coincide with any Gemeinde runoff, so it has no
+# polling day to match against. Thüringen holds the Stichwahl exactly two weeks
+# after the Hauptwahl (§ 24 ThürKWG) — a rule that holds for every one of the
+# cycles resolved above — so derive those from the Kreis's own Hauptwahl.
+sw_from_hw <- th_data %>%
+  filter(round == "hauptwahl", !is.na(election_date)) %>%
+  distinct(ags, election_year, hw_date = election_date)
+
+th_data <- th_data %>%
+  left_join(sw_from_hw, by = c("ags", "election_year")) %>%
+  mutate(
+    election_date = if_else(is.na(election_date) & round == "stichwahl" & !is.na(hw_date),
+                            hw_date + 14, election_date)
+  ) %>%
+  select(-hw_date)
+
+bad_date <- th_data %>% filter(is.na(election_date))
+if (nrow(bad_date) > 0) {
+  stop(sprintf("Could not resolve a polling day for %d Thüringen rows (%s). ",
+               nrow(bad_date),
+               paste(unique(format(bad_date$election_date_stand, "%Y-%m-%d")), collapse = ", ")),
+       "Check th_bm_scraped.csv covers these cycles.")
+}
+not_sunday <- th_data %>% filter(weekdays(election_date) != "Sonntag" &
+                                   weekdays(election_date) != "Sunday")
+if (nrow(not_sunday) > 0) {
+  stop(sprintf("%d Thüringen rows resolved to a non-Sunday date: %s",
+               nrow(not_sunday),
+               paste(unique(as.character(not_sunday$election_date)), collapse = ", ")))
+}
+cat("\nElection dates corrected from report timestamps to polling days:\n")
+print(th_data %>% distinct(election_date_stand, round, election_date) %>%
+        arrange(election_date))
+
 cat(sprintf("\n=== Parsed %d candidate-rows from Thüringen ===\n", nrow(th_data)))
 cat("By year/round:\n")
 print(th_data %>% count(election_year, round))
