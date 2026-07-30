@@ -418,9 +418,16 @@ if ("candidate_gender" %in% names(mc)) {
 # G6. The panel must not contain Landrat elections, and no municipality may have
 # two mayors in the same year.
 lk_pat <- "^09[0-9]{3}000$"
-mp_lk <- mp[grepl(lk_pat, ags) & !substr(ags,3,5) %in%
-              c("161","162","163","261","262","263","271","272","273","274",
-                "361","362","363","364","371","372","373","374","375","376","377"), .N]
+# Bayern's 25 kreisfreie Staedte: their OB elections legitimately sit on a
+# "000" AGS, so they must be excluded before the Landkreis test.
+by_kreisfrei <- c("161","162","163",              # Oberbayern
+                  "261","262","263",              # Niederbayern
+                  "361","362","363",              # Oberpfalz
+                  "461","462","463","464",        # Oberfranken
+                  "561","562","563","564","565",  # Mittelfranken
+                  "661","662","663",              # Unterfranken
+                  "761","762","763","764")        # Schwaben
+mp_lk <- mp[grepl(lk_pat, ags) & !substr(ags,3,5) %in% by_kreisfrei, .N]
 if (mp_lk > 0) rep("ERROR","panel.no_landrat",
   sprintf("%d panel rows sit on a Bayern Landkreis AGS", mp_lk)) else
   ok("panel.no_landrat","no Bayern Landkreis rows in the panel")
