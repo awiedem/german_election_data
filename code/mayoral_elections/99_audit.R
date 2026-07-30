@@ -284,7 +284,11 @@ check(all(is.na(bw_party_na)),
       "BW: winner_party all NA (no party collected)",
       sprintf("BW: %d non-NA winner_party (expected 0)", sum(!is.na(bw_party_na))))
 # Official gender → 114 elected women (matches StaLA press release 10.4%).
-bw_women <- mc %>% filter(state == "08", candidate_gender == "female") %>% nrow()
+# Keyed on candidate_gender_source == "raw": name-predicted genders share the
+# same m/w vocabulary, so filtering on the value alone would also count them.
+bw_women <- mc %>%
+  filter(state == "08", candidate_gender == "w", candidate_gender_source == "raw") %>%
+  nrow()
 check(bw_women == 114,
       sprintf("BW: %d elected women (matches StaLA's 114 / 10.4%%)", bw_women),
       sprintf("BW: %d elected women (expected 114)", bw_women))
