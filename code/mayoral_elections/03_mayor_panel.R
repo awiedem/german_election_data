@@ -45,6 +45,39 @@ pad_zero_conditional <- function(x, n, pad = "0") {
   return(x)
 }
 
+# Normalised party label, used ONLY to compare the winning party of consecutive
+# elections in the same municipality (party_switch / is_new_party_mayor).
+# The same Wählergruppe is spelled differently across sources — 'Wählergruppe
+# "Loisach"' vs 'Wählergruppe Loisach', "e.V." vs "e. V." — and fread() returns
+# RFC-4180 doubled quotes un-collapsed. Comparing the raw labels produced
+# spurious party switches (audit 2026-07, M41).
+norm_party <- function(x) {
+  y <- gsub('""', '"', as.character(x), fixed = TRUE)
+  y <- gsub("[^[:alnum:]]+", "", tolower(trimws(y)))
+  ifelse(is.na(x) | !nzchar(y), NA_character_, y)
+}
+
+# Bayern Landrat discriminator — the mayor panel must never ingest
+# Landratswahlen (they are a separate dataset; see CLAUDE.md "Mayoral vs.
+# Landrat elections"). Same rule as the Stage 1 scripts: an Amtstitel beginning
+# "Landrat"/"Landrät" is unambiguous; a row with NO Amtstitel is a Landrat
+# election iff its AGS is a Landkreis code (09 + KKK + "000" where KKK is not
+# one of the 25 kreisfreien Städte). Verified 2026-07 against the raw sheet:
+# all 1,222 Landkreis-AGS rows are Landrat elections (1,097 titled + 125
+# untitled) and no Landkreis-AGS row carries a mayoral Amtstitel.
+by_kreisfreie_kreis <- c("161", "162", "163", "261", "262", "263",
+                         "361", "362", "363", "461", "462", "463", "464",
+                         "561", "562", "563", "564", "565",
+                         "661", "662", "663", "761", "762", "763", "764")
+
+is_bayern_landrat <- function(amtstitel, ags) {
+  amtstitel <- trimws(as.character(amtstitel))
+  untitled <- is.na(amtstitel) | !nzchar(amtstitel)
+  grepl("^Landr(at|ät)", amtstitel) |
+    (untitled & grepl("^09[0-9]{3}000$", ags) &
+       !(substr(ags, 3, 5) %in% by_kreisfreie_kreis))
+}
+
 
 # ============================================================================
 # 1. LOAD DATA
@@ -92,6 +125,14 @@ bayern <- bayern_raw |>
   ) |>
   filter(nchar(ags) == 8)
 
+# Exclude Landratswahlen — this block reads the raw sheet directly and therefore
+# bypasses the office classifier of 01_mayoral_unharm.R. Without this filter the
+# panel treats 1,222 Landrat elections on 71 Landkreis AGS as mayors.
+n_before_landrat <- nrow(bayern)
+bayern <- bayern |> filter(!is_bayern_landrat(Amtstitel, ags))
+cat("Bayern: dropped", n_before_landrat - nrow(bayern),
+    "Landratswahl rows (belong to the landrat pipeline)\n")
+
 # Exclude "ungültig" rows
 bayern <- bayern |>
   filter(is.na(wahlart) | !grepl("ungültig", wahlart, ignore.case = TRUE))
@@ -109,6 +150,9 @@ bayern_filtered_raw <- bayern_raw |>
     wahlart_tmp = as.character(Wahlart)
   ) |>
   filter(nchar(ags_tmp) == 8) |>
+  # Must apply exactly the same row filters as `bayern` above — the two frames
+  # are matched positionally when the Bewerber columns are copied over below.
+  filter(!is_bayern_landrat(Amtstitel, ags_tmp)) |>
   filter(is.na(wahlart_tmp) | !grepl("ungültig", wahlart_tmp, ignore.case = TRUE))
 
 # Count candidates per row (winner + non-NA Bewerber 2-14)
@@ -185,6 +229,11 @@ if (file.exists(by26_file)) {
                                                     "candidate_name", "round",
                                                     "amtsantritt"))) |>
     filter(election_type %in% c("Bürgermeisterwahl", "Oberbürgermeisterwahl")) |>
+    # by2026_parsed.csv is correctly RFC-4180 escaped, but fread() hands back the
+    # doubled quotes un-collapsed (13 rows, all in candidate_party) — e.g.
+    # 'Freie Wählergruppe ""Bayerisches Meran""'. Collapse them so the labels
+    # match the "Wahlen seit 1945" spelling (audit 2026-07, M41).
+    mutate(across(where(is.character), ~ gsub('""', '"', .x, fixed = TRUE))) |>
     mutate(election_date = as.Date(election_date),
            candidate_voteshare = as.numeric(candidate_voteshare),
            is_winner = as.logical(is_winner))
@@ -313,21 +362,37 @@ winners_named <- winners_named |>
     )
   )
 
-# Build name key for person matching
+# Build name key for person matching.
+# A name is usable only if it is neither NA nor blank: some sources redact
+# candidate names (Thüringen §50 ThürKWO) or publish none at all (the Hessen
+# historical series), and 01b writes those as "" rather than NA. Treating ""
+# as a real name collapsed every unnamed winner of a municipality into ONE
+# pseudo-person (1,995 Hessen elections -> 426 fake mayors, audit 2026-07),
+# which corrupted term_number / is_incumbent / next_runs_again for that state.
+# Unnamed winners get name_key = NA and are dropped below, exactly as the
+# already-NA Thüringen and Sachsen winners are.
+has_name <- function(x) !is.na(x) & nzchar(trimws(x))
+
 winners_named <- winners_named |>
   mutate(
     name_key = case_when(
-      !is.na(candidate_last_name) & !is.na(candidate_first_name) ~
-        paste0(tolower(candidate_last_name), "_",
-               tolower(substr(candidate_first_name, 1, 1)), "_", state),
-      !is.na(candidate_last_name) ~
-        paste0(tolower(candidate_last_name), "__", state),
+      has_name(candidate_last_name) & has_name(candidate_first_name) ~
+        paste0(tolower(trimws(candidate_last_name)), "_",
+               tolower(substr(trimws(candidate_first_name), 1, 1)), "_", state),
+      has_name(candidate_last_name) ~
+        paste0(tolower(trimws(candidate_last_name)), "__", state),
       TRUE ~ NA_character_
     )
   )
 
 cat("Winners with name_key:", sum(!is.na(winners_named$name_key)), "\n")
-cat("Winners without name_key:", sum(is.na(winners_named$name_key)), "\n")
+cat("Winners without name_key (unnamed at source, dropped):",
+    sum(is.na(winners_named$name_key)), "\n")
+if (any(is.na(winners_named$name_key))) {
+  print(winners_named |>
+          filter(is.na(name_key)) |>
+          count(state, name = "unnamed_winners"))
+}
 
 # Assign person_id per (name_key, ags) combination
 named_persons <- winners_named |>
@@ -464,14 +529,17 @@ cat("\n  Adding incumbency enrichment variables...\n")
 
 # party_switch: did the winning party change from the previous election in this ags?
 # is_new_party_mayor: first time this party wins in this municipality (ever in data)
+# Both compare NORMALISED labels (see norm_party above) so that spelling and
+# quoting differences between sources are not read as party changes.
 panel <- panel |>
   arrange(ags, election_date) |>
   group_by(ags) |>
   mutate(
-    prev_party = lag(winner_party),
+    party_key = norm_party(winner_party),
+    prev_party = lag(party_key),
     party_switch = case_when(
-      is.na(prev_party) ~ NA_integer_,
-      prev_party == winner_party ~ 0L,
+      is.na(prev_party) | is.na(party_key) ~ NA_integer_,
+      prev_party == party_key ~ 0L,
       TRUE ~ 1L
     )
   ) |>
@@ -483,8 +551,7 @@ panel <- panel |>
   group_by(ags) |>
   mutate(
     is_new_party_mayor = as.integer(
-      !duplicated(paste(ags, winner_party)) &
-        !is.na(winner_party)
+      !duplicated(party_key) & !is.na(party_key)
     )
   ) |>
   ungroup()
@@ -501,7 +568,7 @@ panel <- panel |>
     )
   ) |>
   ungroup() |>
-  select(-prev_party, -prev_margin)
+  select(-prev_party, -prev_margin, -party_key)
 
 # consecutive_terms: number of consecutive terms by same person (resets if gap)
 panel <- panel |>
@@ -581,12 +648,19 @@ cat("\n=== Harmonizing to 2021 boundaries ===\n")
 # to match the 8-digit string AGS used in the mayoral pipeline.
 # For 1:N splits, keep only the dominant successor (highest pop_cw) so we
 # don't duplicate person-election rows.
-cw <- fread("data/crosswalks/final/ags_crosswalks.csv") |>
+cw_full <- fread("data/crosswalks/final/ags_crosswalks.csv") |>
   as_tibble() |>
   mutate(
     ags = str_pad(as.character(ags), width = 8, side = "left", pad = "0"),
     ags_21 = str_pad(as.character(ags_21), width = 8, side = "left", pad = "0")
-  ) |>
+  )
+
+# All valid 2021 municipality codes (taken BEFORE the dominant-successor filter
+# below, which would drop the minor targets of 1:N splits).
+ags_2021_universe <- sort(unique(cw_full$ags_21))
+cat("2021 municipality universe:", length(ags_2021_universe), "codes\n")
+
+cw <- cw_full |>
   group_by(ags, year) |>
   slice_max(pop_cw, n = 1, with_ties = FALSE) |>
   ungroup()
@@ -656,6 +730,82 @@ if (n_no_ags21 > 0) {
 }
 
 
+# --- Validate ags_21 against the 2021 municipality universe -----------------
+# Elections from 2021 onwards are identity-mapped above, which silently emits
+# any AGS created AFTER 2021 (or simply wrong at source) as a bogus "2021" code
+# (audit 2026-07, M29). Genuine post-2021 merger codes are back-mapped onto
+# their dominant 2021 predecessor — dominant rather than split, because a
+# person-election row must not be duplicated across predecessor municipalities.
+# Everything else is reported and, unless explicitly allowlisted, is an error.
+
+cw_21_23 <- readRDS("data/crosswalks/final/crosswalk_ags_2021_2022_to_2023.rds") |>
+  as_tibble() |>
+  filter(year == 2021) |>
+  select(ags_pre = ags, ags_2023, population)
+cw_23_25 <- readRDS("data/crosswalks/final/crosswalk_ags_2023_to_2025.rds") |>
+  as_tibble() |>
+  filter(year == 2023) |>
+  select(ags_2023 = ags, ags_25)
+
+# many-to-many by construction: several 2021 codes merge into one 2023 code, and
+# a 2023 code can be split across several 2025 codes.
+backmap_src <- cw_21_23 |>
+  left_join(cw_23_25, by = "ags_2023", relationship = "many-to-many")
+post2021_backmap <- bind_rows(
+    backmap_src |> transmute(ags_bad = ags_2023, ags_pre, population),
+    backmap_src |> transmute(ags_bad = ags_25, ags_pre, population)
+  ) |>
+  # only codes that do NOT exist in 2021 can ever be back-mapped
+  filter(!is.na(ags_bad), !(ags_bad %in% ags_2021_universe)) |>
+  group_by(ags_bad) |>
+  slice_max(population, n = 1, with_ties = FALSE) |>
+  ungroup() |>
+  select(ags_bad, ags_pre)
+
+n_backmapped <- sum(panel$ags_21 %in% post2021_backmap$ags_bad)
+if (n_backmapped > 0) {
+  cat("Back-mapping", n_backmapped, "rows from post-2021 merger codes:\n")
+  print(panel |>
+          filter(ags_21 %in% post2021_backmap$ags_bad) |>
+          count(ags, ags_21, election_year) |>
+          left_join(post2021_backmap, by = c("ags_21" = "ags_bad")) |>
+          rename(ags_21_new = ags_pre))
+}
+panel <- panel |>
+  left_join(post2021_backmap, by = c("ags_21" = "ags_bad")) |>
+  mutate(ags_21 = coalesce(ags_pre, ags_21)) |>
+  select(-ags_pre)
+
+# Known-invalid ags_21 codes. All are wrong at SOURCE and owned by the Stage 1
+# scripts; they are listed here so that any NEW invalid code is a hard error
+# instead of a silently bogus row. Remove entries as the Stage 1 fixes land.
+ags21_known_invalid <- c(
+  "01055019",  # SH: wrong code at source for Heiligenhafen (true 01055021)
+  "01059027",  # SH: wrong code at source for Glücksburg    (true 01059113)
+  "01059033",  # SH: stale pre-merger Handewitt             (true 01059183)
+  "03241000",  # NI: Region Hannover — county-level body, not a municipality
+  "05313000"   # NRW: Aachen, defunct since 21.10.2009      (true 05334002)
+)
+
+invalid_ags21 <- panel |> filter(!(ags_21 %in% ags_2021_universe))
+if (nrow(invalid_ags21) > 0) {
+  cat("\nags_21 codes outside the 2021 municipality universe:\n")
+  print(as.data.frame(
+    invalid_ags21 |> count(ags, ags_21, state, election_year) |> arrange(ags_21)
+  ))
+  unexpected <- setdiff(unique(invalid_ags21$ags_21), ags21_known_invalid)
+  if (length(unexpected) > 0) {
+    stop("ags_21 codes that do not exist in 2021 and are not allowlisted: ",
+         paste(unexpected, collapse = ", "),
+         ". Fix the AGS at source (Stage 1), add a back-map, or add a ",
+         "documented entry to ags21_known_invalid.")
+  }
+  warning(sprintf(
+    "%d rows carry an ags_21 outside the 2021 universe; all are on the documented allowlist.",
+    nrow(invalid_ags21)))
+}
+
+
 # Recompute term_number after crosswalk may have dropped some rows
 panel <- panel |>
   arrange(person_id, ags, election_date) |>
@@ -688,14 +838,15 @@ panel <- panel |>
   arrange(ags, election_date) |>
   group_by(ags) |>
   mutate(
-    prev_party = lag(winner_party),
+    party_key = norm_party(winner_party),
+    prev_party = lag(party_key),
     party_switch = case_when(
-      is.na(prev_party) ~ NA_integer_,
-      prev_party == winner_party ~ 0L,
+      is.na(prev_party) | is.na(party_key) ~ NA_integer_,
+      prev_party == party_key ~ 0L,
       TRUE ~ 1L
     ),
     is_new_party_mayor = as.integer(
-      !duplicated(paste(ags, winner_party)) & !is.na(winner_party)
+      !duplicated(party_key) & !is.na(party_key)
     ),
     prev_margin = lag(winning_margin),
     margin_change = case_when(
@@ -704,7 +855,7 @@ panel <- panel |>
     )
   ) |>
   ungroup() |>
-  select(-prev_party, -prev_margin)
+  select(-prev_party, -prev_margin, -party_key)
 
 panel <- panel |>
   arrange(person_id, ags, election_date) |>
@@ -775,13 +926,18 @@ finalize_panel <- function(p, version = "harm") {
     mutate(next_election_year = lead(election_year)) |>
     ungroup()
 
-  max_year <- 2025L
+  # Last year the panel extends open terms to. Derived from the data — a
+  # hardcoded 2025 combined with the missing pmax() guard below made every
+  # term from a 2026 election generate a DESCENDING year sequence, emitting
+  # 1,978 phantom rows dated BEFORE their own election (audit 2026-07, C-12).
+  max_year <- max(p$election_year, na.rm = TRUE)
+  cat(sprintf("  Open terms run to %d\n", max_year))
 
   p_annual <- p |>
     mutate(
       term_end_year = case_when(
         !is.na(next_election_year) ~ pmax(next_election_year - 1L, election_year),
-        TRUE ~ max_year
+        TRUE ~ pmax(max_year, election_year)
       )
     ) |>
     rowwise() |>
@@ -823,6 +979,16 @@ finalize_panel <- function(p, version = "harm") {
   p_annual <- p_annual |>
     select(all_of(annual_cols)) |>
     arrange(ags, year, person_id)
+
+  # A municipality has exactly one mayor per year: no (ags, year) key may repeat,
+  # and no row may predate its own election.
+  stopifnot(all(p_annual$year >= p_annual$election_year))
+  dup_ags_year <- p_annual |> count(ags, year) |> filter(n > 1)
+  if (nrow(dup_ags_year) > 0) {
+    print(as.data.frame(head(dup_ags_year, 20)))
+    stop(sprintf("%s annual panel: %d duplicated (ags, year) keys",
+                 version, nrow(dup_ags_year)))
+  }
 
   # Remove temp column from election-level panel
   p <- p |> select(-next_election_year)
