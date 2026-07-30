@@ -2340,6 +2340,28 @@ if (any(lr_misfiled)) {
   mayoral_unharm <- bind_rows(mayoral_unharm[!lr_misfiled, ], fixed)
 }
 
+# A Hauptwahl and its Stichwahl are one contest and must land in the same
+# dataset. Office is read from the result page, and a runoff page does not
+# always repeat the office name — Region Hannover's 2006 Hauptwahl says
+# "Regionspräsident" while its Stichwahl two weeks later does not, which left
+# the runoff behind in the mayoral file after the Hauptwahl moved to Landrat.
+# Propagate Landratswahl across every round of the same contest.
+lr_cycles <- mayoral_unharm %>%
+  filter(election_type == "Landratswahl") %>%
+  distinct(ags, election_year)
+if (nrow(lr_cycles) > 0) {
+  stragglers <- mayoral_unharm$election_type != "Landratswahl" &
+    paste(mayoral_unharm$ags, mayoral_unharm$election_year) %in%
+      paste(lr_cycles$ags, lr_cycles$election_year)
+  if (any(stragglers)) {
+    cat("\nRetyped", sum(stragglers),
+        "round(s) whose Hauptwahl is a Landratswahl:\n")
+    print(mayoral_unharm[stragglers, ] %>%
+            distinct(ags, ags_name, election_date, round, election_type))
+    mayoral_unharm$election_type[stragglers] <- "Landratswahl"
+  }
+}
+
 # flag_superseded and flag_shared_ags are scoped to the mayoral datasets; the
 # Landrat dataset has its own downstream combine pipeline, so drop both columns
 # from the Landrat split to keep landrat_unharm's schema unchanged.
