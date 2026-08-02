@@ -167,8 +167,90 @@ parse_st <- function(raw_dir) {
       )
   }
 
+  # ---- Rolling current-cycle file (lr_rolling.csv, 2019 onward) ------------
+  # The per-year lr{YY}dat{N}.csv scheme only ever existed for lr07 and lr14 --
+  # every other year 404s -- which is why the ST Landrat series stopped at 2015
+  # while the silent probe in 00_st_scrape.R reported nothing wrong. The current
+  # results live in one rolling file, /wahlen/lrlr/erg/csv/lr.csv, in a
+  # completely different WIDE schema: 21 metadata columns then nine 7-column
+  # candidate blocks (B{k}_TITEL, _NAME, _VORNAME, _PARTABK, _GESCHL, _STI,
+  # _STI_SW), carrying Hauptwahl and Stichwahl side by side.
+  rolling <- file.path(raw_dir, "lr_rolling.csv")
+  if (file.exists(rolling)) {
+    rr <- read.csv2(rolling, fileEncoding = "ISO-8859-1", check.names = FALSE,
+                    colClasses = "character", stringsAsFactors = FALSE)
+    numv <- function(x) suppressWarnings(as.numeric(ifelse(trimws(x) == "", NA, x)))
+
+    for (i in seq_len(nrow(rr))) {
+      r <- rr[i, ]
+      # ART == "HaOB" marks the three kreisfreie Städte (Dessau-Roßlau, Halle,
+      # Magdeburg). Those are Oberbürgermeister elections and already come from
+      # the StaLA mayoral source; taking them here would duplicate them into the
+      # Landrat dataset.
+      if (!is.na(r[["ART"]]) && grepl("OB", r[["ART"]])) next
+      key <- gsub("\\D", "", r[["GNR1994"]])
+      if (nchar(key) != 5) next
+      ags8 <- paste0(key, "000")
+
+      for (rnd in c("hauptwahl", "stichwahl")) {
+        sw <- rnd == "stichwahl"
+        datum <- as.Date(r[[if (sw) "WDATUM_SW" else "WDATUM"]], format = "%d.%m.%Y")
+        if (is.na(datum)) next          # no runoff was held
+        eligible <- numv(r[[if (sw) "WBER_SW"   else "WBER"]])
+        voters   <- numv(r[[if (sw) "WAEHLER_SW" else "WAEHLER"]])
+        invalid  <- numv(r[[if (sw) "UNGSTI_SW" else "UNGSTI"]])
+        valid    <- numv(r[[if (sw) "GUESTI_SW" else "GUESTI"]])
+
+        cands <- list()
+        for (k in 1:9) {
+          nm <- r[[paste0("B", k, "_NAME")]]
+          if (is.null(nm) || is.na(nm) || trimws(nm) == "") next
+          v <- numv(r[[paste0("B", k, "_STI", if (sw) "_SW" else "")]])
+          # A candidate absent from this round has an empty vote cell; in the
+          # Stichwahl that is everyone except the two who went through.
+          if (is.na(v)) next
+          vn <- trimws(r[[paste0("B", k, "_VORNAME")]])
+          cands[[length(cands) + 1]] <- tibble(
+            candidate_name = paste0(trimws(nm), if (nzchar(vn)) paste0(", ", vn) else ""),
+            candidate_party = {
+              p <- trimws(r[[paste0("B", k, "_PARTABK")]])
+              if (nzchar(p)) p else NA_character_
+            },
+            candidate_votes = v
+          )
+        }
+        if (length(cands) == 0) next
+
+        out[[length(out) + 1]] <- bind_rows(cands) %>%
+          mutate(
+            ags = ags8, ags_name = trimws(r[["GNAME"]]),
+            state = "15", state_name = "Sachsen-Anhalt",
+            election_year = as.integer(format(datum, "%Y")),
+            election_date = datum,
+            election_type = "Landratswahl",
+            round = rnd,
+            eligible_voters = eligible,
+            number_voters = voters,
+            valid_votes = valid,
+            invalid_votes = invalid,
+            # Scalar conditions: see the note in the block above on why these
+            # are if/else and not ifelse().
+            turnout = if (!is.na(eligible) && eligible > 0) voters / eligible else NA_real_,
+            candidate_voteshare = if (!is.na(valid) && valid > 0) {
+              candidate_votes / valid
+            } else NA_real_
+          )
+      }
+    }
+  }
+
   # ---- CSV downloads (2007, 2014) ----
-  files <- list.files(raw_dir, pattern = "\\.csv$", full.names = TRUE)
+  # lr_rolling.csv is excluded: it is a different schema entirely and the
+  # positional triplet reader below would silently misread it.
+  files <- setdiff(
+    list.files(raw_dir, pattern = "\\.csv$", full.names = TRUE),
+    file.path(raw_dir, "lr_rolling.csv")
+  )
   if (length(files) == 0) return(if (length(out) == 0) NULL else bind_rows(out))
 
   # Helper: aggregate Gemeinde rows to a single Kreis-level row.
@@ -363,7 +445,35 @@ parse_st <- function(raw_dir) {
     }
   }
   if (length(out) == 0) return(NULL)
-  bind_rows(out)
+  st_all <- bind_rows(out)
+
+  # lr07dat3.csv carries only Gemeinde rows, so the Kreis name has to be
+  # synthesised and came out as the placeholder "Landkreis 15082". Fill in the
+  # real names from the register so the 2007 rows are usable and match the way
+  # the same Kreis is named in every other year.
+  st_kreis_names <- c(
+    "15081000" = "Altmarkkreis Salzwedel",
+    "15082000" = "Landkreis Anhalt-Bitterfeld",
+    "15083000" = "Landkreis Börde",
+    "15084000" = "Burgenlandkreis",
+    "15085000" = "Landkreis Harz",
+    "15086000" = "Landkreis Jerichower Land",
+    "15087000" = "Landkreis Mansfeld-Südharz",
+    "15088000" = "Saalekreis",
+    "15089000" = "Salzlandkreis",
+    "15090000" = "Landkreis Stendal",
+    "15091000" = "Landkreis Wittenberg"
+  )
+  placeholder <- grepl("^Landkreis 1[0-9]{4}$", st_all$ags_name)
+  if (any(placeholder)) {
+    fixed <- unname(st_kreis_names[st_all$ags[placeholder]])
+    if (anyNA(fixed)) {
+      stop("ST: no register name for ",
+           paste(unique(st_all$ags[placeholder][is.na(fixed)]), collapse = ", "))
+    }
+    st_all$ags_name[placeholder] <- fixed
+  }
+  st_all
 }
 
 `%||%` <- function(a, b) {

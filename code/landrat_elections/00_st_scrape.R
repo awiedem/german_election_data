@@ -16,13 +16,17 @@
 #   N01..N11 = candidate name (with party in parentheses, e.g. "Müller, Karl (CDU)")
 #   D01..D11 = candidate vote count
 #
-# File naming convention (when present):
-#   lr{YY}dat1.csv = Stichwahl, Kreisfreie Städte und Landkreise
-#   lr{YY}dat2.csv = Stichwahl, Gemeinden
-#   lr{YY}dat3.csv = Hauptwahl, Kreisfreie Städte und Landkreise
-#   lr{YY}dat4.csv = Hauptwahl, Gemeinden
+# File naming convention: NOT stable across years, so do not trust dat{N} to
+# mean the same thing everywhere. lr14 follows dat1 = Stichwahl Kreise /
+# dat3 = Hauptwahl Kreise, but lr07's own download page labels dat2 as
+# "Endergebnisse der Kreisfreien Städte und Landkreise" and dat3 as
+# "Endergebnisse von Gemeinden" -- both Hauptwahl. lr07dat1.csv is not a file
+# that has gone missing: 2007 published no Stichwahl results at all, which is
+# why six 2007 Landratswahlen sit in the data with a sub-50 % Hauptwahl winner
+# and no runoff row.
 #
-# We only need files 1 and 3 (Kreis-level — `Satzart == "KRS"`).
+# The scheme only ever existed for lr07 and lr14. Everything from 2019 on is in
+# the rolling file fetched further down.
 #
 # Encoding: all CSVs are ISO-8859-1 (Latin-1).
 
@@ -48,6 +52,7 @@ cat("=== ST Landratswahl scraper ===\n\n")
 
 n_downloaded <- 0
 n_cached <- 0
+probe_log <- list()
 
 for (yy in candidate_years) {
   for (datN in c(1L, 3L)) {  # 1 = SW Kreise, 3 = HW Kreise
@@ -64,6 +69,21 @@ for (yy in candidate_years) {
       download.file(url, out, mode = "wb", quiet = TRUE),
       error = function(e) -1L,
       warning = function(w) -1L
+    )
+    # Record what actually happened. Until July 2026 this loop swallowed every
+    # error and warning and then silently file.remove()d anything that was not
+    # a CSV, so a 404, a moved URL and "no election that year" were completely
+    # indistinguishable -- which is why nobody noticed that the per-year scheme
+    # covers only lr07 and lr14 and that the ST Landrat series had stopped at
+    # 2015 while eleven Kreise voted between 2019 and 2026.
+    probe_log[[length(probe_log) + 1]] <- data.frame(
+      file = fname,
+      outcome = if (identical(res, -1L)) "download failed"
+                else if (!file.exists(out)) "no file written"
+                else if (file.info(out)$size <= 100) "empty/404 stub"
+                else "ok",
+      bytes = if (file.exists(out)) file.info(out)$size else NA_integer_,
+      stringsAsFactors = FALSE
     )
 
     if (file.exists(out) && file.info(out)$size > 100) {
@@ -87,6 +107,45 @@ for (yy in candidate_years) {
 
 cat(sprintf("\nDone. %d new files downloaded, %d already cached.\n",
             n_downloaded, n_cached))
+
+# Report the probe rather than hiding it, and state plainly which years the
+# per-year scheme actually covers -- everything else 404s.
+if (length(probe_log) > 0) {
+  pl <- do.call(rbind, probe_log)
+  cat("\nProbe outcomes for the per-year lr{YY}dat{N}.csv scheme:\n")
+  print(table(pl$outcome))
+  ok <- pl$file[pl$outcome == "ok"]
+  if (length(ok) > 0) cat("  reachable:", paste(ok, collapse = ", "), "\n")
+}
+
+# ============================================================================
+# Rolling current-cycle file (2019 onward)
+# ============================================================================
+# The per-year scheme was only ever used for lr07 and lr14. Every Landrat and
+# OB election from 2019 on lives in ONE rolling file in a different, wide
+# schema, linked from /wahlen/lrlr/and/lr.download.html. Without it the ST
+# Landrat series ends in 2015. It is re-fetched every run because it grows as
+# new elections are held; the Kreis-level rows it adds are read by
+# 01_landrat_combine.R.
+rolling_url <- paste0(base_url, "/lrlr/erg/csv/lr.csv")
+rolling_out <- file.path(raw_dir, "lr_rolling.csv")
+res <- tryCatch(download.file(rolling_url, rolling_out, mode = "wb", quiet = TRUE),
+                error = function(e) -1L, warning = function(w) -1L)
+if (!file.exists(rolling_out) || file.info(rolling_out)$size < 500) {
+  stop("ST: could not fetch the rolling Landrat file ", rolling_url,
+       " -- without it the series stops at 2015. Check ",
+       base_url, "/lrlr/and/lr.download.html for a renamed path.")
+}
+hdr <- iconv(readLines(rolling_out, n = 1, warn = FALSE),
+             from = "ISO-8859-1", to = "UTF-8")
+if (!grepl("GNR1994", hdr) || !grepl("B1_STI_SW", hdr)) {
+  stop("ST: ", rolling_out, " does not have the expected wide schema ",
+       "(GNR1994 ... B1_STI_SW). The portal layout changed; update the parser ",
+       "in 01_landrat_combine.R before trusting this file.")
+}
+cat(sprintf("  \u2713 rolling lr.csv (%d bytes, %d elections)\n",
+            file.info(rolling_out)$size,
+            length(readLines(rolling_out, warn = FALSE)) - 1L))
 
 # ============================================================================
 # ST 2015 — special case, only 1 Landratswahl (Altmarkkreis Salzwedel)

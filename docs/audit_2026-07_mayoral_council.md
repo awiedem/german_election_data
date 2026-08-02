@@ -684,3 +684,55 @@ yes side as zero and called a 74.7 % win a defeat.
 
 Net: SH goes from 50 to 57 rows in `mayoral_unharm` with 9 panel terms for 2026; rows
 outside SH and NI are bit-identical and the audit suites report the same six warnings.
+
+---
+
+## 11. Follow-up: missing elections — Sachsen-Anhalt Landrat 2019-2026
+
+The ST Landrat series stopped at 2015 while eleven Kreise voted between 2019 and 2026.
+The worklist blamed `00_st_scrape.R:52-86` — `tryCatch(error = -1, warning = -1)` plus a
+silent `file.remove` — and that is right, but the diagnosis it enabled was wrong. Probing
+every `lr{YY}dat{N}.csv` for 2007-2026 by hand returns **404 for all but three files**:
+`lr07dat3`, `lr14dat1` and `lr14dat3`. The per-year scheme was never the general case;
+it only ever existed for those two years. Because the loop swallowed every error and then
+deleted anything that was not a CSV, a 404, a moved URL and "no election that year" were
+indistinguishable, so nothing ever suggested the scheme itself was the problem.
+
+**Everything from 2019 on lives in one rolling file**, `/wahlen/lrlr/erg/csv/lr.csv`,
+linked from the portal's own downloads page, in a completely different WIDE schema: 21
+metadata columns then nine 7-column candidate blocks (`B{k}_TITEL`, `_NAME`, `_VORNAME`,
+`_PARTABK`, `_GESCHL`, `_STI`, `_STI_SW`), carrying Hauptwahl and Stichwahl side by side —
+the same shape as the ST mayoral StaLA extract. It holds 14 elections; the three with
+`ART == "HaOB"` are the kreisfreie Städte (Dessau-Roßlau 2021, Halle 2025, Magdeburg 2022),
+which are Oberbürgermeister elections already supplied by the StaLA mayoral source and are
+skipped here rather than duplicated into the Landrat dataset.
+
+Result: **ST Landrat goes from 23 to 39 rows**, adding 16 rounds across 11 Kreise —
+Stendal 2019 (which is not even on the portal's current Terminübersicht), Harz 2020,
+Salzlandkreis / Burgenlandkreis / Anhalt-Bitterfeld / Jerichower Land / Mansfeld-Südharz /
+Wittenberg 2021, Altmarkkreis Salzwedel 2022, Börde 2025 and Saalekreis 2026.
+
+The rounds validate each other exactly: **every** Hauptwahl winner below 50 % is followed
+by a Stichwahl and every one at or above 50 % is not. Two runoffs reversed the first round —
+Altmarkkreis Salzwedel 2022 (CDU led 38.0 %, SPD won 51.1 %) and Saalekreis 2026 (AfD led
+43.3 %, CDU won 54.3 %) — which is why the winner of each round is taken as that round's
+top-voted candidate rather than from the file's overall "elected person" column.
+
+**`lr07dat1.csv` is not a missing file.** The 2007 downloads page lists only two, and
+labels them differently from 2014: `dat2` is "Endergebnisse der Kreisfreien Städte und
+Landkreise" and `dat3` "Endergebnisse von Gemeinden" — both Hauptwahl. No 2007 Stichwahl
+results were ever published. That gap is now visible rather than assumed: six 2007
+Landratswahlen sit in the data with a sub-50 % Hauptwahl winner and no runoff row
+(Anhalt-Bitterfeld 45.6 %, Burgenlandkreis 13.8 %, Mansfeld-Südharz 30.7 %, Saalekreis
+35.2 %, Salzlandkreis 32.0 %, Wittenberg 28.3 %), so `winner_party` on those rows is the
+first-round leader, not necessarily the elected Landrat. Treat them accordingly.
+
+Also fixed: the 2007 rows carried placeholder names like "Landkreis 15082" — `lr07dat3.csv`
+has only Gemeinde rows, so the Kreis name had to be synthesised — now filled from the
+register. And the probe reports its outcomes instead of hiding them (37 failures today),
+with the rolling file's schema asserted so a portal change fails loudly.
+
+Note on the audit's "unharm rows have no matching candidate row" warning, 394 → 399: all
+five are Stichwahl rows, and `landrat_candidates` is wide (one row per candidate per
+election, runoff in `election_date_sw`), so 336 of 347 runoff rows already behave this way.
+All 11 ST runoff rows match correctly on `election_date_sw`.
