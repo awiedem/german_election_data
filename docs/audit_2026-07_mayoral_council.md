@@ -556,9 +556,10 @@ Two judgement calls:
   Meißen 2021 would have been published with 98,003 electors against the ~200,000 it has in every
   neighbouring year, with nothing to mark it. The flag measures each target's covered population
   against the crosswalk's own figures and fires on the six affected counties. `NA` means not
-  assessed. Part A (municipality level) has the same exposure — Thüringen 2024 is missing five
-  kreisfreie Städte — but `ags_crosswalks` carries no population column, so that check needs a
-  different population source and stays on the worklist.
+  assessed. Part A (municipality level) has the same structural exposure, but no live instance
+  is known: the Thüringen 2024 case cited when this was written is not real (see §12), and
+  `ags_crosswalks` carries no population column, so that check needs a different population
+  source and stays on the worklist.
 
 **Sachsen 1995 was deliberately not ingested.** The re-run covers the four annulled Kreise at
 Gemeinde level, but the source carries **no AGS at all** — only names, in Wahlkreis sections. Of 179
@@ -736,3 +737,26 @@ Note on the audit's "unharm rows have no matching candidate row" warning, 394 �
 five are Stichwahl rows, and `landrat_candidates` is wide (one row per candidate per
 election, runoff in `election_date_sw`), so 336 of 347 runoff rows already behave this way.
 All 11 ST runoff rows match correctly on `election_date_sw`.
+
+
+---
+
+## 12. Follow-up: Thüringen 2024 kreisfreie Städte — the gap does not exist
+
+The worklist recorded ~714,000 votes missing from `county_elec_unharm`, on the grounds that
+`Thüringen_2024_Kreistagswahl.xlsx` "has only Kreis 61-77 sheets". Checked directly, the
+workbook has **23 sheets: Hinweise, Kreis 51-55 and Kreis 61-77** — the five kreisfreie
+Städte are sheets 51-55 and are read like any other.
+
+They are present and complete throughout: `county_elec_unharm` has all 22 Thüringen units
+for 2024 (17 Landkreise + 5 kreisfreie Städte; Eisenach ceased to be kreisfrei in 2021, so
+22 rather than the 23 of earlier years), with Erfurt at 169,887 electors and 59.2 % turnout,
+Gera 75,091 / 58.6 %, Jena 82,605 / 63.0 %, Suhl 30,226 / 57.4 %, Weimar 50,968 / 60.4 %.
+Both harmonised outputs carry them too — 22 counties in `_cty`, 5 rows in `_muni`. The five
+account for 23.6 % of the state's 2024 electorate, and their 244,711 voters at three votes
+each are the ~714,000 the note called missing.
+
+No change was required. The entry is retracted, and the two places that had already repeated
+it — §8 above and the comment in `02_county_elec_harm_21.R` — are corrected. The general
+point they were illustrating still stands: Part A harmonisation cannot detect a source unit
+that is simply absent. It just has no known live instance.

@@ -497,10 +497,13 @@ votes_cty <- df_cty_cw |>
 # the donors actually present, divided by the same sum over every donor the
 # crosswalk lists, is the fraction of T that the source covers.
 #
-# Part A (municipality level) has the same exposure — Thüringen 2024 is missing
-# five kreisfreie Städte — but ags_crosswalks carries no population column, so
-# the equivalent check there needs a different population source and is left to
-# the open worklist rather than approximated here.
+# Part A (municipality level) has the same structural exposure — nothing there
+# notices a source unit that is simply absent — but no live instance is known:
+# the Thüringen 2024 case the worklist cited is not real (that workbook does
+# carry Kreis 51-55, the five kreisfreie Städte, and they reach both harmonised
+# outputs). ags_crosswalks also carries no population column, so the equivalent
+# check needs a different population source; left on the worklist rather than
+# approximated here.
 cw_cty_pop <- cw_cty |>
   mutate(pop_contrib = as.numeric(population) * as.numeric(pop_cw)) |>
   filter(!is.na(pop_contrib))
