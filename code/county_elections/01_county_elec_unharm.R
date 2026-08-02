@@ -775,7 +775,99 @@ parse_th_xlsx <- function(filepath, year) {
   as_tibble(df)
 }
 
-# Process TH years (skip 1990/1994/1999 .xls for now)
+# --- TH 1994 + 1999: HTML tables that carry an .xls extension ----------------
+# The Landesamt published these two Kreistagswahlen as HTML, saved with an .xls
+# name; readxl cannot open them, which is why they were skipped. The layout is a
+# single table, one row per Gemeinde, and the columns match the later xlsx files
+# apart from an extra "Anzahl der Stimmbezirke" in 1999 — so columns are located
+# by header text, not by position.
+#
+# Two traps in the header handling, both of the kind documented in
+# docs/audit_2026-07_mayoral_council.md §7:
+#   * "Gültige Stimmabgaben" is a suffix of "Ungültige Stimmabgaben", so the
+#     match must be anchored or invalid ballots are read as valid ones.
+#   * normalising the header drops umlauts entirely ("Wähler" -> "whler"), and
+#     an R bracket range like [^a-zäöü] is locale-dependent and silently ate the
+#     leading letter; [^[:alnum:]] with perl = TRUE is stable.
+#
+# As in the xlsx years, valid_votes holds valid BALLOTS while party shares are
+# computed against "Gültige Stimmen", the three-vote total (~2.95x ballots).
+parse_th_kreistag_html <- function(path, year) {
+  raw <- rawToChar(readBin(path, "raw", file.size(path)))
+  raw <- iconv(raw, "ISO-8859-1", "UTF-8")
+  rows <- regmatches(raw, gregexpr("(?s)<tr[^>]*>.*?</tr>", raw, perl = TRUE))[[1]]
+  if (length(rows) < 2) stop("TH ", year, ": no table rows in ", path)
+
+  cell_text <- function(r) {
+    cs <- regmatches(r, gregexpr("(?s)<t[dh][^>]*>.*?(?=<t[dh]|</tr>)", r, perl = TRUE))[[1]]
+    trimws(gsub("[[:space:]]+", " ",
+                gsub("&nbsp;", " ", gsub("<[^>]*>", " ", cs), fixed = TRUE)))
+  }
+  h <- tolower(gsub("[^[:alnum:]%]", "", cell_text(rows[1]), perl = TRUE))
+  col <- function(pat) {
+    i <- grep(pat, h, perl = TRUE)
+    if (!length(i)) stop("TH ", year, ": no column matching '", pat,
+                         "' (header: ", paste(h, collapse = " | "), ")")
+    i[1]
+  }
+  i_gem  <- col("^gemeindenr");            i_name <- col("^gemeindename")
+  i_ev   <- col("^wahlberechtigte");       i_nv   <- col("^w.?hler")
+  i_inv  <- col("^ung.?ltigestimmabgaben")
+  i_ball <- col("^g.?ltigestimmabgaben")   # anchored — see note above
+  i_vot  <- col("^g.?ltigestimmen")
+  pmap <- c(cdu = "^cdu$", spd = "^spd$", linke_pds = "^pds$",
+            fdp = "^fdp$", gruene = "^gr.?ne$", other = "^sonstige$")
+  ip <- sapply(pmap, function(p) {
+    i <- grep(p, h, perl = TRUE); if (!length(i)) NA_integer_ else i[1]
+  })
+  if (any(is.na(ip))) stop("TH ", year, ": missing party column(s): ",
+                           paste(names(ip)[is.na(ip)], collapse = ", "))
+
+  num <- function(x) suppressWarnings(as.numeric(gsub("[^0-9]", "", x)))
+  recs <- list()
+  for (r in rows[-1]) {
+    v <- cell_text(r)
+    if (length(v) < i_vot || !grepl("^[0-9]{5}$", v[i_gem])) next
+    rec <- data.frame(
+      ags = paste0("16", sprintf("%06d", as.integer(v[i_gem]))),
+      ags_name = v[i_name],
+      eligible_voters = num(v[i_ev]), number_voters = num(v[i_nv]),
+      valid_votes = num(v[i_ball]), invalid_votes = num(v[i_inv]),
+      gueltige_stimmen = num(v[i_vot]),
+      stringsAsFactors = FALSE)
+    for (pn in names(pmap)) rec[[pn]] <- num(v[ip[[pn]]])
+    recs[[length(recs) + 1]] <- rec
+  }
+  df <- bind_rows(recs)
+  if (nrow(df) == 0) stop("TH ", year, ": parsed no Gemeinde rows")
+
+  # The source decomposes the three-vote total exactly; assert before dividing.
+  pcols <- names(pmap)
+  recon <- rowSums(df[pcols], na.rm = TRUE) - df$gueltige_stimmen
+  if (max(abs(recon), na.rm = TRUE) > 0) {
+    stop("TH ", year, ": party votes do not sum to Gültige Stimmen (max deviation ",
+         max(abs(recon), na.rm = TRUE), ")")
+  }
+  stopifnot(all(nchar(df$ags) == 8), !any(duplicated(df$ags)),
+            all(df$number_voters <= df$eligible_voters, na.rm = TRUE),
+            all(df$valid_votes <= df$number_voters, na.rm = TRUE))
+
+  df$election_year <- as.integer(year)
+  df$state <- "16"
+  df$county <- substr(df$ags, 1, 5)
+  df$turnout <- ifelse(!is.na(df$eligible_voters) & df$eligible_voters > 0,
+                       df$number_voters / df$eligible_voters, NA_real_)
+  for (pc in pcols) {
+    df[[pc]] <- ifelse(!is.na(df$gueltige_stimmen) & df$gueltige_stimmen > 0,
+                       df[[pc]] / df$gueltige_stimmen, NA_real_)
+  }
+  df$gueltige_stimmen <- NULL
+  cat("  TH", year, "(html) ->", nrow(df), "municipalities\n")
+  as_tibble(df)
+}
+
+# Process TH years. 1990 remains un-ingested: it is a genuine xlsx but uses
+# DDR Bezirk/Kreis/Gemeinde numbering rather than AGS and needs its own mapping.
 th_files <- list(
   list(year = 2004, file = "Thüringen_2004_Kreistagswahl.xlsx"),
   list(year = 2009, file = "Thüringen_2009_Kreistagswahl.xlsx"),
@@ -790,6 +882,13 @@ for (f in th_files) {
   th_results[[as.character(f$year)]] <- parse_th_xlsx(
     file.path(th_dir, f$file), f$year
   )
+}
+
+# 1994 and 1999 are HTML despite the .xls extension; parsed separately above.
+for (hy in c(1994, 1999)) {
+  hf <- file.path(th_dir, paste0("Thüringen_", hy, "_Kreistagswahl.xls"))
+  if (!file.exists(hf)) stop("TH ", hy, " file not found: ", hf)
+  th_results[[as.character(hy)]] <- parse_th_kreistag_html(hf, hy)
 }
 
 df_th <- bind_rows(th_results)

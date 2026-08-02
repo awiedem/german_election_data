@@ -97,6 +97,18 @@ df <- df |>
 df <- df |>
   mutate(
     ags = case_when(
+      # Thueringen 1994: seven municipalities that were dissolved before the
+      # crosswalk's coverage and appear under no later code. The same seven
+      # occur in the municipal 1994 data, where these targets are already
+      # established; reused verbatim from 02_municipal_harm.R rather than
+      # derived again.
+      ags == "16063047" & election_year == 1994 ~ "16016410",  # Kupfersuhl
+      ags == "16063056" & election_year == 1994 ~ "16015420",  # Moehra
+      ags == "16063057" & election_year == 1994 ~ "16063094",  # Moorgrund
+      ags == "16068054" & election_year == 1994 ~ "16018580",  # Toettelstaedt
+      ags == "16069022" & election_year == 1994 ~ "16023360",  # Hessberg
+      ags == "16073098" & election_year == 1994 ~ "16033700",  # Weissen
+      ags == "16074023" & election_year == 1994 ~ "16041070",  # Gernewitz
       # Thuringia post-2021 mergers
       ags == "16061119" & election_year == 2024 ~ "16061097",  # Uder
       ags == "16076094" & election_year == 2024 ~ "16076004",  # Berga-Wünschendorf → Berga/Elster
