@@ -176,7 +176,11 @@ county_level_states <- c("08", "09")  # BW and BY, county-level in every year
 # municipalities, but released 2025 only as a Kreis-level summary. Those rows
 # carry a Kreis pseudo-AGS (05154000) that is not a municipality, so they must
 # take the county crosswalk like BW and BY rather than the municipality one.
-county_level_years <- list(c(state = "05", election_year = "2025"))
+# Sachsen 1994 is the same case: the Landesamt's 1994 report is Kreis-level
+# only (no Gemeinde breakdown was ever published), while 1999 onward is
+# Gemeinde-level.
+county_level_years <- list(c(state = "05", election_year = "2025"),
+                           c(state = "14", election_year = "1994"))
 
 is_county_level <- function(state, election_year) {
   out <- state %in% county_level_states
@@ -189,7 +193,7 @@ is_county_level <- function(state, election_year) {
 df_cty <- df |> filter(is_county_level(state, election_year))
 df_muni <- df |> filter(!is_county_level(state, election_year))
 
-cat("\nCounty-level data (BW, BY, NRW 2025):", nrow(df_cty), "rows\n")
+cat("\nCounty-level data (BW, BY, NRW 2025, SN 1994):", nrow(df_cty), "rows\n")
 cat("Municipality-level data:", nrow(df_muni), "rows\n")
 
 # ==========================================================================
@@ -476,8 +480,60 @@ votes_cty <- df_cty_cw |>
   mutate(
     ags = paste0(pad_zero_conditional(county_code_21, 4), "000"),
     flag_unsuccessful_naive_merge = 0
+  )
+
+# Partial coverage of a 2021 county.
+#
+# Harmonisation is silent about donors that are simply absent from the source:
+# it weights whatever arrives and emits a row that looks complete. Sachsen 1994
+# makes this concrete — the Verfassungsgericht annulled the Kreistagswahl in
+# Meißen, Kamenz, Dresden-Land and Hoyerswerda, so Kreis Meißen 2021 is built
+# from the Riesa-Großenhain part alone and reports 98,003 electors against the
+# roughly 200,000 it has in every neighbouring year. Turnout and vote shares
+# stay valid for the part that did vote; the COUNTS do not describe the county.
+#
+# Coverage is measured against the crosswalk's own population figures: each
+# donor hands population(d) * pop_cw(d -> T) to target T, so summing that over
+# the donors actually present, divided by the same sum over every donor the
+# crosswalk lists, is the fraction of T that the source covers.
+#
+# Part A (municipality level) has the same exposure — Thüringen 2024 is missing
+# five kreisfreie Städte — but ags_crosswalks carries no population column, so
+# the equivalent check there needs a different population source and is left to
+# the open worklist rather than approximated here.
+cw_cty_pop <- cw_cty |>
+  mutate(pop_contrib = as.numeric(population) * as.numeric(pop_cw)) |>
+  filter(!is.na(pop_contrib))
+
+cov_full <- cw_cty_pop |>
+  group_by(county_code_21, year) |>
+  summarise(pop_total = sum(pop_contrib), .groups = "drop")
+
+cov_have <- df_cty_cw |>
+  distinct(county_code, county_code_21, election_year) |>
+  inner_join(cw_cty_pop |> select(county_code, year, county_code_21, pop_contrib),
+             by = c("county_code", "county_code_21",
+                    "election_year" = "year")) |>
+  group_by(county_code_21, election_year) |>
+  summarise(pop_have = sum(pop_contrib), .groups = "drop")
+
+votes_cty <- votes_cty |>
+  left_join(cov_full |> rename(election_year = year),
+            by = c("county_code_21", "election_year")) |>
+  left_join(cov_have, by = c("county_code_21", "election_year")) |>
+  mutate(
+    coverage = ifelse(!is.na(pop_total) & pop_total > 0, pop_have / pop_total, NA_real_),
+    # NA coverage means the crosswalk had no population for this county-year, not
+    # that coverage is poor; only a measured shortfall raises the flag.
+    flag_partial_coverage = as.integer(!is.na(coverage) & coverage < 0.99)
   ) |>
-  select(-county_code_21)
+  select(-pop_total, -pop_have, -coverage, -county_code_21)
+
+n_partial <- sum(votes_cty$flag_partial_coverage)
+if (n_partial > 0) {
+  cat("  flag_partial_coverage set on", n_partial,
+      "county-year rows (source units missing for part of the 2021 county)\n")
+}
 
 cat("County harmonization:", nrow(votes_cty), "rows\n")
 
@@ -583,6 +639,9 @@ cat("Rows with incongruent total vote share:",
 cat("\n--- Output 1: Municipality-level ---\n")
 
 df_muni_out <- df_harm |> filter(!is_county_level(state, election_year))
+# flag_partial_coverage is only computed for county-level sources, so it would
+# be all-NA here; drop it rather than ship a column that never says anything.
+df_muni_out$flag_partial_coverage <- NULL
 
 # Add municipality-level covariates
 area_pop <- read_rds("data/covars_municipality/final/ags_area_pop_emp.rds") |>
@@ -624,6 +683,11 @@ df_cty_agg <- df_harm_counts |>
       ~ sum_keep_na(.x)
     ),
     flag_unsuccessful_naive_merge = max(flag_unsuccessful_naive_merge, na.rm = TRUE),
+    # NA is meaningful here: coverage is only measured for county-level sources,
+    # so NA means "not assessed", not "fully covered". max() on an all-NA group
+    # would return -Inf, so the all-NA case is handled explicitly.
+    flag_partial_coverage = if (all(is.na(flag_partial_coverage))) NA_integer_
+                            else max(flag_partial_coverage, na.rm = TRUE),
     .groups = "drop"
   ) |>
   mutate(

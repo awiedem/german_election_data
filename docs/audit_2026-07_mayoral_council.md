@@ -516,3 +516,57 @@ caught these classes. Recommended additions:
   than a threshold between consecutive elections; no silent `tryCatch` skip may reduce a state to zero
   rows (the Brandenburg-absence class).
 - **Idempotency:** running `01_landrat_combine.R` twice must be a no-op.
+
+---
+
+## 8. Follow-up: ingesting the data that already existed in `raw/`
+
+Tier-4 item 26 of the fix plan, worked one election at a time after the main branch settled. Each was
+committed separately, with its own raw-to-final reconciliation; `git log` carries the detail.
+
+| Ingestion | Rows added | Level | Notes |
+|---|---:|---|---|
+| NRW Kreistagswahl 2025 | 53 | Kreis | The file was already being read by `01_municipal_unharm.R`, which kept the `"Krfr."` rows and discarded the Kreise. Aachen appears both as a kreisfreie Stadt and inside the Städteregion, so the city row is dropped; the remainder reconciles to the file's own Land row. |
+| NI Gemeindewahlen 1981/1986 | 2,058 | Gemeinde | Sat unreferenced inside a zip; the county pipeline already had a working parser for the byte-identical sibling file. |
+| TH Kreistagswahlen 1994/1999 | 2,266 | Gemeinde | HTML tables mislabelled `.xls`. |
+| MV Kreistagswahlen 1994–2011 | 4,589 | Gemeinde | Amt-level postal-vote pools are allocated rather than dropped. |
+| SN Kreistagswahl 1994 | 19 | **Kreis** | Legacy BIFF; needs a Python Stage 0 (`00_sn_1994_parse.py`). |
+
+**Sachsen 1994** is the only one that changed the schema, and is worth recording in full.
+
+The report is Kreis-level — the Landesamt published no Gemeinde breakdown — so it is routed through
+the county crosswalk by the same `county_level_years` mechanism NRW 2025 uses, and reaches
+`county_elec_harm_21_cty` but not `_muni`. All nine party columns reconcile exactly to the printed
+statewide totals (gültige Stimmen 4,073,279), and every non-1994 row of both outputs is bit-identical
+to the previous build.
+
+Two judgement calls:
+
+- **`valid_votes` semantics.** Saxony stores valid *ballots* from 1999 onward, but 1994 prints that
+  figure only as a percentage of Wähler, to one decimal. It is reconstructed as `pct/100 × Wähler`
+  rather than substituting the three-vote total, which would have reproduced exactly the semantic
+  flip this audit found in Sachsen 2019/2024 (C-13). Table 1 confirms the relation is exact —
+  `1,559,982 × 94.22782 % = 1,469,937`, the printed statewide Gültige Stimmzettel — so the only error
+  is the source's own rounding, about ±0.05 % of ballots. Party shares use the exact three-vote total
+  and carry no such error.
+- **`flag_partial_coverage` (new column, `_cty` only).** The Sächsisches Verfassungsgericht annulled
+  the 1994 Kreistagswahl in Meißen, Kamenz, Dresden-Land and Hoyerswerda, and struck down the
+  formation of Elstertalkreis and Göltzschtalkreis. Harmonisation is otherwise silent about donors
+  that are simply absent: it weights whatever arrives and emits a row that looks complete, so Kreis
+  Meißen 2021 would have been published with 98,003 electors against the ~200,000 it has in every
+  neighbouring year, with nothing to mark it. The flag measures each target's covered population
+  against the crosswalk's own figures and fires on the six affected counties. `NA` means not
+  assessed. Part A (municipality level) has the same exposure — Thüringen 2024 is missing five
+  kreisfreie Städte — but `ags_crosswalks` carries no population column, so that check needs a
+  different population source and stays on the worklist.
+
+**Sachsen 1995 was deliberately not ingested.** The re-run covers the four annulled Kreise at
+Gemeinde level, but the source carries **no AGS at all** — only names, in Wahlkreis sections. Of 179
+Gemeinden, 147 match a name in the 1995 crosswalk vintage (8 of them ambiguously) and 32 do not;
+loosening the match converts most "unmatched" into "ambiguous" rather than resolving it
+(`Reichenbach` alone offers 10 candidate codes). Larger towns are split across Wahlkreise
+(`Auerbach-West` is an entire Wahlkreis, not a place), so the split rows must also be recombined.
+Ingesting it therefore means ~32 per-name adjudications in which a wrong pick silently files a real
+election under the wrong municipality — the same defect class as the 24 wrong AGS this audit found
+in SH and the 24 in NI 2013. It needs the Landkreis/Wahlkreis section context worked through by hand
+and is left open rather than guessed.

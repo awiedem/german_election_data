@@ -1731,6 +1731,67 @@ for (f in sn_modern_files) {
   )
 }
 
+# --- 1994 (Kreis level) -------------------------------------------------------
+# The 1994 report is legacy BIFF that readxl cannot open, which is why the Saxon
+# series used to start in 1999. code/county_elections/00_sn_1994_parse.py reads
+# it with xlrd and reconciles every party to the printed statewide totals; see
+# that file for the Verfassungsgericht ruling that removes six Kreise.
+#
+# KREIS-LEVEL ONLY — the Landesamt published no Gemeinde breakdown for 1994, so
+# these rows feed county_elec_harm_21_cty and not _muni. 02_county_elec_harm_21.R
+# routes them via county_level_years, as it does NRW 2025.
+sn_1994_file <- file.path(sn_dir, "sn_1994_parsed.csv")
+if (file.exists(sn_1994_file)) {
+  cat("  SN 1994 (Kreis level) ...")
+  s94 <- read.csv(sn_1994_file, colClasses = "character", check.names = FALSE,
+                  fileEncoding = "UTF-8")
+  num94 <- function(x) suppressWarnings(as.numeric(x))
+
+  d94 <- data.frame(
+    ags      = s94$ags,
+    ags_name = s94$ags_name,
+    eligible_voters = num94(s94$eligible_voters),
+    number_voters   = num94(s94$number_voters),
+    # valid BALLOTS, matching Sachsen 1999-2024. 1994 prints this only as a
+    # one-decimal percentage of Wähler, so it is reconstructed upstream; the
+    # invalid count is then its exact complement.
+    valid_votes     = num94(s94$valid_votes),
+    stringsAsFactors = FALSE, check.names = FALSE
+  )
+  d94$invalid_votes <- d94$number_voters - d94$valid_votes
+
+  # Party votes are cast VOTES (three per voter), so shares use the three-vote
+  # total, exactly as parse_sn_legacy/parse_sn_modern do.
+  sn94_parties <- c("CDU", "SPD", "PDS", "GRÜNE", "F.D.P.", "REP", "DSU",
+                    "Andere Parteien", "Wählervereinigungen")
+  stopifnot(all(sn94_parties %in% names(s94)))
+  gs94 <- num94(s94$valid_vote_total)
+  for (pc in sn94_parties) {
+    d94[[normalise_party_cty(pc)]] <- num94(s94[[pc]]) / gs94
+  }
+
+  # The parser asserts the votes decompose exactly; re-assert on the shares so a
+  # renamed or dropped column cannot slip through into published data.
+  sh94 <- rowSums(d94[vapply(sn94_parties, normalise_party_cty, "")], na.rm = TRUE)
+  if (max(abs(sh94 - 1)) > 1e-9) {
+    stop("SN 1994: party shares sum to ", max(abs(sh94 - 1)) + 1,
+         " rather than 1 — a party column was lost.")
+  }
+  stopifnot(all(nchar(d94$ags) == 8), !any(duplicated(d94$ags)),
+            all(d94$number_voters <= d94$eligible_voters),
+            all(d94$valid_votes < d94$number_voters))
+
+  d94$turnout <- d94$number_voters / d94$eligible_voters
+  d94$county <- substr(d94$ags, 1, 5)
+  d94$state <- "14"
+  d94$election_year <- 1994L
+  cat(nrow(d94), "Kreise\n")
+  sn_results[["1994"]] <- as_tibble(d94)
+} else {
+  stop("SN 1994 file not found: ", sn_1994_file,
+       " — run code/county_elections/00_sn_1994_parse.py first")
+}
+
 df_sn <- bind_rows(sn_results)
 df_sn <- df_sn |> mutate(ags = pad_zero_conditional(ags, 7))
 
