@@ -760,3 +760,65 @@ No change was required. The entry is retracted, and the two places that had alre
 it — §8 above and the comment in `02_county_elec_harm_21.R` — are corrected. The general
 point they were illustrating still stands: Part A harmonisation cannot detect a source unit
 that is simply absent. It just has no known live instance.
+
+---
+
+## 13. Follow-up: the Niedersachsen Samtgemeinde postal-vote residual
+
+Worklist item 3, and the one open finding that was changing published numbers rather than
+merely omitting rows. Niedersachsen counts Briefwahl in **Samtgemeinde-level districts**, so
+a member Gemeinde's row holds only its Urnenwähler while the Samtgemeinde row holds the
+full total. `ni_keep_entities()` discarded the Samtgemeinde row as an aggregate — which did
+not merely drop a subtotal, it silently deleted every postal vote, leaving member turnout
+and party shares computed on Urnenwahl alone.
+
+The electorate was never affected: `eligible_voters` reconciles **exactly** (residual 0) in
+every year, which is precisely what makes eligible voters the right weight for
+redistributing the rest. Measured residual, and it matches the worklist to the vote:
+
+| Year | voters | party votes | Samtgemeinden affected |
+|---|---:|---:|---:|
+| 2001 | 0 | 0 | 0 — a genuine control |
+| 2006 | 17,915 | 52,643 | 27 |
+| 2011 | 16,910 | 49,389 | 22 |
+| 2016 | 41,781 | 122,773 | 40 |
+| 2021 | 37,896 | 111,656 | 26 |
+
+`ni_allocate_sg_residual()` now pushes the residual down onto the member Gemeinden by
+eligible-voter share before the Samtgemeinde row is dropped, mirroring
+`bb_allocate_postal()`. **Each party is allocated on its own residual**, not on the total,
+because postal voters do not vote like Urnenwähler. A negative residual is refused rather
+than "corrected": that would mean members already exceed their own Samtgemeinde, which is
+not a Briefwahl split and must not be repaired by subtracting votes from real
+municipalities.
+
+Effect on published turnout: 2006 51.46 → 51.74 %, 2011 52.20 → 52.47 %, 2016 54.92 →
+55.56 %, 2021 56.42 → 57.00 %. Rows carry `flag_sg_postal_allocated` (unharm only — see
+below).
+
+**A second defect surfaced while separating the cases.** Not every suffix ≥ 400 code is an
+aggregate: the **gemeindefreie Bezirke Lohheide (03351501) and Osterheide (03358501)** have
+that shape but no member Gemeinden. They are ordinary municipalities with their own
+electorate, both are their own targets in `ags_crosswalks`, and the municipal pipeline
+already keeps them — but the county pipeline dropped them **in every year**, discarding
+about 600 voters per election. They are distinguished structurally (a suffix ≥ 400 row with
+no indented members) and kept, adding 18 rows across 1981-2021. The blanket post-parse net
+that removed them is retained as a safety catch but now exempts them and *names* what it
+drops instead of only counting it — it currently reports one Samtgemeinde, `03357406`.
+
+**1981-1996 needs no allocation.** The residual is zero in 2001, so the practice of counting
+Briefwahl at Samtgemeinde level began between 2001 and 2006, after the compilation period;
+and the compilation years' turnout reproduces the published Kommunalwahl figures closely
+(76.23 / 72.07 / 68.25 / 64.51 % against roughly 76 / 72 / 68 / 64.5), which they would not
+if postal votes were missing — the 2016 defect understated turnout by 0.64 points. The
+allocator is therefore deliberately not wired into `ni_ktw_parse_compilation()`.
+
+**Two schema notes.** `flag_sg_postal_allocated` marks only rows that actually received
+votes, not every member of every Samtgemeinde — flagging 2001, whose residual is zero,
+would have been a false statement. And it is published on `county_elec_unharm` only: it
+describes how a *source* row was built and does not survive aggregation onto 2021
+boundaries, where one output row can mix allocated and unallocated predecessors. That drop
+is explicit in `02`, not incidental. Finally, `02` derives `party_vars` as "everything not
+in `metadata_cols`", so a new non-party column would have been multiplied by `valid_votes`
+and published as a party; the flag is registered there and a guard now stops the script if
+any `flag_*` column ever reaches `party_vars`.

@@ -50,10 +50,19 @@ cat("Years:", paste(sort(unique(df$election_year)), collapse = ", "), "\n")
 
 # Convert vote shares to vote counts ----------------------------------------
 
+# Anything not listed here is treated as a party share and multiplied by
+# valid_votes, so a new non-party column MUST be added to this list or it is
+# silently converted into a bogus party.
 metadata_cols <- c("ags", "ags_name", "county", "state", "election_year",
                    "eligible_voters", "number_voters", "valid_votes",
-                   "invalid_votes", "turnout")
+                   "invalid_votes", "turnout", "flag_sg_postal_allocated")
 party_vars <- setdiff(names(df), metadata_cols)
+# Cheap guard against the next such column: a share variable lives in [0, 1].
+flagish <- party_vars[grepl("^flag_", party_vars)]
+if (length(flagish) > 0) {
+  stop("Non-party column(s) would be harmonised as party shares: ",
+       paste(flagish, collapse = ", "), ". Add them to metadata_cols.")
+}
 
 cat("Party variables found:", length(party_vars), "\n")
 
@@ -159,6 +168,10 @@ df <- df |>
       ~ sum_keep_na(.x)
     ),
     across(any_of(c("ags_name", "county")), first),
+    # Provenance flag, not a count: carry the maximum so a merged row inherits
+    # it if ANY of its predecessors had votes allocated to it.
+    across(any_of("flag_sg_postal_allocated"),
+           ~ if (all(is.na(.x))) NA_integer_ else max(.x, na.rm = TRUE)),
     .groups = "drop"
   ) |>
   arrange(ags, election_year)
@@ -642,6 +655,12 @@ cat("Rows with incongruent total vote share:",
 cat("\n--- Output 1: Municipality-level ---\n")
 
 df_muni_out <- df_harm |> filter(!is_county_level(state, election_year))
+# flag_sg_postal_allocated describes how a SOURCE row was built (Niedersachsen
+# Samtgemeinde postal votes pushed down onto its members) and does not survive
+# aggregation onto 2021 boundaries, where one output row can mix allocated and
+# unallocated predecessors. It is therefore published on county_elec_unharm
+# only; this drop is deliberate, not incidental.
+df_muni_out$flag_sg_postal_allocated <- NULL
 # flag_partial_coverage is only computed for county-level sources, so it would
 # be all-NA here; drop it rather than ship a column that never says anything.
 df_muni_out$flag_partial_coverage <- NULL

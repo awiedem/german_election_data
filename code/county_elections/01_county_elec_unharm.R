@@ -4172,15 +4172,46 @@ df_sh |> count(election_year) |> print()
 cat("\n===== NIEDERSACHSEN =====\n")
 ni_dir <- file.path(raw_dir, "Niedersachsen")
 
+# Helper: locate the member Gemeinden of each Samtgemeinde-style row.
+#
+# The file lists a non-indented 6-digit row with suffix >= 400 followed by its
+# indented member Gemeinden, until the next non-indented row. Two kinds of row
+# share that shape and must NOT be treated alike:
+#   * a real Samtgemeinde, which has members and is an aggregate; and
+#   * a gemeindefreier Bezirk (Lohheide 351501, Osterheide 358501), which has NO
+#     members and is a municipality in its own right.
+# Returns, for each entity, the indices of its members (empty when it has none).
+ni_member_index <- function(codes, code_lengths, is_indented) {
+  n <- length(codes)
+  out <- vector("list", n)
+  for (i in seq_len(n)) {
+    out[[i]] <- integer(0)
+    if (code_lengths[i] != 6 || is_indented[i]) next
+    if (as.numeric(substr(codes[i], 4, 6)) < 400) next
+    j <- i + 1L
+    mem <- integer(0)
+    while (j <= n && is_indented[j] && code_lengths[j] == 6) {
+      mem <- c(mem, j); j <- j + 1L
+    }
+    out[[i]] <- mem
+  }
+  out
+}
+
 # Helper: classify NI geographic entities — keep municipalities, skip aggregates
 # Keeps: Mitgliedsgemeinde (indented 6d), Einheitsgemeinde (non-indented 6d, suffix<400),
+#        gemeindefreie Bezirke (non-indented 6d, suffix>=400 but with NO members),
 #        kreisfreie Städte (3d, no 6d sub-entries)
-# Skips: Samtgemeinde (6d, suffix>=400), Kreise (3d with sub-entries), state/region (1d)
-ni_keep_entities <- function(entities, codes, code_lengths, is_indented) {
+# Skips: Samtgemeinde (6d, suffix>=400 WITH members — an aggregate whose
+#        Briefwahl residual is redistributed to its members first, see
+#        ni_allocate_sg_residual), Kreise (3d with sub-entries), state/region (1d)
+ni_keep_entities <- function(entities, codes, code_lengths, is_indented,
+                             members = NULL) {
   codes_6d <- codes[code_lengths == 6]
   prefixes_3d <- unique(substr(codes_6d, 1, 3))
   codes_3d <- codes[code_lengths == 3]
   kreisfrei_3d <- codes_3d[!codes_3d %in% prefixes_3d]
+  if (is.null(members)) members <- ni_member_index(codes, code_lengths, is_indented)
 
   keep <- rep(FALSE, length(entities))
   for (i in seq_along(entities)) {
@@ -4190,11 +4221,75 @@ ni_keep_entities <- function(entities, codes, code_lengths, is_indented) {
       suffix <- as.numeric(substr(cc, 4, 6))
       if (is_indented[i]) keep[i] <- TRUE
       else if (suffix < 400) keep[i] <- TRUE
+      # A suffix >= 400 row with no members is a gemeindefreier Bezirk, i.e. a
+      # real municipality with its own electorate. Dropping it as if it were a
+      # Samtgemeinde discarded Lohheide and Osterheide entirely — together about
+      # 600 voters in every election from 2001 to 2021.
+      else if (length(members[[i]]) == 0) keep[i] <- TRUE
     } else if (cl == 3 && cc %in% kreisfrei_3d) {
       keep[i] <- TRUE
     }
   }
   keep
+}
+
+# Helper: push a Samtgemeinde's unallocated votes down onto its member Gemeinden.
+#
+# Niedersachsen counts Briefwahl in Samtgemeinde-level districts, so a member
+# Gemeinde's row holds only its Urnenwähler while the Samtgemeinde row holds the
+# full total. Discarding the Samtgemeinde row therefore did not merely lose an
+# aggregate: it silently deleted every postal vote, leaving member turnout and
+# party shares computed on Urnenwahl alone. The electorate is unaffected —
+# `eligible_voters` reconciles exactly (residual 0) in every year, which is what
+# makes eligible voters the right weight for redistributing the rest.
+#
+# Sizes of the residual, measured before the fix (voters / party votes):
+#   2001 0 / 0 (a genuine control — that year has no Briefwahl split)
+#   2006 17,915 / 52,643    2011 16,910 / 49,389
+#   2016 41,781 / 122,773   2021 37,896 / 111,656
+#
+# Each party is allocated on its OWN residual rather than on the total, since
+# postal voters do not vote like Urnenwähler. Mirrors bb_allocate_postal().
+ni_allocate_sg_residual <- function(vals, codes, code_lengths, is_indented,
+                                    members, value_cols, year_label = "") {
+  n_alloc <- 0L; resid_nv <- 0; resid_vv <- 0; any_alloc <- FALSE
+  touched <- rep(FALSE, length(codes))
+  for (i in seq_along(codes)) {
+    mem <- members[[i]]
+    if (length(mem) == 0) next               # gemeindefreier Bezirk: keep as is
+    w <- vals[mem, 1]                        # eligible voters of each member
+    if (all(is.na(w)) || sum(w, na.rm = TRUE) <= 0) next
+    w[is.na(w)] <- 0
+    w <- w / sum(w)
+    for (cc in value_cols) {
+      tot <- vals[i, cc]
+      if (is.na(tot)) next
+      got <- sum(vals[mem, cc], na.rm = TRUE)
+      resid <- tot - got
+      if (is.na(resid) || resid == 0) next
+      # A negative residual would mean the members already exceed their own
+      # Samtgemeinde; that is not a Briefwahl split and must not be "fixed" by
+      # subtracting votes from real municipalities.
+      if (resid < 0) next
+      vals[mem, cc] <- ifelse(is.na(vals[mem, cc]), 0, vals[mem, cc]) + resid * w
+      if (cc == 2) resid_nv <- resid_nv + resid
+      if (cc == 3) resid_vv <- resid_vv + resid
+      # Flag only where something was actually added. Marking every member of
+      # every Samtgemeinde would label 2001 -- whose residual is zero in the
+      # source -- as if its votes had been redistributed.
+      touched[mem] <- TRUE
+      any_alloc <- TRUE
+    }
+    if (!any_alloc) next
+    any_alloc <- FALSE
+    n_alloc <- n_alloc + 1L
+  }
+  if (resid_nv > 0 || resid_vv > 0) {
+    cat(sprintf("    %sallocated Samtgemeinde Briefwahl residual: %s voters, %s valid votes over %d SG\n",
+                year_label, format(round(resid_nv), big.mark = ","),
+                format(round(resid_vv), big.mark = ","), n_alloc))
+  }
+  list(vals = vals, touched = touched)
 }
 
 # Helper: construct 8-digit AGS from NI internal code
@@ -4239,7 +4334,8 @@ ni_ktw_parse_individual <- function(filepath, year) {
   codes <- sub("\\s+.*", "", trimws(entities))
   code_lengths <- nchar(codes)
   is_indented <- grepl("^\\s", entities)
-  keep <- ni_keep_entities(entities, codes, code_lengths, is_indented)
+  members <- ni_member_index(codes, code_lengths, is_indented)
+  keep <- ni_keep_entities(entities, codes, code_lengths, is_indented, members)
 
   extract_row_values <- function(eidx) {
     search_end <- min(eidx + 10, length(lines))
@@ -4255,15 +4351,29 @@ ni_ktw_parse_individual <- function(filepath, year) {
     suppressWarnings(as.numeric(vals))
   }
 
+  # Values are extracted for EVERY entity, not only the kept ones: the
+  # Samtgemeinde rows are aggregates we discard, but their Briefwahl votes have
+  # to be pushed onto their members before they go.
+  val_mat <- t(vapply(seq_along(entity_idx),
+                      function(i) extract_row_values(entity_idx[i])[1:51],
+                      numeric(51)))
+  alloc <- ni_allocate_sg_residual(
+    val_mat, codes, code_lengths, is_indented, members,
+    value_cols = c(2L, 3L, as.integer(names(ni_ktw_party_map))),
+    year_label = paste0("NI ", year, ": ")
+  )
+  val_mat <- alloc$vals
+
   results <- vector("list", sum(keep))
   j <- 0
   for (i in which(keep)) {
     j <- j + 1
-    vals <- extract_row_values(entity_idx[i])
+    vals <- val_mat[i, ]
     ags <- ni_make_ags(codes[i])
     row_data <- data.frame(
       ags = ags,
       eligible_voters = vals[1], number_voters = vals[2], valid_votes = vals[3],
+      flag_sg_postal_allocated = as.integer(alloc$touched[i]),
       stringsAsFactors = FALSE
     )
     for (vi in names(ni_ktw_party_map)) {
@@ -4425,13 +4535,24 @@ ni_results <- ni_results[!sapply(ni_results, is.null)]
 df_ni <- bind_rows(ni_results)
 
 # Remove any Samtgemeinde aggregate rows that slipped through entity filtering
-# (suffix >= 400 in positions 6-8 of 8-digit AGS, e.g. 03357406)
+# (suffix >= 400 in positions 6-8 of 8-digit AGS, e.g. 03357406).
+#
+# NOT every suffix >= 400 code is an aggregate: the gemeindefreie Bezirke
+# Lohheide and Osterheide are ordinary municipalities with their own electorate
+# (about 600 voters between them per election) and both are their own targets in
+# ags_crosswalks. This blanket net deleted them in every year. They are exempted
+# here, and whatever else is dropped is now named rather than merely counted.
+ni_gemeindefrei <- c("03351501", "03358501")  # Lohheide, Osterheide
 ni_suffix <- as.numeric(substr(df_ni$ags, 6, 8))
-ni_is_sg <- !is.na(ni_suffix) & ni_suffix >= 400 & nchar(df_ni$ags) == 8
+ni_is_sg <- !is.na(ni_suffix) & ni_suffix >= 400 & nchar(df_ni$ags) == 8 &
+  !(df_ni$ags %in% ni_gemeindefrei)
 if (any(ni_is_sg)) {
-  cat("  Removing", sum(ni_is_sg), "Samtgemeinde aggregate rows\n")
+  cat("  Removing", sum(ni_is_sg), "Samtgemeinde aggregate rows:",
+      paste(sort(unique(df_ni$ags[ni_is_sg])), collapse = ", "), "\n")
   df_ni <- df_ni[!ni_is_sg, ]
 }
+kept_gf <- sum(df_ni$ags %in% ni_gemeindefrei)
+cat("  Kept", kept_gf, "gemeindefreie-Bezirk rows (Lohheide, Osterheide)\n")
 
 cat("NI total:", nrow(df_ni), "rows x", ncol(df_ni), "cols\n")
 cat("NI years:", paste(sort(unique(df_ni$election_year)), collapse = ", "), "\n")
