@@ -1089,6 +1089,10 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
       election_year = election_year,
       election_date = as.Date(election_date),
       election_type = election_type_raw,
+      # Carried so the separate Stichwahl tables can be attached to the right
+      # Hauptwahl. Do NOT infer this from a missing winner instead: in 2016 and
+      # 2019 two more rows lack a winner than actually went to a runoff.
+      needs_stichwahl = is_stichwahl_required,
       eligible_voters = wahlberechtigte,
       number_voters = waehler,
       valid_votes = gueltige,
@@ -1101,6 +1105,137 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
                                 winner_votes / gueltige, NA),
       stringsAsFactors = FALSE
     )
+  }
+
+  # --------------------------------------------------------------------------
+  # Stichwahl summary-table parser (2014, 2016, 2019)
+  # --------------------------------------------------------------------------
+  # For 2014, 2016 and 2019 the Landeswahlleitung published the runoffs only as
+  # a one-page summary table, never as Einzelergebnisse pages, so none of the 83
+  # runoffs were in GERDA at all. These tables carry NO Schlüssel, only the
+  # Kommune name -- but the runoffs are a closed set: every row must correspond
+  # to a Hauptwahl page of the same year that says "Stichwahl erforderlich".
+  # The AGS is therefore inherited from that matched Hauptwahl row rather than
+  # re-derived from the name, and attach_ns_stichwahl() below refuses to proceed
+  # unless the match is exactly one-to-one.
+  #
+  # Two layouts:
+  #   "rich"  (2014, 2016) lfd | Kommune | Bezeichnung | Bewerberzahl-or-LK |
+  #           Wahlsieger | Wahlvorschlagsträger | Stimmen | % | Wahlberechtigte |
+  #           Wähler | Gültige | Wahlbeteiligung  -- a full result.
+  #   "names" (2019) Bezirk | Landkreis | Kommune | Bezeichnung | Name | Partei
+  #           -- winner and party only, no counts. Those columns stay NA.
+  ns_de_num <- function(x) as.numeric(gsub("\\.", "", x))
+  ns_de_pct <- function(x) as.numeric(gsub(",", ".", sub("%", "", x))) / 100
+
+  parse_ns_sw_rich <- function(pdf_path) {
+    lines <- unlist(str_split(pdftools::pdf_text(pdf_path), "\n"))
+    # Anchor on the trailing block of six numbers; everything before it is
+    # lfd | Kommune | <middle> | Träger, and the winner is the last
+    # 2+-space-separated field of <middle> that carries a comma.
+    pat <- paste0("^\\s*(\\d{1,3})\\s+(.+?)\\s{2,}(.+?)\\s{2,}(\\S+)\\s+",
+                  "([\\d.]+)\\s+(\\d+,\\d+%)\\s+([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)\\s+(\\d+,\\d+%)\\s*$")
+    hit <- str_match(lines, pat)
+    hit <- hit[!is.na(hit[, 1]), , drop = FALSE]
+    if (nrow(hit) == 0) return(NULL)
+    mid <- lapply(str_trim(hit[, 4]), function(z) str_split(z, "\\s{2,}")[[1]])
+    win <- vapply(mid, function(z) {
+      g <- grep(",", z, fixed = TRUE)
+      if (length(g)) z[max(g)] else NA_character_
+    }, character(1))
+    data.frame(
+      sw_name = str_trim(hit[, 3]),
+      winner_name = win,
+      winner_party = hit[, 5],
+      winner_votes = ns_de_num(hit[, 6]),
+      winner_voteshare = ns_de_pct(hit[, 7]),
+      eligible_voters = ns_de_num(hit[, 8]),
+      number_voters = ns_de_num(hit[, 9]),
+      valid_votes = ns_de_num(hit[, 10]),
+      turnout = ns_de_pct(hit[, 11]),
+      stringsAsFactors = FALSE
+    )
+  }
+
+  parse_ns_sw_names <- function(pdf_path) {
+    lines <- unlist(str_split(pdftools::pdf_text(pdf_path), "\n"))
+    pat <- paste0("^(Braunschweig|Hannover|Lüneburg|Weser-Ems)\\s{2,}(.+?)\\s{2,}(.*?)\\s*",
+                  "(Stadt|Gemeinde|Samtgemeinde|Flecken|Landkreis|Hansestadt|Region)\\s{2,}",
+                  "([^,]+,\\s*\\S.*?)\\s{2,}(\\S+)\\s*$")
+    hit <- str_match(lines, pat)
+    hit <- hit[!is.na(hit[, 1]), , drop = FALSE]
+    if (nrow(hit) == 0) return(NULL)
+    lk <- str_trim(hit[, 3])
+    kom <- str_trim(hit[, 4])
+    # A Landkreis row names no Kommune. Elsewhere the two columns can end up
+    # separated by a single space (Rotenburg (Wümme) / Sittensen), leaving the
+    # Kommune empty and its name stuck to the Landkreis; recover the trailing
+    # token in that case. Any residual error is caught by the 1:1 assertion.
+    kom <- ifelse(hit[, 5] == "Landkreis", lk,
+                  ifelse(nzchar(kom), kom, sub("^.*\\s", "", lk)))
+    data.frame(
+      sw_name = kom,
+      winner_name = str_trim(hit[, 6]),
+      winner_party = hit[, 7],
+      winner_votes = NA_real_, winner_voteshare = NA_real_,
+      eligible_voters = NA_real_, number_voters = NA_real_,
+      valid_votes = NA_real_, turnout = NA_real_,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  # Names as printed in the summary tables differ from the Einzelergebnisse
+  # headings by abbreviation. Listed explicitly rather than fuzzy-matched: the
+  # set is closed and the assertion below proves it complete.
+  ns_sw_aliases <- c(
+    "buchholzidnordheide" = "buchholzindernordheide",
+    "neustadtarbge"       = "neustadtamruebenberge"
+  )
+  ns_norm_name <- function(x) {
+    x <- tolower(x)
+    x <- sub(",.*$", "", x)          # drop ", Stadt", ", Nordseebad", ...
+    x <- gsub("\\s*\\(.*?\\)", "", x)
+    x <- gsub("ä", "ae", x); x <- gsub("ö", "oe", x); x <- gsub("ü", "ue", x)
+    x <- gsub("[^a-z]", "", x)
+    ifelse(x %in% names(ns_sw_aliases), unname(ns_sw_aliases[x]), x)
+  }
+
+  attach_ns_stichwahl <- function(sw, hw_all, year, sw_date) {
+    hw <- hw_all[hw_all$election_year == year & hw_all$needs_stichwahl, , drop = FALSE]
+    hk <- ns_norm_name(hw$ags_name)
+    sk <- ns_norm_name(sw$sw_name)
+    if (anyDuplicated(hk) || anyDuplicated(sk)) {
+      stop("NS ", year, " Stichwahl: ambiguous names (HW dups: ",
+           paste(hk[duplicated(hk)], collapse = ", "), "; SW dups: ",
+           paste(sk[duplicated(sk)], collapse = ", "), ")")
+    }
+    idx <- match(sk, hk)
+    if (anyNA(idx) || nrow(sw) != nrow(hw)) {
+      stop("NS ", year, " Stichwahl: ", nrow(sw), " runoff rows vs ", nrow(hw),
+           " Hauptwahl pages marked 'Stichwahl erforderlich'. Unmatched runoffs: ",
+           paste(sw$sw_name[is.na(idx)], collapse = " | "),
+           " | Hauptwahl with no runoff row: ",
+           paste(hw$ags_name[!hk %in% sk], collapse = " | "))
+    }
+    out <- hw[idx, c("ags", "ags_name", "state", "state_name",
+                     "election_year", "election_type"), drop = FALSE]
+    out$election_date <- as.Date(sw_date)
+    out$needs_stichwahl <- FALSE
+    for (cc in c("winner_party", "winner_votes", "winner_voteshare",
+                 "eligible_voters", "number_voters", "valid_votes", "turnout")) {
+      out[[cc]] <- sw[[cc]]
+    }
+    out$invalid_votes <- ifelse(!is.na(out$number_voters) & !is.na(out$valid_votes),
+                                out$number_voters - out$valid_votes, NA_real_)
+    # A runoff winner takes more than half the valid votes by definition; a
+    # violation means rows were matched or parsed wrongly.
+    bad <- which(!is.na(out$winner_voteshare) & out$winner_voteshare <= 0.5)
+    if (length(bad) > 0) {
+      stop("NS ", year, " Stichwahl: winner below 50 % in ",
+           paste(out$ags_name[bad], collapse = ", "))
+    }
+    rownames(out) <- NULL
+    out
   }
 
   # --------------------------------------------------------------------------
@@ -1422,17 +1557,29 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
            list(path = "DW2013/20131007_Stichwahlen_am_06-10-2013_Ergebnisse.pdf",
                 parser = "tabular_2013_sw", date = "2013-10-06")
          )),
+    # 2014/2016/2019: the runoffs exist only as a one-page summary table, so
+    # they are parsed separately and attached to their Hauptwahl afterwards.
+    # DW2016/Einzelergebnisse.pdf is byte-identical in text to DW_Einzel.pdf --
+    # a duplicate of the Hauptwahl, not the runoff -- so it is not read.
     list(year = 2014L, date = "2014-05-25",
          files = list(
-           list(path = "DW2014/einzelergebnisse-direktwahlen14.pdf", parser = "standard")
+           list(path = "DW2014/einzelergebnisse-direktwahlen14.pdf", parser = "standard"),
+           list(path = "DW2014/SW_Vorlaeufige_Ergebnisse_Stichwahlen_15.06.2014.pdf",
+                parser = "sw_rich", date = "2014-06-15")
          )),
     list(year = 2016L, date = "2016-09-11",
          files = list(
-           list(path = "DW2016/DW_Einzel.pdf", parser = "standard")
+           list(path = "DW2016/DW_Einzel.pdf", parser = "standard"),
+           list(path = "DW2016/SW_Vorlaeufige_Ergebnisse_Stichwahlen_25.09.2016.pdf",
+                parser = "sw_rich", date = "2016-09-25")
          )),
     list(year = 2019L, date = "2019-05-26",
          files = list(
-           list(path = "DW2019/DW_Einzel.pdf", parser = "standard")
+           list(path = "DW2019/DW_Einzel.pdf", parser = "standard"),
+           # 2019 published only names and parties for the runoffs; the vote
+           # columns are genuinely absent from the source and stay NA.
+           list(path = "DW2019/SW_Ergebnisuebersicht_Stichwahlen_16.06.2019.pdf",
+                parser = "sw_names", date = "2019-06-16")
          )),
     list(year = 2021L, date = "2021-09-12",
          files = list(
@@ -1495,6 +1642,21 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
           cat("    ", fc$path, ":", nrow(file_df), "elections\n")
           ns_all_results[[length(ns_all_results) + 1]] <- file_df
         }
+
+      } else if (fc$parser %in% c("sw_rich", "sw_names")) {
+        # Runoff summary table. The Hauptwahl file of the same year is listed
+        # first in the config, so its rows are already in ns_all_results and
+        # supply the AGS this table lacks.
+        sw <- if (fc$parser == "sw_rich") parse_ns_sw_rich(pdf_path)
+              else parse_ns_sw_names(pdf_path)
+        if (is.null(sw) || nrow(sw) == 0) {
+          stop("NS ", file_year, ": no rows parsed from ", fc$path)
+        }
+        hw_all <- bind_rows(ns_all_results)
+        file_df <- attach_ns_stichwahl(sw, hw_all, file_year, file_date)
+        file_df$round <- "stichwahl"
+        cat("    ", fc$path, ":", nrow(file_df), "runoffs matched to their Hauptwahl\n")
+        ns_all_results[[length(ns_all_results) + 1]] <- file_df
 
       } else if (fc$parser == "stichwahl_2006") {
         pages <- pdftools::pdf_text(pdf_path)
@@ -1563,6 +1725,10 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
     # Keep both hauptwahl and stichwahl rows (different dates/rounds)
     ns_combined <- ns_combined %>%
       distinct(ags, election_date, round, .keep_all = TRUE)
+
+    # Internal only: needed to pair the runoff tables with their Hauptwahl, and
+    # meaningless for the other 15 states, so it is not published.
+    ns_combined$needs_stichwahl <- NULL
 
     cat("Niedersachsen: Processed", nrow(ns_combined), "elections across",
         length(unique(ns_combined$election_year)), "years\n")

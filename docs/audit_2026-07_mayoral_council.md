@@ -570,3 +570,74 @@ Ingesting it therefore means ~32 per-name adjudications in which a wrong pick si
 election under the wrong municipality — the same defect class as the 24 wrong AGS this audit found
 in SH and the 24 in NI 2013. It needs the Landkreis/Wahlkreis section context worked through by hand
 and is left open rather than guessed.
+
+---
+
+## 9. Follow-up: missing elections — Niedersachsen runoffs (2014, 2016, 2019)
+
+Worklist item 2. The premise recorded after the audit was that ~86 NI runoffs were
+"missing", with the *Stichwahl* mentions in the Übersicht PDFs cited as proof they exist.
+That proof was misread: it shows the runoffs **happened**, not that we held their results.
+Checking each file's page count against its own text settles it — for every year,
+`pages == count("Stichwahl erforderlich") + count("kann als gewählt gelten")`, so every
+`*_Einzel.pdf` in `raw/` is Hauptwahl-only. The two 2016 file pairs are text-identical
+duplicates of the Hauptwahl, not a Hauptwahl/Stichwahl pair. Only 2021 ever had a runoff
+file. **The runoff results were never downloaded**, so this was a sourcing task.
+
+The Landeswahlleitung publishes them as one-page summary tables, now in `raw/`:
+
+| Year | Runoff date | Rows | Content |
+|---|---|---:|---|
+| 2014 | 15 Jun 2014 | 46 | winner, party, votes, %, electorate, voters, valid, turnout |
+| 2016 | 25 Sep 2016 | 14 | same |
+| 2019 | 16 Jun 2019 | 23 | **winner and party only** — no counts are published |
+
+2024 (2 runoffs) and 2025 (1) remain missing: those year pages carry only *Wahltermine*.
+2015, 2018 and 2020 held off-cycle Direktwahlen that GERDA has no rows for at all, and
+publish no results either — 2017 does (5 elections, rich format, downloaded but not yet
+ingested). All are recorded on the worklist.
+
+**These tables carry no Schlüssel, only a Kommune name** — the same shape as the Sachsen
+1995 problem in §8. It is nonetheless safe here, because the runoffs are a *closed set*:
+every row must correspond to a Hauptwahl page of the same year that says "Stichwahl
+erforderlich". So the AGS is **inherited from the matched Hauptwahl** rather than derived
+from the name, and the join refuses to proceed unless it is exactly one-to-one. It matched
+46/46, 14/14 and 23/23 with no duplicate keys and four abbreviation aliases listed
+explicitly. Two further invariants hold: every runoff date is a Sunday, and every runoff
+winner's share exceeds 50 % (0.505–0.732), which is true by definition and would break
+first if rows were mismatched.
+
+Do not infer "needed a runoff" from a missing winner: in 2016 and 2019 two more rows lack
+a winner than actually went to a runoff, so the parser now carries the source's own
+`Stichwahl erforderlich` flag.
+
+**What it changed.** 83 runoffs added (77 mayoral, 6 Landrat). Every NI election in those
+years now has a winner: 2014 156→201, 2016 19→31, 2019 54→74. Non-NI rows are
+bit-identical and the audit suites report the same six warnings as before.
+
+**Eight seated mayors were wrong.** The panel had been seating the *Hauptwahl leader* —
+every one of them below 50 % — where the runoff was actually won by someone else:
+
+| Municipality | Year | Panel had | Actually elected |
+|---|---|---|---|
+| Langenhagen | 2014 | SPD, 35.0 % | Mirko Heuer, **CDU**, 58.8 % |
+| Hann. Münden | 2014 | SPD, 47.9 % | WGR, 56.9 % |
+| Gehrden | 2014 | CDU, 43.5 % | Cord Mittendorf, **SPD**, 50.9 % |
+| Bad Fallingbostel | 2014 | CDU, 37.3 % | Karin Thorey, **EB**, 53.5 % |
+| Leer (Ostfriesland) | 2014 | EB, 31.4 % | **CDU**, 54.7 % |
+| Wildeshausen | 2014 | EB, 36.6 % | Jens Kuraschinski, **WGR**, 54.4 % |
+| Celle | 2016 | SPD, 46.2 % | Dr. Jörg Nigge, **CDU**, 50.7 % |
+| Essen (Oldenburg) | 2016 | CDU, 38.2 % | Heinrich Kreßmann, **EB**, 57.0 % |
+
+A further 44 rows kept the right winner but carried the Hauptwahl share instead of the
+decisive one. Langenhagen and Celle were verified against external sources: Heuer beat the
+incumbent Friedhelm Fischer (SPD) with 58.8 %, and Nigge unseated Dirk-Ulrich Mende (SPD) —
+in both cases the panel had been reporting the loser.
+
+**Candidate file.** The tables name only the Wahlsieger, so one candidate row per runoff is
+emitted. The runner-up is deliberately *not* reconstructed as `valid_votes − winner_votes`:
+that is right only if the runoff ran with the Hauptwahl's top two, and a withdrawal
+promotes the third, so it would publish a named candidate who may never have stood. For the
+same reason `n_candidates` is NA rather than 1 for these rounds, and `is_winner` comes from
+the source's own "Wahlsieger" column rather than vote rank — 2019 publishes no counts to
+rank by.
