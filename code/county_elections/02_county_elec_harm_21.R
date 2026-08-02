@@ -97,6 +97,11 @@ df <- df |>
 df <- df |>
   mutate(
     ags = case_when(
+      # Mecklenburg-Vorpommern 2004: Prebberede is recorded under 13053108,
+      # which appears in no crosswalk year; its own code is 13053109 (both
+      # resolve to Prebberede 13072082 in 2021). Same correction the municipal
+      # pipeline already applies for the same Gemeinde and year.
+      ags == "13053108" & election_year == 2004 ~ "13053109",  # Prebberede
       # Thueringen 1994: seven municipalities that were dissolved before the
       # crosswalk's coverage and appear under no later code. The same seven
       # occur in the municipal 1994 data, where these targets are already

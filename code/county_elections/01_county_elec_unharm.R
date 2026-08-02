@@ -1215,7 +1215,175 @@ parse_mv_xlsx_2014 <- function(filepath) {
 }
 
 # Process MV years
+# --- MV 1994-2011: the pre-2014 LSN workbooks --------------------------------
+# These five were never ingested although readxl opens them all. Each labels its
+# columns with the source's own statistical letter codes, which is a far safer
+# anchor than the German header text: that text is wrapped across three rows and
+# worded differently in every vintage.
+#
+#   A            Wahlberechtigte insgesamt
+#   A1/A2/A3     its Sperrvermerk components (1999, 2009, 2011) -- NOT the total
+#   B            Wähler insgesamt
+#   C / D        gültige and ungültige, in EITHER order
+#   C1.. / D1..  the parties
+#
+# Two traps this encodes rather than assumes:
+#   * 1994 uses C for invalid and D for valid; 2004 onward do the reverse. The
+#     party columns always share the letter of the VALID column, so that prefix
+#     identifies it and the swap cannot bite (the Sachsen defect in miniature).
+#   * where Wahlberechtigte is split, only "A" is the total. Reading a
+#     Sperrvermerk component instead is what overstated Hessen turnout.
+#
+# 1994 and 1999 are published per Wahlbezirk and are aggregated to the Gemeinde.
+# valid_votes holds the multi-vote total, as it does for MV 2014 onward (~2.8
+# votes per voter), not a ballot count.
+parse_mv_xls_early <- function(path, sheet, year) {
+  if (!file.exists(path)) stop("MV ", year, ": file not found: ", path)
+  x <- as.data.frame(suppressMessages(
+    read_excel(path, sheet = sheet, col_names = FALSE, col_types = "text")),
+    stringsAsFactors = FALSE)
+  cell <- function(r) trimws(as.character(unlist(x[r, ])))
+
+  lrow <- NA
+  for (r in seq_len(min(20, nrow(x)))) {
+    v <- cell(r)
+    if (any(v == "A", na.rm = TRUE) && any(v == "B", na.rm = TRUE)) { lrow <- r; break }
+  }
+  if (is.na(lrow)) stop("MV ", year, ": no letter-code row found")
+  L <- cell(lrow)
+
+  pidx <- grep("^[A-Z][0-9]+$", L)
+  pidx <- pidx[!grepl("^[AB][0-9]+$", L[pidx])]   # A1..A3 and B1 are turnout parts
+  if (!length(pidx)) stop("MV ", year, ": no party columns")
+  base <- unique(sub("[0-9]+$", "", L[pidx]))
+  if (length(base) != 1) stop("MV ", year, ": ambiguous party prefix: ",
+                              paste(base, collapse = ", "))
+  i_valid <- which(L == base)
+  i_inval <- which(L == setdiff(c("C", "D"), base))
+  i_elig <- which(L == "A"); i_vot <- which(L == "B")
+  if (!length(i_valid) || !length(i_elig) || !length(i_vot))
+    stop("MV ", year, ": missing A, B or valid-vote column")
+
+  nrow_ <- NA
+  for (r in (lrow - 1):1) if (any(cell(r) == "CDU", na.rm = TRUE)) { nrow_ <- r; break }
+  if (is.na(nrow_)) stop("MV ", year, ": no party-name row")
+  pnames <- cell(nrow_)
+
+  body <- x[(lrow + 1):nrow(x), , drop = FALSE]
+  i_ags <- NA
+  for (j in seq_len(ncol(body))) {
+    v <- trimws(as.character(body[[j]]))
+    if (mean(grepl("^[0-9]{8}$", v), na.rm = TRUE) > 0.8) { i_ags <- j; break }
+  }
+  if (is.na(i_ags)) stop("MV ", year, ": no 8-digit AGS column")
+
+  # The Amt code links an Amt-level postal pool to its member Gemeinden.
+  i_amt <- if (i_ags >= 2) i_ags - 1L else NA_integer_
+  num <- function(v) suppressWarnings(as.numeric(gsub("[^0-9]", "", v)))
+  d <- data.table(
+    ags = trimws(as.character(body[[i_ags]])),
+    amt = if (!is.na(i_amt)) trimws(as.character(body[[i_amt]])) else NA_character_,
+    gem_name = if (i_ags + 1L <= ncol(body)) trimws(as.character(body[[i_ags + 1L]])) else NA_character_,
+    eligible_voters = num(body[[i_elig]]),
+    number_voters = num(body[[i_vot]]),
+    gueltige_stimmen = num(body[[i_valid]]),
+    invalid_votes = if (length(i_inval)) num(body[[i_inval]]) else NA_real_)
+
+  for (k in pidx) {
+    nm <- pnames[k]
+    if (is.na(nm) || !nzchar(nm) || nm == "NA") next
+    nm <- normalise_party_cty(nm)
+    v <- num(body[[k]])                              # "x" = did not stand -> NA
+    if (nm %in% names(d)) {
+      # A name can repeat (MV lists five separate "Freie Wähler" lists). Adding
+      # naively loses votes, because the first column is NA for most Gemeinden
+      # and NA + 1520 is NA. Keep NA only where every contributor is NA.
+      old <- d[[nm]]
+      d[[nm]] <- ifelse(is.na(old) & is.na(v), NA_real_,
+                        ifelse(is.na(old), 0, old) + ifelse(is.na(v), 0, v))
+    } else d[[nm]] <- v
+  }
+
+  d <- d[grepl("^[0-9]{8}$", ags)]
+  pcols <- setdiff(names(d), c("ags", "amt", "gem_name", "eligible_voters",
+                               "number_voters", "gueltige_stimmen", "invalid_votes"))
+  amt_of <- d[, .(amt = first(amt)), by = ags]
+  agg <- d[, lapply(.SD, function(z) if (all(is.na(z))) NA_real_ else sum(z, na.rm = TRUE)),
+           by = ags,
+           .SDcols = c("eligible_voters", "number_voters", "gueltige_stimmen",
+                       "invalid_votes", pcols)]
+  agg <- merge(agg, amt_of, by = "ags", all.x = TRUE)
+
+  # 2009 and 2011 pool the Amt-level postal vote into its own row, exactly as
+  # 2019 and 2024 do: position 6 of the AGS becomes "7", the electorate is 0 and
+  # the name reads "Briefwahl <Amt>". Left alone those rows are dropped by the
+  # eligible_voters > 0 filter and their voters vanish (audit finding C-17).
+  # Spread them over the member Gemeinden of the same Amt, by electorate.
+  pool_ags <- agg$ags[substr(agg$ags, 6, 6) == "7" &
+                        !is.na(agg$eligible_voters) & agg$eligible_voters == 0]
+  if (length(pool_ags) > 0) {
+    pm <- do.call(rbind, lapply(pool_ags, function(pa) {
+      a <- agg$amt[agg$ags == pa][1]
+      mem <- agg$ags[!is.na(agg$amt) & agg$amt == a & agg$ags != pa &
+                       substr(agg$ags, 6, 6) != "7"]
+      if (!length(mem)) stop("MV ", year, ": postal pool ", pa,
+                             " (Amt ", a, ") has no member Gemeinde")
+      data.frame(pool = pa, ags = mem, stringsAsFactors = FALSE)
+    }))
+    agg <- as.data.table(mv_allocate_postal(
+      as.data.frame(agg), pm,
+      dist_cols = c("number_voters", "invalid_votes", "gueltige_stimmen", pcols),
+      party_names = pcols, year = year))
+    cat("    allocated", length(pool_ags), "Amt-level postal pool(s)\n")
+  }
+  agg[, amt := NULL]
+
+  # The source decomposes the valid vote exactly; assert before dividing.
+  recon <- rowSums(agg[, ..pcols], na.rm = TRUE) - agg$gueltige_stimmen
+  if (max(abs(recon), na.rm = TRUE) > 0) {
+    stop("MV ", year, ": party votes do not sum to the valid vote (max deviation ",
+         max(abs(recon), na.rm = TRUE), ")")
+  }
+  stopifnot(all(nchar(agg$ags) == 8), !any(duplicated(agg$ags)))
+  # A handful of Gemeinden can report one more voter than electors; MV 1999 has
+  # exactly one, off by a single vote. Report rather than fail, but stop if it
+  # is systematic, which would mean a postal pool was not allocated.
+  over <- agg[!is.na(number_voters) & !is.na(eligible_voters) &
+                number_voters > eligible_voters]
+  if (nrow(over) > 0) {
+    cat("    NOTE: ", nrow(over), " Gemeinde(n) report more voters than electors (max excess ",
+        max(over$number_voters - over$eligible_voters), ")\n", sep = "")
+    if (nrow(over) > 10 || max(over$number_voters - over$eligible_voters) > 50) {
+      stop("MV ", year, ": voters exceed electors in ", nrow(over),
+           " Gemeinden — an unallocated postal pool is the likely cause")
+    }
+  }
+
+  agg[, `:=`(valid_votes = gueltige_stimmen, state = "13",
+             election_year = as.integer(year), county = substr(ags, 1, 5),
+             turnout = ifelse(!is.na(eligible_voters) & eligible_voters > 0,
+                              number_voters / eligible_voters, NA_real_))]
+  for (pc in pcols) {
+    agg[[pc]] <- ifelse(!is.na(agg$gueltige_stimmen) & agg$gueltige_stimmen > 0,
+                        agg[[pc]] / agg$gueltige_stimmen, NA_real_)
+  }
+  agg[, gueltige_stimmen := NULL]
+  cat("  MV", year, "->", nrow(agg), "Gemeinden\n")
+  as_tibble(agg)
+}
+
 mv_results <- list()
+# 1994-2011: pre-2014 workbooks (see parse_mv_xls_early above)
+for (sp in list(list(1994, "Ergebnisse nach Wahlbezirken"),
+                list(1999, "B734W 199901"),
+                list(2004, "Ergebnisse nach Gemeinden"),
+                list(2009, "Ergebnisse nach Gemeinden"),
+                list(2011, "gem"))) {
+  mv_results[[as.character(sp[[1]])]] <- parse_mv_xls_early(
+    file.path(mv_dir, sprintf("Mecklenburg-Vorpommern_%d_Kreistagswahl.xls", sp[[1]])),
+    sp[[2]], sp[[1]]
+  )
+}
 mv_results[["2014"]] <- parse_mv_xlsx_2014(
   file.path(mv_dir, "Mecklenburg-Vorpommern_2014_Kreistagswahl.xlsx")
 )
