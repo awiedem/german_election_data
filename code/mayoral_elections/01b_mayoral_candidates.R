@@ -1991,12 +1991,19 @@ sh_file <- "data/mayoral_elections/raw/sh/sh_mayoral_scraped.rds"
 if (file.exists(sh_file)) {
   sh_raw <- readRDS(sh_file)
 
+  # The portal spells the confirmation-ballot options three ways -- "Ja-Stimmen",
+  # "Ja Stimmen" and plain "Ja" (likewise Nein) -- so the literal comparisons
+  # used here let the 2026 elections through with candidate_party = "Ja".
+  # Keep in sync with the same helpers in 01_mayoral_unharm.R.
+  sh_is_ja   <- function(x) !is.na(x) & grepl("^ja[ -]?(stimmen)?$",   x, ignore.case = TRUE)
+  sh_is_nein <- function(x) !is.na(x) & grepl("^nein[ -]?(stimmen)?$", x, ignore.case = TRUE)
+
   sh_candidates <- sh_raw %>%
-    # For Ja/Nein confirmation elections: drop "Nein-Stimmen" rows and fix party
-    filter(is.na(candidate_party) | candidate_party != "Nein-Stimmen") %>%
+    # For Ja/Nein confirmation elections: drop the "Nein" rows, which are a
+    # ballot option rather than a candidate, and record the candidate as EB.
+    filter(!sh_is_nein(candidate_party)) %>%
     mutate(
-      # Fix Ja-Stimmen party: these are EB candidates in confirmation elections
-      candidate_party = ifelse(candidate_party == "Ja-Stimmen", "EB", candidate_party),
+      candidate_party = ifelse(sh_is_ja(candidate_party), "EB", candidate_party),
       # candidate_name is already in "Last, First" format from the scraper
       election_year = year(election_date),
       # Compute turnout

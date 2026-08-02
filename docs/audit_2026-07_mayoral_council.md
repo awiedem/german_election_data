@@ -641,3 +641,46 @@ promotes the third, so it would publish a named candidate who may never have sto
 same reason `n_candidates` is NA rather than 1 for these rounds, and `is_winner` comes from
 the source's own "Wahlsieger" column rather than vote rank — 2019 publishes no counts to
 rank by.
+
+---
+
+## 10. Follow-up: missing elections — Schleswig-Holstein 2026
+
+Nine 2026 mayoral elections were published on wahlen-sh.de and absent from GERDA
+(`mayoral_unharm` held only Ratekau and Schwentinental). Root cause: the election
+registry in `00_sh_scrape.R` is hand-maintained, so a newly published election is
+invisible to the pipeline until somebody notices.
+
+**The registry is not replaced by index enumeration — it is checked against it.** The
+index omits pages in both directions: some Hauptwahl pages appear only when there was no
+runoff, and the 2024 runoffs appear nowhere on it. So the index is used as a *lower bound*
+the registry must cover. `check_sh_registry_complete()` now fetches
+`andere_wahlen.html`, keeps the slugs that look mayoral (`bgm*`, `bm_*`, `ob_*` —
+Bürgerentscheide `be_*`, Abstimmungen, Einwohnerbefragungen and Gemeindewahlen `gkw_*` are
+not mayoral) and **stops** if any is missing from the registry. It currently reports the
+registry covering all 45 mayoral elections linked from the index.
+
+The nine: Ratekau and Schwentinental (8 Mar), Bönningstedt and Reinfeld (19 Apr), Reinbek
+and Trittau (10 May), Ammersbek, Heide and Schwarzenbek (7 Jun). None went to a runoff —
+both slug spellings (`bgm_stichwahl_2026_*`, `bgmstichwahl_2026_*`) 404 for every one, and
+the scraper's own check confirms no sub-50 % Hauptwahl lacks a Stichwahl. Schwarzenbek is
+still flagged *vorläufig* on the portal.
+
+**A second defect surfaced while ingesting them.** In a single-candidate confirmation
+election the portal puts the ballot option, not a party, in the party column — and spells
+it three ways across pages: `Ja-Stimmen`, `Ja Stimmen` and plain `Ja` (likewise Nein).
+Both stages compared against the literal `"Ja-Stimmen"` / `"Nein-Stimmen"`, so Bönningstedt
+and Reinbek were published with `winner_party = "Ja Stimmen"` and `"Ja"`. Now matched with
+`^ja[ -]?(stimmen)?$` / `^nein[ -]?(stimmen)?$`, case-insensitive, in both `01` and `01b`.
+
+The more serious half of that defect is what the old code would have done to a *failed*
+confirmation vote: dropping the Nein rows and taking the top row by votes seats the
+rejection as a win — the same failure the Saarland `…abwahl` recall rounds produce. A guard
+now stops the pipeline if any confirmation election has `nein >= ja`. Calibrating it caught
+a mistake in the guard itself: a confirmation election must be identified by the presence of
+a **Nein** row, because on some pages the yes-row carries the candidate's real party
+instead (Lütjenburg 2024 is `EB`, not `Ja`), so scoring only `Ja`-labelled rows reported the
+yes side as zero and called a 74.7 % win a defeat.
+
+Net: SH goes from 50 to 57 rows in `mayoral_unharm` with 9 panel terms for 2026; rows
+outside SH and NI are bit-identical and the audit suites report the same six warnings.

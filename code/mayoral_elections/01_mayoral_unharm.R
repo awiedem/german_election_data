@@ -1762,10 +1762,40 @@ sh_file <- "data/mayoral_elections/raw/sh/sh_mayoral_scraped.rds"
 if (file.exists(sh_file)) {
   sh_raw <- readRDS(sh_file)
 
+  # In a single-candidate confirmation election the portal puts the ballot
+  # option, not a party, in the party column -- and spells it three different
+  # ways across pages: "Ja-Stimmen", "Ja Stimmen" and plain "Ja" (likewise for
+  # Nein). Matching the literal "Ja-Stimmen"/"Nein-Stimmen" therefore let the
+  # 2026 elections through with winner_party = "Ja Stimmen" / "Ja".
+  sh_is_ja   <- function(x) !is.na(x) & grepl("^ja[ -]?(stimmen)?$",   x, ignore.case = TRUE)
+  sh_is_nein <- function(x) !is.na(x) & grepl("^nein[ -]?(stimmen)?$", x, ignore.case = TRUE)
+
+  # A confirmation vote that the candidate LOSES must not seat anybody. Dropping
+  # the Nein rows and taking the top row by votes would do exactly that, quietly
+  # reporting the rejection as a win -- the same failure the Saarland "…abwahl"
+  # rounds produce (see the recall note earlier in this file). No such case
+  # exists in the data today, so stop rather than guess a representation.
+  # A confirmation election is identified by the presence of a Nein row, not by
+  # the yes-row's label: on some pages the yes-row carries the candidate's real
+  # party instead ("EB" for Lütjenburg 2024), so counting only sh_is_ja rows
+  # would score the yes side as zero and call every such election a defeat.
+  sh_conf_lost <- sh_raw %>%
+    group_by(ags, ags_name, election_date, round) %>%
+    filter(any(sh_is_nein(candidate_party))) %>%
+    summarise(nein = sum(candidate_votes[sh_is_nein(candidate_party)], na.rm = TRUE),
+              ja = suppressWarnings(max(c(candidate_votes[!sh_is_nein(candidate_party)], 0),
+                                        na.rm = TRUE)),
+              .groups = "drop") %>%
+    filter(ja <= nein)
+  if (nrow(sh_conf_lost) > 0) {
+    print(sh_conf_lost)
+    stop("SH: ", nrow(sh_conf_lost), " confirmation election(s) where Nein won. ",
+         "These seat no mayor and must not be published as a win.")
+  }
+
   sh_clean <- sh_raw %>%
-    # For Ja/Nein confirmation elections, keep the "Ja" row as the winner
-    # and treat "Nein-Stimmen" rows as irrelevant for the winner-level dataset
-    filter(is.na(candidate_party) | candidate_party != "Nein-Stimmen") %>%
+    # Keep the "Ja" row as the winner; the "Nein" row is not a candidate.
+    filter(!sh_is_nein(candidate_party)) %>%
     # For each election-round, identify the winner (highest votes)
     group_by(ags, election_date, round) %>%
     arrange(desc(candidate_votes)) %>%
@@ -1775,8 +1805,9 @@ if (file.exists(sh_file)) {
       state = "01",
       state_name = "Schleswig-Holstein",
       election_year = year(election_date),
-      # For Ja/Nein elections, the party is from the candidate, not "Ja-Stimmen"
-      winner_party = ifelse(candidate_party == "Ja-Stimmen", "EB", candidate_party),
+      # For Ja/Nein elections the party belongs to the candidate, and the portal
+      # does not report one, so they are recorded as Einzelbewerber.
+      winner_party = ifelse(sh_is_ja(candidate_party), "EB", candidate_party),
       winner_votes = candidate_votes,
       winner_voteshare = candidate_voteshare,
       turnout = ifelse(!is.na(number_voters) & !is.na(eligible_voters) &

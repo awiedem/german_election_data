@@ -148,10 +148,61 @@ elections <- tribble(
   "bgmstichwahl_2025_schleswig",         "stichwahl",  "Schleswig",           2025L, "",
   "bgmwahl_2025_sylt",                   "hauptwahl",  "Sylt",                2025L, "ergebnisse_gemeinde_54168.html",
   "bgmstichwahl_2025_sylt",              "stichwahl",  "Sylt",                2025L, "ergebnisse_gemeinde_54168.html",
-  # ---- 2026 (upcoming — may not have results yet) ----
+  # ---- 2026 ----
+  # None of the nine went to a runoff; probing both slug spellings
+  # (bgm_stichwahl_2026_* and bgmstichwahl_2026_*) returns 404 for every one.
+  # Schwarzenbek is still flagged "vorläufig" on the portal.
   "bgmwahl_2026_ratekau",                "hauptwahl",  "Ratekau",             2026L, "",
-  "bgmwahl_2026_schwentinental",         "hauptwahl",  "Schwentinental",      2026L, ""
+  "bgmwahl_2026_schwentinental",         "hauptwahl",  "Schwentinental",      2026L, "",
+  "bgmwahl_2026_ammersbek",              "hauptwahl",  "Ammersbek",           2026L, "",
+  "bgmwahl_2026_boenningstedt",          "hauptwahl",  "Bönningstedt",        2026L, "",
+  "bgmwahl_2026_heide",                  "hauptwahl",  "Heide",               2026L, "",
+  "bgmwahl_2026_reinbek",                "hauptwahl",  "Reinbek",             2026L, "",
+  "bgmwahl_2026_reinfeld",               "hauptwahl",  "Reinfeld (Holstein)", 2026L, "",
+  "bgmwahl_2026_schwarzenbek",           "hauptwahl",  "Schwarzenbek",        2026L, "",
+  "bgmwahl_2026_trittau",                "hauptwahl",  "Trittau",             2026L, ""
 )
+
+# ============================================================================
+# REGISTRY COMPLETENESS CHECK
+# ============================================================================
+# The registry above is hand-maintained, which is precisely how the nine 2026
+# elections went missing: they were published on the portal and nothing in the
+# pipeline noticed. The registry cannot simply be REPLACED by the index, because
+# the index omits pages in both directions (some Hauptwahl pages appear only
+# when there was no runoff, and the 2024 runoffs appear nowhere on it). So the
+# index is used the other way round: as a lower bound the registry must cover.
+#
+# Anything on the index that looks like a mayoral election and is not in the
+# registry stops the script. Referenda and other non-mayoral votes on the same
+# index are excluded by prefix -- Bürgerentscheide (be_*), Abstimmungen,
+# Einwohnerbefragungen and Gemeindewahlen (gkw_*) are not mayoral elections.
+check_sh_registry_complete <- function(known_slugs) {
+  idx <- tryCatch(read_html("https://www.wahlen-sh.de/andere_wahlen.html"),
+                  error = function(e) NULL)
+  if (is.null(idx)) {
+    warning("SH: could not fetch andere_wahlen.html; registry completeness NOT verified")
+    return(invisible(NULL))
+  }
+  hrefs <- idx |> html_elements("a") |> html_attr("href")
+  hrefs <- hrefs[!is.na(hrefs)]
+  slugs <- str_match(str_trim(hrefs),
+                     "^https?://(?:www\\.)?wahlen-sh\\.de/([^/\"\\s]+)")[, 2]
+  slugs <- unique(slugs[!is.na(slugs) & !str_detect(slugs, "\\.html$")])
+  mayoral <- slugs[str_detect(slugs, "^(bgm|bm_|ob_)")]
+  missing <- setdiff(mayoral, known_slugs)
+  if (length(missing) > 0) {
+    stop("SH: ", length(missing), " mayoral election(s) are linked from ",
+         "andere_wahlen.html but absent from the registry: ",
+         paste(missing, collapse = ", "),
+         ".\nAdd them above (and probe bgm_stichwahl_<year>_<name> and ",
+         "bgmstichwahl_<year>_<name> for a runoff), then re-run.")
+  }
+  cat("Registry covers all", length(mayoral),
+      "mayoral elections linked from the index\n")
+  invisible(NULL)
+}
+check_sh_registry_complete(elections$url_slug)
 
 # ============================================================================
 # AGS MAPPING
