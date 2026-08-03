@@ -5311,6 +5311,30 @@ cat("States:", paste(sort(unique(df_all$state)), collapse = ", "), "\n")
 glimpse(df_all)
 
 # Write
+# ---------------------------------------------------------------------------
+# force_utf8(): make every character column valid UTF-8 before publishing
+# ---------------------------------------------------------------------------
+# Some sources are Latin-1 and R carries their strings with a declared "latin1"
+# encoding. R itself renders those correctly, so nothing looks wrong in the
+# session or the .rds — but fwrite writes the raw bytes, which leaves the
+# published CSV mixed-encoding and not valid UTF-8. Anything reading it as UTF-8
+# (pandas, csv.reader, the website's dashboard generator) then fails outright on
+# names like München, Altötting or Hanse- und Universitätsstadt Rostock.
+# Normalise at the write point so this cannot depend on which source a row
+# came from.
+force_utf8 <- function(df) {
+  chr <- names(df)[vapply(df, is.character, logical(1))]
+  for (cc in chr) df[[cc]] <- enc2utf8(df[[cc]])
+  bad <- vapply(chr, function(cc) sum(!validUTF8(df[[cc]]), na.rm = TRUE), integer(1))
+  if (any(bad > 0)) {
+    stop("Non-UTF-8 strings remain after conversion in: ",
+         paste(names(bad)[bad > 0], collapse = ", "))
+  }
+  df
+}
+
+df_all <- force_utf8(df_all)
+
 write_rds(df_all, "data/county_elections/final/county_elec_unharm.rds")
 fwrite(df_all, "data/county_elections/final/county_elec_unharm.csv")
 cat("Written to data/county_elections/final/\n")
