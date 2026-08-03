@@ -1792,6 +1792,62 @@ if (file.exists(sn_1994_file)) {
        " — run code/county_elections/00_sn_1994_parse.py first")
 }
 
+# --- 1995 (Kreis level) -------------------------------------------------------
+# The re-run the Verfassungsgericht forced after annulling the 1994 Kreisreform,
+# held 3 December 1995 in three newly formed Kreise. Parsed by
+# code/county_elections/00_sn_1995_parse.py from table 1, which is KREIS level —
+# the Gemeinde tables carry names with no AGS, and the audit worklist assumed
+# those were the only source and that ~32 names would need hand-adjudication.
+# They are not needed at all.
+#
+# "Meißen-Radebeul" and "Westlausitz-Dresdner Land" are the provisional names of
+# the new Kreise; the register knows them as Meißen (14280) and Kamenz (14292).
+# Two single-Gemeinde ballots in the same table (Uhyst joining the
+# Niederschlesischer Oberlausitzkreis, Schönfeld-Weißig joining Sächsische
+# Schweiz) are excluded upstream — both Kreise already voted in full in 1994, so
+# publishing them as 1995 Kreis rows would show ~1 % of a county as the county.
+sn_1995_file <- file.path(sn_dir, "sn_1995_parsed.csv")
+if (file.exists(sn_1995_file)) {
+  cat("  SN 1995 (Kreis level) ...")
+  s95 <- read.csv(sn_1995_file, colClasses = "character", check.names = FALSE,
+                  fileEncoding = "UTF-8")
+  num95 <- function(x) suppressWarnings(as.numeric(x))
+  d95 <- data.frame(
+    ags = s95$ags, ags_name = s95$ags_name,
+    eligible_voters = num95(s95$eligible_voters),
+    number_voters   = num95(s95$number_voters),
+    invalid_votes   = num95(s95$invalid_votes),
+    # valid BALLOTS, as for 1994 and 1999-2024. 1995 prints this directly.
+    valid_votes     = num95(s95$valid_votes),
+    stringsAsFactors = FALSE, check.names = FALSE
+  )
+  sn95_parties <- c("CDU", "SPD", "PDS", "GRÜNE", "F.D.P.", "DSU", "FORUM",
+                    "Wählervereinigungen", "Sonstige")
+  stopifnot(all(sn95_parties %in% names(s95)))
+  gs95 <- num95(s95$valid_vote_total)
+  for (pc in sn95_parties) {
+    v <- num95(s95[[pc]])
+    pn <- normalise_party_cty(pc)
+    d95[[pn]] <- if (pn %in% names(d95)) rowSums(cbind(d95[[pn]], v / gs95), na.rm = TRUE) else v / gs95
+  }
+  sh95 <- rowSums(d95[unique(vapply(sn95_parties, normalise_party_cty, ""))], na.rm = TRUE)
+  if (max(abs(sh95 - 1)) > 1e-9) {
+    stop("SN 1995: party shares sum to ", max(sh95), " rather than 1")
+  }
+  stopifnot(all(nchar(d95$ags) == 8), !any(duplicated(d95$ags)),
+            all(d95$valid_votes < d95$number_voters),
+            all(d95$number_voters <= d95$eligible_voters))
+  d95$turnout <- d95$number_voters / d95$eligible_voters
+  d95$county <- substr(d95$ags, 1, 5)
+  d95$state <- "14"
+  d95$election_year <- 1995L
+  cat(nrow(d95), "Kreise\n")
+  sn_results[["1995"]] <- as_tibble(d95)
+} else {
+  stop("SN 1995 file not found: ", sn_1995_file,
+       " — run code/county_elections/00_sn_1995_parse.py first")
+}
+
 df_sn <- bind_rows(sn_results)
 df_sn <- df_sn |> mutate(ags = pad_zero_conditional(ags, 7))
 

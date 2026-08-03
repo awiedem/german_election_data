@@ -955,3 +955,41 @@ rather than noisy:
 The flag is now published on **both** harmonised county outputs, `_muni` as well as `_cty`;
 the drop added to `df_muni_out` in §13 was written when the flag was county-only and has
 been removed. Everything else in both files is bit-identical.
+
+---
+
+## 18. Follow-up: Sachsen 1995 — the premise was wrong, and it is ingestible
+
+§8 deferred Sachsen 1995 on the grounds that the source "carries names only, no AGS", that
+147 of 179 Gemeinde names matched the register and 32 did not, and that ingesting it would
+therefore need about 32 per-name adjudications. All of that was true of the *Gemeinde*
+tables — and irrelevant, because **they are not the only tables**. `KT95_TAB1.XLS` reports
+the election at **Kreis level**, and needs no name matching at all.
+
+The 3 December 1995 election was the re-run forced by the Sächsisches Verfassungsgericht
+after it annulled the 1994 Kreisreform (§8). Table 1 has five sections, and they are not
+the same kind of thing:
+
+| Section | Code | 2021 target |
+|---|---|---|
+| Vogtlandkreis | 14178 | Vogtlandkreis 14523 (weight 1.00) |
+| Meißen-Radebeul | 14280 | Meißen 14627 (0.92) + Dresden + SSO |
+| Westlausitz-Dresdner Land | 14292 | Bautzen 14625 + Dresden |
+| *Uhyst* → Niederschles. Oberlausitzkreis | — | **not ingested** |
+| *Schönfeld-Weißig* → Sächsische Schweiz | — | **not ingested** |
+
+"Meißen-Radebeul" and "Westlausitz-Dresdner Land" are the provisional names the new Kreise
+carried in 1995; the register knows them as Meißen and Kamenz. The last two sections are
+**single-Gemeinde ballots** — Uhyst with 1,015 electors and Schönfeld-Weißig with 6,350,
+voting on which Kreis to join. Both of those Kreise had already held a full Kreistagswahl in
+1994, so publishing these as 1995 Kreis rows would present about one per cent of a county as
+the county. They are excluded, and the parser names them when it does so.
+
+All three exported Kreise reconcile exactly to their own printed gültige Stimmen. Getting
+there needed one correction the assertion caught: **FORUM** stood only in Meißen-Radebeul,
+and leaving it out of the party list left that Kreis exactly 2,156 votes short.
+
+Every one of the five 2021 counties the result lands in carries `flag_partial_coverage = 1`,
+which is right and is the two mechanisms agreeing: only three Kreise voted in 1995, so each
+receiving county is genuinely built from part of its predecessors — Vogtlandkreis 14523, for
+instance, also contains the kreisfreie Stadt Plauen, which held its own separate ballot.

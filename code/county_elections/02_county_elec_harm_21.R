@@ -184,7 +184,8 @@ county_level_states <- c("08", "09")  # BW and BY, county-level in every year
 # only (no Gemeinde breakdown was ever published), while 1999 onward is
 # Gemeinde-level.
 county_level_years <- list(c(state = "05", election_year = "2025"),
-                           c(state = "14", election_year = "1994"))
+                           c(state = "14", election_year = "1994"),
+                           c(state = "14", election_year = "1995"))
 
 is_county_level <- function(state, election_year) {
   out <- state %in% county_level_states
@@ -197,7 +198,7 @@ is_county_level <- function(state, election_year) {
 df_cty <- df |> filter(is_county_level(state, election_year))
 df_muni <- df |> filter(!is_county_level(state, election_year))
 
-cat("\nCounty-level data (BW, BY, NRW 2025, SN 1994):", nrow(df_cty), "rows\n")
+cat("\nCounty-level data (BW, BY, NRW 2025, SN 1994/1995):", nrow(df_cty), "rows\n")
 cat("Municipality-level data:", nrow(df_muni), "rows\n")
 
 # ==========================================================================
