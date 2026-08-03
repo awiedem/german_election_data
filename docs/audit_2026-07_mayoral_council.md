@@ -556,10 +556,9 @@ Two judgement calls:
   Meißen 2021 would have been published with 98,003 electors against the ~200,000 it has in every
   neighbouring year, with nothing to mark it. The flag measures each target's covered population
   against the crosswalk's own figures and fires on the six affected counties. `NA` means not
-  assessed. Part A (municipality level) has the same structural exposure, but no live instance
-  is known: the Thüringen 2024 case cited when this was written is not real (see §12), and
-  `ags_crosswalks` carries no population column, so that check needs a different population
-  source and stays on the worklist.
+  assessed. Part A (municipality level) has the same structural exposure; it is implemented
+  too — see §17, which also corrects the claim originally made here that `ags_crosswalks`
+  carries no population column. It does.
 
 **Sachsen 1995 was deliberately not ingested.** The re-run covers the four annulled Kreise at
 Gemeinde level, but the source carries **no AGS at all** — only names, in Wahlkreis sections. Of 179
@@ -929,3 +928,30 @@ them to `01` alone would have published election results that never reached the 
 `mayoral_unharm`. Aue is deliberately absent from the candidate file: with no published
 runoff it has no determinable winner, and its two named runoff entrants are not the full
 field of three.
+
+---
+
+## 17. Follow-up: partial-coverage flagging at municipality level
+
+§8 introduced `flag_partial_coverage` for county-level sources and recorded that the
+municipality-level equivalent was blocked because "`ags_crosswalks` carries no population
+column". **That was wrong.** `ags_crosswalks` has a `population` column, populated for all
+405,993 rows — the same field `cty_crosswalks` provides — so the identical formula applies:
+donor *d* hands `population(d) × pop_cw(d → T)` to target *T*, and the covered share is that
+sum over the donors actually present divided by the same sum over every donor the crosswalk
+lists for that year. Part A now computes the flag exactly as Part B does.
+
+It fires on **25 municipality-years** out of 49,006, and the distribution is informative
+rather than noisy:
+
+* **23 in Rheinland-Pfalz.** Expected: the StaLA Sonderauswertung reports the whole
+  1969-2019 series on 2025 boundaries, so back-mapping leaves some 2021 targets with only
+  part of their donors. Two of the codes involved (`07232089`, `07232096`) are the
+  Obergeckler split targets that had to be added to the crosswalk by hand.
+* **Leipzig `14713000` in 1999** — 1,539 electors for a city of roughly 400,000. A genuine
+  fragment, and exactly the kind of row the flag exists to mark.
+* **One Sachsen-Anhalt row in 2004** (`15083025`, 2,237 electors).
+
+The flag is now published on **both** harmonised county outputs, `_muni` as well as `_cty`;
+the drop added to `df_muni_out` in §13 was written when the flag was county-only and has
+been removed. Everything else in both files is bit-identical.

@@ -391,6 +391,45 @@ votes_muni <- votes_muni |>
     is.na(flag_unsuccessful_naive_merge), 0, flag_unsuccessful_naive_merge)) |>
   select(-id)
 
+# Partial coverage of a 2021 municipality (Part A).
+#
+# Same reasoning as the county-level check further down: harmonisation is silent
+# about donors that are simply absent from the source, so a target built from
+# only part of its predecessors still emits a row that looks complete. The note
+# added here in August 2026 claimed ags_crosswalks had no population column and
+# that the check was therefore blocked — it does have one, fully populated for
+# all 405,993 rows, so the identical formula applies: donor d hands
+# population(d) * pop_cw(d -> T) to target T, and the covered share is that sum
+# over the donors actually present divided by the same sum over every donor the
+# crosswalk lists for that year.
+cw_muni_pop <- cw_muni |>
+  mutate(pop_contrib = as.numeric(population) * as.numeric(pop_cw)) |>
+  filter(!is.na(pop_contrib))
+
+covA_full <- cw_muni_pop |>
+  group_by(ags_21, election_year) |>
+  summarise(pop_total = sum(pop_contrib), .groups = "drop")
+
+covA_have <- df_cw |>
+  distinct(ags, ags_21, election_year) |>
+  inner_join(cw_muni_pop |> select(ags, election_year, ags_21, pop_contrib),
+             by = c("ags", "ags_21", "election_year")) |>
+  group_by(ags_21, election_year) |>
+  summarise(pop_have = sum(pop_contrib), .groups = "drop")
+
+votes_muni <- votes_muni |>
+  left_join(covA_full |> rename(ags = ags_21), by = c("ags", "election_year")) |>
+  left_join(covA_have |> rename(ags = ags_21), by = c("ags", "election_year")) |>
+  mutate(
+    coverage = ifelse(!is.na(pop_total) & pop_total > 0, pop_have / pop_total, NA_real_),
+    flag_partial_coverage = as.integer(!is.na(coverage) & coverage < 0.99)
+  ) |>
+  select(-pop_total, -pop_have, -coverage)
+
+n_partA <- sum(votes_muni$flag_partial_coverage, na.rm = TRUE)
+cat("  flag_partial_coverage set on", n_partA,
+    "municipality-year rows (source units missing for part of the 2021 municipality)\n")
+
 cat("Municipality harmonization:", nrow(votes_muni), "rows\n")
 
 # ==========================================================================
@@ -652,9 +691,9 @@ df_muni_out <- df_harm |> filter(!is_county_level(state, election_year))
 # unallocated predecessors. It is therefore published on county_elec_unharm
 # only; this drop is deliberate, not incidental.
 df_muni_out$flag_sg_postal_allocated <- NULL
-# flag_partial_coverage is only computed for county-level sources, so it would
-# be all-NA here; drop it rather than ship a column that never says anything.
-df_muni_out$flag_partial_coverage <- NULL
+# flag_partial_coverage used to be county-only and was dropped here as all-NA.
+# Part A computes it now, so it stays: 25 municipality-year rows are built from
+# only part of their 2021 predecessors.
 
 # Add municipality-level covariates
 area_pop <- read_rds("data/covars_municipality/final/ags_area_pop_emp.rds") |>
