@@ -868,3 +868,26 @@ Anyone summing candidate votes in those three states must expect them not to rea
 `valid_votes`; the election-level `valid_votes` remains authoritative.
 
 No parser change was needed. The rewrite is confirmed correct on every case examined.
+
+---
+
+## 15. Follow-up: the NRW Aachen double-count in 2014 and 2020
+
+Noticed while adding NRW 2025 (§8) and left open as a pre-existing defect. **The IT.NRW
+source lists Aachen twice**, under two different Kreis keys:
+
+* `KRS 313 / GKZ 313000` "Aachen, krfr. Stadt" — its **Stadtrat**, presented as a
+  standalone Kreis, and
+* `KRS 334 / GKZ 334002`, same name — its contribution to the **Städteregionstag**.
+
+Both are real elections held the same day, which is why the party shares differ (2014 AfD
+2.5 % against 0.1 %; 2020 GRÜNE 34.1 % against 36.7 %) — they are not duplicate rows but
+two different ballots. Only the second is a county-council result, so carrying both
+double-counted Aachen's electorate: **194,455 in 2014 and 192,502 in 2020**.
+
+The cut-off is the Städteregion's formation on **21.10.2009, which falls after the
+30.08.2009 election**: Aachen genuinely was kreisfrei for 1999-2009, so those years keep
+their `313` row and only 2014 onward drop it. Statewide NRW electorate now reads
+14,152,068 (2009) · 14,275,974 (2014) · 14,236,184 (2020) · 13,998,362 (2025), each falling
+by exactly Aachen's own figure where the drop applied. An assertion now stops the script if
+Aachen is ever counted twice in a year again.

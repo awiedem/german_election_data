@@ -5044,6 +5044,33 @@ if (file.exists(nrw_2025_file)) {
 }
 
 df_nrw <- bind_rows(nrw_results)
+
+# Aachen is in the IT.NRW source TWICE from 2014 on, under two different Kreis
+# keys: KRS 313 / GKZ 313000 "Aachen, krfr. Stadt", which is its STADTRAT, and
+# KRS 334 / GKZ 334002 of the same name, its contribution to the
+# STÄDTEREGIONSTAG. Both are real elections on the same day — the party shares
+# differ (2014 AfD 2.5 % vs 0.1 %; 2020 GRÜNE 34.1 % vs 36.7 %) — but only the
+# second is a county-council result, so keeping both double-counted Aachen's
+# electorate in this dataset: 194,455 in 2014 and 192,502 in 2020.
+#
+# The cut-off is the Städteregion's formation on 21.10.2009, which is AFTER the
+# 30.08.2009 election: Aachen really was kreisfrei for 1999-2009, so those years
+# keep their 313 row and only 2014 onward drop it. 2025 is already handled in
+# its own block, where IT.NRW publishes a Kreis-level summary instead.
+nrw_aachen_dup <- df_nrw$ags == "05313000" & df_nrw$election_year >= 2014
+if (any(nrw_aachen_dup)) {
+  cat("  Dropping", sum(nrw_aachen_dup), "Aachen Stadtrat row(s) from the county",
+      "dataset (years", paste(sort(unique(df_nrw$election_year[nrw_aachen_dup])), collapse = ", "),
+      "— Aachen votes for the Städteregionstag under 05334002 from 21.10.2009)\n")
+  df_nrw <- df_nrw[!nrw_aachen_dup, ]
+}
+# Aachen must appear exactly once per election year in the county dataset.
+aachen_n <- table(df_nrw$election_year[df_nrw$ags %in% c("05313000", "05334002")])
+if (any(aachen_n > 1)) {
+  stop("NRW: Aachen still counted twice in ",
+       paste(names(aachen_n)[aachen_n > 1], collapse = ", "))
+}
+
 cat("NRW total:", nrow(df_nrw), "rows x", ncol(df_nrw), "cols\n")
 cat("NRW years:", paste(sort(unique(df_nrw$election_year)), collapse = ", "), "\n")
 df_nrw |> count(election_year) |> print()
