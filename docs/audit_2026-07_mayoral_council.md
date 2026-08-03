@@ -891,3 +891,33 @@ their `313` row and only 2014 onward drop it. Statewide NRW electorate now reads
 14,152,068 (2009) · 14,275,974 (2014) · 14,236,184 (2020) · 13,998,362 (2025), each falling
 by exactly Aachen's own figure where the drop applied. An assertion now stops the script if
 Aachen is ever counted twice in a year again.
+
+---
+
+## 16. Follow-up: the Niedersachsen Direktwahlen of 2017
+
+§9 established that Niedersachsen holds off-cycle Direktwahlen in most years and that
+GERDA had **no rows at all** for 2015, 2017, 2018 and 2020. Of those only 2017 has
+published results — a two-page summary covering the five elections of 24.09.2017 — so it is
+the only one that can be closed.
+
+Unlike the runoff tables of §9 there is no Hauptwahl already in the data to inherit an AGS
+from, so the five are mapped explicitly and each was confirmed against the report's own
+"im LK" column: **Aue** is the Samtgemeinde in Uelzen (`03360408`) and *not* Auetal in
+Schaumburg, **Berne** Wesermarsch (`03461001`), **Helmstedt** (`03154010`), **Langwedel**
+Verden (`03361006`), **Uplengen** Leer (`03457020`). Uplengen appears in no other GERDA
+year and was taken from the register.
+
+Results: Berne EB 50.01 %, Helmstedt CDU 55.50 %, Langwedel SPD 61.24 %, Uplengen CDU
+51.03 %. The printed share equals `winner_votes / valid_votes` to four decimals in all four
+cases. Aue went to a runoff whose result the Landeswahlleitung never published, so it is
+carried with counts and turnout but no winner — the same honest treatment as the six
+Sachsen-Anhalt 2007 Landratswahlen in §11.
+
+Two parsing traps in this layout, both caught only because the numbers were checked rather
+than assumed: **votes and share are printed as a single field** separated by one space
+("7.872 55,50%"), so they survive a 2-or-more-space column split together and must be
+pulled out by pattern; and **that field also contains a comma**, the German decimal
+separator, so identifying the winner as "the last comma-bearing field" selects the votes
+instead of the name and loses the party. The winner is matched on a comma preceded by
+letters.

@@ -1200,6 +1200,88 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
     ifelse(x %in% names(ns_sw_aliases), unname(ns_sw_aliases[x]), x)
   }
 
+  # --------------------------------------------------------------------------
+  # 2017 Übersicht table — a whole year GERDA had no rows for at all
+  # --------------------------------------------------------------------------
+  # Niedersachsen holds off-cycle Direktwahlen in most years. 2015, 2017, 2018
+  # and 2020 were entirely absent from GERDA; of those only 2017 has published
+  # results, as a two-page summary (5 elections on 24.09.2017).
+  #
+  # Unlike the runoff tables there is no Hauptwahl already in the data to
+  # inherit an AGS from, so the five are mapped explicitly. Each was confirmed
+  # against the report's own "im LK" column: Aue is the Samtgemeinde in Uelzen
+  # (360) and NOT Auetal in Schaumburg, Berne is in Wesermarsch (461),
+  # Helmstedt 154, Langwedel in Verden (361), Uplengen in Leer (457).
+  ns_2017_ags <- c(
+    "Aue"       = "03360408",  # SG, LK Uelzen
+    "Berne"     = "03461001",  # Gemeinde, LK Wesermarsch
+    "Helmstedt" = "03154010",  # Stadt, LK Helmstedt
+    "Langwedel" = "03361006",  # Flecken, LK Verden
+    "Uplengen"  = "03457020"   # Gemeinde, LK Leer
+  )
+
+  parse_ns_2017 <- function(pdf_path) {
+    lines <- unlist(str_split(pdftools::pdf_text(pdf_path), "\n"))
+    # Anchor on the trailing Wahlberechtigte / Wähler / Gültige / Beteiligung
+    # block, which every row has -- including Aue, whose winner columns are
+    # empty because it went to a runoff.
+    pat <- paste0("^\\s*(\\d{1,2})\\s+(.+?)\\s{2,}(.+?)\\s+",
+                  "([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)\\s+(\\d+,\\d+%)\\s*$")
+    hit <- str_match(lines, pat)
+    hit <- hit[!is.na(hit[, 1]), , drop = FALSE]
+    if (nrow(hit) == 0) return(NULL)
+    out <- vector("list", nrow(hit))
+    for (i in seq_len(nrow(hit))) {
+      kom <- str_trim(hit[i, 3])
+      mid <- str_split(str_trim(hit[i, 4]), "\\s{2,}")[[1]]
+      bez <- mid[1]
+      won <- any(grepl("Wahlsieg", mid))
+      # Winner name carries a comma; the party is the field after it, and the
+      # votes/share are the two fields before the counts block.
+      # The winner is the field holding "Nachname, Vorname". Match on a comma
+      # PRECEDED BY LETTERS: the votes/share field ("7.872 55,50%") also carries
+      # a comma, as the German decimal separator, and taking the last
+      # comma-bearing field therefore picked it and lost the party entirely.
+      wi <- grep("^[^0-9]+,", mid)
+      nm <- if (length(wi)) mid[max(wi)] else NA_character_
+      party <- NA_character_; votes <- NA_real_; share <- NA_real_
+      if (length(wi)) {
+        tail_bits <- mid[(max(wi) + 1):length(mid)]
+        party <- tail_bits[1]
+        # Votes and share are printed as ONE field separated by a single space
+        # ("7.872 55,50%"), so they survive the 2+-space split together and have
+        # to be pulled out by pattern rather than by position.
+        rest <- paste(tail_bits[-1], collapse = " ")
+        vm <- str_match(rest, "([\\d.]+)\\s+(\\d+,\\d+)%")
+        if (!is.na(vm[1, 1])) {
+          votes <- as.numeric(gsub("\\.", "", vm[1, 2]))
+          share <- as.numeric(gsub(",", ".", vm[1, 3])) / 100
+        }
+      }
+      ags <- unname(ns_2017_ags[kom])
+      if (is.na(ags)) stop("NS 2017: no AGS mapped for '", kom, "'")
+      out[[i]] <- data.frame(
+        ags = ags, ags_name = kom, state = "03", state_name = "Niedersachsen",
+        election_year = 2017L, election_date = as.Date("2017-09-24"),
+        election_type = if (bez == "SG") "SG-Bürgermeisterwahl" else "Bürgermeisterwahl",
+        needs_stichwahl = !won,
+        eligible_voters = as.numeric(gsub("\\.", "", hit[i, 5])),
+        number_voters   = as.numeric(gsub("\\.", "", hit[i, 6])),
+        valid_votes     = as.numeric(gsub("\\.", "", hit[i, 7])),
+        invalid_votes   = NA_real_,
+        turnout = as.numeric(gsub(",", ".", sub("%", "", hit[i, 8]))) / 100,
+        winner_party = party, winner_votes = votes, winner_voteshare = share,
+        stringsAsFactors = FALSE
+      )
+    }
+    df <- bind_rows(out)
+    df$invalid_votes <- df$number_voters - df$valid_votes
+    if (nrow(df) != length(ns_2017_ags)) {
+      stop("NS 2017: parsed ", nrow(df), " rows, expected ", length(ns_2017_ags))
+    }
+    df
+  }
+
   attach_ns_stichwahl <- function(sw, hw_all, year, sw_date) {
     hw <- hw_all[hw_all$election_year == year & hw_all$needs_stichwahl, , drop = FALSE]
     hk <- ns_norm_name(hw$ags_name)
@@ -1573,6 +1655,13 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
            list(path = "DW2016/SW_Vorlaeufige_Ergebnisse_Stichwahlen_25.09.2016.pdf",
                 parser = "sw_rich", date = "2016-09-25")
          )),
+    # 2017: an off-cycle year GERDA had no rows for at all, published only as a
+    # summary table. Aue went to a runoff whose result was never published.
+    list(year = 2017L, date = "2017-09-24",
+         files = list(
+           list(path = "DW2017/HW_Ergebnisuebersicht_Direktwahlen_24.09.2017.pdf",
+                parser = "ue_2017")
+         )),
     list(year = 2019L, date = "2019-05-26",
          files = list(
            list(path = "DW2019/DW_Einzel.pdf", parser = "standard"),
@@ -1642,6 +1731,12 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
           cat("    ", fc$path, ":", nrow(file_df), "elections\n")
           ns_all_results[[length(ns_all_results) + 1]] <- file_df
         }
+
+      } else if (fc$parser == "ue_2017") {
+        file_df <- parse_ns_2017(pdf_path)
+        file_df$round <- "hauptwahl"
+        cat("    ", fc$path, ":", nrow(file_df), "elections\n")
+        ns_all_results[[length(ns_all_results) + 1]] <- file_df
 
       } else if (fc$parser %in% c("sw_rich", "sw_names")) {
         # Runoff summary table. The Hauptwahl file of the same year is listed
