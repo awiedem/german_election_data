@@ -16,8 +16,18 @@ conflict_prefer("filter", "dplyr")
 conflict_prefer("lag", "dplyr")
 conflict_prefer("first", "dplyr")
 
-# Local helper (avoid requiring haschaR)
-pad_zero_conditional <- function(x, n) {
+# Local helper (avoid requiring haschaR).
+# NOT the same function as haschaR::pad_zero_conditional(), despite the name it
+# used to carry. haschaR's second argument is the length to MATCH — it prepends
+# one "0" iff nchar(x) == str_len — whereas this one is a plain left-pad to a
+# target WIDTH. Sharing the name meant the two were interchangeable by sight but
+# not by behaviour: this file's `pad_zero_conditional(ags, 8)` was a harmless
+# no-op on already-8-character codes, while the identical-looking call in
+# 02_federal_muni_harm_21.R (which loads haschaR for real) turned every
+# 8-character AGS into a 9-character one and corrupted the published federal
+# dataset for three months. Renamed so the two can never be confused again;
+# the argument here reads as what it is, a width.
+pad_to_width <- function(x, n) {
   x <- as.character(x)
   x <- str_pad(x, width = n, side = "left", pad = "0")
   return(x)
@@ -72,7 +82,7 @@ load_if_exists <- function(path) {
     warning(sprintf("File not found, skipping: %s", path), call. = FALSE)
     return(NULL)
   }
-  read_rds(path) |> as_tibble() |> mutate(ags = pad_zero_conditional(ags, 8))
+  read_rds(path) |> as_tibble() |> mutate(ags = pad_to_width(ags, 8))
 }
 
 h21    <- load_if_exists("data/state_elections/final/state_harm_21.rds")
@@ -1240,11 +1250,11 @@ for (i in seq_len(nrow(csv_rds_pairs))) {
   # Read CSV with AGS as character (leading zeros)
   df_csv <- read_csv(p$csv_path, col_types = cols(ags = "c", .default = col_guess()),
                      show_col_types = FALSE) |>
-    mutate(ags = pad_zero_conditional(ags, 8))
+    mutate(ags = pad_to_width(ags, 8))
 
   df_rds <- read_rds(p$rds_path) |>
     as_tibble() |>
-    mutate(ags = pad_zero_conditional(ags, 8))
+    mutate(ags = pad_to_width(ags, 8))
 
   # 1. Row count
   ok <- TRUE

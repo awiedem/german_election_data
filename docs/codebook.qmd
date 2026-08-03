@@ -137,6 +137,7 @@ across successors by population weight.
 | `n_predecessors` | integer | Number of source municipalities merged into this target boundary. |
 | `flag_unsuccessful_naive_merge` | int/num | 1 where the direct crosswalk merge failed and the row was resolved by a fallback (previous-year code, identity mapping, or a manual correction). Not an error marker — a record of how the row was matched. |
 | `flag_aggregated` | integer | 1 where the row is the result of merging several predecessor municipalities. |
+| `flag_partial_coverage` | integer | County-council harmonized output (`_muni` and `_cty`). 1 where the source covers less than 99 % of the 2021 unit's population, so the row's **counts** describe only part of it — turnout and vote shares remain valid for the part that voted. `NA` means not assessed. Set on the six 2021 Saxon counties overlapping the four 1994 Kreise whose Kreistagswahl the Sächsisches Verfassungsgericht annulled, and on 25 municipality-years: 23 in Rheinland-Pfalz, whose source is already reported on 2025 boundaries, plus Leipzig 1999 and one Sachsen-Anhalt 2004 row that genuinely cover only a fragment. |
 | `area`, `population` | numeric | Area (km²) and population (in thousands) of the municipality, from official Gemeindeverzeichnis registers, carried through the crosswalk. |
 
 The method used to harmonize votes differs by pipeline and is deliberate:

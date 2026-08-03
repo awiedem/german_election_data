@@ -266,6 +266,7 @@ normalise_party_cty <- function(x) {
     "statt partei die unabh\u00e4ngigen"      = "statt_partei",
     "die grauen - graue panther"              = "graue",
     "die gerechtigkeitspartei - team todenh\u00f6fer" = "team_todenhofer",
+    "team todenh\u00f6fer"                     = "team_todenhofer",
 
     # NI-specific
     "b\u00fcndnis c"              = "buendnis_c",
@@ -297,6 +298,8 @@ normalise_party_cty <- function(x) {
     "die rechte"                  = "die_rechte",
     "die violetten"               = "die_violetten",
     "tierschutz hier!"            = "tierschutz_hier",
+    # IT.NRW spaces the letters out in the 2025 Kreistagswahl export.
+    "t i e r s c h u t z"         = "tierschutz_hier",
     "aufbruch c"                  = "aufbruch_c",
     "b\u00fcndnis c"              = "buendnis_c",
     "basisdemokratie jetzt"       = "basisdemokratie_jetzt",
@@ -772,7 +775,99 @@ parse_th_xlsx <- function(filepath, year) {
   as_tibble(df)
 }
 
-# Process TH years (skip 1990/1994/1999 .xls for now)
+# --- TH 1994 + 1999: HTML tables that carry an .xls extension ----------------
+# The Landesamt published these two Kreistagswahlen as HTML, saved with an .xls
+# name; readxl cannot open them, which is why they were skipped. The layout is a
+# single table, one row per Gemeinde, and the columns match the later xlsx files
+# apart from an extra "Anzahl der Stimmbezirke" in 1999 — so columns are located
+# by header text, not by position.
+#
+# Two traps in the header handling, both of the kind documented in
+# docs/audit_2026-07_mayoral_council.md §7:
+#   * "Gültige Stimmabgaben" is a suffix of "Ungültige Stimmabgaben", so the
+#     match must be anchored or invalid ballots are read as valid ones.
+#   * normalising the header drops umlauts entirely ("Wähler" -> "whler"), and
+#     an R bracket range like [^a-zäöü] is locale-dependent and silently ate the
+#     leading letter; [^[:alnum:]] with perl = TRUE is stable.
+#
+# As in the xlsx years, valid_votes holds valid BALLOTS while party shares are
+# computed against "Gültige Stimmen", the three-vote total (~2.95x ballots).
+parse_th_kreistag_html <- function(path, year) {
+  raw <- rawToChar(readBin(path, "raw", file.size(path)))
+  raw <- iconv(raw, "ISO-8859-1", "UTF-8")
+  rows <- regmatches(raw, gregexpr("(?s)<tr[^>]*>.*?</tr>", raw, perl = TRUE))[[1]]
+  if (length(rows) < 2) stop("TH ", year, ": no table rows in ", path)
+
+  cell_text <- function(r) {
+    cs <- regmatches(r, gregexpr("(?s)<t[dh][^>]*>.*?(?=<t[dh]|</tr>)", r, perl = TRUE))[[1]]
+    trimws(gsub("[[:space:]]+", " ",
+                gsub("&nbsp;", " ", gsub("<[^>]*>", " ", cs), fixed = TRUE)))
+  }
+  h <- tolower(gsub("[^[:alnum:]%]", "", cell_text(rows[1]), perl = TRUE))
+  col <- function(pat) {
+    i <- grep(pat, h, perl = TRUE)
+    if (!length(i)) stop("TH ", year, ": no column matching '", pat,
+                         "' (header: ", paste(h, collapse = " | "), ")")
+    i[1]
+  }
+  i_gem  <- col("^gemeindenr");            i_name <- col("^gemeindename")
+  i_ev   <- col("^wahlberechtigte");       i_nv   <- col("^w.?hler")
+  i_inv  <- col("^ung.?ltigestimmabgaben")
+  i_ball <- col("^g.?ltigestimmabgaben")   # anchored — see note above
+  i_vot  <- col("^g.?ltigestimmen")
+  pmap <- c(cdu = "^cdu$", spd = "^spd$", linke_pds = "^pds$",
+            fdp = "^fdp$", gruene = "^gr.?ne$", other = "^sonstige$")
+  ip <- sapply(pmap, function(p) {
+    i <- grep(p, h, perl = TRUE); if (!length(i)) NA_integer_ else i[1]
+  })
+  if (any(is.na(ip))) stop("TH ", year, ": missing party column(s): ",
+                           paste(names(ip)[is.na(ip)], collapse = ", "))
+
+  num <- function(x) suppressWarnings(as.numeric(gsub("[^0-9]", "", x)))
+  recs <- list()
+  for (r in rows[-1]) {
+    v <- cell_text(r)
+    if (length(v) < i_vot || !grepl("^[0-9]{5}$", v[i_gem])) next
+    rec <- data.frame(
+      ags = paste0("16", sprintf("%06d", as.integer(v[i_gem]))),
+      ags_name = v[i_name],
+      eligible_voters = num(v[i_ev]), number_voters = num(v[i_nv]),
+      valid_votes = num(v[i_ball]), invalid_votes = num(v[i_inv]),
+      gueltige_stimmen = num(v[i_vot]),
+      stringsAsFactors = FALSE)
+    for (pn in names(pmap)) rec[[pn]] <- num(v[ip[[pn]]])
+    recs[[length(recs) + 1]] <- rec
+  }
+  df <- bind_rows(recs)
+  if (nrow(df) == 0) stop("TH ", year, ": parsed no Gemeinde rows")
+
+  # The source decomposes the three-vote total exactly; assert before dividing.
+  pcols <- names(pmap)
+  recon <- rowSums(df[pcols], na.rm = TRUE) - df$gueltige_stimmen
+  if (max(abs(recon), na.rm = TRUE) > 0) {
+    stop("TH ", year, ": party votes do not sum to Gültige Stimmen (max deviation ",
+         max(abs(recon), na.rm = TRUE), ")")
+  }
+  stopifnot(all(nchar(df$ags) == 8), !any(duplicated(df$ags)),
+            all(df$number_voters <= df$eligible_voters, na.rm = TRUE),
+            all(df$valid_votes <= df$number_voters, na.rm = TRUE))
+
+  df$election_year <- as.integer(year)
+  df$state <- "16"
+  df$county <- substr(df$ags, 1, 5)
+  df$turnout <- ifelse(!is.na(df$eligible_voters) & df$eligible_voters > 0,
+                       df$number_voters / df$eligible_voters, NA_real_)
+  for (pc in pcols) {
+    df[[pc]] <- ifelse(!is.na(df$gueltige_stimmen) & df$gueltige_stimmen > 0,
+                       df[[pc]] / df$gueltige_stimmen, NA_real_)
+  }
+  df$gueltige_stimmen <- NULL
+  cat("  TH", year, "(html) ->", nrow(df), "municipalities\n")
+  as_tibble(df)
+}
+
+# Process TH years. 1990 remains un-ingested: it is a genuine xlsx but uses
+# DDR Bezirk/Kreis/Gemeinde numbering rather than AGS and needs its own mapping.
 th_files <- list(
   list(year = 2004, file = "Thüringen_2004_Kreistagswahl.xlsx"),
   list(year = 2009, file = "Thüringen_2009_Kreistagswahl.xlsx"),
@@ -787,6 +882,13 @@ for (f in th_files) {
   th_results[[as.character(f$year)]] <- parse_th_xlsx(
     file.path(th_dir, f$file), f$year
   )
+}
+
+# 1994 and 1999 are HTML despite the .xls extension; parsed separately above.
+for (hy in c(1994, 1999)) {
+  hf <- file.path(th_dir, paste0("Thüringen_", hy, "_Kreistagswahl.xls"))
+  if (!file.exists(hf)) stop("TH ", hy, " file not found: ", hf)
+  th_results[[as.character(hy)]] <- parse_th_kreistag_html(hf, hy)
 }
 
 df_th <- bind_rows(th_results)
@@ -804,6 +906,104 @@ df_th |> count(election_year) |> print()
 cat("\n===== MECKLENBURG-VORPOMMERN =====\n")
 
 mv_dir <- file.path(raw_dir, "Mecklenburg-Vorpommern")
+
+# --- Amt-level pooled postal votes -------------------------------------------
+# Line 3 of the MV CSVs states: "Bei Feststellung des Briefwahlergebnisses auf
+# Amtsebene wird der Gemeindeschlüssel ab Stelle 6 geändert und um 7 und die
+# letzten beiden Ziffern des Amtsschlüssels ergänzt." Those pool rows carry
+# Wahlberechtigte == 0 and a Gemeindename of "Briefwahl <Amt>", so the
+# `eligible_voters > 0` municipality filter used to delete them outright:
+# 33,722 voters / 98,888 valid votes in 2024 (statewide turnout 61.71% shipped
+# vs 64.21% true) and 8,581 / 25,461 in 2019, concentrated in the 24 (resp. 8)
+# affected Ämter — Warnow-West showed 54.6% turnout instead of 76.4%
+# (audit fix C-17, 2026-07). MV 2014 has no pool rows.
+#
+# Allocation mirrors bb_allocate_postal: split each pool over its Amt's member
+# Gemeinden by eligible-voter share (MV publishes no Wahlschein counts), with
+# largest-remainder rounding so sum(parties) == gueltige_stimmen still holds.
+# The pool must be matched on the (Kreisname, Amtsname) pair — the Amt CODE
+# cannot be used, because the pool rows carry a 4-digit Amtsschlüssel while the
+# member rows carry the short form.
+#
+# The allocation is an estimate, so a Gemeinde whose urn turnout is already very
+# high can be pushed past 100%: in 2024 exactly two do (Schossin 13076121 at
+# 105.0% and Zülow 13076163 at 100.9%, both < 200 eligible voters and already
+# at 86% / 82% before allocation). They are left as they are — capping would
+# break sum(parties) == valid_votes and the Amt and Kreis totals. Amt-level
+# aggregates are exact: Warnow-West lands on 76.4%, matching the raw file.
+
+#' Distribute Amt-level pooled postal votes over the pool's member Gemeinden.
+#' @param df_muni municipality-level data with ABSOLUTE counts
+#' @param pool_map data.frame(pool, ags) linking each pool AGS to its members
+mv_allocate_postal <- function(df_muni, pool_map, dist_cols, party_names, year) {
+  if (nrow(pool_map) == 0) return(df_muni)
+
+  pools <- df_muni[df_muni$ags %in% unique(pool_map$pool), , drop = FALSE]
+  members <- df_muni[!(df_muni$ags %in% unique(pool_map$pool)), , drop = FALSE]
+  pool_map <- pool_map[pool_map$ags %in% members$ags, , drop = FALSE]
+
+  missing <- setdiff(unique(pools$ags), unique(pool_map$pool))
+  if (length(missing) > 0) {
+    stop("MV ", year, ": postal pool(s) with no member Gemeinde: ",
+         paste(missing, collapse = ", "))
+  }
+
+  pool_map$w <- members$eligible_voters[match(pool_map$ags, members$ags)]
+  pool_map$w[is.na(pool_map$w)] <- 0
+  wsum <- tapply(pool_map$w, pool_map$pool, sum, na.rm = TRUE)
+  if (any(wsum <= 0)) {
+    stop("MV ", year, ": postal pool(s) with zero total eligible voters: ",
+         paste(names(wsum)[wsum <= 0], collapse = ", "))
+  }
+  pool_map$share <- pool_map$w / unname(wsum[pool_map$pool])
+
+  targets <- sort(unique(pool_map$ags))
+  addm <- vapply(dist_cols, function(cl) {
+    pv <- pools[[cl]][match(pool_map$pool, pools$ags)]
+    a <- tapply(pv * pool_map$share, pool_map$ags, sum, na.rm = TRUE)
+    unname(a[targets])
+  }, numeric(length(targets)))
+  addm <- matrix(addm, nrow = length(targets), dimnames = list(targets, dist_cols))
+  addm[is.na(addm)] <- 0
+
+  # Largest-remainder rounding of the party additions, so they still sum to the
+  # municipality's added valid votes (see bb_allocate_postal for the rationale).
+  pcols <- intersect(party_names, dist_cols)
+  for (i in seq_len(nrow(addm))) {
+    tgt <- round(addm[i, "gueltige_stimmen"])
+    v <- addm[i, pcols]
+    fl <- floor(v)
+    need <- tgt - sum(fl)
+    if (need > 0) {
+      ord <- order(v - fl, decreasing = TRUE)
+      fl[ord[seq_len(min(need, length(fl)))]] <- fl[ord[seq_len(min(need, length(fl)))]] + 1
+    } else if (need < 0) {
+      ord <- order(v - fl, decreasing = FALSE)
+      take <- which(fl[ord] > 0)[seq_len(min(-need, sum(fl > 0)))]
+      fl[ord[take]] <- fl[ord[take]] - 1
+    }
+    addm[i, pcols] <- fl
+    addm[i, "gueltige_stimmen"] <- tgt
+  }
+  for (cl in setdiff(dist_cols, c(pcols, "gueltige_stimmen"))) {
+    addm[, cl] <- round(addm[, cl])
+  }
+
+  idx <- match(targets, members$ags)
+  for (cl in dist_cols) {
+    base <- members[[cl]][idx]
+    add <- addm[, cl]
+    # NA means "this party did not stand here": keep NA only when the pool adds
+    # nothing either, otherwise the pooled votes become its count.
+    members[[cl]][idx] <- ifelse(is.na(base) & add == 0, NA_real_,
+                                 ifelse(is.na(base), add, base + add))
+  }
+
+  cat(sprintf("    allocated %d Amt-level postal pools (%d voters) over %d municipalities\n",
+              nrow(pools), round(sum(pools$number_voters, na.rm = TRUE)),
+              length(targets)))
+  members
+}
 
 #' Parse MV CSV files (2019, 2024)
 #' Format: semicolon-delimited, Latin-1, skip 5 header rows
@@ -864,6 +1064,32 @@ parse_mv_csv <- function(filepath, year) {
     df[[col_name]] <- suppressWarnings(as.numeric(v))
   }
 
+  # Build the postal-pool -> member map while Kreisname/Amtsname are still
+  # available (the aggregation below drops them). See mv_allocate_postal.
+  amt_key <- paste(trimws(as.character(df$Kreisname)),
+                   trimws(as.character(df$Amtsname)), sep = "|")
+  is_pool <- substr(df$ags, 6, 6) == "7" &
+    !is.na(df$eligible_voters) & df$eligible_voters == 0
+  if (any(is_pool) && !all(grepl("^Briefwahl", trimws(as.character(df$ags_name[is_pool]))))) {
+    stop("MV ", year, ": rows keyed as Amt-level postal pools that are not ",
+         "named 'Briefwahl …' — check the Gemeindeschlüssel convention")
+  }
+  is_member <- !is_pool & !is.na(df$eligible_voters) & df$eligible_voters > 0 &
+    nchar(df$ags) == 8
+  pool_map <- do.call(rbind, lapply(which(is_pool), function(i) {
+    m <- which(is_member & amt_key == amt_key[i])
+    if (length(m) == 0) {
+      stop("MV ", year, ": postal pool ", df$ags[i], " ('", df$ags_name[i],
+           "') matches no Gemeinde in Amt '", amt_key[i], "'")
+    }
+    data.frame(pool = df$ags[i], ags = unique(df$ags[m]),
+               stringsAsFactors = FALSE)
+  }))
+  if (is.null(pool_map)) {
+    pool_map <- data.frame(pool = character(0), ags = character(0),
+                           stringsAsFactors = FALSE)
+  }
+
   # Track all-NA parties per AGS (no candidacy)
   na_tracker <- list()
   for (pc in party_cols) {
@@ -883,6 +1109,14 @@ parse_mv_csv <- function(filepath, year) {
       df_muni[[pc]][df_muni$ags %in% no_cand_ags] <- NA_real_
     }
   }
+
+  # Spread the Amt-level postal pools over their member Gemeinden and drop the
+  # pool rows, BEFORE turnout and vote shares are derived.
+  df_muni <- mv_allocate_postal(
+    df_muni, pool_map,
+    dist_cols = c("number_voters", "invalid_votes", "gueltige_stimmen", party_cols),
+    party_names = party_cols, year = year
+  )
 
   # Add metadata
   df_muni$election_year <- as.integer(year)
@@ -981,7 +1215,175 @@ parse_mv_xlsx_2014 <- function(filepath) {
 }
 
 # Process MV years
+# --- MV 1994-2011: the pre-2014 LSN workbooks --------------------------------
+# These five were never ingested although readxl opens them all. Each labels its
+# columns with the source's own statistical letter codes, which is a far safer
+# anchor than the German header text: that text is wrapped across three rows and
+# worded differently in every vintage.
+#
+#   A            Wahlberechtigte insgesamt
+#   A1/A2/A3     its Sperrvermerk components (1999, 2009, 2011) -- NOT the total
+#   B            Wähler insgesamt
+#   C / D        gültige and ungültige, in EITHER order
+#   C1.. / D1..  the parties
+#
+# Two traps this encodes rather than assumes:
+#   * 1994 uses C for invalid and D for valid; 2004 onward do the reverse. The
+#     party columns always share the letter of the VALID column, so that prefix
+#     identifies it and the swap cannot bite (the Sachsen defect in miniature).
+#   * where Wahlberechtigte is split, only "A" is the total. Reading a
+#     Sperrvermerk component instead is what overstated Hessen turnout.
+#
+# 1994 and 1999 are published per Wahlbezirk and are aggregated to the Gemeinde.
+# valid_votes holds the multi-vote total, as it does for MV 2014 onward (~2.8
+# votes per voter), not a ballot count.
+parse_mv_xls_early <- function(path, sheet, year) {
+  if (!file.exists(path)) stop("MV ", year, ": file not found: ", path)
+  x <- as.data.frame(suppressMessages(
+    read_excel(path, sheet = sheet, col_names = FALSE, col_types = "text")),
+    stringsAsFactors = FALSE)
+  cell <- function(r) trimws(as.character(unlist(x[r, ])))
+
+  lrow <- NA
+  for (r in seq_len(min(20, nrow(x)))) {
+    v <- cell(r)
+    if (any(v == "A", na.rm = TRUE) && any(v == "B", na.rm = TRUE)) { lrow <- r; break }
+  }
+  if (is.na(lrow)) stop("MV ", year, ": no letter-code row found")
+  L <- cell(lrow)
+
+  pidx <- grep("^[A-Z][0-9]+$", L)
+  pidx <- pidx[!grepl("^[AB][0-9]+$", L[pidx])]   # A1..A3 and B1 are turnout parts
+  if (!length(pidx)) stop("MV ", year, ": no party columns")
+  base <- unique(sub("[0-9]+$", "", L[pidx]))
+  if (length(base) != 1) stop("MV ", year, ": ambiguous party prefix: ",
+                              paste(base, collapse = ", "))
+  i_valid <- which(L == base)
+  i_inval <- which(L == setdiff(c("C", "D"), base))
+  i_elig <- which(L == "A"); i_vot <- which(L == "B")
+  if (!length(i_valid) || !length(i_elig) || !length(i_vot))
+    stop("MV ", year, ": missing A, B or valid-vote column")
+
+  nrow_ <- NA
+  for (r in (lrow - 1):1) if (any(cell(r) == "CDU", na.rm = TRUE)) { nrow_ <- r; break }
+  if (is.na(nrow_)) stop("MV ", year, ": no party-name row")
+  pnames <- cell(nrow_)
+
+  body <- x[(lrow + 1):nrow(x), , drop = FALSE]
+  i_ags <- NA
+  for (j in seq_len(ncol(body))) {
+    v <- trimws(as.character(body[[j]]))
+    if (mean(grepl("^[0-9]{8}$", v), na.rm = TRUE) > 0.8) { i_ags <- j; break }
+  }
+  if (is.na(i_ags)) stop("MV ", year, ": no 8-digit AGS column")
+
+  # The Amt code links an Amt-level postal pool to its member Gemeinden.
+  i_amt <- if (i_ags >= 2) i_ags - 1L else NA_integer_
+  num <- function(v) suppressWarnings(as.numeric(gsub("[^0-9]", "", v)))
+  d <- data.table(
+    ags = trimws(as.character(body[[i_ags]])),
+    amt = if (!is.na(i_amt)) trimws(as.character(body[[i_amt]])) else NA_character_,
+    gem_name = if (i_ags + 1L <= ncol(body)) trimws(as.character(body[[i_ags + 1L]])) else NA_character_,
+    eligible_voters = num(body[[i_elig]]),
+    number_voters = num(body[[i_vot]]),
+    gueltige_stimmen = num(body[[i_valid]]),
+    invalid_votes = if (length(i_inval)) num(body[[i_inval]]) else NA_real_)
+
+  for (k in pidx) {
+    nm <- pnames[k]
+    if (is.na(nm) || !nzchar(nm) || nm == "NA") next
+    nm <- normalise_party_cty(nm)
+    v <- num(body[[k]])                              # "x" = did not stand -> NA
+    if (nm %in% names(d)) {
+      # A name can repeat (MV lists five separate "Freie Wähler" lists). Adding
+      # naively loses votes, because the first column is NA for most Gemeinden
+      # and NA + 1520 is NA. Keep NA only where every contributor is NA.
+      old <- d[[nm]]
+      d[[nm]] <- ifelse(is.na(old) & is.na(v), NA_real_,
+                        ifelse(is.na(old), 0, old) + ifelse(is.na(v), 0, v))
+    } else d[[nm]] <- v
+  }
+
+  d <- d[grepl("^[0-9]{8}$", ags)]
+  pcols <- setdiff(names(d), c("ags", "amt", "gem_name", "eligible_voters",
+                               "number_voters", "gueltige_stimmen", "invalid_votes"))
+  amt_of <- d[, .(amt = first(amt)), by = ags]
+  agg <- d[, lapply(.SD, function(z) if (all(is.na(z))) NA_real_ else sum(z, na.rm = TRUE)),
+           by = ags,
+           .SDcols = c("eligible_voters", "number_voters", "gueltige_stimmen",
+                       "invalid_votes", pcols)]
+  agg <- merge(agg, amt_of, by = "ags", all.x = TRUE)
+
+  # 2009 and 2011 pool the Amt-level postal vote into its own row, exactly as
+  # 2019 and 2024 do: position 6 of the AGS becomes "7", the electorate is 0 and
+  # the name reads "Briefwahl <Amt>". Left alone those rows are dropped by the
+  # eligible_voters > 0 filter and their voters vanish (audit finding C-17).
+  # Spread them over the member Gemeinden of the same Amt, by electorate.
+  pool_ags <- agg$ags[substr(agg$ags, 6, 6) == "7" &
+                        !is.na(agg$eligible_voters) & agg$eligible_voters == 0]
+  if (length(pool_ags) > 0) {
+    pm <- do.call(rbind, lapply(pool_ags, function(pa) {
+      a <- agg$amt[agg$ags == pa][1]
+      mem <- agg$ags[!is.na(agg$amt) & agg$amt == a & agg$ags != pa &
+                       substr(agg$ags, 6, 6) != "7"]
+      if (!length(mem)) stop("MV ", year, ": postal pool ", pa,
+                             " (Amt ", a, ") has no member Gemeinde")
+      data.frame(pool = pa, ags = mem, stringsAsFactors = FALSE)
+    }))
+    agg <- as.data.table(mv_allocate_postal(
+      as.data.frame(agg), pm,
+      dist_cols = c("number_voters", "invalid_votes", "gueltige_stimmen", pcols),
+      party_names = pcols, year = year))
+    cat("    allocated", length(pool_ags), "Amt-level postal pool(s)\n")
+  }
+  agg[, amt := NULL]
+
+  # The source decomposes the valid vote exactly; assert before dividing.
+  recon <- rowSums(agg[, ..pcols], na.rm = TRUE) - agg$gueltige_stimmen
+  if (max(abs(recon), na.rm = TRUE) > 0) {
+    stop("MV ", year, ": party votes do not sum to the valid vote (max deviation ",
+         max(abs(recon), na.rm = TRUE), ")")
+  }
+  stopifnot(all(nchar(agg$ags) == 8), !any(duplicated(agg$ags)))
+  # A handful of Gemeinden can report one more voter than electors; MV 1999 has
+  # exactly one, off by a single vote. Report rather than fail, but stop if it
+  # is systematic, which would mean a postal pool was not allocated.
+  over <- agg[!is.na(number_voters) & !is.na(eligible_voters) &
+                number_voters > eligible_voters]
+  if (nrow(over) > 0) {
+    cat("    NOTE: ", nrow(over), " Gemeinde(n) report more voters than electors (max excess ",
+        max(over$number_voters - over$eligible_voters), ")\n", sep = "")
+    if (nrow(over) > 10 || max(over$number_voters - over$eligible_voters) > 50) {
+      stop("MV ", year, ": voters exceed electors in ", nrow(over),
+           " Gemeinden — an unallocated postal pool is the likely cause")
+    }
+  }
+
+  agg[, `:=`(valid_votes = gueltige_stimmen, state = "13",
+             election_year = as.integer(year), county = substr(ags, 1, 5),
+             turnout = ifelse(!is.na(eligible_voters) & eligible_voters > 0,
+                              number_voters / eligible_voters, NA_real_))]
+  for (pc in pcols) {
+    agg[[pc]] <- ifelse(!is.na(agg$gueltige_stimmen) & agg$gueltige_stimmen > 0,
+                        agg[[pc]] / agg$gueltige_stimmen, NA_real_)
+  }
+  agg[, gueltige_stimmen := NULL]
+  cat("  MV", year, "->", nrow(agg), "Gemeinden\n")
+  as_tibble(agg)
+}
+
 mv_results <- list()
+# 1994-2011: pre-2014 workbooks (see parse_mv_xls_early above)
+for (sp in list(list(1994, "Ergebnisse nach Wahlbezirken"),
+                list(1999, "B734W 199901"),
+                list(2004, "Ergebnisse nach Gemeinden"),
+                list(2009, "Ergebnisse nach Gemeinden"),
+                list(2011, "gem"))) {
+  mv_results[[as.character(sp[[1]])]] <- parse_mv_xls_early(
+    file.path(mv_dir, sprintf("Mecklenburg-Vorpommern_%d_Kreistagswahl.xls", sp[[1]])),
+    sp[[2]], sp[[1]]
+  )
+}
 mv_results[["2014"]] <- parse_mv_xlsx_2014(
   file.path(mv_dir, "Mecklenburg-Vorpommern_2014_Kreistagswahl.xlsx")
 )
@@ -1000,6 +1402,22 @@ n_before <- nrow(df_mv)
 df_mv <- df_mv |> filter(nchar(ags) == 8 & eligible_voters > 0)
 cat("  Removed", n_before - nrow(df_mv), "non-municipality rows\n")
 
+# No Amt-level postal pool may survive as its own row, and none may have been
+# silently dropped: after allocation the statewide voter total must match the
+# raw file including the pools (audit fix C-17).
+if (any(substr(df_mv$ags, 6, 6) == "7")) {
+  stop("MV: postal pool rows reached the output: ",
+       paste(unique(df_mv$ags[substr(df_mv$ags, 6, 6) == "7"]), collapse = ", "))
+}
+mv_expected_voters <- c("2019" = 779741, "2024" = 867871)
+for (yr in names(mv_expected_voters)) {
+  got <- sum(df_mv$number_voters[df_mv$election_year == as.integer(yr)], na.rm = TRUE)
+  if (abs(got - mv_expected_voters[[yr]]) > 25) {
+    stop("MV ", yr, ": statewide number_voters = ", got, ", expected ",
+         mv_expected_voters[[yr]], " (pooled postal votes lost or double-counted)")
+  }
+}
+
 cat("MV total:", nrow(df_mv), "rows x", ncol(df_mv), "cols\n")
 cat("MV years:", paste(sort(unique(df_mv$election_year)), collapse = ", "), "\n")
 df_mv |> count(election_year) |> print()
@@ -1012,6 +1430,76 @@ df_mv |> count(election_year) |> print()
 cat("\n===== SACHSEN =====\n")
 
 sn_dir <- file.path(raw_dir, "Sachsen")
+
+# --- Große Kreisstädte split across Wahlkreise --------------------------------
+# Sachsen publishes its Große Kreisstädte only as per-Wahlkreis part rows -- in
+# the legacy files as "<AGS>-<n>" ("14524330-1" = Zwickau 1), in the 2019/2024
+# GE_TG sheet as a 9-digit code ("145243301"). A parent 8-digit row NEVER
+# exists, so the `nchar(ags) == 8` municipality filter used to drop the entire
+# city: 10 cities / 363,834 eligible voters in 2024 (16.8% of the Kreistag
+# electorate) and 11 / 406,357 in 2019 (audit fix C-14, 2026-07).
+# `sn_mark_parts()` rewrites the part AGS to the parent and flags the row;
+# `sn_sum_parts()` then sums the count columns per parent. Both must run BEFORE
+# vote shares / turnout are computed, so the shares follow from the summed
+# counts rather than being averaged.
+
+#' Rewrite Wahlkreis part codes to the parent AGS and flag them.
+#' @param ags character vector of raw Ortnummern
+#' @param pattern anchored regex matching a whole part code, with the parent
+#'   AGS as capture group 1 ("^(\\d{8})-\\d+$" legacy, "^(\\d{8})\\d$" modern)
+sn_mark_parts <- function(ags, pattern) {
+  ags <- as.character(ags)
+  is_part <- !is.na(ags) & grepl(pattern, ags)
+  parent <- ags
+  parent[is_part] <- sub(pattern, "\\1", ags[is_part])
+  list(ags = parent, is_part = is_part)
+}
+
+#' Strip the Wahlkreis decoration off a part name to recover the city name.
+#' "Freiberg 1" / "Plauen, Stadt (WK 10)" / "Bautzen 1 (WK 3)" /
+#' "Meißen (linkselbisch)" / "Radebeul (West)" / "Riesa II" -> the bare name.
+sn_parent_name <- function(x) {
+  nm <- trimws(as.character(x[1]))
+  for (i in 1:2) {
+    nm <- sub("\\s*\\(WK\\s*[0-9]+\\)$", "", nm)
+    nm <- sub("\\s*\\((West|Ost|Nord|Süd|Sud|linkselbisch|rechtselbisch)\\)$",
+              "", nm)
+    nm <- sub("\\s+([0-9]+|I{1,3}|IV|VI{0,3})$", "", nm)
+  }
+  trimws(nm)
+}
+
+#' Sum the Wahlkreis part rows of one municipality back onto a single row.
+sn_sum_parts <- function(df, count_cols) {
+  if (!any(df$is_wk_part)) {
+    df$is_wk_part <- NULL
+    return(df)
+  }
+  parts <- df[df$is_wk_part, , drop = FALSE]
+  rest <- df[!df$is_wk_part, , drop = FALSE]
+
+  # A parent that also appears as a stand-alone row would mean double counting.
+  dbl <- intersect(unique(parts$ags), unique(rest$ags))
+  if (length(dbl) > 0) {
+    stop("SN: Wahlkreis parts and a parent row for the same AGS: ",
+         paste(dbl, collapse = ", "))
+  }
+
+  agg <- do.call(rbind, lapply(split(parts, parts$ags), function(g) {
+    out <- g[1, , drop = FALSE]
+    for (cc in count_cols) {
+      out[[cc]] <- if (all(is.na(g[[cc]]))) NA_real_ else sum(g[[cc]], na.rm = TRUE)
+    }
+    out$ags_name <- sn_parent_name(g$ags_name)
+    out
+  }))
+
+  cat("    aggregated", nrow(parts), "Wahlkreis part rows ->",
+      nrow(agg), "Große Kreisstädte\n")
+  out <- rbind(rest, agg)
+  out$is_wk_part <- NULL
+  out[order(out$ags), , drop = FALSE]
+}
 
 #' Parse SN legacy XLSX files (1999-2014)
 #' Single sheet, rows 4-6 = header, row 7 = state total, row 8+ = data
@@ -1069,6 +1557,11 @@ parse_sn_legacy <- function(filepath, year) {
   names(raw_sel) <- names(col_map)
   df <- as.data.frame(raw_sel, stringsAsFactors = FALSE)
 
+  # Große Kreisstädte come as "<AGS>-<n>" Wahlkreis parts (see sn_mark_parts)
+  marked <- sn_mark_parts(df$ags, "^(\\d{8})-\\d+$")
+  df$ags <- marked$ags
+  df$is_wk_part <- marked$is_part
+
   # Filter to 8-digit AGS (municipality level)
   df <- df[!is.na(df$ags) & nchar(df$ags) == 8, ]
 
@@ -1083,6 +1576,9 @@ parse_sn_legacy <- function(filepath, year) {
 
   # Remove rows with all-NA vote data
   df <- df[!is.na(df$eligible_voters) | !is.na(df$number_voters), ]
+
+  # Sum the Wahlkreis parts onto their parent BEFORE shares are computed
+  df <- sn_sum_parts(df, all_numeric)
 
   # Add metadata
   df$election_year <- as.integer(year)
@@ -1123,9 +1619,17 @@ parse_sn_modern <- function(filepath, year) {
   name_col <- which(headers == "Ortname")[1]
   wahlber_col <- which(headers == "Wahlberechtigte")[1]
   waehler_col <- which(grepl("^W.hler$", headers))[1]
-  ungueltig_col <- which(grepl("ung.ltige Stimmzettel$", headers))[1]
-  gueltig_sz_col <- which(grepl("g.ltige Stimmzettel$", headers))[1]
-  gueltig_st_col <- which(grepl("g.ltige Stimmen$", headers))[1]
+  ungueltig_col <- which(grepl("^ung.ltige Stimmzettel$", headers))[1]
+  # NOTE: these patterns MUST be anchored at both ends. An unanchored
+  # "g.ltige Stimmzettel$" also matches "ungültige Stimmzettel", which sits in
+  # the earlier column, so which(...)[1] silently returned the INVALID-ballot
+  # column and valid_votes came out ~40x too small (audit fix C-13, 2026-07).
+  gueltig_sz_col <- which(grepl("^g.ltige Stimmzettel$", headers))[1]
+  gueltig_st_col <- which(grepl("^g.ltige Stimmen$", headers))[1]
+  stopifnot(
+    !is.na(ungueltig_col), !is.na(gueltig_sz_col), !is.na(gueltig_st_col),
+    gueltig_sz_col != ungueltig_col
+  )
 
   # Party columns: after gültige Stimmen up to first NA column
   party_positions <- c()
@@ -1173,6 +1677,14 @@ parse_sn_modern <- function(filepath, year) {
   # Remove rows with no vote data
   df <- df[!is.na(df$eligible_voters), ]
 
+  # Große Kreisstädte come as 9-digit Wahlkreis parts (see sn_mark_parts)
+  marked <- sn_mark_parts(df$ags, "^(\\d{8})\\d$")
+  df$ags <- marked$ags
+  df$is_wk_part <- marked$is_part
+
+  # Sum the Wahlkreis parts onto their parent BEFORE shares are computed
+  df <- sn_sum_parts(df, all_numeric)
+
   # Add metadata
   df$election_year <- as.integer(year)
   df$state <- "14"
@@ -1219,6 +1731,123 @@ for (f in sn_modern_files) {
   )
 }
 
+# --- 1994 (Kreis level) -------------------------------------------------------
+# The 1994 report is legacy BIFF that readxl cannot open, which is why the Saxon
+# series used to start in 1999. code/county_elections/00_sn_1994_parse.py reads
+# it with xlrd and reconciles every party to the printed statewide totals; see
+# that file for the Verfassungsgericht ruling that removes six Kreise.
+#
+# KREIS-LEVEL ONLY — the Landesamt published no Gemeinde breakdown for 1994, so
+# these rows feed county_elec_harm_21_cty and not _muni. 02_county_elec_harm_21.R
+# routes them via county_level_years, as it does NRW 2025.
+sn_1994_file <- file.path(sn_dir, "sn_1994_parsed.csv")
+if (file.exists(sn_1994_file)) {
+  cat("  SN 1994 (Kreis level) ...")
+  s94 <- read.csv(sn_1994_file, colClasses = "character", check.names = FALSE,
+                  fileEncoding = "UTF-8")
+  num94 <- function(x) suppressWarnings(as.numeric(x))
+
+  d94 <- data.frame(
+    ags      = s94$ags,
+    ags_name = s94$ags_name,
+    eligible_voters = num94(s94$eligible_voters),
+    number_voters   = num94(s94$number_voters),
+    # valid BALLOTS, matching Sachsen 1999-2024. 1994 prints this only as a
+    # one-decimal percentage of Wähler, so it is reconstructed upstream; the
+    # invalid count is then its exact complement.
+    valid_votes     = num94(s94$valid_votes),
+    stringsAsFactors = FALSE, check.names = FALSE
+  )
+  d94$invalid_votes <- d94$number_voters - d94$valid_votes
+
+  # Party votes are cast VOTES (three per voter), so shares use the three-vote
+  # total, exactly as parse_sn_legacy/parse_sn_modern do.
+  sn94_parties <- c("CDU", "SPD", "PDS", "GRÜNE", "F.D.P.", "REP", "DSU",
+                    "Andere Parteien", "Wählervereinigungen")
+  stopifnot(all(sn94_parties %in% names(s94)))
+  gs94 <- num94(s94$valid_vote_total)
+  for (pc in sn94_parties) {
+    d94[[normalise_party_cty(pc)]] <- num94(s94[[pc]]) / gs94
+  }
+
+  # The parser asserts the votes decompose exactly; re-assert on the shares so a
+  # renamed or dropped column cannot slip through into published data.
+  sh94 <- rowSums(d94[vapply(sn94_parties, normalise_party_cty, "")], na.rm = TRUE)
+  if (max(abs(sh94 - 1)) > 1e-9) {
+    stop("SN 1994: party shares sum to ", max(abs(sh94 - 1)) + 1,
+         " rather than 1 — a party column was lost.")
+  }
+  stopifnot(all(nchar(d94$ags) == 8), !any(duplicated(d94$ags)),
+            all(d94$number_voters <= d94$eligible_voters),
+            all(d94$valid_votes < d94$number_voters))
+
+  d94$turnout <- d94$number_voters / d94$eligible_voters
+  d94$county <- substr(d94$ags, 1, 5)
+  d94$state <- "14"
+  d94$election_year <- 1994L
+  cat(nrow(d94), "Kreise\n")
+  sn_results[["1994"]] <- as_tibble(d94)
+} else {
+  stop("SN 1994 file not found: ", sn_1994_file,
+       " — run code/county_elections/00_sn_1994_parse.py first")
+}
+
+# --- 1995 (Kreis level) -------------------------------------------------------
+# The re-run the Verfassungsgericht forced after annulling the 1994 Kreisreform,
+# held 3 December 1995 in three newly formed Kreise. Parsed by
+# code/county_elections/00_sn_1995_parse.py from table 1, which is KREIS level —
+# the Gemeinde tables carry names with no AGS, and the audit worklist assumed
+# those were the only source and that ~32 names would need hand-adjudication.
+# They are not needed at all.
+#
+# "Meißen-Radebeul" and "Westlausitz-Dresdner Land" are the provisional names of
+# the new Kreise; the register knows them as Meißen (14280) and Kamenz (14292).
+# Two single-Gemeinde ballots in the same table (Uhyst joining the
+# Niederschlesischer Oberlausitzkreis, Schönfeld-Weißig joining Sächsische
+# Schweiz) are excluded upstream — both Kreise already voted in full in 1994, so
+# publishing them as 1995 Kreis rows would show ~1 % of a county as the county.
+sn_1995_file <- file.path(sn_dir, "sn_1995_parsed.csv")
+if (file.exists(sn_1995_file)) {
+  cat("  SN 1995 (Kreis level) ...")
+  s95 <- read.csv(sn_1995_file, colClasses = "character", check.names = FALSE,
+                  fileEncoding = "UTF-8")
+  num95 <- function(x) suppressWarnings(as.numeric(x))
+  d95 <- data.frame(
+    ags = s95$ags, ags_name = s95$ags_name,
+    eligible_voters = num95(s95$eligible_voters),
+    number_voters   = num95(s95$number_voters),
+    invalid_votes   = num95(s95$invalid_votes),
+    # valid BALLOTS, as for 1994 and 1999-2024. 1995 prints this directly.
+    valid_votes     = num95(s95$valid_votes),
+    stringsAsFactors = FALSE, check.names = FALSE
+  )
+  sn95_parties <- c("CDU", "SPD", "PDS", "GRÜNE", "F.D.P.", "DSU", "FORUM",
+                    "Wählervereinigungen", "Sonstige")
+  stopifnot(all(sn95_parties %in% names(s95)))
+  gs95 <- num95(s95$valid_vote_total)
+  for (pc in sn95_parties) {
+    v <- num95(s95[[pc]])
+    pn <- normalise_party_cty(pc)
+    d95[[pn]] <- if (pn %in% names(d95)) rowSums(cbind(d95[[pn]], v / gs95), na.rm = TRUE) else v / gs95
+  }
+  sh95 <- rowSums(d95[unique(vapply(sn95_parties, normalise_party_cty, ""))], na.rm = TRUE)
+  if (max(abs(sh95 - 1)) > 1e-9) {
+    stop("SN 1995: party shares sum to ", max(sh95), " rather than 1")
+  }
+  stopifnot(all(nchar(d95$ags) == 8), !any(duplicated(d95$ags)),
+            all(d95$valid_votes < d95$number_voters),
+            all(d95$number_voters <= d95$eligible_voters))
+  d95$turnout <- d95$number_voters / d95$eligible_voters
+  d95$county <- substr(d95$ags, 1, 5)
+  d95$state <- "14"
+  d95$election_year <- 1995L
+  cat(nrow(d95), "Kreise\n")
+  sn_results[["1995"]] <- as_tibble(d95)
+} else {
+  stop("SN 1995 file not found: ", sn_1995_file,
+       " — run code/county_elections/00_sn_1995_parse.py first")
+}
+
 df_sn <- bind_rows(sn_results)
 df_sn <- df_sn |> mutate(ags = pad_zero_conditional(ags, 7))
 
@@ -1226,6 +1855,27 @@ df_sn <- df_sn |> mutate(ags = pad_zero_conditional(ags, 7))
 n_before <- nrow(df_sn)
 df_sn <- df_sn |> filter(nchar(ags) == 8 & eligible_voters > 0)
 cat("  Removed", n_before - nrow(df_sn), "non-municipality rows\n")
+
+# Guard against the anchored-header regression (C-13): valid_votes used to be
+# read from the "ungültige Stimmzettel" column, making valid < invalid.
+sn_bad <- df_sn |>
+  filter(!is.na(valid_votes), !is.na(invalid_votes), valid_votes <= invalid_votes)
+if (nrow(sn_bad) > 0) {
+  print(head(sn_bad[, c("ags", "ags_name", "election_year",
+                        "number_voters", "invalid_votes", "valid_votes")], 10))
+  stop("SN: ", nrow(sn_bad), " rows with valid_votes <= invalid_votes — ",
+       "the gültige/ungültige Stimmzettel columns are mixed up")
+}
+# Große Kreisstädte must survive the 8-digit filter (C-14)
+sn_gks <- c("14524330", "14523320", "14626110", "14628110", "14628270",
+            "14522180", "14625020", "14627210", "14627230", "14627140")
+for (yr in c(2019, 2024)) {
+  miss <- setdiff(sn_gks, df_sn$ags[df_sn$election_year == yr])
+  if (length(miss) > 0) {
+    stop("SN ", yr, ": Große Kreisstädte missing from output: ",
+         paste(miss, collapse = ", "))
+  }
+}
 
 cat("SN total:", nrow(df_sn), "rows x", ncol(df_sn), "cols\n")
 cat("SN years:", paste(sort(unique(df_sn$election_year)), collapse = ", "), "\n")
@@ -2179,6 +2829,60 @@ cat("\n===== HESSEN =====\n")
 
 he_dir <- file.path(raw_dir, "Hessen")
 
+# --- Header-block sub-column resolution --------------------------------------
+# Several HE sheets split a meta block into sub-columns and print the total in
+# the LAST of them: "Wahlberechtigte" = ohne Sperrvermerk "W" | mit Sperrvermerk
+# "W" | nach § 16a Abs. 2 KWO | Ins-gesamt, and "Ungültige Stimmzettel" =
+# ins-gesamt | in %. The old magnitude heuristic ("first column in
+# label_col..label_col+4 whose first data value exceeds 100") therefore latched
+# onto the "ohne Sperrvermerk" column in 1981/1985/1997/2011/2016, understating
+# eligible_voters by 6.5-14.2% and pushing 15 rows above 100% turnout
+# (audit fix C-15, 2026-07). Resolve the sub-column by header text instead.
+
+#' Locate the "Insgesamt" sub-column of a header block.
+#'
+#' The block runs from the label column up to (but excluding) the next filled
+#' cell in the SAME header row — bounding it matters, because in 2001 the
+#' Wahlberechtigte block is a single column and the neighbouring "insgesamt"
+#' belongs to Wähler.
+#'
+#' Two rules are tried, on each of the `n_scan` rows below the label:
+#'   1. a sub-header reading "Insgesamt" / "Ins-gesamt" (case-insensitive);
+#'   2. the source's own Feldbezeichner row — 1997 labels the block A1, A2, A3,
+#'      A, so the bare letter among lettered-and-numbered siblings is the total.
+#' Returns NA when the block has no sub-columns (1948-1956, 2001), leaving the
+#' caller on its original heuristic.
+he_block_subcol <- function(raw, label_row, label_col, n_scan = 3L) {
+  if (is.na(label_row) || is.na(label_col)) return(NA_integer_)
+  hdr <- clean_header(as.character(raw[label_row, ]))
+  filled <- which(!is.na(hdr) & nzchar(hdr))
+  nxt <- filled[filled > label_col]
+  block_end <- if (length(nxt) > 0) nxt[1] - 1L else min(label_col + 4L, ncol(raw))
+  if (block_end < label_col) block_end <- label_col
+  cols <- label_col:block_end
+  last <- min(label_row + n_scan, nrow(raw))
+  if (last <= label_row) return(NA_integer_)
+
+  for (sr in (label_row + 1L):last) {
+    sv <- clean_header(as.character(raw[sr, ]))
+    cc <- cols[cols <= length(sv)]
+    if (length(cc) == 0) next
+    v <- tolower(trimws(sv[cc]))
+    v[is.na(v)] <- ""
+    hit <- which(grepl("^ins-?\\s*gesamt$", v))
+    if (length(hit) > 0) return(cc[hit[1]])
+    # Feldbezeichner row (1997): "A1" "A2" "A3" "A" -> the bare "A" is the total
+    u <- toupper(v)
+    bare <- which(grepl("^[A-Z]$", u))
+    subs <- which(grepl("^[A-Z][0-9]+$", u))
+    if (length(bare) == 1 && length(subs) > 0 &&
+        all(substr(u[subs], 1, 1) == u[bare])) {
+      return(cc[bare])
+    }
+  }
+  NA_integer_
+}
+
 #' Parse a single HE sheet from the multi-year XLSX file
 #' Handles three format eras:
 #'   A) Pre-reform (1948–1972): ~2700 rows, GKZ in col 2, party names in row 3-4
@@ -2283,19 +2987,34 @@ parse_he_sheet <- function(filepath, sheet_name) {
     voters_col <- which(grepl("^W.hler$", r2))[1]
     eligible_col <- which(grepl("Wahlberechtigte", r2))[1]
 
-    # Eligible voters "Insgesamt" is typically 2-3 cols after the Wahlberechtigte label
-    # Find the "Ins-gesamt" in row 3 near the eligible_col
+    # Eligible voters: take the block's "Ins-gesamt" sub-column by header text
+    # (col 7 in 2006/2011/2016), NOT the first column carrying big numbers —
+    # that is "ohne Sperrvermerk W" (col 4). See he_block_subcol.
     if (!is.na(eligible_col)) {
-      # Look for first data column after eligible_col that has large numbers
-      for (ec in (eligible_col):(eligible_col + 4)) {
-        test_val <- as.numeric(as.character(all_data[[ec]][which(valid_rows)[1]]))
-        if (!is.na(test_val) && test_val > 100) { eligible_col <- ec; break }
+      ec_hdr <- he_block_subcol(raw, 2, eligible_col)
+      if (!is.na(ec_hdr)) {
+        eligible_col <- ec_hdr
+      } else {
+        # Fallback: first data column after the label that has large numbers
+        for (ec in (eligible_col):(eligible_col + 4)) {
+          test_val <- as.numeric(as.character(all_data[[ec]][which(valid_rows)[1]]))
+          if (!is.na(test_val) && test_val > 100) { eligible_col <- ec; break }
+        }
       }
     }
+
+    # Invalid ballots: the "Ungültige Stimmzettel" block is ins-gesamt | in %,
+    # so resolve its total sub-column too (col 11, not the percentage col 12).
+    # This branch used to leave invalid_votes empty for 2006/2011/2016
+    # (audit fix C-13, 2026-07).
+    invalid_label_col <- which(grepl("Ung.ltige", r2))[1]
+    invalid_col <- he_block_subcol(raw, 2, invalid_label_col)
+    if (is.na(invalid_col)) invalid_col <- invalid_label_col
 
     df$eligible_voters <- if (!is.na(eligible_col)) as.numeric(as.character(all_data[[eligible_col]][valid_rows])) else NA_real_
     df$number_voters <- if (!is.na(voters_col)) as.numeric(as.character(all_data[[voters_col]][valid_rows])) else NA_real_
     df$valid_votes <- if (!is.na(valid_votes_col)) as.numeric(as.character(all_data[[valid_votes_col]][valid_rows])) else NA_real_
+    df$invalid_votes <- if (!is.na(invalid_col)) as.numeric(as.character(all_data[[invalid_col]][valid_rows])) else NA_real_
 
     # Party vote counts
     for (k in seq_along(party_positions)) {
@@ -2361,10 +3080,15 @@ parse_he_sheet <- function(filepath, sheet_name) {
         if (is.na(rv[i])) next
         lv <- tolower(rv[i])
         if (grepl("wahlberechtigte|wahlbe rechtigte", lv) && is.na(elig_col)) {
-          # Find the "insgesamt" sub-col near this
-          for (ec in i:(i + 4)) {
-            tv <- as.numeric(as.character(all_data[[ec]][which(valid_rows)[1]]))
-            if (!is.na(tv) && tv > 100) { elig_col <- ec; break }
+          # Prefer the block's "Insgesamt" sub-column resolved by header text
+          # (1981 col 9, 1985/1997 col 7, 1993 col 5); the magnitude heuristic
+          # below picks "ohne Sperrvermerk W" instead. See he_block_subcol.
+          elig_col <- he_block_subcol(raw, r, i)
+          if (is.na(elig_col)) {
+            for (ec in i:(i + 4)) {
+              tv <- as.numeric(as.character(all_data[[ec]][which(valid_rows)[1]]))
+              if (!is.na(tv) && tv > 100) { elig_col <- ec; break }
+            }
           }
         }
         if (grepl("^w.hler$|^w.hlerinnen", lv) && is.na(voter_col)) {
@@ -2397,6 +3121,15 @@ parse_he_sheet <- function(filepath, sheet_name) {
           if (!is.na(tv) && tv > 100) { valid_col <- vc; break }
         }
       }
+    }
+
+    # 1997 only: the sheet carries the invalid-ballot counts (statewide 67,767)
+    # but prints NO text header for them anywhere in rows 1-13 — the column is
+    # identified solely by the Feldbezeichner "C" in row 9 — so the keyword scan
+    # above legitimately finds nothing. It sits immediately left of the valid
+    # column, exactly as in every other single-column sheet (audit fix C-13).
+    if (is.na(invalid_col) && !is.na(valid_col) && year == 1997 && valid_col > 1) {
+      invalid_col <- valid_col - 1L
     }
 
     df$eligible_voters <- if (!is.na(elig_col)) as.numeric(as.character(all_data[[elig_col]][valid_rows])) else NA_real_
@@ -2557,14 +3290,28 @@ if (file.exists(he_2021_csv)) {
     if (is.na(elig_col_21)) elig_col_21 <- which(grepl("Wahlberechtigte insgesamt", he21_headers))[1]
     voter_col_21 <- which(grepl("hlerinnen", he21_headers))[1]  # Wählerinnen und Wähler
     valid_col_21 <- which(grepl("ltige Stimmen", he21_headers))[1]
+    invalid_col_21 <- which(grepl("^ung.ltige Stimmzettel$", trimws(he21_headers),
+                                  ignore.case = TRUE))[1]
 
     gkz_vals <- trimws(he21_df[[gkz_col_21]])
     valid_21 <- grepl("^\\d{3,6}$", gkz_vals)
     he21_data <- he21_df[valid_21, ]
 
     if (nrow(he21_data) > 0) {
+      # AGS: the 2021 CSV already gives Gemeinden a 6-digit GKZ (431001) and
+      # only the 21 Kreis aggregates a 3-digit one (431). sprintf("%03s", …)
+      # leaves a 6-digit string untouched, so "06" + GKZ + "000" produced
+      # 11-character AGS for all 417 Gemeinde rows (audit fix C-04, 2026-07;
+      # 02_county_elec_harm_21.R patched this downstream — that patch is now
+      # redundant). Mirrors the Gemeinde/Kreis construction used for the XLSX
+      # sheets above.
+      gkz_21 <- trimws(he21_data[[gkz_col_21]])
+      ags_21 <- ifelse(nchar(gkz_21) == 6,
+                       paste0("06", gkz_21),
+                       paste0("06", sprintf("%03s", gkz_21), "000"))
+
       df_21 <- data.frame(
-        ags = paste0("06", sprintf("%03s", trimws(he21_data[[gkz_col_21]])), "000"),
+        ags = ags_21,
         ags_name = if (!is.na(name_col_21)) trimws(he21_data[[name_col_21]]) else NA_character_,
         state = "06",
         election_year = 2021L,
@@ -2573,6 +3320,7 @@ if (file.exists(he_2021_csv)) {
       df_21$eligible_voters <- if (!is.na(elig_col_21)) as.numeric(gsub("[^0-9]", "", he21_data[[elig_col_21]])) else NA_real_
       df_21$number_voters <- if (!is.na(voter_col_21)) as.numeric(gsub("[^0-9]", "", he21_data[[voter_col_21]])) else NA_real_
       df_21$valid_votes <- if (!is.na(valid_col_21)) as.numeric(gsub("[^0-9]", "", he21_data[[valid_col_21]])) else NA_real_
+      df_21$invalid_votes <- if (!is.na(invalid_col_21)) as.numeric(gsub("[^0-9]", "", he21_data[[invalid_col_21]])) else NA_real_
       df_21$county <- substr(df_21$ags, 1, 5)
 
       # Party columns: skip *-Sitze, WG names, position-only cols
@@ -2644,6 +3392,10 @@ if (file.exists(he_2026_csv)) {
     df_26$eligible_voters <- numcol("Wahlberechtigte")
     df_26$number_voters   <- numcol("Wählerinnen und Wähler")
     df_26$valid_votes     <- numcol("Gültige Stimmen")               # cast votes (Kumulieren)
+    # Invalid ballots: the exact column, NOT the "… (%)" sibling (C-13)
+    if ("Ungültige Stimmzettel" %in% he26_headers) {
+      df_26$invalid_votes <- numcol("Ungültige Stimmzettel")
+    }
     df_26$turnout <- ifelse(!is.na(df_26$eligible_voters) & df_26$eligible_voters > 0,
                             df_26$number_voters / df_26$eligible_voters, NA_real_)
 
@@ -2684,6 +3436,33 @@ n_he_agg <- sum(he_is_agg & he_has_munis)
 if (n_he_agg > 0) {
   cat("  Removing", n_he_agg, "Landkreis aggregate rows (duplicates of municipality data)\n")
   df_he <- df_he[!(he_is_agg & he_has_munis), ]
+}
+
+# --- HE integrity assertions -------------------------------------------------
+# (1) AGS must be 8 characters. The 2021 CSV used to emit 11-character codes
+#     for all 417 Gemeinde rows (audit fix C-04).
+he_bad_ags <- unique(df_he$ags[nchar(df_he$ags) != 8])
+if (length(he_bad_ags) > 0) {
+  stop("HE: ", length(he_bad_ags), " malformed AGS (expected 8 characters): ",
+       paste(head(he_bad_ags, 5), collapse = ", "))
+}
+
+# (2) eligible_voters must not fall below number_voters. This used to fail on
+#     2,105 rows because eligible_voters was read from the "ohne Sperrvermerk W"
+#     sub-column instead of the block total (audit fix C-15).
+#     KNOWN SOURCE ERROR, not a parsing fault: 06440022 in 1956 aggregates the
+#     raw Rockenberg row, which itself reports 1,032 eligible against 1,187
+#     voters — the only such row among 2,696 raw 1956 records.
+he_turnout_bad <- df_he |>
+  filter(!is.na(eligible_voters), !is.na(number_voters),
+         eligible_voters < number_voters,
+         !(ags == "06440022" & election_year == 1956))
+if (nrow(he_turnout_bad) > 0) {
+  print(head(he_turnout_bad[, c("ags", "ags_name", "election_year",
+                                "eligible_voters", "number_voters")], 15))
+  stop("HE: ", nrow(he_turnout_bad),
+       " rows with eligible_voters < number_voters — the Wahlberechtigte ",
+       "'Insgesamt' sub-column is probably mis-resolved")
 }
 
 cat("HE total:", nrow(df_he), "rows x", ncol(df_he), "cols\n")
@@ -3449,15 +4228,46 @@ df_sh |> count(election_year) |> print()
 cat("\n===== NIEDERSACHSEN =====\n")
 ni_dir <- file.path(raw_dir, "Niedersachsen")
 
+# Helper: locate the member Gemeinden of each Samtgemeinde-style row.
+#
+# The file lists a non-indented 6-digit row with suffix >= 400 followed by its
+# indented member Gemeinden, until the next non-indented row. Two kinds of row
+# share that shape and must NOT be treated alike:
+#   * a real Samtgemeinde, which has members and is an aggregate; and
+#   * a gemeindefreier Bezirk (Lohheide 351501, Osterheide 358501), which has NO
+#     members and is a municipality in its own right.
+# Returns, for each entity, the indices of its members (empty when it has none).
+ni_member_index <- function(codes, code_lengths, is_indented) {
+  n <- length(codes)
+  out <- vector("list", n)
+  for (i in seq_len(n)) {
+    out[[i]] <- integer(0)
+    if (code_lengths[i] != 6 || is_indented[i]) next
+    if (as.numeric(substr(codes[i], 4, 6)) < 400) next
+    j <- i + 1L
+    mem <- integer(0)
+    while (j <= n && is_indented[j] && code_lengths[j] == 6) {
+      mem <- c(mem, j); j <- j + 1L
+    }
+    out[[i]] <- mem
+  }
+  out
+}
+
 # Helper: classify NI geographic entities — keep municipalities, skip aggregates
 # Keeps: Mitgliedsgemeinde (indented 6d), Einheitsgemeinde (non-indented 6d, suffix<400),
+#        gemeindefreie Bezirke (non-indented 6d, suffix>=400 but with NO members),
 #        kreisfreie Städte (3d, no 6d sub-entries)
-# Skips: Samtgemeinde (6d, suffix>=400), Kreise (3d with sub-entries), state/region (1d)
-ni_keep_entities <- function(entities, codes, code_lengths, is_indented) {
+# Skips: Samtgemeinde (6d, suffix>=400 WITH members — an aggregate whose
+#        Briefwahl residual is redistributed to its members first, see
+#        ni_allocate_sg_residual), Kreise (3d with sub-entries), state/region (1d)
+ni_keep_entities <- function(entities, codes, code_lengths, is_indented,
+                             members = NULL) {
   codes_6d <- codes[code_lengths == 6]
   prefixes_3d <- unique(substr(codes_6d, 1, 3))
   codes_3d <- codes[code_lengths == 3]
   kreisfrei_3d <- codes_3d[!codes_3d %in% prefixes_3d]
+  if (is.null(members)) members <- ni_member_index(codes, code_lengths, is_indented)
 
   keep <- rep(FALSE, length(entities))
   for (i in seq_along(entities)) {
@@ -3467,11 +4277,75 @@ ni_keep_entities <- function(entities, codes, code_lengths, is_indented) {
       suffix <- as.numeric(substr(cc, 4, 6))
       if (is_indented[i]) keep[i] <- TRUE
       else if (suffix < 400) keep[i] <- TRUE
+      # A suffix >= 400 row with no members is a gemeindefreier Bezirk, i.e. a
+      # real municipality with its own electorate. Dropping it as if it were a
+      # Samtgemeinde discarded Lohheide and Osterheide entirely — together about
+      # 600 voters in every election from 2001 to 2021.
+      else if (length(members[[i]]) == 0) keep[i] <- TRUE
     } else if (cl == 3 && cc %in% kreisfrei_3d) {
       keep[i] <- TRUE
     }
   }
   keep
+}
+
+# Helper: push a Samtgemeinde's unallocated votes down onto its member Gemeinden.
+#
+# Niedersachsen counts Briefwahl in Samtgemeinde-level districts, so a member
+# Gemeinde's row holds only its Urnenwähler while the Samtgemeinde row holds the
+# full total. Discarding the Samtgemeinde row therefore did not merely lose an
+# aggregate: it silently deleted every postal vote, leaving member turnout and
+# party shares computed on Urnenwahl alone. The electorate is unaffected —
+# `eligible_voters` reconciles exactly (residual 0) in every year, which is what
+# makes eligible voters the right weight for redistributing the rest.
+#
+# Sizes of the residual, measured before the fix (voters / party votes):
+#   2001 0 / 0 (a genuine control — that year has no Briefwahl split)
+#   2006 17,915 / 52,643    2011 16,910 / 49,389
+#   2016 41,781 / 122,773   2021 37,896 / 111,656
+#
+# Each party is allocated on its OWN residual rather than on the total, since
+# postal voters do not vote like Urnenwähler. Mirrors bb_allocate_postal().
+ni_allocate_sg_residual <- function(vals, codes, code_lengths, is_indented,
+                                    members, value_cols, year_label = "") {
+  n_alloc <- 0L; resid_nv <- 0; resid_vv <- 0; any_alloc <- FALSE
+  touched <- rep(FALSE, length(codes))
+  for (i in seq_along(codes)) {
+    mem <- members[[i]]
+    if (length(mem) == 0) next               # gemeindefreier Bezirk: keep as is
+    w <- vals[mem, 1]                        # eligible voters of each member
+    if (all(is.na(w)) || sum(w, na.rm = TRUE) <= 0) next
+    w[is.na(w)] <- 0
+    w <- w / sum(w)
+    for (cc in value_cols) {
+      tot <- vals[i, cc]
+      if (is.na(tot)) next
+      got <- sum(vals[mem, cc], na.rm = TRUE)
+      resid <- tot - got
+      if (is.na(resid) || resid == 0) next
+      # A negative residual would mean the members already exceed their own
+      # Samtgemeinde; that is not a Briefwahl split and must not be "fixed" by
+      # subtracting votes from real municipalities.
+      if (resid < 0) next
+      vals[mem, cc] <- ifelse(is.na(vals[mem, cc]), 0, vals[mem, cc]) + resid * w
+      if (cc == 2) resid_nv <- resid_nv + resid
+      if (cc == 3) resid_vv <- resid_vv + resid
+      # Flag only where something was actually added. Marking every member of
+      # every Samtgemeinde would label 2001 -- whose residual is zero in the
+      # source -- as if its votes had been redistributed.
+      touched[mem] <- TRUE
+      any_alloc <- TRUE
+    }
+    if (!any_alloc) next
+    any_alloc <- FALSE
+    n_alloc <- n_alloc + 1L
+  }
+  if (resid_nv > 0 || resid_vv > 0) {
+    cat(sprintf("    %sallocated Samtgemeinde Briefwahl residual: %s voters, %s valid votes over %d SG\n",
+                year_label, format(round(resid_nv), big.mark = ","),
+                format(round(resid_vv), big.mark = ","), n_alloc))
+  }
+  list(vals = vals, touched = touched)
 }
 
 # Helper: construct 8-digit AGS from NI internal code
@@ -3516,7 +4390,8 @@ ni_ktw_parse_individual <- function(filepath, year) {
   codes <- sub("\\s+.*", "", trimws(entities))
   code_lengths <- nchar(codes)
   is_indented <- grepl("^\\s", entities)
-  keep <- ni_keep_entities(entities, codes, code_lengths, is_indented)
+  members <- ni_member_index(codes, code_lengths, is_indented)
+  keep <- ni_keep_entities(entities, codes, code_lengths, is_indented, members)
 
   extract_row_values <- function(eidx) {
     search_end <- min(eidx + 10, length(lines))
@@ -3532,15 +4407,29 @@ ni_ktw_parse_individual <- function(filepath, year) {
     suppressWarnings(as.numeric(vals))
   }
 
+  # Values are extracted for EVERY entity, not only the kept ones: the
+  # Samtgemeinde rows are aggregates we discard, but their Briefwahl votes have
+  # to be pushed onto their members before they go.
+  val_mat <- t(vapply(seq_along(entity_idx),
+                      function(i) extract_row_values(entity_idx[i])[1:51],
+                      numeric(51)))
+  alloc <- ni_allocate_sg_residual(
+    val_mat, codes, code_lengths, is_indented, members,
+    value_cols = c(2L, 3L, as.integer(names(ni_ktw_party_map))),
+    year_label = paste0("NI ", year, ": ")
+  )
+  val_mat <- alloc$vals
+
   results <- vector("list", sum(keep))
   j <- 0
   for (i in which(keep)) {
     j <- j + 1
-    vals <- extract_row_values(entity_idx[i])
+    vals <- val_mat[i, ]
     ags <- ni_make_ags(codes[i])
     row_data <- data.frame(
       ags = ags,
       eligible_voters = vals[1], number_voters = vals[2], valid_votes = vals[3],
+      flag_sg_postal_allocated = as.integer(alloc$touched[i]),
       stringsAsFactors = FALSE
     )
     for (vi in names(ni_ktw_party_map)) {
@@ -3702,13 +4591,24 @@ ni_results <- ni_results[!sapply(ni_results, is.null)]
 df_ni <- bind_rows(ni_results)
 
 # Remove any Samtgemeinde aggregate rows that slipped through entity filtering
-# (suffix >= 400 in positions 6-8 of 8-digit AGS, e.g. 03357406)
+# (suffix >= 400 in positions 6-8 of 8-digit AGS, e.g. 03357406).
+#
+# NOT every suffix >= 400 code is an aggregate: the gemeindefreie Bezirke
+# Lohheide and Osterheide are ordinary municipalities with their own electorate
+# (about 600 voters between them per election) and both are their own targets in
+# ags_crosswalks. This blanket net deleted them in every year. They are exempted
+# here, and whatever else is dropped is now named rather than merely counted.
+ni_gemeindefrei <- c("03351501", "03358501")  # Lohheide, Osterheide
 ni_suffix <- as.numeric(substr(df_ni$ags, 6, 8))
-ni_is_sg <- !is.na(ni_suffix) & ni_suffix >= 400 & nchar(df_ni$ags) == 8
+ni_is_sg <- !is.na(ni_suffix) & ni_suffix >= 400 & nchar(df_ni$ags) == 8 &
+  !(df_ni$ags %in% ni_gemeindefrei)
 if (any(ni_is_sg)) {
-  cat("  Removing", sum(ni_is_sg), "Samtgemeinde aggregate rows\n")
+  cat("  Removing", sum(ni_is_sg), "Samtgemeinde aggregate rows:",
+      paste(sort(unique(df_ni$ags[ni_is_sg])), collapse = ", "), "\n")
   df_ni <- df_ni[!ni_is_sg, ]
 }
+kept_gf <- sum(df_ni$ags %in% ni_gemeindefrei)
+cat("  Kept", kept_gf, "gemeindefreie-Bezirk rows (Lohheide, Osterheide)\n")
 
 cat("NI total:", nrow(df_ni), "rows x", ncol(df_ni), "cols\n")
 cat("NI years:", paste(sort(unique(df_ni$election_year)), collapse = ", "), "\n")
@@ -3857,6 +4757,89 @@ parse_nrw_early <- function(path, year) {
   as_tibble(agg)
 }
 
+# --- Known IT.NRW data error: 2014 Kreistagswahl municipality labels ---------
+# In `Nordrhein-Westfalen_2014_Kreistagswahl.xlsx` (sheet "Stimmbezirk KW14")
+# 17 municipalities carry another municipality's Stimmbezirke. This is a SOURCE
+# defect, not a parsing fault: BOTH label columns (col 2 GKZ_Gemeinde and col 3
+# Gemeinde-Name) are populated and wrong together, so the parser aggregates them
+# faithfully into the wrong Gemeinde. Same shape as the IT.NRW Stichwahl-date
+# error patched in the mayoral pipeline — remove this block once IT.NRW
+# corrects the file (audit fix C-16, 2026-07).
+#
+# Two distinct mechanisms, both verified against the 2020 file and against
+# municipal_unharm for the same election day:
+#
+#  (a) Kreis Viersen 05166 — a deterministic ONE-POSITION CYCLIC SHIFT of five
+#      municipality labels. The Stimmbezirk-number prefix is stable between
+#      2014 and 2020, and in 2014 the prefix-8 block (76 precincts, 62,182
+#      eligible voters) is labelled 05166028 Tönisvorst although 2020 shows
+#      prefix 8 = Viersen (63,189). Brüggen/Grefrath/Kempen/Nettetal
+#      (prefixes 1-4) are correct. After the shift all 9 Viersen municipalities
+#      reconcile to within 0-21 voters of the municipal pipeline.
+#
+#  (b) Kreis Coesfeld 05558 and Kreis Steinfurt 05566 — not block swaps but six
+#      individual foreign precinct groups, recognisable because they duplicate a
+#      Stimmbezirk number already used inside the block and because the precinct
+#      NAME belongs to the neighbouring municipality (Capelle is a Nordkirchen
+#      Ortsteil, Darfeld a Rosendahl one, …). After these 12 rows are moved all
+#      35 Coesfeld+Steinfurt municipalities land within 50 voters of the
+#      municipal pipeline.
+
+# ags -> corrected ags, applied in ONE vectorised pass (the map is cyclic)
+nrw2014_viersen_shift <- c(
+  "05166036" = "05166020",  # labelled Willich       -> Niederkrüchten
+  "05166020" = "05166024",  # labelled Niederkrüchten -> Schwalmtal
+  "05166024" = "05166028",  # labelled Schwalmtal     -> Tönisvorst
+  "05166028" = "05166032",  # labelled Tönisvorst     -> Viersen
+  "05166032" = "05166036"   # labelled Viersen        -> Willich
+)
+
+# Each entry: the wrong ags, the Stimmbezirk numbers, a name pattern unique to
+# the group, the correct ags, and the exact number of rows it must match.
+nrw2014_precinct_moves <- list(
+  list(ags = "05558004", sb = 12:14, pattern = "Capelle",
+       new_ags = "05558028", n_rows = 3L),   # Ascheberg   -> Nordkirchen
+  list(ags = "05558008", sb = 1:4, pattern = "Darfeld",
+       new_ags = "05558040", n_rows = 4L),   # Billerbeck  -> Rosendahl
+  list(ags = "05558020", sb = 16, pattern = "Am Detterbach",
+       new_ags = "05558032", n_rows = 1L),   # Havixbeck   -> Nottuln
+  list(ags = "05558036", sb = 10, pattern = "Gemeinschaftshauptschule",
+       new_ags = "05558024", n_rows = 1L),   # Olfen       -> Lüdinghausen
+  list(ags = "05566064", sb = 4, pattern = "Regenbogenschule",
+       new_ags = "05566084", n_rows = 1L),   # Nordwalde   -> Steinfurt
+  list(ags = "05566096", sb = 3, pattern = "Kinderkiste",
+       new_ags = "05566068", n_rows = 1L),   # Wettringen  -> Ochtrup
+  list(ags = "05566096", sb = 9, pattern = "Laurenz Genusswerk",
+       new_ags = "05566068", n_rows = 1L)    # Wettringen  -> Ochtrup
+)
+
+#' Re-label the mislabelled 2014 Stimmbezirk rows. Fails loudly if the raw file
+#' no longer matches, so a corrected IT.NRW release cannot be silently patched.
+nrw2014_fix_labels <- function(ags, sb_no, sb_name) {
+  sb_no <- suppressWarnings(as.numeric(sb_no))
+  sb_name <- trimws(as.character(sb_name))
+
+  for (r in nrw2014_precinct_moves) {
+    hit <- ags == r$ags & sb_no %in% r$sb &
+      grepl(r$pattern, sb_name, fixed = TRUE)
+    if (sum(hit) != r$n_rows) {
+      stop("NRW 2014: precinct-move rule ", r$ags, " '", r$pattern, "' matched ",
+           sum(hit), " rows, expected ", r$n_rows,
+           " — the raw file changed, re-verify the remap")
+    }
+    ags[hit] <- r$new_ags
+  }
+
+  vhit <- ags %in% names(nrw2014_viersen_shift)
+  if (!all(names(nrw2014_viersen_shift) %in% ags)) {
+    stop("NRW 2014: Kreis Viersen label shift does not apply — ",
+         "the raw file changed, re-verify the remap")
+  }
+  ags[vhit] <- unname(nrw2014_viersen_shift[ags[vhit]])
+
+  ags
+}
+
 # Parse NRW late format (2014, 2020): two header rows, GKZ_Gemeinde in col 2
 parse_nrw_late <- function(path, year) {
   cat("  NRW", year, "...")
@@ -3888,9 +4871,22 @@ parse_nrw_late <- function(path, year) {
   gkz <- gkz[valid_rows]
   ags <- paste0("05", gkz)
 
+  ags_name <- as.character(data[[name_col]])
+
+  # Repair the 2014 municipality mislabelling BEFORE the Stimmbezirke are
+  # aggregated by AGS (see nrw2014_fix_labels). Col 4 = Stimmbezirk number,
+  # col 5 = Stimmbezirk name. The Gemeinde-Name column is wrong in exactly the
+  # same rows, so re-derive it from the pre-remap ags -> name lookup (every
+  # target AGS also appears with its own, correct, name in the file).
+  if (year == 2014) {
+    name_lookup <- tapply(ags_name, ags, function(x) x[1])
+    ags <- nrw2014_fix_labels(ags, data[[4]], data[[5]])
+    ags_name <- unname(name_lookup[ags])
+  }
+
   df <- data.frame(
     ags = ags,
-    ags_name = as.character(data[[name_col]]),
+    ags_name = ags_name,
     eligible_voters = as.numeric(as.character(data[[ev_col]])),
     number_voters = as.numeric(as.character(data[[voter_col]])),
     invalid_votes = as.numeric(as.character(data[[invalid_col]])),
@@ -3992,7 +4988,145 @@ for (yr in c(2014, 2020)) {
 }
 
 nrw_results <- nrw_results[!sapply(nrw_results, is.null)]
+
+# --- NRW 2025: Kreis-level export -------------------------------------------
+# 1999-2020 come as Stimmbezirk tables that this script aggregates to
+# municipalities. For 2025 IT.NRW published only a Kreis-level summary, so this
+# block is COUNTY-LEVEL AGGREGATE: the 23 kreisfreie Städte are genuine
+# municipalities (a kreisfreie Stadt is its own Kreis) but the 31 Kreis rows
+# cover many municipalities each and cannot populate the municipality-level
+# harmonised output. Same treatment as NRW 1947-1970 in the state pipeline.
+#
+# The file is read by 01_municipal_unharm.R too, which keeps only the "Krfr."
+# rows for the municipal-council dataset and discards the Kreise — this block is
+# what puts the Kreistag result itself into the county dataset.
+#
+# No tryCatch here: a missing or changed file must fail loudly rather than
+# silently reduce NRW to its pre-2025 years (the Brandenburg-absence class).
+nrw_2025_file <- "data/municipal_elections/raw/nrw/nrw_2025_kreise.csv"
+if (file.exists(nrw_2025_file)) {
+  cat("  NRW 2025 ...")
+  n25 <- read.csv2(nrw_2025_file, fileEncoding = "UTF-8", check.names = FALSE,
+                   colClasses = "character", stringsAsFactors = FALSE)
+
+  num <- function(x) suppressWarnings(as.numeric(gsub("[^0-9-]", "", x)))
+
+  # Keep the Land row aside as a reconciliation target, then drop it.
+  land25 <- n25[n25[[1]] == "000000", , drop = FALSE]
+  n25 <- n25[n25[[1]] != "000000", , drop = FALSE]
+
+  # Aachen has been part of the Städteregion since 21.10.2009 but IT.NRW still
+  # lists it as "Krfr. Stadt Aachen" (313000) IN ADDITION TO "Städteregion
+  # Aachen" (334000), whose figures already contain it: the 54 rows exceed the
+  # Land total by exactly Aachen's 185,023 electors and 108,358 valid votes.
+  # The county unit for the Städteregionstag is the Städteregion, so the city
+  # row is dropped; keeping it would double-count Aachen statewide.
+  n25 <- n25[n25[[1]] != "313000", , drop = FALSE]
+
+  d25 <- data.frame(
+    ags      = paste0("05", n25[[1]]),
+    ags_name = trimws(n25[[2]]),
+    # "Wahlberechtigte insgesamt", NOT one of the Sperrvermerk sub-columns —
+    # picking a subset is what overstated Hessen's turnout by up to 8 points.
+    eligible_voters = num(n25[["Wahlberechtigte insgesamt"]]),
+    number_voters   = num(n25[["Wähler/-innen"]]),
+    invalid_votes   = num(n25[["Ungültige Stimmen"]]),
+    valid_votes     = num(n25[["Gültige Stimmen"]]),
+    stringsAsFactors = FALSE, check.names = FALSE
+  )
+
+  # Party columns: everything after "Gültige Stimmen". "Wählergruppen zusammen"
+  # is an aggregate and is skipped — the five individual Wählergruppe columns
+  # plus the named parties and Einzelbewerber reconcile to Gültige Stimmen
+  # exactly, so including it would double-count.
+  first_party <- which(names(n25) == "Gültige Stimmen") + 1L
+  p_cols <- names(n25)[first_party:ncol(n25)]
+  wg_cols <- grep("^Wählergruppe [0-9]+$", p_cols, value = TRUE)
+  skip_cols <- c(wg_cols, "Wählergruppen zusammen")
+
+  for (pc in setdiff(p_cols, skip_cols)) {
+    pname <- normalise_party_cty(pc)
+    v <- num(n25[[pc]])
+    d25[[pname]] <- if (pname %in% names(d25)) d25[[pname]] + ifelse(is.na(v), 0, v) else v
+  }
+  if (length(wg_cols) > 0) {
+    wg_mat <- sapply(wg_cols, function(cc) num(n25[[cc]]))
+    wg_sum <- rowSums(wg_mat, na.rm = TRUE)
+    wg_sum[rowSums(!is.na(wg_mat)) == 0] <- NA_real_
+    d25$waehlergruppen <- wg_sum
+  }
+
+  # The source decomposes the valid vote exactly; assert it before we divide.
+  vote_cols_25 <- setdiff(names(d25), c("ags", "ags_name", "eligible_voters",
+                                        "number_voters", "invalid_votes", "valid_votes"))
+  recon <- rowSums(d25[vote_cols_25], na.rm = TRUE) - d25$valid_votes
+  if (max(abs(recon), na.rm = TRUE) > 0) {
+    stop("NRW 2025: party votes do not sum to Gültige Stimmen (max deviation ",
+         max(abs(recon), na.rm = TRUE), ") — check for a new or renamed column.")
+  }
+  stopifnot(all(nchar(d25$ags) == 8), !any(duplicated(d25$ags)),
+            all(d25$number_voters <= d25$eligible_voters))
+
+  # Reconcile against the file's own Land row. This is what catches a unit being
+  # listed twice (as Aachen was) or a Kreis going missing from the export.
+  for (chk in list(c("eligible_voters", "Wahlberechtigte insgesamt"),
+                   c("number_voters",   "Wähler/-innen"),
+                   c("valid_votes",     "Gültige Stimmen"))) {
+    got <- sum(d25[[chk[1]]], na.rm = TRUE)
+    want <- num(land25[[chk[2]]])
+    if (!isTRUE(all.equal(got, want))) {
+      stop("NRW 2025: ", chk[1], " sums to ", got, " but the Land row says ", want,
+           " (difference ", got - want, ") — a unit is duplicated or missing.")
+    }
+  }
+
+  for (pc in vote_cols_25) {
+    d25[[pc]] <- ifelse(!is.na(d25$valid_votes) & d25$valid_votes > 0,
+                        d25[[pc]] / d25$valid_votes, NA_real_)
+  }
+  share_sum_25 <- rowSums(d25[vote_cols_25], na.rm = TRUE)
+  d25$other <- pmax(1 - share_sum_25, 0)
+  d25$other[is.na(d25$valid_votes) | d25$valid_votes == 0] <- NA_real_
+  d25$turnout <- ifelse(!is.na(d25$eligible_voters) & d25$eligible_voters > 0,
+                        d25$number_voters / d25$eligible_voters, NA_real_)
+  d25$county <- substr(d25$ags, 1, 5)
+  d25$state <- "05"
+  d25$election_year <- 2025L
+
+  cat(nrow(d25), "Kreise/kreisfreie Städte (reconciles to the Land row)\n")
+  nrw_results[["2025"]] <- as_tibble(d25)
+} else {
+  stop("NRW 2025 file not found: ", nrw_2025_file)
+}
+
 df_nrw <- bind_rows(nrw_results)
+
+# Aachen is in the IT.NRW source TWICE from 2014 on, under two different Kreis
+# keys: KRS 313 / GKZ 313000 "Aachen, krfr. Stadt", which is its STADTRAT, and
+# KRS 334 / GKZ 334002 of the same name, its contribution to the
+# STÄDTEREGIONSTAG. Both are real elections on the same day — the party shares
+# differ (2014 AfD 2.5 % vs 0.1 %; 2020 GRÜNE 34.1 % vs 36.7 %) — but only the
+# second is a county-council result, so keeping both double-counted Aachen's
+# electorate in this dataset: 194,455 in 2014 and 192,502 in 2020.
+#
+# The cut-off is the Städteregion's formation on 21.10.2009, which is AFTER the
+# 30.08.2009 election: Aachen really was kreisfrei for 1999-2009, so those years
+# keep their 313 row and only 2014 onward drop it. 2025 is already handled in
+# its own block, where IT.NRW publishes a Kreis-level summary instead.
+nrw_aachen_dup <- df_nrw$ags == "05313000" & df_nrw$election_year >= 2014
+if (any(nrw_aachen_dup)) {
+  cat("  Dropping", sum(nrw_aachen_dup), "Aachen Stadtrat row(s) from the county",
+      "dataset (years", paste(sort(unique(df_nrw$election_year[nrw_aachen_dup])), collapse = ", "),
+      "— Aachen votes for the Städteregionstag under 05334002 from 21.10.2009)\n")
+  df_nrw <- df_nrw[!nrw_aachen_dup, ]
+}
+# Aachen must appear exactly once per election year in the county dataset.
+aachen_n <- table(df_nrw$election_year[df_nrw$ags %in% c("05313000", "05334002")])
+if (any(aachen_n > 1)) {
+  stop("NRW: Aachen still counted twice in ",
+       paste(names(aachen_n)[aachen_n > 1], collapse = ", "))
+}
+
 cat("NRW total:", nrow(df_nrw), "rows x", ncol(df_nrw), "cols\n")
 cat("NRW years:", paste(sort(unique(df_nrw$election_year)), collapse = ", "), "\n")
 df_nrw |> count(election_year) |> print()

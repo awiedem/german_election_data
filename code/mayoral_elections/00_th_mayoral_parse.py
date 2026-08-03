@@ -26,6 +26,7 @@ import os
 import re
 import csv
 import glob
+import collections
 import datetime
 import openpyxl
 
@@ -216,10 +217,69 @@ def parse_daten_files():
     return rows
 
 
+
+# ---------------------------------------------------------------------------
+# Election dates: the Info sheets carry only a report timestamp
+# ---------------------------------------------------------------------------
+# The "Stand:"/"erstellt am:" line is when the report was GENERATED, days to
+# weeks after polling day, and it is the only dd.mm.yyyy token in the sheet --
+# the true Wahltag is not in the file at all. Uncorrected, every Info-derived OB
+# date (2006-2024) is a weekday. The true polling days are recoverable from the
+# Gemeinde-level Buergermeister scrape, which covers the same statewide
+# Kommunalwahl days: for each round take the latest polling day on or before the
+# timestamp. (The 1994/2000 Daten rows already carry real dates and are left
+# alone.) Mirrors the correction in code/landrat_elections/00_th_parse.R.
+TH_BM_CSV = os.path.join(os.path.dirname(RAW), "thueringen_bm", "th_bm_scraped.csv")
+
+
+def _polling_days():
+    """{round: sorted list of real polling days} from the Gemeinde BM scrape."""
+    if not os.path.exists(TH_BM_CSV):
+        raise SystemExit(f"Cannot correct Thueringen OB dates: {TH_BM_CSV} is missing. "
+                         "Run 00_th_scrape.py first.")
+    counts = collections.Counter()
+    with open(TH_BM_CSV, newline="", encoding="utf-8") as fh:
+        for r in csv.DictReader(fh):
+            d, rnd = (r.get("election_date") or "").strip(), (r.get("round") or "").strip()
+            if len(d) == 10 and rnd:
+                counts[(rnd, d)] += 1
+    out = {}
+    for (rnd, d), n in counts.items():
+        if n >= 3:                      # drop one-off single-Gemeinde dates
+            out.setdefault(rnd, []).append(d)
+    for rnd in out:
+        out[rnd].sort()
+    return out
+
+
+def correct_dates(rows):
+    pd_by_round = _polling_days()
+    fixed = 0
+    for r in rows:
+        stamp, rnd = r.get("election_date"), r.get("round")
+        if not stamp or r.get("source", "").startswith("daten"):
+            continue
+        prior = [d for d in pd_by_round.get(rnd, [])
+                 if d <= stamp and (datetime.date.fromisoformat(stamp)
+                                    - datetime.date.fromisoformat(d)).days <= 30]
+        if not prior:
+            raise SystemExit(f"No polling day within 30 days before {stamp} ({rnd}) "
+                             f"for {r.get('ags')} -- check th_bm_scraped.csv coverage.")
+        if prior[-1] != stamp:
+            r["election_date"], fixed = prior[-1], fixed + 1
+    bad = [r for r in rows if r.get("election_date")
+           and datetime.date.fromisoformat(r["election_date"]).weekday() != 6]
+    if bad:
+        raise SystemExit(f"{len(bad)} Thueringen OB rows are not on a Sunday, e.g. "
+                         f"{bad[0]['ags']} {bad[0]['election_date']}")
+    print(f"corrected {fixed} report timestamps to polling days")
+    return rows
+
+
 def main():
     info = parse_info_files()
     daten = parse_daten_files()
-    rows = info + daten
+    rows = correct_dates(info + daten)
     cols = ["ags", "ags_name", "state", "state_name", "election_year", "election_date",
             "election_type", "round", "amt", "eligible_voters", "number_voters",
             "valid_votes", "invalid_votes", "turnout", "candidate_name",

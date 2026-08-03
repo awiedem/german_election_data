@@ -30,8 +30,15 @@ This folder contains scripts to check data quality and diagnose issues in the Ge
     `checks_when_extra_disappear.R`
 
 #### General Checks
-- **`checks_federal_muni_21.R`** - General checks for harm_21 dataset
+- **`checks_federal_muni_21.R`** - Audit of the `federal_muni_harm_21` dataset.
+  38 assertions across 10 groups: identifier integrity, state coverage, vote-share
+  and turnout arithmetic, vote conservation against `federal_muni_unharm`, Inf/NaN,
+  party availability windows, and year-on-year plausibility. **Exits 0 iff all
+  checks pass**, so it can gate a pipeline re-run; warnings do not fail it.
+  Verified to fail on the AGS mis-padding, silent-state-absence and
+  fabricated-votes defect classes.
 - **`checks_federal_muni_25.R`** - General checks for harm_25 dataset
+  (still diagnostic-only — prints, no assertions)
 
 ### Crosswalks
 

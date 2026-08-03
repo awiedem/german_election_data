@@ -279,12 +279,27 @@ check_warn(nrow(no_rank1) == 0,
            "every HW election has a rank-1 candidate",
            sprintf("%d elections missing rank-1 candidate", nrow(no_rank1)))
 
+# Sachsen-Anhalt losing candidates are anonymised on purpose (StaLA scientific-
+# use licence and section 80 KWO LSA), exactly as in mayoral_candidates, so a
+# missing name is required there rather than a defect. Elected Landraete stay
+# named, and every other scraped state must name all its candidates.
 n_na_name_scraped <- lc %>%
-  filter(state %in% c("05","12","14","15","16"), is.na(candidate_name)) %>%
+  filter(state %in% c("05","12","14","16"), is.na(candidate_name)) %>%
   nrow()
 check(n_na_name_scraped == 0,
-      "all NRW/BB/SN/ST/TH candidates have non-NA name",
-      sprintf("%d NRW/BB/SN/ST/TH candidates with NA name", n_na_name_scraped))
+      "all NRW/BB/SN/TH candidates have non-NA name",
+      sprintf("%d NRW/BB/SN/TH candidates with NA name", n_na_name_scraped))
+
+st_named_losers <- lc %>%
+  filter(state == "15", !(is_winner %in% TRUE), !is.na(candidate_name)) %>% nrow()
+check(st_named_losers == 0,
+      "ST losing candidates are anonymised (licence / section 80 KWO LSA)",
+      sprintf("%d named ST non-winner rows leaked", st_named_losers))
+st_named_winners <- lc %>%
+  filter(state == "15", is_winner %in% TRUE, !is.na(candidate_name)) %>% nrow()
+check(st_named_winners > 0,
+      sprintf("ST elected Landraete remain named (%d rows)", st_named_winners),
+      "ST winners lost their names — anonymisation is too broad")
 
 # ============================================================================
 # 9. Duplicate detection

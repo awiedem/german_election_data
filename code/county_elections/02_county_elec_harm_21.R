@@ -30,12 +30,19 @@ df <- read_rds("data/county_elections/final/county_elec_unharm.rds") |>
   as_tibble() |>
   filter(election_year >= 1990) |>
   mutate(
-    # Fix 11-digit AGS from HE 2021 → truncate to 8
-    ags = ifelse(nchar(ags) > 8, substr(ags, 1, 8), ags),
     ags = pad_zero_conditional(ags, 7),
     county = str_sub(ags, 1, 5)
   ) |>
   arrange(ags, election_year)
+
+# The HE 2021 block used to emit 11-character AGS, patched here by truncation.
+# That is fixed at source in 01 now, so assert instead of silently repairing —
+# a malformed key must fail loudly rather than be trimmed into a plausible one.
+bad_ags <- unique(df$ags[nchar(df$ags) != 8])
+if (length(bad_ags) > 0) {
+  stop(sprintf("%d AGS are not 8 characters (e.g. %s). Fix them in 01, not here.",
+               length(bad_ags), paste(head(bad_ags, 5), collapse = ", ")))
+}
 
 cat("Loaded:", nrow(df), "rows,", ncol(df), "columns\n")
 cat("States:", paste(sort(unique(df$state)), collapse = ", "), "\n")
@@ -43,10 +50,19 @@ cat("Years:", paste(sort(unique(df$election_year)), collapse = ", "), "\n")
 
 # Convert vote shares to vote counts ----------------------------------------
 
+# Anything not listed here is treated as a party share and multiplied by
+# valid_votes, so a new non-party column MUST be added to this list or it is
+# silently converted into a bogus party.
 metadata_cols <- c("ags", "ags_name", "county", "state", "election_year",
                    "eligible_voters", "number_voters", "valid_votes",
-                   "invalid_votes", "turnout")
+                   "invalid_votes", "turnout", "flag_sg_postal_allocated")
 party_vars <- setdiff(names(df), metadata_cols)
+# Cheap guard against the next such column: a share variable lives in [0, 1].
+flagish <- party_vars[grepl("^flag_", party_vars)]
+if (length(flagish) > 0) {
+  stop("Non-party column(s) would be harmonised as party shares: ",
+       paste(flagish, collapse = ", "), ". Add them to metadata_cols.")
+}
 
 cat("Party variables found:", length(party_vars), "\n")
 
@@ -55,12 +71,27 @@ cat("Party variables found:", length(party_vars), "\n")
 n_na_vv <- sum(is.na(df$valid_votes))
 if (n_na_vv > 0) {
   cat(sprintf("Imputing valid_votes weight for %d rows\n", n_na_vv))
+  # Rows with no count at all carry no information to weight by. They used to
+  # fall through to weight 1, which published them as valid_votes = 1 with a
+  # full set of zero shares — a fabricated result indistinguishable from a real
+  # one (Ruesselsheim 2021, whose source row is empty for every metric, and one
+  # NI 1991 row). Drop them instead, loudly.
+  no_weight <- df |>
+    filter(is.na(valid_votes), is.na(number_voters) | number_voters == 0,
+           is.na(eligible_voters) | eligible_voters == 0)
+  if (nrow(no_weight) > 0) {
+    cat(sprintf("Dropping %d row(s) with no usable weight (all counts NA/0): %s\n",
+                nrow(no_weight),
+                paste(sprintf("%s/%d", no_weight$ags, no_weight$election_year),
+                      collapse = ", ")))
+    df <- df |>
+      anti_join(no_weight |> select(ags, election_year), by = c("ags", "election_year"))
+  }
   df <- df |>
     mutate(valid_votes = case_when(
       !is.na(valid_votes) ~ valid_votes,
       !is.na(number_voters) & number_voters > 0 ~ number_voters,
-      !is.na(eligible_voters) & eligible_voters > 0 ~ eligible_voters,
-      TRUE ~ 1
+      !is.na(eligible_voters) & eligible_voters > 0 ~ eligible_voters
     ))
 }
 
@@ -71,6 +102,14 @@ df <- df |>
   )
 
 # Handle known AGS corrections ------------------------------------------------
+
+# The eight corrections that are identical in the municipal pipeline (Thüringen
+# 1994 x7 and Mecklenburg-Vorpommern 2004 Prebberede) now live in one file, so a
+# new ingestion cannot silently port one copy and not the other. The
+# Sachsen-Anhalt entries below deliberately stay here — see that file for why the
+# two pipelines' Sachsen-Anhalt strategies differ and must not be merged.
+source("code/shared/ags_remaps.R")
+df <- apply_ags_remaps_shared(as.data.frame(df), "county") |> as_tibble()
 
 df <- df |>
   mutate(
@@ -98,15 +137,32 @@ df <- df |>
     )
   )
 
+# ---------------------------------------------------------------------------
+# sum_keep_na(): sum that does NOT invent a zero out of nothing
+# ---------------------------------------------------------------------------
+# sum(x, na.rm = TRUE) returns 0 when every input is NA, so a documented
+# all-missing column (Niedersachsen's invalid_votes, which its three-vote
+# system makes undefined; BW 2024's eligible/number_voters) was published as a
+# hard 0 in every harmonised row — 9,073 municipality rows across 21
+# state-years. Aggregate to NA when nothing was observed, and otherwise sum the
+# observations as before.
+sum_keep_na <- function(x) {
+  if (all(is.na(x))) NA_real_ else sum(x, na.rm = TRUE)
+}
+
 # After correcting AGS codes, aggregate any duplicates
 df <- df |>
   group_by(ags, election_year, state) |>
   summarise(
     across(
       c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
-      ~ sum(.x, na.rm = TRUE)
+      ~ sum_keep_na(.x)
     ),
     across(any_of(c("ags_name", "county")), first),
+    # Provenance flag, not a count: carry the maximum so a merged row inherits
+    # it if ANY of its predecessors had votes allocated to it.
+    across(any_of("flag_sg_postal_allocated"),
+           ~ if (all(is.na(.x))) NA_integer_ else max(.x, na.rm = TRUE)),
     .groups = "drop"
   ) |>
   arrange(ags, election_year)
@@ -117,11 +173,32 @@ cat("After AGS corrections:", nrow(df), "rows\n")
 # Split into county-level (BW, BY) and municipality-level (all others)
 # ==========================================================================
 
-county_level_states <- c("08", "09")  # BW and BY
-df_cty <- df |> filter(state %in% county_level_states)
-df_muni <- df |> filter(!state %in% county_level_states)
+county_level_states <- c("08", "09")  # BW and BY, county-level in every year
 
-cat("\nCounty-level data (BW, BY):", nrow(df_cty), "rows\n")
+# Granularity is a property of the SOURCE, not only of the state: IT.NRW
+# published 1999-2020 as Stimmbezirk tables that 01 aggregates to
+# municipalities, but released 2025 only as a Kreis-level summary. Those rows
+# carry a Kreis pseudo-AGS (05154000) that is not a municipality, so they must
+# take the county crosswalk like BW and BY rather than the municipality one.
+# Sachsen 1994 is the same case: the Landesamt's 1994 report is Kreis-level
+# only (no Gemeinde breakdown was ever published), while 1999 onward is
+# Gemeinde-level.
+county_level_years <- list(c(state = "05", election_year = "2025"),
+                           c(state = "14", election_year = "1994"),
+                           c(state = "14", election_year = "1995"))
+
+is_county_level <- function(state, election_year) {
+  out <- state %in% county_level_states
+  for (k in county_level_years) {
+    out <- out | (state == k[["state"]] & as.character(election_year) == k[["election_year"]])
+  }
+  out
+}
+
+df_cty <- df |> filter(is_county_level(state, election_year))
+df_muni <- df |> filter(!is_county_level(state, election_year))
+
+cat("\nCounty-level data (BW, BY, NRW 2025, SN 1994/1995):", nrow(df_cty), "rows\n")
 cat("Municipality-level data:", nrow(df_muni), "rows\n")
 
 # ==========================================================================
@@ -285,7 +362,7 @@ votes_muni <- df_cw |>
   summarise(
     across(
       c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
-      ~ sum(.x * pop_cw, na.rm = TRUE)
+      ~ if (all(is.na(.x))) NA_real_ else sum(.x * pop_cw, na.rm = TRUE)
     ),
     .groups = "drop"
   ) |>
@@ -314,6 +391,45 @@ votes_muni <- votes_muni |>
   mutate(flag_unsuccessful_naive_merge = ifelse(
     is.na(flag_unsuccessful_naive_merge), 0, flag_unsuccessful_naive_merge)) |>
   select(-id)
+
+# Partial coverage of a 2021 municipality (Part A).
+#
+# Same reasoning as the county-level check further down: harmonisation is silent
+# about donors that are simply absent from the source, so a target built from
+# only part of its predecessors still emits a row that looks complete. The note
+# added here in August 2026 claimed ags_crosswalks had no population column and
+# that the check was therefore blocked — it does have one, fully populated for
+# all 405,993 rows, so the identical formula applies: donor d hands
+# population(d) * pop_cw(d -> T) to target T, and the covered share is that sum
+# over the donors actually present divided by the same sum over every donor the
+# crosswalk lists for that year.
+cw_muni_pop <- cw_muni |>
+  mutate(pop_contrib = as.numeric(population) * as.numeric(pop_cw)) |>
+  filter(!is.na(pop_contrib))
+
+covA_full <- cw_muni_pop |>
+  group_by(ags_21, election_year) |>
+  summarise(pop_total = sum(pop_contrib), .groups = "drop")
+
+covA_have <- df_cw |>
+  distinct(ags, ags_21, election_year) |>
+  inner_join(cw_muni_pop |> select(ags, election_year, ags_21, pop_contrib),
+             by = c("ags", "ags_21", "election_year")) |>
+  group_by(ags_21, election_year) |>
+  summarise(pop_have = sum(pop_contrib), .groups = "drop")
+
+votes_muni <- votes_muni |>
+  left_join(covA_full |> rename(ags = ags_21), by = c("ags", "election_year")) |>
+  left_join(covA_have |> rename(ags = ags_21), by = c("ags", "election_year")) |>
+  mutate(
+    coverage = ifelse(!is.na(pop_total) & pop_total > 0, pop_have / pop_total, NA_real_),
+    flag_partial_coverage = as.integer(!is.na(coverage) & coverage < 0.99)
+  ) |>
+  select(-pop_total, -pop_have, -coverage)
+
+n_partA <- sum(votes_muni$flag_partial_coverage, na.rm = TRUE)
+cat("  flag_partial_coverage set on", n_partA,
+    "municipality-year rows (source units missing for part of the 2021 municipality)\n")
 
 cat("Municipality harmonization:", nrow(votes_muni), "rows\n")
 
@@ -394,7 +510,7 @@ votes_cty <- df_cty_cw |>
   summarise(
     across(
       c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
-      ~ sum(.x * pop_cw, na.rm = TRUE)
+      ~ if (all(is.na(.x))) NA_real_ else sum(.x * pop_cw, na.rm = TRUE)
     ),
     .groups = "drop"
   ) |>
@@ -408,8 +524,63 @@ votes_cty <- df_cty_cw |>
   mutate(
     ags = paste0(pad_zero_conditional(county_code_21, 4), "000"),
     flag_unsuccessful_naive_merge = 0
+  )
+
+# Partial coverage of a 2021 county.
+#
+# Harmonisation is silent about donors that are simply absent from the source:
+# it weights whatever arrives and emits a row that looks complete. Sachsen 1994
+# makes this concrete — the Verfassungsgericht annulled the Kreistagswahl in
+# Meißen, Kamenz, Dresden-Land and Hoyerswerda, so Kreis Meißen 2021 is built
+# from the Riesa-Großenhain part alone and reports 98,003 electors against the
+# roughly 200,000 it has in every neighbouring year. Turnout and vote shares
+# stay valid for the part that did vote; the COUNTS do not describe the county.
+#
+# Coverage is measured against the crosswalk's own population figures: each
+# donor hands population(d) * pop_cw(d -> T) to target T, so summing that over
+# the donors actually present, divided by the same sum over every donor the
+# crosswalk lists, is the fraction of T that the source covers.
+#
+# Part A (municipality level) has the same structural exposure — nothing there
+# notices a source unit that is simply absent — but no live instance is known:
+# the Thüringen 2024 case the worklist cited is not real (that workbook does
+# carry Kreis 51-55, the five kreisfreie Städte, and they reach both harmonised
+# outputs). ags_crosswalks also carries no population column, so the equivalent
+# check needs a different population source; left on the worklist rather than
+# approximated here.
+cw_cty_pop <- cw_cty |>
+  mutate(pop_contrib = as.numeric(population) * as.numeric(pop_cw)) |>
+  filter(!is.na(pop_contrib))
+
+cov_full <- cw_cty_pop |>
+  group_by(county_code_21, year) |>
+  summarise(pop_total = sum(pop_contrib), .groups = "drop")
+
+cov_have <- df_cty_cw |>
+  distinct(county_code, county_code_21, election_year) |>
+  inner_join(cw_cty_pop |> select(county_code, year, county_code_21, pop_contrib),
+             by = c("county_code", "county_code_21",
+                    "election_year" = "year")) |>
+  group_by(county_code_21, election_year) |>
+  summarise(pop_have = sum(pop_contrib), .groups = "drop")
+
+votes_cty <- votes_cty |>
+  left_join(cov_full |> rename(election_year = year),
+            by = c("county_code_21", "election_year")) |>
+  left_join(cov_have, by = c("county_code_21", "election_year")) |>
+  mutate(
+    coverage = ifelse(!is.na(pop_total) & pop_total > 0, pop_have / pop_total, NA_real_),
+    # NA coverage means the crosswalk had no population for this county-year, not
+    # that coverage is poor; only a measured shortfall raises the flag.
+    flag_partial_coverage = as.integer(!is.na(coverage) & coverage < 0.99)
   ) |>
-  select(-county_code_21)
+  select(-pop_total, -pop_have, -coverage, -county_code_21)
+
+n_partial <- sum(votes_cty$flag_partial_coverage)
+if (n_partial > 0) {
+  cat("  flag_partial_coverage set on", n_partial,
+      "county-year rows (source units missing for part of the 2021 county)\n")
+}
 
 cat("County harmonization:", nrow(votes_cty), "rows\n")
 
@@ -514,7 +685,16 @@ cat("Rows with incongruent total vote share:",
 
 cat("\n--- Output 1: Municipality-level ---\n")
 
-df_muni_out <- df_harm |> filter(!state %in% county_level_states)
+df_muni_out <- df_harm |> filter(!is_county_level(state, election_year))
+# flag_sg_postal_allocated describes how a SOURCE row was built (Niedersachsen
+# Samtgemeinde postal votes pushed down onto its members) and does not survive
+# aggregation onto 2021 boundaries, where one output row can mix allocated and
+# unallocated predecessors. It is therefore published on county_elec_unharm
+# only; this drop is deliberate, not incidental.
+df_muni_out$flag_sg_postal_allocated <- NULL
+# flag_partial_coverage used to be county-only and was dropped here as all-NA.
+# Part A computes it now, so it stays: 25 municipality-year rows are built from
+# only part of their 2021 predecessors.
 
 # Add municipality-level covariates
 area_pop <- read_rds("data/covars_municipality/final/ags_area_pop_emp.rds") |>
@@ -553,9 +733,14 @@ df_cty_agg <- df_harm_counts |>
   summarise(
     across(
       c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
-      ~ sum(.x, na.rm = TRUE)
+      ~ sum_keep_na(.x)
     ),
     flag_unsuccessful_naive_merge = max(flag_unsuccessful_naive_merge, na.rm = TRUE),
+    # NA is meaningful here: coverage is only measured for county-level sources,
+    # so NA means "not assessed", not "fully covered". max() on an all-NA group
+    # would return -Inf, so the all-NA case is handled explicitly.
+    flag_partial_coverage = if (all(is.na(flag_partial_coverage))) NA_integer_
+                            else max(flag_partial_coverage, na.rm = TRUE),
     .groups = "drop"
   ) |>
   mutate(
