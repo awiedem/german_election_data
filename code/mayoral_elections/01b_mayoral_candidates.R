@@ -1418,6 +1418,63 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
     ifelse(x %in% names(ns_sw_aliases), unname(ns_sw_aliases[x]), x)
   }
 
+  # --------------------------------------------------------------------------
+  # 2017 Übersicht table — candidate rows
+  # --------------------------------------------------------------------------
+  # See the matching block in 01_mayoral_unharm.R. The summary names only the
+  # Wahlsieger, so one candidate row per decided election. Aue is omitted
+  # entirely: it went to a runoff whose result was never published, so it has no
+  # determinable winner and its two named runoff entrants are not the full field.
+  # Keep the AGS map in sync with 01.
+  ns_2017_ags <- c("Aue" = "03360408", "Berne" = "03461001",
+                   "Helmstedt" = "03154010", "Langwedel" = "03361006",
+                   "Uplengen" = "03457020")
+
+  parse_ns_2017_candidates <- function(pdf_path) {
+    lines <- unlist(str_split(pdftools::pdf_text(pdf_path), "\n"))
+    pat <- paste0("^\\s*(\\d{1,2})\\s+(.+?)\\s{2,}(.+?)\\s+",
+                  "([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)\\s+(\\d+,\\d+%)\\s*$")
+    hit <- str_match(lines, pat)
+    hit <- hit[!is.na(hit[, 1]), , drop = FALSE]
+    if (nrow(hit) == 0) return(NULL)
+    out <- list()
+    for (i in seq_len(nrow(hit))) {
+      kom <- str_trim(hit[i, 3])
+      mid <- str_split(str_trim(hit[i, 4]), "\\s{2,}")[[1]]
+      # Comma preceded by letters: the votes/share field carries a decimal comma.
+      wi <- grep("^[^0-9]+,", mid)
+      if (!length(wi)) next                      # undecided (Aue)
+      nm <- mid[max(wi)]
+      tail_bits <- mid[(max(wi) + 1):length(mid)]
+      vm <- str_match(paste(tail_bits[-1], collapse = " "), "([\\d.]+)\\s+(\\d+,\\d+)%")
+      votes <- if (is.na(vm[1, 1])) NA_real_ else as.numeric(gsub("\\.", "", vm[1, 2]))
+      vv <- as.numeric(gsub("\\.", "", hit[i, 7]))
+      out[[length(out) + 1]] <- data.frame(
+        candidate_name = nm,
+        candidate_last_name = str_trim(sub(",.*$", "", nm)),
+        candidate_first_name = str_trim(sub("^[^,]*,\\s*", "", nm)),
+        candidate_party = tail_bits[1],
+        candidate_votes = votes,
+        candidate_profession = NA_character_, candidate_birth_year = NA_real_,
+        ags = unname(ns_2017_ags[kom]), ags_name = kom,
+        state = "03", state_name = "Niedersachsen",
+        election_year = 2017L, election_date = as.Date("2017-09-24"),
+        election_type = if (mid[1] == "SG") "SG-Bürgermeisterwahl" else "Bürgermeisterwahl",
+        round = "hauptwahl", needs_stichwahl = FALSE,
+        eligible_voters = as.numeric(gsub("\\.", "", hit[i, 5])),
+        number_voters   = as.numeric(gsub("\\.", "", hit[i, 6])),
+        valid_votes = vv,
+        invalid_votes = as.numeric(gsub("\\.", "", hit[i, 6])) - vv,
+        turnout = as.numeric(gsub(",", ".", sub("%", "", hit[i, 8]))) / 100,
+        candidate_voteshare = if (!is.na(votes) && vv > 0) votes / vv else NA_real_,
+        sw_winner_only = TRUE,      # winner named, rest of the field not published
+        stringsAsFactors = FALSE
+      )
+    }
+    if (!length(out)) return(NULL)
+    bind_rows(out)
+  }
+
   attach_ns_sw_candidates <- function(sw, hw_all, year, sw_date) {
     # The Hauptwahl rows are candidate-level here, so reduce to one row per
     # election before matching; needs_stichwahl is constant within an election.
@@ -1785,6 +1842,11 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
            list(path = "DW2016/SW_Vorlaeufige_Ergebnisse_Stichwahlen_25.09.2016.pdf",
                 parser = "sw_rich", date = "2016-09-25")
          )),
+    list(year = 2017L, date = "2017-09-24",
+         files = list(
+           list(path = "DW2017/HW_Ergebnisuebersicht_Direktwahlen_24.09.2017.pdf",
+                parser = "ue_2017")
+         )),
     list(year = 2019L, date = "2019-05-26",
          files = list(
            list(path = "DW2019/DW_Einzel.pdf", parser = "standard"),
@@ -1848,6 +1910,13 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
 
         if (length(file_results) > 0) {
           file_df <- bind_rows(file_results)
+          cat("    ", fc$path, ":", nrow(file_df), "candidate rows\n")
+          ns_all_results[[length(ns_all_results) + 1]] <- file_df
+        }
+
+      } else if (fc$parser == "ue_2017") {
+        file_df <- parse_ns_2017_candidates(pdf_path)
+        if (!is.null(file_df)) {
           cat("    ", fc$path, ":", nrow(file_df), "candidate rows\n")
           ns_all_results[[length(ns_all_results) + 1]] <- file_df
         }
