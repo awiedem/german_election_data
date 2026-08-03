@@ -921,3 +921,11 @@ pulled out by pattern; and **that field also contains a comma**, the German deci
 separator, so identifying the winner as "the last comma-bearing field" selects the votes
 instead of the name and loses the party. The winner is matched on a comma preceded by
 letters.
+
+All five reach `mayoral_unharm`; the four decided ones also get a candidate row in `01b` and
+so enter `mayor_panel` (Schobert CDU, Brandt SPD, Trauernicht CDU, Schierenstedt EB). Adding
+them to `01` alone would have published election results that never reached the panel —
+`03_mayor_panel.R` reads the enriched candidate file `04` writes from `01b`, not
+`mayoral_unharm`. Aue is deliberately absent from the candidate file: with no published
+runoff it has no determinable winner, and its two named runoff entrants are not the full
+field of three.
