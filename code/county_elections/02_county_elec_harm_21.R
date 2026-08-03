@@ -103,26 +103,17 @@ df <- df |>
 
 # Handle known AGS corrections ------------------------------------------------
 
+# The eight corrections that are identical in the municipal pipeline (Thüringen
+# 1994 x7 and Mecklenburg-Vorpommern 2004 Prebberede) now live in one file, so a
+# new ingestion cannot silently port one copy and not the other. The
+# Sachsen-Anhalt entries below deliberately stay here — see that file for why the
+# two pipelines' Sachsen-Anhalt strategies differ and must not be merged.
+source("code/shared/ags_remaps.R")
+df <- apply_ags_remaps_shared(as.data.frame(df), "county") |> as_tibble()
+
 df <- df |>
   mutate(
     ags = case_when(
-      # Mecklenburg-Vorpommern 2004: Prebberede is recorded under 13053108,
-      # which appears in no crosswalk year; its own code is 13053109 (both
-      # resolve to Prebberede 13072082 in 2021). Same correction the municipal
-      # pipeline already applies for the same Gemeinde and year.
-      ags == "13053108" & election_year == 2004 ~ "13053109",  # Prebberede
-      # Thueringen 1994: seven municipalities that were dissolved before the
-      # crosswalk's coverage and appear under no later code. The same seven
-      # occur in the municipal 1994 data, where these targets are already
-      # established; reused verbatim from 02_municipal_harm.R rather than
-      # derived again.
-      ags == "16063047" & election_year == 1994 ~ "16016410",  # Kupfersuhl
-      ags == "16063056" & election_year == 1994 ~ "16015420",  # Moehra
-      ags == "16063057" & election_year == 1994 ~ "16063094",  # Moorgrund
-      ags == "16068054" & election_year == 1994 ~ "16018580",  # Toettelstaedt
-      ags == "16069022" & election_year == 1994 ~ "16023360",  # Hessberg
-      ags == "16073098" & election_year == 1994 ~ "16033700",  # Weissen
-      ags == "16074023" & election_year == 1994 ~ "16041070",  # Gernewitz
       # Thuringia post-2021 mergers
       ags == "16061119" & election_year == 2024 ~ "16061097",  # Uder
       ags == "16076094" & election_year == 2024 ~ "16076004",  # Berga-Wünschendorf → Berga/Elster

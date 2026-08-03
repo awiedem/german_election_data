@@ -278,6 +278,15 @@ not_merged_naive
 #   pull(id)
 
 # apply the rules
+#
+# Eight of these corrections (Thüringen 1994 x7 and MV 2004 Prebberede) are
+# identical in code/county_elections/02_county_elec_harm_21.R, which now sources
+# them from code/shared/ags_remaps.R. They are NOT sourced here, deliberately:
+# `id` is built in this same mutate from the PRE-correction ags, and the year_cw
+# block further down keys on that original id (Prebberede's
+# `id == "13053108_2004" ~ 2004`). Rewriting ags before id is built would leave
+# that override matching nothing. The shared file documents the divergence and
+# is the place to look when adding a new correction to both pipelines.
 df <- df |>
   mutate(
     id = paste0(ags, "_", election_year),
@@ -319,7 +328,14 @@ df <- df |>
       id == "15086270_2007" ~ "15151066", # Zeppernick
       id == "15089040_2007" ~ "15367003", # Biere
       id == "15089080_2007" ~ "15367007", # Eggersdorf
-      id == "15089085_2007" ~ "15362031", #	Eickendorf
+      # 15362031 is the OTHER Eickendorf -- the one in the Ohrekreis, which
+      # resolves to Oebisfelde-Weferlingen (15083411). This row is the Schönebeck
+      # Eickendorf, whose code is 15367008 and which resolves to Bördeland
+      # (15089042) alongside its siblings Biere 15367003 and Welsleben 15367027.
+      # Currently unreachable -- municipal_unharm holds no Sachsen-Anhalt 2007 --
+      # but it would have filed the election under the wrong municipality the day
+      # that data is ingested.
+      id == "15089085_2007" ~ "15367008", # Eickendorf (Schönebeck, not Ohrekreis)
       id == "15089160_2007" ~ "15367013", # Großmühlingen
       id == "15089190_2007" ~ "15367015", # Kleinmühlingen
       id == "15089335_2007" ~ "15367027", # Welsleben
