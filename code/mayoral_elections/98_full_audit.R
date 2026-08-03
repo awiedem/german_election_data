@@ -76,6 +76,16 @@ agg <- mc[!is.na(candidate_votes_hw),.(s=sum(candidate_votes_hw),v=first(valid_v
 agg[, bad := abs(s-v) > pmax(5, v*0.02)][, st := sn[substr(ags,1,2)]]
 badsum <- agg[bad & nc > 1 & !st %in% c("BY","NI","BW")]
 if (nrow(badsum)) rep("WARN","cand.sum_hw",sprintf("%d multi-candidate elections sum(HW)!=valid (excl. BY/NI/BW)",nrow(badsum)), badsum[order(-abs(s-v))][,.(ags,st,nc,s,v)]) else ok("cand.sum_hw","multi-candidate sum(HW)=valid (single-cand Ja/Nein & BY/NI/BW expected)")
+# The BY/NI/BW exclusion above is legitimate (their sources publish only the
+# leading candidates), but excluding them outright also hid HOW MUCH is missing.
+# Report the size of that gap so it stays visible and can be tracked; verified
+# 2026-08-02 against the raw Niedersachsen PDFs to be a source limitation, not
+# an extraction failure — see section 14 of docs/audit_2026-07_mayoral_council.md.
+excl <- agg[bad & st %in% c("BY","NI","BW")]
+if (nrow(excl)) {
+  cat(sprintf("[INFO] cand.sum_hw.excluded          %d elections in BY/NI/BW where the source lists only some candidates (%s)\n",
+              nrow(excl), paste(sprintf("%s %d", names(table(excl$st)), as.integer(table(excl$st))), collapse=", ")))
+}
 
 cat("\n========== C. unharm winner == candidates winner (cross-dataset) ==========\n")
 hw <- mc[!is.na(candidate_votes_hw),.(cmax=max(candidate_votes_hw)),.(ags,election_date)][,round:="hauptwahl"]

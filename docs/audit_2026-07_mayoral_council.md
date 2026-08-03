@@ -822,3 +822,49 @@ is explicit in `02`, not incidental. Finally, `02` derives `party_vars` as "ever
 in `metadata_cols`", so a new non-party column would have been multiplied by `valid_votes`
 and published as a party; the flag is registered there and a guard now stops the script if
 any `flag_*` column ever reaches `party_vars`.
+
+---
+
+## 14. Follow-up: verifying the Niedersachsen candidate parser
+
+Worklist item 4 — a verification task, not a fix. The rewrite touched regex logic across
+nine PDF vintages and was the widest-blast-radius change on the branch.
+
+**All four fixtures confirmed against the raw PDF text**, not merely against the parsed
+output: Schaumburg 2006 Schöttelndreier SPD 44,045 (the page says "kann als gewählt gelten:
+Herr Schöttelndreier, Heinz-Gerhard" — *not* Farr, who won in 2011); Leer 2016 Groote SPD
+41,710; Aurich 2019 Meinen EB 48,887; Heidekreis 2021 Grote EB 33,085. Each reconciles
+**exactly** to that page's printed Gültige Stimmen (66,984 / 73,449 / 91,404 / 62,653).
+
+Two of the four are useful in a second way: Aurich 2019 and Heidekreis 2021 print the
+*loser* as Lfd.Nr 1, so they demonstrate that the winner is taken by votes and not by row
+order — the defect this audit found elsewhere.
+
+**Verdict on the residual NA rows: genuinely absent from the source.** There are 83 NA-vote
+and 61 NA-party rows in Niedersachsen. 72 of the 83 still carry a candidate name and 42 also
+a profession, i.e. the row was read and only its numbers are missing; 48 are the last
+candidate of their election. Region Hannover 2021 shows the mechanism word-by-word: page 8
+ends with "7 Krause, Andrea Angestellte" and page 9 opens a different election, so her votes
+(16,950, the exact shortfall) and party are nowhere in the file. The parser records what the
+page shows and leaves the rest NA rather than inventing it, which is the correct behaviour.
+
+**A larger finding the worklist did not know about.** Across 1,082 Niedersachsen elections
+with candidate votes, **259 do not sum to `valid_votes`**. Splitting them by comparing the
+parsed row count against the candidate rows physically present on the page:
+
+* **162 — the source omits candidates.** The page carries exactly as many rows as were
+  parsed. Celle 2021 is the archetype: the page lists one candidate (Flader, CDU, 50,198 =
+  62.1 %) and then prints "Zusammen: 80883 100.0", with the other 30,685 votes belonging to
+  candidates who appear nowhere on it. `pdf_data()` confirms the page holds only 83 words.
+* **27 — the page-boundary truncation above**, which the parser already handles correctly by
+  emitting a named row with NA votes.
+
+This is a limitation of the Landeswahlleitung's *Einzelergebnisse*, not an extraction
+failure, and `98_full_audit.R` was already right to exclude Niedersachsen from `cand.sum_hw`
+("only top candidates listed"). But excluding it outright also hid how large the gap is, so
+the check now prints an `[INFO]` line reporting the excluded population: **14,086 elections
+in BY/NI/BW where the source lists only some candidates (BW 792, BY 13,061, NI 233)**.
+Anyone summing candidate votes in those three states must expect them not to reach
+`valid_votes`; the election-level `valid_votes` remains authoritative.
+
+No parser change was needed. The rewrite is confirmed correct on every case examined.
