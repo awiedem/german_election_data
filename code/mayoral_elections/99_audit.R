@@ -302,13 +302,24 @@ check(nrow(stgt) == 1 && isTRUE(stgt$candidate_votes_sw[1] == 83812),
       "BW vote integrity: Stuttgart OB 2020 Neuwahl winner = 83,812 votes",
       "BW vote integrity: Stuttgart OB 2020 winner votes wrong")
 
-cat("\n17. Brandenburg + Sachsen-Anhalt coverage (portal scrapes, recent cycle)\n")
-# Brandenburg (state 12): amtsfreie Gemeinden/Städte + 4 kreisfreie Städte (OB),
-# WITH party affiliation. Recent cycle only (~2018-2026).
+cat("\n17. Brandenburg + Sachsen-Anhalt coverage\n")
+# Brandenburg (state 12): hauptamtliche Bürgermeister of the amtsfreie
+# Gemeinden/Städte + the 4 kreisfreie Städte (OB), WITH party affiliation.
+# PRIMARY source since Aug 2026 is the Landeswahlleiter workbook supplied on
+# request (00_bb_lwl_parse.py -> bb_lwl_parsed.csv), a 2010-2026 series; the
+# older web-portal scrape (bb_bm_parsed.csv, current cycle only) survives as the
+# fallback for the 2 elections the workbook does not carry. Every one of the 114
+# rounds both sources hold matched exactly on counts, parties and candidate
+# votes when the workbook was ingested.
 bb_m <- m %>% filter(state == "12")
-check(n_distinct(bb_m$ags) >= 70,
-      sprintf("BB: %d Gemeinden in mayoral_unharm (≥70 expected)", n_distinct(bb_m$ags)),
-      sprintf("BB: only %d Gemeinden (expected ≥70)", n_distinct(bb_m$ags)))
+check(n_distinct(bb_m$ags) >= 130,
+      sprintf("BB: %d Gemeinden in mayoral_unharm (≥130 expected)", n_distinct(bb_m$ags)),
+      sprintf("BB: only %d Gemeinden (expected ≥130)", n_distinct(bb_m$ags)))
+check(nrow(bb_m) >= 420 && min(bb_m$election_year) <= 2010,
+      sprintf("BB: %d round-results spanning %d-%d (LWL series from 2010)",
+              nrow(bb_m), min(bb_m$election_year), max(bb_m$election_year)),
+      sprintf("BB: %d round-results, %d-%d (expected ≥420 from 2010)",
+              nrow(bb_m), min(bb_m$election_year), max(bb_m$election_year)))
 bb_ob <- bb_m %>% filter(election_type == "Oberbürgermeisterwahl") %>% pull(ags) %>% unique()
 check(setequal(bb_ob, c("12051000", "12052000", "12053000", "12054000")),
       "BB: exactly the 4 kreisfreie Städte are Oberbürgermeisterwahl",
@@ -319,6 +330,50 @@ check(mean(!is.na(bb_m$winner_party)) > 0.95,
 check(sum(l$state == "12") >= 0 && sum(m$state == "12" & m$election_type == "Landratswahl") == 0,
       "BB: no Landratswahl leaked into mayoral",
       "BB: Landratswahl leaked into mayoral")
+# The source publishes vote counts, not shares — so this must reconcile exactly.
+# It did NOT before Aug 2026: the portal printed shares rounded to 4 decimals.
+bb_share <- bb_m %>% filter(!is.na(winner_votes), !is.na(valid_votes), valid_votes > 0)
+check(all(abs(bb_share$winner_votes / bb_share$valid_votes -
+              bb_share$winner_voteshare) < 1e-9),
+      sprintf("BB vote integrity: winner_voteshare = votes/valid (%d rounds)",
+              nrow(bb_share)),
+      "BB vote integrity: winner_voteshare != winner_votes / valid_votes")
+check(all(bb_m$valid_votes + bb_m$invalid_votes == bb_m$number_voters, na.rm = TRUE),
+      "BB vote integrity: gültige + ungültige = Wähler",
+      "BB vote integrity: gültige + ungültige != Wähler")
+
+# Externally verified fixtures spanning the series (Landeswahlleiter result
+# pages + local press). `election_date` is the HAUPTWAHL date; a Stichwahl
+# winner's decisive share lives in candidate_voteshare_sw.
+bb_fix <- data.frame(
+  ags          = c("12068264", "12069397", "12065256", "12067144",
+                   "12054000", "12064044", "12065356"),
+  gemeinde     = c("Kyritz 2010", "Michendorf 2011 (SW)", "Oranienburg 2017 (SW)",
+                   "Fürstenwalde 2018", "Potsdam OB 2025 (SW)",
+                   "Bad Freienwalde 2025 (SW)", "Zehdenick 2026 Neuwahl"),
+  election_date = as.Date(c("2010-11-07", "2011-09-11", "2017-09-24",
+                            "2018-02-25", "2025-09-21", "2025-09-28",
+                            "2026-05-10")),
+  winner_last   = c("Görke", "Mirbach", "Laesicke", "Rudolph",
+                    "Aubel", "Heidemann", "Stadtkewitz"),
+  share         = c(0.557, 0.601, 0.558, 0.522, 0.729, 0.516, 0.584),
+  stringsAsFactors = FALSE
+)
+for (i in seq_len(nrow(bb_fix))) {
+  w <- mc %>% filter(ags == bb_fix$ags[i], election_date == bb_fix$election_date[i],
+                     is_winner %in% TRUE)
+  got_share <- if (nrow(w) == 1) {
+    dplyr::coalesce(w$candidate_voteshare_sw[1], w$candidate_voteshare_hw[1])
+  } else NA_real_
+  check(nrow(w) == 1 && w$candidate_last_name[1] == bb_fix$winner_last[i] &&
+          !is.na(got_share) && abs(got_share - bb_fix$share[i]) < 0.001,
+        sprintf("BB fixture: %s -> %s (%.1f%%)", bb_fix$gemeinde[i],
+                bb_fix$winner_last[i], 100 * bb_fix$share[i]),
+        sprintf("BB fixture FAILED: %s (rows=%d, winner=%s, share=%s)",
+                bb_fix$gemeinde[i], nrow(w),
+                if (nrow(w) == 1) w$candidate_last_name[1] else "-",
+                if (is.na(got_share)) "NA" else sprintf("%.3f", got_share)))
+}
 
 # Sachsen-Anhalt (state 15): Bürgermeister-/OB-wahlen. PRIMARY source is now the
 # StaLA HISTORICAL file "2026_0661_BM-Wahl_ab_1994.xlsx" (1994-2026, ~4140

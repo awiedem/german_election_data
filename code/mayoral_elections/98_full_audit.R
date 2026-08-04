@@ -413,6 +413,27 @@ if ("candidate_rank_sw" %in% names(mc)) {
     ok("cand.sw_rank1","rank-1 Stichwahl candidates share rank only on an exact tie")
 }
 
+# G2b. One person must be ONE row per election cycle. mayoral_candidates is the
+# wide HW/SW format and the pivot pairs the two rounds BY CANDIDATE NAME, so a
+# source that spells the same person differently in the Hauptwahl and the
+# Stichwahl silently splits them into two rows — one holding the first-round
+# votes and ranked as a loser, the other holding the runoff result. In five of
+# the nine Brandenburg cases found in August 2026 the split row was the WINNER,
+# who then appeared to have contested the runoff without standing in the first
+# round. The tell is cheap: the number of candidate rows in a cycle must equal
+# the `n_candidates` the source reported for its Hauptwahl.
+# Calibration: this reported 9 extra Brandenburg cycles before the Stage-0
+# cross-round name reconciliation was added, and none after.
+if ("n_candidates_hw" %in% names(mc)) {
+  split_rows <- mc[!is.na(n_candidates_hw),
+                   .(rows = .N, n_hw = first(n_candidates_hw)),
+                   .(st = sn[substr(ags,1,2)], ags, election_date, election_type)][rows != n_hw]
+  if (nrow(split_rows)) rep("WARN","cand.rows_vs_n_candidates",
+    sprintf("%d election cycles where the candidate rows do not equal the source's own n_candidates (a name that differs between rounds splits one person into two rows)",
+            nrow(split_rows)), split_rows[, .N, st][order(-N)]) else
+    ok("cand.rows_vs_n_candidates","every cycle has as many candidate rows as the source reported candidates")
+}
+
 # G3. The winner named in mayoral_unharm must be the candidate with the most
 # votes in the decisive round of the same election.
 # Compare like with like: mayoral_unharm has one row per ROUND, while the

@@ -12,8 +12,9 @@
 # - Schleswig-Holstein, Mecklenburg-Vorpommern, Thüringen — see blocks below
 # - Baden-Württemberg — last election per Gemeinde as of 31.12.2024
 #   (~2016-2024; winner-only, no party; StaLA Bericht B VII 3-j/25)
-# - Brandenburg — most recent Bürgermeister-/OB-wahl of amtsfreie Gemeinden +
-#   kreisfreie Städte (~2018-2026; with party; Landeswahlleiter portal scrape)
+# - Brandenburg — hauptamtliche Bürgermeister-/OB-wahlen of amtsfreie Gemeinden +
+#   kreisfreie Städte, 2010-2026 (with party; Landeswahlleiter workbook supplied
+#   on request, merged with the older portal scrape)
 # - Sachsen-Anhalt — Bürgermeister-/OB-wahlen 2024-2026 (with party;
 #   Landeswahlleiter portal scrape)
 # - Hessen — most recent Direktwahl per Gemeinde/Landkreis (~2017-2024; winner +
@@ -2129,30 +2130,46 @@ if (file.exists(bw_file)) {
 # BRANDENBURG
 # ============================================================================
 # Bürgermeister-/Oberbürgermeisterwahlen of the amtsfreie Gemeinden/Städte and
-# the 4 kreisfreie Städte (hauptamtliche Bürgermeister/OB), scraped from the
-# Landeswahlleiter portal by 00_bb_scrape.py into
-# data/mayoral_elections/raw/brandenburg/bb_bm_parsed.csv (candidate-level long,
-# one row per candidate per round, WITH party). Coverage = most recent election
-# per Gemeinde (~2018-2026; portal holds the current cycle only). The
-# amtsangehörige Gemeinden (ehrenamtliche BM, on Kommunalwahl day) are NOT
-# included (their portal keys are 12-digit Amt+Gemeinde codes without a clean
-# 8-digit AGS). Here we aggregate to winner-level per round, like MV/TH.
+# the 4 kreisfreie Städte (hauptamtliche Bürgermeister/OB), 2010-2026.
+#
+# PRIMARY: bb_lwl_parsed.csv, built by 00_bb_lwl_parse.py from the workbook the
+# Geschäftsstelle des Landeswahlleiters supplied on request (31.07.2026). That
+# parser also folds in the older web-portal scrape (00_bb_scrape.py ->
+# bb_bm_parsed.csv) for the 2 elections the workbook does not carry, so this
+# block consumes ONE candidate-level long file. If only the portal scrape
+# exists, fall back to it (current cycle only, ~2018-2026).
+#
+# The amtsangehörige Gemeinden (ehrenamtliche BM, elected on Kommunalwahl day)
+# are not part of either source. Here we aggregate to winner-level per round,
+# like MV/TH.
+#
+# BOUNDARIES: the Landeswahlleiter back-casts every result onto the CURRENT
+# Gebietsstand (01.01.2026), so — as in Rheinland-Pfalz — BB rows are already
+# harmonised at source rather than carried on election-year boundaries.
 
 cat("\n=== Processing Brandenburg mayoral elections ===\n")
 
-bb_file <- "data/mayoral_elections/raw/brandenburg/bb_bm_parsed.csv"
+bb_file <- "data/mayoral_elections/raw/brandenburg/bb_lwl_parsed.csv"
+if (!file.exists(bb_file)) {
+  bb_file <- "data/mayoral_elections/raw/brandenburg/bb_bm_parsed.csv"
+}
 
 if (file.exists(bb_file)) {
   bb_raw <- fread(bb_file, encoding = "UTF-8",
                   colClasses = list(character = c("ags", "ags_name", "state",
                     "state_name", "election_date", "candidate_party",
                     "candidate_name", "round")))
+  # Portal-only rows carry no elected-person record; rank stands in for them.
+  if (!"is_winner" %in% names(bb_raw)) bb_raw[, is_winner := NA]
 
   bb_clean <- bb_raw %>%
     mutate(election_date = as.Date(election_date),
-           election_year = as.integer(election_year)) %>%
+           election_year = as.integer(election_year),
+           .is_winner = as.logical(is_winner)) %>%
     group_by(ags, election_date, round) %>%
-    arrange(desc(candidate_votes)) %>%
+    # Prefer the source's own winner flag (it survives Dr. titles and ties);
+    # otherwise the top-voted candidate of THIS round.
+    arrange(desc(coalesce(.is_winner, FALSE)), desc(candidate_votes)) %>%
     slice(1) %>%
     ungroup() %>%
     transmute(
@@ -2169,12 +2186,13 @@ if (file.exists(bb_file)) {
     )
 
   cat("Brandenburg: Processed", nrow(bb_clean), "round-results across",
-      length(unique(bb_clean$election_year)), "years\n")
+      length(unique(bb_clean$election_year)), "years  (source:",
+      basename(bb_file), ")\n")
   cat("  By type:\n"); print(table(bb_clean$election_type))
   all_mayoral_data[["brandenburg"]] <- bb_clean
 } else {
   cat("Note: BB parsed data not found at", bb_file, "\n")
-  cat("  Run 00_bb_scrape.py first to generate the data.\n")
+  cat("  Run 00_bb_lwl_parse.py (and 00_bb_scrape.py) first.\n")
 }
 
 # ============================================================================

@@ -568,10 +568,10 @@ Direct elections of municipal mayors (Bürgermeister / Oberbürgermeister),
 1945--2026, covering 13 states. Head-of-county elections are published
 separately — see the Landrat section.
 
-**Files:** `mayoral_unharm` (55,224 x 17), `mayoral_harm` (51,627 x 23),
-`mayoral_candidates` (112,466 x 45), `mayor_panel` (44,822 x 31),
-`mayor_panel_harm` (43,718 x 32), `mayor_panel_annual` (265,551 x 27),
-`mayor_panel_annual_harm` (259,890 x 28) in
+**Files:** `mayoral_unharm` (55,588 x 18), `mayoral_harm` (52,074 x 25),
+`mayoral_candidates` (113,561 x 46), `mayor_panel` (41,993 x 31),
+`mayor_panel_harm` (41,946 x 32), `mayor_panel_annual` (253,437 x 27),
+`mayor_panel_annual_harm` (253,168 x 28) in
 `data/mayoral_elections/final/`.
 
 Hessen is a complete series from the introduction of direct mayoral elections
@@ -581,6 +581,17 @@ published B VII m snapshot or the 2026 hessenschau results supply them
 (2017--2026 winners and 2026 candidates). Hessen single-candidate elections
 are Ja/Nein votes: the candidate's votes can legitimately fall short of
 `valid_votes`, whose count includes the Nein votes.
+
+Brandenburg covers the **hauptamtliche** Bürgermeister and Oberbürgermeister
+of the amtsfreie Gemeinden/Städte and the four kreisfreie Städte, 2010--2026
+(Landeswahlleiter workbook, obtained on request). The amtsangehörige
+Gemeinden, whose Bürgermeister are ehrenamtlich, are not covered. The source
+states that digital transmission by the Gemeinden only became compulsory in
+2014, so 2010--2013 makes no claim to completeness. Unusually, Brandenburg
+results are back-cast by the source onto the **current** municipal boundaries
+(Gebietsstand 01.01.2026), so Brandenburg is the one state whose
+`mayoral_unharm` rows do not sit on election-year boundaries. Brandenburg
+single-candidate elections are Ja/Nein votes, as in Hessen.
 
 ## Election level (`mayoral_unharm` / `mayoral_harm`)
 

@@ -2418,15 +2418,27 @@ if (file.exists(bw_file)) {
 # BRANDENBURG
 # ============================================================================
 # Candidate-level data for BB Bürgermeister-/Oberbürgermeisterwahlen of the
-# amtsfreie Gemeinden/Städte + 4 kreisfreie Städte, scraped from the
-# Landeswahlleiter portal by 00_bb_scrape.py into bb_bm_parsed.csv. The
-# intermediate is already candidate-level long (one row per candidate per round,
-# with full names + party); we add rank / n_candidates / is_winner like MV.
-# Single-candidate rounds are Ja/Nein votes (candidate_votes = Ja-Stimmen).
+# amtsfreie Gemeinden/Städte + 4 kreisfreie Städte, 2010-2026.
+#
+# PRIMARY: bb_lwl_parsed.csv (00_bb_lwl_parse.py) — the workbook supplied by the
+# Geschäftsstelle des Landeswahlleiters on 31.07.2026, already merged there with
+# the older web-portal scrape (bb_bm_parsed.csv) for the 2 elections it lacks.
+# Falls back to the portal scrape alone if the parser has not been run.
+#
+# The intermediate is candidate-level long (one row per candidate per round,
+# with full names + party); we add rank / n_candidates here. `is_winner` comes
+# from the source's own "sieger" record where it exists (it is filled for the
+# DECISIVE round from 2018 on and survives Dr. titles), else from rank.
+# Single-candidate rounds are Ja/Nein votes (candidate_votes = Ja-Stimmen);
+# the Stage-0 parser sets is_winner = FALSE if such a ballot fell below 50 %,
+# so a rejected candidate is never seated.
 
 cat("\n=== Processing Brandenburg mayoral elections ===\n")
 
-bb_file <- "data/mayoral_elections/raw/brandenburg/bb_bm_parsed.csv"
+bb_file <- "data/mayoral_elections/raw/brandenburg/bb_lwl_parsed.csv"
+if (!file.exists(bb_file)) {
+  bb_file <- "data/mayoral_elections/raw/brandenburg/bb_bm_parsed.csv"
+}
 
 if (file.exists(bb_file)) {
   bb_raw <- fread(bb_file, encoding = "UTF-8",
@@ -2434,6 +2446,7 @@ if (file.exists(bb_file)) {
                     "state_name", "election_date", "candidate_party",
                     "candidate_name", "candidate_last_name",
                     "candidate_first_name", "round")))
+  if (!"is_winner" %in% names(bb_raw)) bb_raw[, is_winner := NA]
 
   bb_candidates <- bb_raw %>%
     mutate(
@@ -2441,15 +2454,20 @@ if (file.exists(bb_file)) {
       election_year = as.integer(election_year),
       candidate_votes = as.numeric(candidate_votes),
       candidate_voteshare = as.numeric(candidate_voteshare),
-      turnout = as.numeric(turnout)
+      turnout = as.numeric(turnout),
+      .src_winner = as.logical(is_winner)
     ) %>%
     group_by(ags, election_date, round) %>%
     mutate(
       candidate_rank = rank(-candidate_votes, ties.method = "min", na.last = "keep"),
       n_candidates = n(),
-      is_winner = candidate_rank == 1
+      # Source flag first; rank only where the source has no elected-person
+      # record (pre-2018 rounds and the portal-fallback elections).
+      is_winner = if (any(!is.na(.src_winner))) coalesce(.src_winner, FALSE)
+                  else candidate_rank == 1
     ) %>%
     ungroup() %>%
+    select(-.src_winner) %>%
     mutate(
       candidate_gender = NA_character_,
       candidate_birth_year = NA_real_,
@@ -2469,11 +2487,12 @@ if (file.exists(bb_file)) {
   bb_clean <- standardise_candidates(bb_candidates)
 
   cat("Brandenburg: Processed", nrow(bb_clean), "candidate rows across",
-      length(unique(bb_clean$election_year)), "years\n")
+      length(unique(bb_clean$election_year)), "years  (source:",
+      basename(bb_file), ")\n")
   all_candidate_data[["brandenburg"]] <- bb_clean
 } else {
   cat("Note: BB parsed data not found at", bb_file, "\n")
-  cat("  Run 00_bb_scrape.py first to generate the data.\n")
+  cat("  Run 00_bb_lwl_parse.py (and 00_bb_scrape.py) first.\n")
 }
 
 # ============================================================================
