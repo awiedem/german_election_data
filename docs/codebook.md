@@ -1,5 +1,5 @@
 # GERDA Codebook
-2026-07-28
+2026-08-04
 
 # About this codebook
 
@@ -110,17 +110,17 @@ using population-weighted crosswalks from `data/crosswalks/`.
 Municipalities that merged are combined; municipalities that split have
 their votes distributed across successors by population weight.
 
-| Variable                        | Type    | Description                                                                                                                                                                                                 |
-|:--------------------------------|:--------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `pop_cw`                        | numeric | Population-based crosswalk weight: the share of the source municipality assigned to this target municipality. Sums to 1 within each source `(ags, year)`.                                                   |
-| `area_cw`                       | numeric | Area-based crosswalk weight, defined analogously.                                                                                                                                                           |
-| `emp_cw`                        | numeric | Employment-based crosswalk weight.                                                                                                                                                                          |
-| `weights`                       | numeric | The weight actually applied to this row during aggregation.                                                                                                                                                 |
-| `n_predecessors`                | integer | Number of source municipalities merged into this target boundary.                                                                                                                                           |
-| `flag_unsuccessful_naive_merge` | int/num | 1 where the direct crosswalk merge failed and the row was resolved by a fallback (previous-year code, identity mapping, or a manual correction). Not an error marker — a record of how the row was matched. |
-| `flag_aggregated`               | integer | 1 where the row is the result of merging several predecessor municipalities.                                                                                                                                |
-| `flag_partial_coverage`         | integer | County-council output, **both** `_cty` and `_muni`. 1 where the source covers less than 99 % of the 2021 county's population, so the row's **counts** describe only part of the county — turnout and vote shares remain valid for the part that voted. `NA` means not assessed. Set on the six 2021 Saxon counties that overlap the four 1994 Kreise whose Kreistagswahl the Sächsisches Verfassungsgericht annulled, and on 25 municipality-years — 23 in Rheinland-Pfalz, whose source is already reported on 2025 boundaries, plus Leipzig 1999 and one Sachsen-Anhalt 2004 row that genuinely cover only a fragment of the 2021 unit. |
-| `area`, `population`            | numeric | Area (km²) and population (in thousands) of the municipality, from official Gemeindeverzeichnis registers, carried through the crosswalk.                                                                   |
+| Variable                        | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+|:--------------------------------|:--------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `pop_cw`                        | numeric | Population-based crosswalk weight: the share of the source municipality assigned to this target municipality. Sums to 1 within each source `(ags, year)`.                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `area_cw`                       | numeric | Area-based crosswalk weight, defined analogously.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `emp_cw`                        | numeric | Employment-based crosswalk weight.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `weights`                       | numeric | The weight actually applied to this row during aggregation.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `n_predecessors`                | integer | Number of source municipalities merged into this target boundary.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `flag_unsuccessful_naive_merge` | int/num | 1 where the direct crosswalk merge failed and the row was resolved by a fallback (previous-year code, identity mapping, or a manual correction). Not an error marker — a record of how the row was matched.                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `flag_aggregated`               | integer | 1 where the row is the result of merging several predecessor municipalities.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `flag_partial_coverage`         | integer | County-council harmonized output (`_muni` and `_cty`). 1 where the source covers less than 99 % of the 2021 unit’s population, so the row’s **counts** describe only part of it — turnout and vote shares remain valid for the part that voted. `NA` means not assessed. Set on the six 2021 Saxon counties overlapping the four 1994 Kreise whose Kreistagswahl the Sächsisches Verfassungsgericht annulled, and on 25 municipality-years: 23 in Rheinland-Pfalz, whose source is already reported on 2025 boundaries, plus Leipzig 1999 and one Sachsen-Anhalt 2004 row that genuinely cover only a fragment. |
+| `area`, `population`            | numeric | Area (km²) and population (in thousands) of the municipality, from official Gemeindeverzeichnis registers, carried through the crosswalk.                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 The method used to harmonize votes differs by pipeline and is
 deliberate: federal, state, county and European results convert shares
@@ -570,10 +570,10 @@ Direct elections of municipal mayors (Bürgermeister /
 Oberbürgermeister), 1945–2026, covering 13 states. Head-of-county
 elections are published separately — see the Landrat section.
 
-**Files:** `mayoral_unharm` (55,224 x 17), `mayoral_harm` (51,627 x 23),
-`mayoral_candidates` (112,466 x 45), `mayor_panel` (44,822 x 31),
-`mayor_panel_harm` (43,718 x 32), `mayor_panel_annual` (265,551 x 27),
-`mayor_panel_annual_harm` (259,890 x 28) in
+**Files:** `mayoral_unharm` (55,588 x 18), `mayoral_harm` (52,074 x 25),
+`mayoral_candidates` (113,561 x 46), `mayor_panel` (41,993 x 31),
+`mayor_panel_harm` (41,946 x 32), `mayor_panel_annual` (253,437 x 27),
+`mayor_panel_annual_harm` (253,168 x 28) in
 `data/mayoral_elections/final/`.
 
 Hessen is a complete series from the introduction of direct mayoral
@@ -584,6 +584,18 @@ results supply them (2017–2026 winners and 2026 candidates). Hessen
 single-candidate elections are Ja/Nein votes: the candidate’s votes can
 legitimately fall short of `valid_votes`, whose count includes the Nein
 votes.
+
+Brandenburg covers the **hauptamtliche** Bürgermeister and
+Oberbürgermeister of the amtsfreie Gemeinden/Städte and the four
+kreisfreie Städte, 2010–2026 (Landeswahlleiter workbook, obtained on
+request). The amtsangehörige Gemeinden, whose Bürgermeister are
+ehrenamtlich, are not covered. The source states that digital
+transmission by the Gemeinden only became compulsory in 2014, so
+2010–2013 makes no claim to completeness. Unusually, Brandenburg results
+are back-cast by the source onto the **current** municipal boundaries
+(Gebietsstand 01.01.2026), so Brandenburg is the one state whose
+`mayoral_unharm` rows do not sit on election-year boundaries.
+Brandenburg single-candidate elections are Ja/Nein votes, as in Hessen.
 
 ## Election level (`mayoral_unharm` / `mayoral_harm`)
 
