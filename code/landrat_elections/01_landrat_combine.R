@@ -1249,10 +1249,40 @@ if (nrow(new_long) > 0) {
       office_type = NA_character_
     )
 
-  # Read existing candidates from mayoral pipeline
-  existing_cands <- if (file.exists("data/landrat_elections/final/landrat_candidates.rds")) {
-    readRDS("data/landrat_elections/final/landrat_candidates.rds")
+  # Read existing candidates from mayoral pipeline.
+  #
+  # Prefer the RESTRICTED twin written by 01b_mayoral_candidates.R: it is the
+  # same frame with the Sachsen-Anhalt losers still named. Building on it lets
+  # this script emit its own restricted twin below; the public file is then
+  # produced from it by anonymise_st_losers(), which is exactly what 01b did.
+  # A restricted file that no longer matches the public one in shape means 01b
+  # has not been re-run since — bind that and the restricted twin silently goes
+  # stale, so stop instead.
+  public_cands_path <- "data/landrat_elections/final/landrat_candidates.rds"
+  restricted_cands_path <-
+    "data/landrat_elections/final_restricted/landrat_candidates_restricted.rds"
+
+  existing_cands <- if (file.exists(public_cands_path)) {
+    readRDS(public_cands_path)
   } else NULL
+
+  build_restricted <- FALSE
+  if (!is.null(existing_cands) && file.exists(restricted_cands_path)) {
+    restricted_cands <- readRDS(restricted_cands_path)
+    if (nrow(restricted_cands) != nrow(existing_cands) ||
+        !identical(names(restricted_cands), names(existing_cands))) {
+      stop("data/landrat_elections/final_restricted/landrat_candidates_restricted.rds ",
+           "is out of step with the published landrat_candidates.rds (",
+           nrow(restricted_cands), " vs ", nrow(existing_cands), " rows). ",
+           "Re-run code/mayoral_elections/01b_mayoral_candidates.R first.")
+    }
+    existing_cands <- restricted_cands
+    build_restricted <- TRUE
+    cat("Using the RESTRICTED landrat_candidates as the base (ST losers named)\n")
+  } else if (!is.null(existing_cands)) {
+    cat("No restricted landrat_candidates found — public file only.",
+        "Run 01b_mayoral_candidates.R to create the restricted twin.\n")
+  }
 
   # Defensive filter for kreisfreie-Stadt leaks
   if (!is.null(existing_cands)) {
@@ -1284,6 +1314,26 @@ if (nrow(new_long) > 0) {
 
   combined_cands <- bind_rows(existing_cands, new_wide) %>%
     arrange(state, ags, election_year, election_date)
+
+  # RESTRICTED twin — see write_restricted_candidates() in
+  # code/mayoral_elections/01b_mayoral_candidates.R; KEEP THE TWO IN SYNC. This
+  # script rewrites landrat_candidates, so it has to rewrite the restricted twin
+  # too or that twin loses the named ST losers its own scraper contributes.
+  # Written before the anonymisation, which is destructive and in-place.
+  # Gitignored; scientific use only; never redistribute.
+  if (build_restricted) {
+    dir.create("data/landrat_elections/final_restricted",
+               recursive = TRUE, showWarnings = FALSE)
+    write_rds(combined_cands, restricted_cands_path)
+    fwrite(combined_cands,
+           "data/landrat_elections/final_restricted/landrat_candidates_restricted.csv")
+    cat("\n✓ Saved RESTRICTED landrat_candidates_restricted.{rds,csv}:",
+        nrow(combined_cands), "rows (",
+        sum(substr(as.character(combined_cands$ags), 1, 2) == "15" &
+              !(combined_cands$is_winner %in% TRUE) &
+              !is.na(combined_cands$candidate_last_name)),
+        "named ST non-winners retained )\n")
+  }
 
   # Re-apply the Sachsen-Anhalt anonymisation (see helper above). 01b applies it
   # to landrat_candidates, but this script rewrites that file, so it has to be

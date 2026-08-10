@@ -94,7 +94,10 @@ cat(sprintf("  Classified: %d, Not classifiable: %d\n",
             sum(gender_lookup$gender %in% c("m", "w")),
             sum(!gender_lookup$gender %in% c("m", "w"))))
 
-# Merge gender predictions into candidates
+# Merge gender predictions into candidates.
+# A function, not a top-level pipe, because the same enrichment runs a second
+# time over the restricted twin at the end of this script (section 6).
+add_gender <- function(cand, gender_lookup) {
 cand <- cand |>
   left_join(
     gender_lookup |>
@@ -134,7 +137,10 @@ cand <- cand |>
     )
   ) |>
   select(-gender_predicted, -gender_method)
+  cand
+}
 
+report_gender <- function(cand) {
 # Gender coverage after classification
 cat("\nGender coverage after classification:\n")
 coverage <- cand |>
@@ -158,6 +164,11 @@ cat(sprintf("Among named candidates: %d / %d (%.1f%%)\n",
             sum(!is.na(cand$candidate_gender)),
             sum(!is.na(cand$candidate_first_name)),
             100 * sum(!is.na(cand$candidate_gender)) / sum(!is.na(cand$candidate_first_name))))
+  invisible(NULL)
+}
+
+cand <- add_gender(cand, gender_lookup)
+report_gender(cand)
 
 
 # ============================================================================
@@ -298,7 +309,11 @@ classify_name_origin <- function(first_name, last_name) {
   return(list(origin = origin, conf = confidence, method = method))
 }
 
-# Apply classification to all candidates with last names
+# Apply classification to all candidates with last names.
+# `lookup_out` is where the (first name, last name) -> origin table is written;
+# it differs between the published and the restricted run, because the latter's
+# table would carry the Sachsen-Anhalt losers' names into a committed file.
+add_name_origin <- function(cand, lookup_out) {
 cat("Classifying name origins...\n")
 
 unique_names <- cand |>
@@ -329,7 +344,7 @@ classifications <- unique_names |>
     )
   )
 
-write_rds(classifications, "data/mayoral_elections/processed/name_origin_lookup.rds")
+write_rds(classifications, lookup_out)
 
 cat("\nName origin classification summary:\n")
 classifications |>
@@ -358,12 +373,17 @@ cand <- cand |>
     by = c("fn_clean", "ln_clean")
   ) |>
   select(-fn_clean, -ln_clean)
+  cand
+}
+
+cand <- add_name_origin(cand, "data/mayoral_elections/processed/name_origin_lookup.rds")
 
 
 # ============================================================================
 # 4. LOCAL SURNAME ROOTEDNESS (PLACEHOLDER)
 # ============================================================================
 
+add_placeholders <- function(cand) {
 cat("\n=== Local surname rootedness ===\n")
 cat("BLOCKED: Waiting for telephone directory data from Thomas Tichelbaecker.\n")
 cat("Adding placeholder columns with NA values.\n")
@@ -375,6 +395,10 @@ cand <- cand |>
     candidate_surname_n_counties = NA_integer_,
     candidate_surname_overrep_ratio = NA_real_
   )
+  cand
+}
+
+cand <- add_placeholders(cand)
 
 
 # ============================================================================
@@ -413,5 +437,74 @@ cat("\n=== Saving ===\n")
 write_rds(cand, "data/mayoral_elections/final/mayoral_candidates.rds")
 fwrite(cand, "data/mayoral_elections/final/mayoral_candidates.csv")
 cat("Saved mayoral_candidates.{rds,csv} with characteristics columns\n")
+
+
+# ============================================================================
+# 6. RESTRICTED TWIN (scientific use only — gitignored)
+# ============================================================================
+# 01b_mayoral_candidates.R writes the candidate frame twice: once as published
+# (Sachsen-Anhalt losers stripped of every personal field) and once, into
+# final_restricted/, with those names intact. Everything above derives gender
+# and name origin FROM the name, so the restricted twin needs its own pass or
+# its ~4,400 named ST losers stay as characteristic-less as the published ones.
+#
+# Two lookups differ from the published run and BOTH are gitignored, because a
+# committed copy would leak exactly the names the published file withholds:
+#   - gender_guesser_lookup_restricted.csv (from 04a) holds the first names that
+#     occur ONLY in the restricted twin; it is stacked onto the public lookup.
+#   - name_origin_lookup_restricted.rds is this run's (first, last) -> origin
+#     table.
+# Never redistribute anything written here.
+
+restricted_in <- "data/mayoral_elections/final_restricted/mayoral_candidates_restricted.rds"
+
+if (!file.exists(restricted_in)) {
+  cat("\nNo restricted twin at", restricted_in, "- skipping.\n")
+} else {
+  cat("\n=== Enriching the RESTRICTED twin ===\n")
+  cand_r <- read_rds(restricted_in)
+
+  if (!identical(sort(names(cand_r)), sort(setdiff(names(cand), new_cols)))) {
+    stop("The restricted twin's columns differ from the published base. ",
+         "Re-run code/mayoral_elections/01b_mayoral_candidates.R, which writes both.")
+  }
+  cat(sprintf("Loaded %d candidates (%d named ST non-winners)\n", nrow(cand_r),
+              sum(substr(cand_r$ags, 1, 2) == "15" & !(cand_r$is_winner %in% TRUE) &
+                    !is.na(cand_r$candidate_last_name))))
+
+  # Public lookup + the restricted-only first names 04a classified separately.
+  gender_lookup_r <- gender_lookup
+  extra_path <- "data/mayoral_elections/processed/gender_guesser_lookup_restricted.csv"
+  if (file.exists(extra_path)) {
+    extra <- fread(extra_path, colClasses = "character", sep = "|")
+    gender_lookup_r <- rbind(gender_lookup_r, extra)
+    cat(sprintf("Gender lookup: %d public + %d restricted-only names\n",
+                nrow(gender_lookup), nrow(extra)))
+  } else {
+    cat("WARNING: no restricted gender lookup — first names seen only in the\n",
+        "  restricted twin will have no gender. Re-run 04a_build_gender_lookup.py.\n",
+        sep = "")
+  }
+
+  cand_r <- add_gender(cand_r, gender_lookup_r)
+  report_gender(cand_r)
+  cand_r <- add_name_origin(
+    cand_r, "data/mayoral_elections/processed/name_origin_lookup_restricted.rds")
+  cand_r <- add_placeholders(cand_r)
+
+  # Same columns, same order as the published file, so the two are drop-in
+  # substitutes for one another in downstream analysis code.
+  cand_r <- cand_r[, names(cand)]
+
+  write_rds(cand_r, restricted_in)
+  fwrite(cand_r, "data/mayoral_elections/final_restricted/mayoral_candidates_restricted.csv")
+  cat("\nSaved mayoral_candidates_restricted.{rds,csv} with characteristics columns\n")
+
+  st_l <- substr(cand_r$ags, 1, 2) == "15" & !(cand_r$is_winner %in% TRUE)
+  cat(sprintf("ST non-winners: %d rows, %d named, %d with gender, %d with name origin\n",
+              sum(st_l), sum(st_l & !is.na(cand_r$candidate_last_name)),
+              sum(st_l & !is.na(cand_r$candidate_gender)),
+              sum(st_l & !is.na(cand_r$candidate_name_origin))))
+}
 
 cat("\n=== Done ===\n")

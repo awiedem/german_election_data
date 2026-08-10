@@ -88,3 +88,18 @@ data/mayoral_elections/raw/sachsen_anhalt/bmbm.csv
 data/mayoral_elections/raw/sachsen_anhalt/st_stala_parsed.csv
 data/mayoral_elections/raw/sachsen_anhalt/st_bmbm_parsed.csv
 data/mayoral_elections/raw/sachsen_anhalt/st_bm_parsed.csv
+
+# RESTRICTED (scientific-use-only) twins of the published candidate datasets.
+# Identical to data/{mayoral,landrat}_elections/final/*_candidates.* except that
+# the Sachsen-Anhalt losing candidates keep their names, gender, birth year and
+# profession — the fields anonymise_st_losers() strips from the published files
+# under the same StaLA licence as the raw block above. Written by
+# 01b_mayoral_candidates.R / landrat 01_landrat_combine.R and enriched by
+# 04_candidate_characteristics.R. For the project's own analysis only; NEVER
+# redistribute, publish, or copy outside this machine.
+data/mayoral_elections/final_restricted/
+data/landrat_elections/final_restricted/
+# Name lookups derived from the restricted file (they would leak ST loser names
+# into the tracked gender_guesser_lookup.csv / name_origin_lookup.rds).
+data/mayoral_elections/processed/*_restricted.csv
+data/mayoral_elections/processed/*_restricted.rds

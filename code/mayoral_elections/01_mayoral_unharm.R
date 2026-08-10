@@ -1931,23 +1931,31 @@ if (file.exists(sh_file)) {
 # ============================================================================
 # MECKLENBURG-VORPOMMERN
 # ============================================================================
-# Oberbürgermeister (kreisfreie / große Städte) and Landrat direct elections,
-# 2000-2026, parsed from 69 LAIV-MV PDFs by 00_mv_parse.py into
-# data/mayoral_elections/raw/mecklenburg_vorpommern/mv_parsed.csv
-# (candidate-level long, one row per candidate per round). Here we aggregate
-# to winner-level per round (highest votes), like Schleswig-Holstein.
-# AGS is year-aware (the 2011 Kreisgebietsreform renumbered Landkreise and
-# merged four kreisfreie Städte) — assigned in 00_mv_parse.py.
+# Two candidate-level sources, both produced by Stage-0 scripts. They cover
+# disjoint offices, so they are simply stacked:
+#   - mv_parsed.csv     : Oberbürgermeister (kreisfreie / große Städte) and
+#     Landrat direct elections, 2000-2026, from 69 LAIV-MV PDFs (00_mv_parse.py).
+#     AGS is year-aware there (the 2011 Kreisgebietsreform renumbered the
+#     Landkreise and merged four kreisfreie Städte).
+#   - mv_lup_parsed.csv : Bürgermeister of the five AMTSFREIE GEMEINDEN of the
+#     Landkreis Ludwigslust-Parchim, 2014-2023 (00_mv_lup_parse.py). The LAIV
+#     does not publish these centrally — the Landeswahlleitung refers to the
+#     Kreiswahlleitungen, and this Landkreis supplied them on request.
+# Here we aggregate to winner-level per round (highest votes), like SH.
 
 cat("\n=== Processing Mecklenburg-Vorpommern mayoral/Landrat elections ===\n")
 
-mv_file <- "data/mayoral_elections/raw/mecklenburg_vorpommern/mv_parsed.csv"
+mv_files <- c("data/mayoral_elections/raw/mecklenburg_vorpommern/mv_parsed.csv",
+              "data/mayoral_elections/raw/mecklenburg_vorpommern/mv_lup_parsed.csv")
+mv_file <- mv_files[1]  # the LAIV file is required; the Kreis file is optional
 
 if (file.exists(mv_file)) {
-  mv_raw <- fread(mv_file, encoding = "UTF-8",
-                  colClasses = list(character = c("ags", "ags_name", "state",
-                    "state_name", "election_date", "candidate_party",
-                    "candidate_name")))
+  mv_raw <- rbindlist(lapply(mv_files[file.exists(mv_files)], fread,
+                             encoding = "UTF-8",
+                             colClasses = list(character = c("ags", "ags_name",
+                               "state", "state_name", "election_date",
+                               "candidate_party", "candidate_name"))),
+                      fill = TRUE)
 
   mv_clean <- mv_raw %>%
     mutate(election_date = as.Date(election_date),

@@ -7,8 +7,9 @@
 #
 # Person identification:
 # - Bayern: "Tag des ersten Amtsantritt" groups consecutive terms
-# - Named states (NRW, RLP, NI, SL, SH): name-key matching
-# - Sachsen: partial name matching (~49% coverage)
+# - Hessen: official "Amtszeiten seit 1993" / "Wiederwahl" counters, including
+#   two documented mayors who left office and later returned
+# - Other named states: candidate-name matching within municipality
 #
 # Outputs (both unharmonized + harmonized to 2021 boundaries):
 # - mayor_panel.rds             — one row per person-election (original AGS)
@@ -54,6 +55,35 @@ pad_zero_conditional <- function(x, n, pad = "0") {
 norm_party <- function(x) {
   y <- gsub('""', '"', as.character(x), fixed = TRUE)
   y <- gsub("[^[:alnum:]]+", "", tolower(trimws(y)))
+  ifelse(is.na(x) | !nzchar(y), NA_character_, y)
+}
+
+# Public Hessen snapshots disagree about whether a name is printed as
+# "Surname, Given" or "Given Surname".  Sort transliterated name tokens so the
+# two layouts compare equal; this key is used only as a fallback for recent
+# hessenschau cycles not yet transmitted to HSL.
+norm_person_name_unordered <- function(x) {
+  y <- iconv(tolower(trimws(as.character(x))), to = "ASCII//TRANSLIT")
+  y <- gsub("\\b(dr|prof)\\b", " ", y)
+  y <- gsub("[^a-z0-9]+", " ", y)
+  vapply(strsplit(trimws(y), "\\s+"), function(tokens) {
+    tokens <- tokens[nzchar(tokens)]
+    if (length(tokens) == 0) NA_character_ else paste(sort(tokens), collapse = "")
+  }, character(1))
+}
+
+# Candidate sources are inconsistent about accents/punctuation and sometimes
+# place an academic title in candidate_first_name in one year but in
+# candidate_last_name in another (for example "Dr. Badenschier, Rico" versus
+# "Badenschier, Dr. Rico").  The old raw `last name + first byte` key split
+# those mechanically different renderings into separate people.  Normalise
+# each component before building the key, while retaining the deliberately
+# conservative surname + given-name-initial identity rule.
+norm_person_component <- function(x) {
+  y <- iconv(tolower(trimws(as.character(x))), to = "ASCII//TRANSLIT")
+  y <- gsub("\\([^)]*\\)", " ", y)
+  y <- gsub("\\b(prof|professor|dr|dipl|ing)\\b", " ", y)
+  y <- gsub("[^a-z0-9]+", "", y)
   ifelse(is.na(x) | !nzchar(y), NA_character_, y)
 }
 
@@ -277,10 +307,14 @@ bayern_panel <- bayern |>
   arrange(ags, election_date) |>
   mutate(
     state = "09",
-    term_start_date = amtsantritt
+    term_start_date = amtsantritt,
+    person_id_method = "first_amtsantritt",
+    source_person_term_number = NA_integer_,
+    source_person_reelections = NA_integer_
   ) |>
   select(
-    person_id, ags, state,
+    person_id, person_id_method, source_person_term_number,
+    source_person_reelections, ags, state,
     election_year, election_date,
     winner_party, winner_voteshare, winning_margin,
     n_candidates, term_start_date
@@ -292,7 +326,7 @@ cat("Bayern rows without person_id:", sum(is.na(bayern_panel$person_id)), "\n")
 
 
 # ============================================================================
-# 3. NAMED STATES — Person IDs from candidate names
+# 3. NAMED STATES — Person IDs from candidate names / Hessen term counters
 # ============================================================================
 
 cat("\n=== Processing named states: person IDs from names ===\n")
@@ -362,7 +396,8 @@ winners_named <- winners_named |>
     )
   )
 
-# Build name key for person matching.
+# Build name key for person matching outside Hessen.  Hessen is handled below
+# from the official source's person-level term/re-election sequence.
 # A name is usable only if it is neither NA nor blank: some sources redact
 # candidate names (Thüringen §50 ThürKWO) or publish none at all (the Hessen
 # historical series), and 01b writes those as "" rather than NA. Treating ""
@@ -373,38 +408,105 @@ winners_named <- winners_named |>
 # already-NA Thüringen and Sachsen winners are.
 has_name <- function(x) !is.na(x) & nzchar(trimws(x))
 
-winners_named <- winners_named |>
+winners_name_based <- winners_named |>
+  filter(state != "06") |>
   mutate(
+    .last_norm = norm_person_component(candidate_last_name),
+    .first_norm = norm_person_component(candidate_first_name),
     name_key = case_when(
-      has_name(candidate_last_name) & has_name(candidate_first_name) ~
-        paste0(tolower(trimws(candidate_last_name)), "_",
-               tolower(substr(trimws(candidate_first_name), 1, 1)), "_", state),
-      has_name(candidate_last_name) ~
-        paste0(tolower(trimws(candidate_last_name)), "__", state),
+      !is.na(.last_norm) & !is.na(.first_norm) ~
+        paste0(.last_norm, "_", substr(.first_norm, 1, 1), "_", state),
+      !is.na(.last_norm) ~
+        paste0(.last_norm, "__", state),
       TRUE ~ NA_character_
     )
   )
 
-cat("Winners with name_key:", sum(!is.na(winners_named$name_key)), "\n")
+# A small set of source-level name variants still cannot be resolved by
+# punctuation/title normalisation alone.  These are conservative, auditable
+# links: same municipality, consecutive winning records, and either an obvious
+# one-character transcription difference or an added/dropped given-name or
+# married-name component.  Ambiguous same-surname pairs are deliberately not
+# linked.  The map is expressed in the raw source spellings so regressions are
+# visible when an upstream parser changes.
+make_person_key <- function(last, first, state) {
+  ln <- norm_person_component(last)
+  fn <- norm_person_component(first)
+  ifelse(!is.na(ln) & !is.na(fn), paste0(ln, "_", substr(fn, 1, 1), "_", state),
+         ifelse(!is.na(ln), paste0(ln, "__", state), NA_character_))
+}
+
+candidate_name_aliases <- tribble(
+  ~ags,       ~alias_last,          ~alias_first,                 ~canonical_last,      ~canonical_first,
+  "03241008", "Bogye",              "Arpad",                      "Bogya",               "Arpad",
+  "05558032", "Thönnes-Richard",    "Dr. Dietmar",                "Thönnes",             "Dr. Dietmar",
+  "05974040", "Ruthemeyer",         "Dr. jur. Eckhard",           "Ruthemeyer",          "Dr. Eckhard Josef",
+  "12065225", "Smaldino-Stattaus",  "Filippo",                    "Smaldino",            "Filippo",
+  "16063068", "Hosenfeld",          "Bernadett (CDU)",             "Hosenfeld-Wald",      "Bernadett (CDU)",
+  "15260007", "Klinger",            "Teiner",                      "Klinger",             "Reiner",
+  "15260040", "Tomljanovic",        "Willi",                       "Tomljanocvic",        "Willi",
+  "15260064", "Wernicker",          "Petra",                       "Wernicke",            "Petra",
+  "15265026", "Henrich",            "Olaf",                        "Heinrich",            "Olaf",
+  "15352021", "Herrmann",           "Klaus-Jürgen",                "Hermann",             "Klaus-Jürgen",
+  "15355034", "Willamowski",        "Joachim",                     "Williamowski",        "Joachim",
+  "15357016", "Barthels",           "Anno",                        "Bartels",             "Arno",
+  "15358025", "Bother",             "Harald",                      "Bothe",               "Harald",
+  "15358033", "Hildebrandt",        "Gunter",                      "Hildebrand",          "Gunter",
+  "15362045", "Thraene",            "Hans",                        "Thräne",              "Hans",
+  "15362069", "Schmid",             "Wolfgang",                    "Schmidt",             "Wolfgang",
+  "15363029", "Ahrendt",            "Hans-Jürgen",                 "Ahrend",              "Hans-Jürgen",
+  "15370034", "Kautge",             "Erhard",                      "Krautge",             "Erhard",
+  "05382024", "Wirtz",              "Peter",                       "Wirtz",               "Franz Peter",
+  "05758036", "Wilken",             "Rocco",                       "Wilken",              "Swen Rocco",
+  "14521690", "Sigmund",            "Arne",                        "Sigmund",             "Hubert Arne",
+  "14523090", "Kerber",             "Heinrich",                    "Kerber",              "Jörg Heinrich",
+  "14625040", "Große",              "Holm",                        "Große",               "André Holm",
+  "14625320", "Mögel",              "Christian",                   "Mögel",               "Walter Christian",
+  "14625470", "Brußk",              "Franz",                       "Brußk",               "Hubertus Franz",
+  "14625580", "Hönicke",            "Lutz",                        "Hönicke",             "Uwe Lutz",
+  "14626010", "Bänder",             "Andreas",                     "Bänder",              "Werner Andreas",
+  "14626085", "Hergenröder",        "Verena",                      "Hergenröder",         "Maria Verena",
+  "14626100", "Noack",              "Dietmar",                     "Noack",               "Friedrich Kurt Dietmar",
+  "14626200", "Nitschke",           "Christian",                   "Nitschke",            "Roland Christian",
+  "14627070", "Seifert",            "Conrad",                      "Seifert",             "Hugo Heinz Eberhard Conrad",
+  "14627220", "Ritter",             "Michaela",                    "Ritter",              "Karin Michaela",
+  "14628260", "Mühle",              "Peter",                       "Mühle",               "Wolfgang Peter",
+  "15088205", "Hagenau",            "Dietlind",                    "Hagenau",             "Ellen Dietlind"
+) |>
+  mutate(
+    state = substr(ags, 1, 2),
+    alias_key = make_person_key(alias_last, alias_first, state),
+    canonical_key = make_person_key(canonical_last, canonical_first, state)
+  ) |>
+  select(ags, alias_key, canonical_key)
+
+observed_name_keys <- winners_name_based |> distinct(ags, name_key)
+stopifnot(
+  nrow(anti_join(candidate_name_aliases, observed_name_keys,
+                 by = c("ags", "alias_key" = "name_key"))) == 0,
+  nrow(anti_join(candidate_name_aliases, observed_name_keys,
+                 by = c("ags", "canonical_key" = "name_key"))) == 0
+)
+
+winners_name_based <- winners_name_based |>
+  left_join(candidate_name_aliases, by = c("ags", "name_key" = "alias_key")) |>
+  mutate(
+    .variant_link = !is.na(canonical_key),
+    name_key = coalesce(canonical_key, name_key)
+  ) |>
+  select(-canonical_key)
+
+cat("Non-Hessen winners with name_key:", sum(!is.na(winners_name_based$name_key)), "\n")
 cat("Winners without name_key (unnamed at source, dropped):",
-    sum(is.na(winners_named$name_key)), "\n")
-if (any(is.na(winners_named$name_key))) {
-  print(winners_named |>
+    sum(is.na(winners_name_based$name_key)), "\n")
+if (any(is.na(winners_name_based$name_key))) {
+  print(winners_name_based |>
           filter(is.na(name_key)) |>
           count(state, name = "unnamed_winners"))
 }
 
-# Assign person_id per (name_key, ags) combination
-named_persons <- winners_named |>
-  filter(!is.na(name_key)) |>
-  distinct(name_key, ags) |>
-  arrange(ags, name_key) |>
-  mutate(person_id = sprintf("p_%s_%05d",
-                              substr(ags, 1, 2),
-                              row_number()))
-
-# But we need state-specific numbering
-named_persons <- winners_named |>
+# Assign person_id per (name_key, ags) combination, numbered within state.
+named_persons <- winners_name_based |>
   filter(!is.na(name_key)) |>
   distinct(name_key, ags, state) |>
   arrange(state, ags, name_key) |>
@@ -412,14 +514,19 @@ named_persons <- winners_named |>
   mutate(person_id = sprintf("p_%s_%05d", state[1], row_number())) |>
   ungroup()
 
-winners_named <- winners_named |>
+winners_name_based <- winners_name_based |>
   left_join(named_persons |> select(name_key, ags, person_id),
-            by = c("name_key", "ags"))
+            by = c("name_key", "ags")) |>
+  group_by(person_id) |>
+  mutate(person_id_method = if_else(any(.variant_link),
+                                    "candidate_name_variant_link",
+                                    "candidate_name")) |>
+  ungroup()
 
 # Build panel rows for named states
-named_panel <- winners_named |>
+named_panel <- winners_name_based |>
   select(
-    person_id, ags, state, election_year, election_date,
+    person_id, person_id_method, ags, state, election_year, election_date,
     winner_party = candidate_party,
     winner_voteshare, winning_margin, n_candidates,
     # Candidate characteristics (from 04_candidate_characteristics.R)
@@ -429,7 +536,13 @@ named_panel <- winners_named |>
     candidate_name_origin, candidate_name_origin_conf,
     candidate_name_origin_method
   ) |>
-  mutate(term_start_date = NA_Date_)
+  mutate(
+    term_start_date = NA_Date_,
+    source_person_term_number = NA_integer_,
+    source_person_reelections = NA_integer_
+  ) |>
+  select(person_id, person_id_method, source_person_term_number,
+         source_person_reelections, everything())
 
 cat("\nNamed states person-elections:", nrow(named_panel), "\n")
 cat("Named states unique persons:", n_distinct(named_panel$person_id, na.rm = TRUE), "\n")
@@ -442,13 +555,146 @@ for (s in sort(unique(named_panel$state))) {
 }
 
 
+# --- Hessen: source-indexed people, including redacted names -----------------
+# HSL publishes, on each decisive winner row, the person's number of terms
+# since direct elections began in 1993 and their number of re-elections.  This
+# distinguishes people even when HSL must redact the name.  Ordinarily a
+# positive Wiederwahl count links to the immediately preceding winner.  Two
+# documented former mayors returned after another person held office; their
+# source term count intentionally resumes rather than restarting:
+#   Maintal: Erhard Rohrbach, 1995 -> 2003/2009
+#   Frankenberg (Eder): Rüdiger Heß, 1998 -> 2012/2017
+# Waldems' 1999 election was repeated in 2000 and therefore remains adjacent.
+cat("\n=== Processing Hessen: official person term sequences ===\n")
+
+he_source <- fread(
+  "data/mayoral_elections/raw/hessen/he_hist_parsed.csv",
+  encoding = "UTF-8",
+  colClasses = list(character = c("ags", "is_winner"))
+) |>
+  as_tibble() |>
+  filter(is_winner == "TRUE", election_type %in% valid_types) |>
+  transmute(
+    ags,
+    decisive_date = as.Date(election_date),
+    source_person_term_number = suppressWarnings(as.integer(winner_n_terms)),
+    source_person_reelections = suppressWarnings(as.integer(winner_n_reelections))
+  )
+
+stopifnot(nrow(he_source) == nrow(distinct(he_source, ags, decisive_date)))
+
+he_winners <- winners_named |>
+  filter(state == "06") |>
+  mutate(
+    election_date = as.Date(election_date),
+    decisive_date = coalesce(as.Date(election_date_sw), election_date),
+    public_name_key = norm_person_name_unordered(candidate_name)
+  ) |>
+  left_join(he_source, by = c("ags", "decisive_date")) |>
+  arrange(ags, election_date, decisive_date)
+
+he_return_links <- c(
+  "06435019|2003-09-28" = "1995-01-29",  # Erhard Rohrbach, Maintal
+  "06635011|2012-02-26" = "1998-03-15"   # Rüdiger Heß, Frankenberg
+)
+
+assign_he_group <- function(d, ags_value) {
+  d <- d |> arrange(election_date, decisive_date)
+  local_id <- rep(NA_integer_, nrow(d))
+  next_id <- 0L
+
+  new_id <- function() {
+    next_id <<- next_id + 1L
+    next_id
+  }
+
+  for (i in seq_len(nrow(d))) {
+    nt <- d$source_person_term_number[i]
+    nr <- d$source_person_reelections[i]
+    row_key <- paste(ags_value, d$decisive_date[i], sep = "|")
+    anchor_date <- unname(he_return_links[row_key])
+
+    if (length(anchor_date) == 1 && !is.na(anchor_date)) {
+      anchor <- which(as.character(d$decisive_date[seq_len(i - 1L)]) == anchor_date)
+      if (length(anchor) != 1L) {
+        stop("Hessen return-link anchor missing/ambiguous at ", row_key)
+      }
+      local_id[i] <- local_id[anchor]
+    } else if (!is.na(nr) && nr > 0L) {
+      if (i == 1L) stop("Hessen re-election has no prior winner at ", row_key)
+      local_id[i] <- local_id[i - 1L]
+    } else if (!is.na(nt) && nt == 1L) {
+      local_id[i] <- new_id()
+    } else if (!is.na(nt) && nt > 1L && !is.na(nr) && nr == 0L) {
+      # Only Waldems 2000 remains after the two explicit return links: the
+      # 1999 election was followed by a Neuwahl of the same mayor in 2000.
+      if (!(ags_value == "06439016" && d$decisive_date[i] == as.Date("2000-05-21"))) {
+        stop("Unexpected non-consecutive Hessen term sequence at ", row_key)
+      }
+      local_id[i] <- local_id[i - 1L]
+    } else {
+      # Very recent hessenschau cycles absent from the HSL transmission have
+      # no counter. Link only when the same normalized public name was already
+      # observed in this municipality; otherwise create a new person.
+      same_name <- if (i == 1L || is.na(d$public_name_key[i])) integer() else
+        which(d$public_name_key[seq_len(i - 1L)] == d$public_name_key[i])
+      same_name <- same_name[!is.na(same_name)]
+      local_id[i] <- if (length(same_name)) local_id[max(same_name)] else new_id()
+    }
+  }
+
+  d$he_local_id <- local_id
+  d
+}
+
+he_winners <- he_winners |>
+  group_by(ags) |>
+  group_modify(~ assign_he_group(.x, .y$ags)) |>
+  ungroup()
+
+he_persons <- he_winners |>
+  distinct(ags, he_local_id) |>
+  arrange(ags, he_local_id) |>
+  mutate(person_id = sprintf("p_06_%05d", row_number()))
+
+he_winners <- he_winners |>
+  left_join(he_persons, by = c("ags", "he_local_id"))
+
+hessen_panel <- he_winners |>
+  transmute(
+    person_id,
+    person_id_method = case_when(
+      !is.na(source_person_term_number) ~ "hessen_official_term_sequence",
+      !is.na(public_name_key) ~ "candidate_name",
+      TRUE ~ "election_record_only"
+    ),
+    source_person_term_number,
+    source_person_reelections,
+    ags, state, election_year, election_date,
+    winner_party = candidate_party,
+    winner_voteshare, winning_margin, n_candidates,
+    term_start_date = as.Date(NA),
+    candidate_gender, candidate_gender_source, candidate_gender_prob,
+    candidate_gender_method,
+    candidate_migration_bg, candidate_migration_bg_prob,
+    candidate_name_origin, candidate_name_origin_conf,
+    candidate_name_origin_method
+  )
+
+cat("Hessen person-elections:", nrow(hessen_panel), "\n")
+cat("Hessen unique persons:", n_distinct(hessen_panel$person_id), "\n")
+cat("Hessen elections with official term sequence:",
+    sum(hessen_panel$person_id_method == "hessen_official_term_sequence"), "\n")
+cat("Hessen rows without person_id:", sum(is.na(hessen_panel$person_id)), "\n")
+
+
 # ============================================================================
 # 4. COMBINE ALL STATES
 # ============================================================================
 
 cat("\n=== Combining all states ===\n")
 
-panel <- bind_rows(bayern_panel, named_panel) |>
+panel <- bind_rows(bayern_panel, named_panel, hessen_panel) |>
   arrange(state, ags, election_date)
 
 cat("Combined panel:", nrow(panel), "rows\n")
@@ -570,23 +816,24 @@ panel <- panel |>
   ungroup() |>
   select(-prev_party, -prev_margin, -party_key)
 
-# consecutive_terms: number of consecutive terms by same person (resets if gap)
+# consecutive_terms: number of consecutive observed wins by the same person.
+# This must reset when a former mayor returns after somebody else held office
+# (Hessen contains two such source-verified cases), as well as after a >10-year
+# hole in the observed series.
 panel <- panel |>
-  arrange(person_id, ags, election_date) |>
-  group_by(person_id, ags) |>
+  arrange(ags, election_date) |>
+  group_by(ags) |>
   mutate(
-    prev_election_year = lag(election_year),
-    gap = case_when(
-      is.na(prev_election_year) ~ FALSE,
-      # Allow gaps up to max term length + 2 (e.g., 8 years for 6-year terms)
-      election_year - prev_election_year > 10 ~ TRUE,
-      TRUE ~ FALSE
-    ),
-    consec_group = cumsum(gap),
-    consecutive_terms = row_number()
+    new_consec_run = row_number() == 1L |
+      person_id != lag(person_id) |
+      election_year - lag(election_year) > 10L,
+    new_consec_run = replace_na(new_consec_run, TRUE),
+    consec_group = cumsum(new_consec_run)
   ) |>
+  group_by(ags, consec_group) |>
+  mutate(consecutive_terms = row_number()) |>
   ungroup() |>
-  select(-prev_election_year, -gap, -consec_group)
+  select(-new_consec_run, -consec_group)
 
 cat(sprintf("  party_switch: %d switches out of %d with data (%.1f%%)\n",
             sum(panel$party_switch == 1L, na.rm = TRUE),
@@ -858,20 +1105,19 @@ panel <- panel |>
   select(-prev_party, -prev_margin, -party_key)
 
 panel <- panel |>
-  arrange(person_id, ags, election_date) |>
-  group_by(person_id, ags) |>
+  arrange(ags, election_date) |>
+  group_by(ags) |>
   mutate(
-    prev_ey = lag(election_year),
-    gap = case_when(
-      is.na(prev_ey) ~ FALSE,
-      election_year - prev_ey > 10 ~ TRUE,
-      TRUE ~ FALSE
-    ),
-    consec_group = cumsum(gap),
-    consecutive_terms = row_number()
+    new_consec_run = row_number() == 1L |
+      person_id != lag(person_id) |
+      election_year - lag(election_year) > 10L,
+    new_consec_run = replace_na(new_consec_run, TRUE),
+    consec_group = cumsum(new_consec_run)
   ) |>
+  group_by(ags, consec_group) |>
+  mutate(consecutive_terms = row_number()) |>
   ungroup() |>
-  select(-prev_ey, -gap, -consec_group)
+  select(-new_consec_run, -consec_group)
 
 
 # ============================================================================
@@ -897,7 +1143,8 @@ finalize_panel <- function(p, version = "harm") {
 
   # Final column selection
   panel_cols <- c(
-    "person_id", "ags",
+    "person_id", "person_id_method", "source_person_term_number",
+    "source_person_reelections", "ags",
     if (has_ags_21) "ags_21",
     "state", "election_year", "election_date",
     "term_number", "consecutive_terms", "winner_party", "winner_voteshare",
@@ -964,7 +1211,8 @@ finalize_panel <- function(p, version = "harm") {
   annual_cols <- c(
     "ags",
     if (has_ags_21) "ags_21",
-    "year", "person_id", "state", "election_year", "election_date",
+    "year", "person_id", "person_id_method", "source_person_term_number",
+    "source_person_reelections", "state", "election_year", "election_date",
     "term_number", "winner_party", "winner_voteshare", "winning_margin",
     "n_candidates", "is_incumbent", "next_runs_again",
     "years_since_election", "years_to_next_election",
