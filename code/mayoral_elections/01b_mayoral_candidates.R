@@ -45,6 +45,20 @@ pad_zero_conditional <- function(x, n, pad = "0") {
   return(x)
 }
 
+# Strip academic titles from a name part. Sources disagree on where the title
+# sits — Sachsen's SIEGER column writes "Wilde, Dr. Manfred" while its own
+# candidate column writes "Dr. Wilde, Manfred", and Niedersachsen 2013 prints
+# "Dr. Junk, Oliver" — so the same person can end up with "Dr. Wilde" as a
+# surname or "Dr. Manfred" as a given name. Both break the gender lookup and
+# the HW/SW name pairing. `candidate_name` keeps the source string verbatim;
+# only the split parts are cleaned. Loops because titles stack ("Prof. Dr.").
+strip_name_titles <- function(x) {
+  x <- as.character(x)
+  ttl <- "^(Prof\\.|Dr\\.|Dipl\\.[-[:alpha:].]*|Ing\\.|med\\.|rer\\.|nat\\.|phil\\.|jur\\.|oec\\.|paed\\.|theol\\.|h\\.\\s?c\\.|habil\\.)\\s*"
+  for (i in 1:4) x <- str_trim(str_replace(x, ttl, ""))
+  ifelse(is.na(x) | !nzchar(x), NA_character_, x)
+}
+
 # Flag non-decisive Bayern rounds — i.e. rounds that did NOT seat the mayor and
 # are superseded by a later valid round (mirrors compute_flag_superseded in
 # 01_mayoral_unharm.R; KEEP THE TWO DEFINITIONS IN SYNC). Two cases:
@@ -187,7 +201,15 @@ standardise_candidates <- function(dt) {
     "n_candidates", "candidate_rank", "is_winner", "flag_superseded",
     # Sachsen-Anhalt only: the source shares this AGS with a second Gemeinde on
     # this date (see the ST block). NA for every other state.
-    "flag_shared_ags"
+    "flag_shared_ags",
+    # The round that DECIDED this election cycle is not in the source: the
+    # rounds we hold are real but seated nobody, so the cycle has no winner.
+    # Set by a Stage-0 parser that knows its delivery is incomplete (currently
+    # only Hagenow 2015, MV); FALSE everywhere else. The global winner-repair
+    # step at the end of this script keys on it — without it, "no candidate
+    # flagged" is read as "the source is silent" and the leader of an
+    # inconclusive Hauptwahl gets crowned.
+    "flag_decisive_round_missing"
   )
 
   # Add missing columns as NA
@@ -225,7 +247,8 @@ standardise_candidates <- function(dt) {
       candidate_rank = as.integer(candidate_rank),
       is_winner = as.logical(is_winner),
       flag_superseded = as.logical(flag_superseded),
-      flag_shared_ags = as.logical(flag_shared_ags)
+      flag_shared_ags = as.logical(flag_shared_ags),
+      flag_decisive_round_missing = as.logical(flag_decisive_round_missing)
     ) %>%
     select(all_of(output_cols))
 
@@ -768,6 +791,32 @@ sachsen_base <- sachsen_base %>%
 cat("  Sachsen round distribution:\n")
 print(table(sachsen_base$round))
 
+# Is an _LNAME cell a PERSON, or a Wahlvorschlag label?
+#
+# The column holds a person ("Möller, Ines") for Einzelbewerber/Einzelvorschlag
+# candidates and the list's own name for everyone else. A bare `grepl(",", x)`
+# test therefore misreads every JOINT list — "Freie Wähler, DIE LINKE, SPD",
+# "Christlich Demokratische Union Deutschlands, Bürgerbewegung" — as
+# "Surname, Firstname", which put 39 party labels into the published data as
+# people (13 of them as election winners). Measured on the workbook: this rule
+# demotes 59 such cells and promotes none, i.e. it loses no real name.
+SN_LIST_WORDS <- paste0(
+  "e\\. ?V\\.|Wahlvorschlag|Wählerverein|Wählergemeinschaft|",
+  "Wählervereinigung|Freie Wähler|Wahlplattform|Bürgerinitiative|",
+  "Bürgerbewegung|B[üu]ndnis|Partei|Union Deutschlands|Sozialdemokratische|",
+  "Christlich|Demokratische|Liberale|DIE LINKE|GR[ÜU]NE|Initiative|",
+  "Vereinigung|Plattform|Ortsverband|Gemeinsamer|SPD|CDU|FDP|AfD|NPD|CSU|PDS")
+
+sn_is_person <- function(x) {
+  x <- as.character(x)
+  after <- str_trim(str_extract(x, ",\\s*(.+)$", group = 1))
+  !is.na(x) &
+    str_count(ifelse(is.na(x), "", x), ",") == 1 &      # "Last, First", not a list of parties
+    ifelse(is.na(after), 99L, str_count(after, "\\S+")) <= 3 &
+    nchar(x) <= 45 &
+    !str_detect(x, regex(SN_LIST_WORDS, ignore_case = TRUE))
+}
+
 # Reshape candidate columns 1-13 to long format
 # Columns: X_WVT (party), X_LNAME (last name), X_Stimmen (votes), X_% (pct)
 sachsen_cand_list <- list()
@@ -793,16 +842,17 @@ for (i in 1:13) {
     filter((!is.na(candidate_votes) & candidate_votes > 0) |
              !is.na(candidate_party) | !is.na(candidate_last_name)) %>%
     mutate(
-      # _LNAME contains actual name (with comma) for EB/EV candidates,
-      # or full party name for party candidates. Detect via comma presence.
-      is_person_name = grepl(",", candidate_last_name),
+      # _LNAME contains actual name for EB/EV candidates, or the full list name
+      # for party candidates — see sn_is_person() above for why the presence of
+      # a comma is not sufficient to tell the two apart.
+      is_person_name = sn_is_person(candidate_last_name),
       candidate_name = ifelse(is_person_name, candidate_last_name, NA_character_),
       # For person names: parse into last/first
       candidate_last_name = ifelse(is_person_name,
-                                    str_trim(str_extract(candidate_last_name, "^[^,]+")),
+                                    strip_name_titles(str_trim(str_extract(candidate_last_name, "^[^,]+"))),
                                     NA_character_),
       candidate_first_name = ifelse(is_person_name,
-                                     str_trim(str_extract(candidate_name, ",\\s*(.+)$", group = 1)),
+                                     strip_name_titles(str_trim(str_extract(candidate_name, ",\\s*(.+)$", group = 1))),
                                      NA_character_),
       candidate_voteshare = ifelse(!is.na(candidate_voteshare_pct),
                                     candidate_voteshare_pct / 100,
@@ -828,6 +878,99 @@ sachsen_candidates <- bind_rows(sachsen_cand_list) %>%
   ) %>%
   ungroup() %>%
   arrange(ags, election_date, candidate_rank)
+
+# ---- Recover the winner's name from the workbook's own SIEGER column --------
+# SIEGER names the winner of every DECIDED round as "Last, First (Party)"
+# ("Seifert, Dr. Peter (SPD)"); rounds that went to a runoff carry the literal
+# "2. Wahlgang erforderlich" instead. 01_mayoral_unharm.R already reads the
+# party out of it, but the NAME was never used, which is why Sachsen winners
+# were less often named (28%) than Sachsen losers (56%): the _LNAME column
+# names only the Einzelbewerber, and most winners run on a party list.
+#
+# The fill is strictly ADDITIVE — it only touches a winner row that has no name
+# — so the 17 rounds where SIEGER and _LNAME disagree (title placement
+# "Dr. Wilde, Manfred" vs "Wilde, Dr. Manfred", the spelling variant
+# Sarembe/Sarambe, and the swapped fields "Michael, Hultsch") keep the
+# candidate column's version and need no adjudication.
+sn_sieger <- sachsen_base %>%
+  filter(!is.na(SIEGER), SIEGER != "2. Wahlgang erforderlich") %>%
+  transmute(
+    ags, election_date,
+    sg_name  = str_trim(str_replace(SIEGER, "\\s*\\([^)]*\\)\\s*$", "")),
+    sg_last  = strip_name_titles(str_trim(str_extract(sg_name, "^[^,]+"))),
+    sg_first = strip_name_titles(str_trim(str_extract(sg_name, ",\\s*(.+)$", group = 1)))
+  ) %>%
+  filter(!is.na(sg_last), !is.na(sg_first)) %>%
+  distinct(ags, election_date, .keep_all = TRUE)
+
+sachsen_candidates <- sachsen_candidates %>%
+  left_join(sn_sieger, by = c("ags", "election_date")) %>%
+  mutate(
+    .filled = is_winner %in% TRUE & is.na(candidate_name) & !is.na(sg_last),
+    candidate_name       = ifelse(.filled, sg_name,  candidate_name),
+    candidate_last_name  = ifelse(.filled, sg_last,  candidate_last_name),
+    candidate_first_name = ifelse(.filled, sg_first, candidate_first_name)
+  )
+cat("  Sachsen: named", sum(sachsen_candidates$.filled),
+    "winner(s) from the SIEGER column\n")
+
+# Carry that name back to the SAME PERSON in the Hauptwahl of a runoff cycle.
+# SIEGER only ever names the DECISIVE round, so filling it alone would leave the
+# runoff winner named in the Stichwahl row and unnamed in the Hauptwahl row —
+# and the wide pivot downstream pairs the two rounds by candidate name, falling
+# back to the party label and then to the rank. Naming one side only therefore
+# SPLITS an already-paired person into two published rows (the failure mode
+# recorded for Brandenburg).
+#
+# The propagation reuses the pivot's OWN key — name, else party, else rank —
+# computed from the PRE-fill state, and requires the key to be unique on both
+# sides, which is the pivot's ambiguity rule. So a Hauptwahl row is named if and
+# only if it is the row the Stichwahl winner would have been paired with anyway:
+# no pair is created, and none is destroyed. Keying on the party alone is NOT
+# enough — four cycles pair on rank because neither round records a
+# Wahlvorschlag, and they split when the name lands on one side only.
+sn_prekey <- function(name, party, rank) {
+  case_when(
+    !is.na(name)  ~ paste0("__name__",  tolower(str_trim(name))),
+    !is.na(party) ~ paste0("__party__", tolower(str_trim(party))),
+    TRUE          ~ paste0("__rank__",  rank)
+  )
+}
+
+sn_keyed <- sachsen_candidates %>%
+  mutate(.prekey = sn_prekey(ifelse(.filled, NA_character_, candidate_name),
+                             candidate_party, candidate_rank)) %>%
+  add_count(ags, election_date, .prekey, name = ".n_key")
+
+sn_sw_winners <- sn_keyed %>%
+  filter(.filled, round == "stichwahl", .n_key == 1) %>%
+  select(ags, sw_date = election_date, .prekey, sg_name, sg_last, sg_first)
+
+sn_hw_targets <- sn_keyed %>%
+  filter(round == "hauptwahl", is.na(candidate_name), .n_key == 1) %>%
+  select(ags, hw_date = election_date, .prekey) %>%
+  inner_join(sn_sw_winners, by = c("ags", ".prekey"),
+             relationship = "many-to-many") %>%
+  filter(as.numeric(sw_date - hw_date) > 0, as.numeric(sw_date - hw_date) < 60) %>%
+  distinct(ags, hw_date, .prekey, .keep_all = TRUE)
+
+sachsen_candidates <- sn_keyed %>%
+  left_join(sn_hw_targets %>%
+              transmute(ags, election_date = hw_date, .prekey,
+                        hw_name = sg_name, hw_last = sg_last, hw_first = sg_first),
+            by = c("ags", "election_date", ".prekey")) %>%
+  mutate(
+    .prop = round == "hauptwahl" & is.na(candidate_name) & !is.na(hw_last),
+    candidate_name       = ifelse(.prop, hw_name,  candidate_name),
+    candidate_last_name  = ifelse(.prop, hw_last,  candidate_last_name),
+    candidate_first_name = ifelse(.prop, hw_first, candidate_first_name)
+  )
+cat("  Sachsen: propagated", sum(sachsen_candidates$.prop),
+    "runoff-winner name(s) back to the Hauptwahl row\n")
+
+sachsen_candidates <- sachsen_candidates %>%
+  select(-sg_name, -sg_last, -sg_first, -hw_name, -hw_last, -hw_first,
+         -.filled, -.prop, -.prekey, -.n_key)
 
 sachsen_clean <- standardise_candidates(sachsen_candidates)
 
@@ -1718,9 +1861,18 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
       if (!is.na(bez_match[1])) {
         kommune <- str_trim(bez_match[2])
         bezeichnung <- bez_match[3]
+        # Group 3 is the third column of the table, headed
+        # "Wahlsieger (Name, Vorname)" — e.g. "Averbeck, Tobias",
+        # "Dr. Junk, Oliver". The regex always captured it and the parser
+        # discarded it, which is why all 28 Niedersachsen 2013 winners were
+        # published with a party and a vote count but no name. Rows that went
+        # to a runoff print no name here and are skipped further up.
+        cand_name <- str_trim(bez_match[4])
+        if (is.na(cand_name) || !nzchar(cand_name)) cand_name <- NA_character_
       } else {
         kommune <- NA_character_
         bezeichnung <- NA_character_
+        cand_name <- NA_character_
       }
 
       el_type <- case_when(
@@ -1744,6 +1896,11 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
         invalid_votes = NA_real_,
         turnout = ifelse(!is.na(wahlber) & wahlber > 0,
                          waehler / wahlber, NA),
+        candidate_name = cand_name,
+        candidate_last_name = strip_name_titles(
+          str_trim(str_extract(cand_name, "^[^,]+"))),
+        candidate_first_name = strip_name_titles(
+          str_trim(str_extract(cand_name, ",\\s*(.+)$", group = 1))),
         candidate_party = winner_party_val,
         candidate_votes = stimmen,
         candidate_voteshare = ifelse(!is.na(gueltige) & gueltige > 0 & !is.na(stimmen),
@@ -2118,25 +2275,44 @@ if (file.exists(sh_file)) {
 # ============================================================================
 # MECKLENBURG-VORPOMMERN
 # ============================================================================
-# Candidate-level data for MV Oberbürgermeister + Landrat direct elections,
-# 2000-2026, parsed from 69 LAIV-MV PDFs by 00_mv_parse.py into
-# data/mayoral_elections/raw/mecklenburg_vorpommern/mv_parsed.csv.
-# The intermediate is already candidate-level long (one row per candidate per
-# round); we only need to add rank / n_candidates / is_winner, like SH.
-# Special cases (parsed & flagged in mv_parsed.csv `notes`):
+# Two candidate-level Stage-0 sources, covering disjoint offices (see the
+# matching block in 01_mayoral_unharm.R):
+#   - mv_parsed.csv     : Oberbürgermeister + Landrat, 2000-2026, from 69
+#     LAIV-MV PDFs (00_mv_parse.py).
+#   - mv_lup_parsed.csv : Bürgermeister of the five amtsfreien Gemeinden of the
+#     Landkreis Ludwigslust-Parchim, 2014-2023 (00_mv_lup_parse.py).
+# Both are already candidate-level long (one row per candidate per round); we
+# only need to add rank / n_candidates / is_winner, like SH.
+# Special cases (parsed & flagged in the `notes` column):
 #   - Ja/Nein single-candidate Stichwahl (Rügen 2001-05): only the "Ja" candidate
 #     is recorded; its voteshare is NA. That Stichwahl failed -> a Neuwahl
 #     (Rügen 2001-09) followed, recorded as a separate cycle.
+#   - Hagenow 2015-05-31: an inconclusive Hauptwahl (leader on 41.5 %) whose
+#     deciding Stichwahl is not in the Landkreis delivery. mv_lup_parsed.csv
+#     carries an explicit is_winner column for exactly this reason, and it wins
+#     over rank below: ranking alone would seat the CDU candidate who lost the
+#     runoff. Where the source states no flag (the LAIV file), rank decides.
 
 cat("\n=== Processing Mecklenburg-Vorpommern mayoral/Landrat elections ===\n")
 
-mv_file <- "data/mayoral_elections/raw/mecklenburg_vorpommern/mv_parsed.csv"
+mv_files <- c("data/mayoral_elections/raw/mecklenburg_vorpommern/mv_parsed.csv",
+              "data/mayoral_elections/raw/mecklenburg_vorpommern/mv_lup_parsed.csv")
+mv_file <- mv_files[1]  # the LAIV file is required; the Kreis file is optional
 
 if (file.exists(mv_file)) {
-  mv_raw <- fread(mv_file, encoding = "UTF-8",
-                  colClasses = list(character = c("ags", "ags_name", "state",
-                    "state_name", "election_date", "candidate_party",
-                    "candidate_name", "candidate_last_name", "candidate_first_name")))
+  mv_raw <- rbindlist(lapply(mv_files[file.exists(mv_files)], fread,
+                             encoding = "UTF-8",
+                             colClasses = list(character = c("ags", "ags_name",
+                               "state", "state_name", "election_date",
+                               "candidate_party", "candidate_name",
+                               "candidate_last_name", "candidate_first_name"))),
+                      fill = TRUE)
+  # fill = TRUE gives the LAIV rows NA for the columns only the Kreis file has;
+  # make sure they exist at all when only the LAIV file is present.
+  if (!"is_winner" %in% names(mv_raw)) mv_raw[, is_winner := NA]
+  if (!"flag_decisive_round_missing" %in% names(mv_raw))
+    mv_raw[, flag_decisive_round_missing := NA]
+  setnames(mv_raw, "is_winner", "is_winner_src")
 
   mv_candidates <- mv_raw %>%
     mutate(
@@ -2150,7 +2326,10 @@ if (file.exists(mv_file)) {
     mutate(
       candidate_rank = rank(-candidate_votes, ties.method = "min", na.last = "keep"),
       n_candidates = n(),
-      is_winner = candidate_rank == 1
+      # The source's own "was declared elected" flag beats rank wherever the
+      # source states one; rank is the fallback for the LAIV rows, which carry
+      # no such column. Leading a round is not the same as winning the election.
+      is_winner = dplyr::coalesce(as.logical(is_winner_src), candidate_rank == 1)
     ) %>%
     ungroup() %>%
     mutate(
@@ -2165,7 +2344,8 @@ if (file.exists(mv_file)) {
       invalid_votes, turnout, candidate_name, candidate_last_name,
       candidate_first_name, candidate_gender, candidate_party,
       candidate_votes, candidate_voteshare, candidate_birth_year,
-      candidate_profession, office_type, n_candidates, candidate_rank, is_winner
+      candidate_profession, office_type, n_candidates, candidate_rank, is_winner,
+      flag_decisive_round_missing
     )
 
   mv_clean <- standardise_candidates(mv_candidates)
@@ -2893,7 +3073,12 @@ mayoral_candidates <- bind_rows(all_candidate_data) %>%
     election_year = as.numeric(election_year),
     election_date = as.Date(election_date),
     # Only Bayern computes this; default every other state to FALSE (not superseded)
-    flag_superseded = dplyr::coalesce(as.logical(flag_superseded), FALSE)
+    flag_superseded = dplyr::coalesce(as.logical(flag_superseded), FALSE),
+    # Only a Stage-0 parser that knows its delivery is incomplete sets this;
+    # for every other source, absence of the flag means "as far as we know the
+    # deciding round is here".
+    flag_decisive_round_missing =
+      dplyr::coalesce(as.logical(flag_decisive_round_missing), FALSE)
   )
 
 # ============================================================================
@@ -3204,7 +3389,7 @@ mayoral_candidates <- wide %>%
     n_candidates_hw,
     candidate_votes_sw, candidate_voteshare_sw, candidate_rank_sw,
     n_candidates_sw,
-    is_winner, flag_superseded, flag_shared_ags,
+    is_winner, flag_superseded, flag_shared_ags, flag_decisive_round_missing,
     candidate_birth_year, candidate_profession, office_type
   )
 
@@ -3224,6 +3409,13 @@ mayoral_candidates <- wide %>%
 # So: trust exactly-one source flag; recompute when there are none or several;
 # and where there is neither a flag nor a usable metric, say so with NA instead
 # of inventing a mayor.
+#
+# flag_decisive_round_missing outranks even the source flag, because it is a
+# statement ABOUT the source: the round that decided this cycle is not in it.
+# Such a cycle has votes, so `.has_metric` is TRUE and the recompute below would
+# happily crown the leader of a round that seated nobody — which is how the
+# Hagenow 2015 Hauptwahl (CDU on 41.5 %, beaten in a Stichwahl we do not hold)
+# put the losing candidate into mayor_panel as that town's mayor.
 mayoral_candidates <- as_tibble(mayoral_candidates) %>%
   mutate(.rid = dplyr::row_number()) %>%                       # global unique row id
   # group by election_type too: an AGS+date may host BOTH a Bürgermeister and a
@@ -3238,11 +3430,14 @@ mayoral_candidates <- as_tibble(mayoral_candidates) %>%
     .n_src_win = sum(is_winner, na.rm = TRUE),   # winners the SOURCE declared
     .has_metric = any(!is.na(.metric)),
     .sole = n() == 1,                            # only one candidate stood
+    # the deciding round of this cycle is not in the source at all
+    .no_decisive = any(flag_decisive_round_missing %in% TRUE),
     .win_rid = .rid[which.max(ifelse(is.na(.metric), -Inf, .metric))]  # global id of the group max
   ) %>%
   ungroup() %>%
   mutate(
     is_winner = case_when(
+      .no_decisive    ~ NA,                                 # nobody was elected in the rounds we hold
       .n_src_win == 1 ~ dplyr::coalesce(is_winner, FALSE),  # source knows: keep it
       .has_metric     ~ .rid == .win_rid,                   # 0 or >1 flags: most votes
       # A sole candidate won by definition, whether or not the early-postwar
@@ -3252,7 +3447,8 @@ mayoral_candidates <- as_tibble(mayoral_candidates) %>%
       TRUE            ~ NA                                  # unknowable — do not guess
     )
   ) %>%
-  select(-.rid, -.any_sw, -.metric, -.n_src_win, -.has_metric, -.sole, -.win_rid)
+  select(-.rid, -.any_sw, -.metric, -.n_src_win, -.has_metric, -.sole,
+         -.no_decisive, -.win_rid)
 
 # Safety net: guarantee at least one winner per election (covers rare edge cases
 # where the deciding-round metric is degenerate). Flags the highest-vote row.
@@ -3282,12 +3478,18 @@ cat("  Elections with no determinable winner (is_winner = NA):",
 # flag instead of the election's. any() also folds in the annulled-Stichwahl flag.
 mayoral_candidates <- mayoral_candidates %>%
   group_by(ags, election_date, election_type) %>%
-  mutate(flag_superseded = any(flag_superseded, na.rm = TRUE)) %>%
+  mutate(flag_superseded = any(flag_superseded, na.rm = TRUE),
+         # likewise election-level, and NA (no Stage-0 parser said anything)
+         # means the delivery was complete as far as we know
+         flag_decisive_round_missing = any(flag_decisive_round_missing,
+                                           na.rm = TRUE)) %>%
   ungroup()
 
 cat("\n  Wide format: ", nrow(mayoral_candidates), "rows ×",
     ncol(mayoral_candidates), "columns\n")
 cat("  flag_superseded TRUE rows:", sum(mayoral_candidates$flag_superseded), "\n")
+cat("  flag_decisive_round_missing TRUE rows:",
+    sum(mayoral_candidates$flag_decisive_round_missing), "\n")
 
 
 # ============================================================================
@@ -3352,11 +3554,11 @@ if (any(lr_misfiled)) {
   mayoral_candidates <- bind_rows(mayoral_candidates[!lr_misfiled, ], fixed)
 }
 
-# flag_superseded is scoped to the mayoral datasets; the Landrat dataset has its
-# own downstream combine pipeline, so drop the column from the Landrat split to
+# These flags are scoped to the mayoral datasets; the Landrat dataset has its
+# own downstream combine pipeline, so drop the columns from the Landrat split to
 # keep landrat_candidates byte-identical to before.
 landrat_candidates <- mayoral_candidates %>% filter(election_type == "Landratswahl") %>%
-  select(-flag_superseded, -flag_shared_ags)
+  select(-flag_superseded, -flag_shared_ags, -flag_decisive_round_missing)
 mayoral_candidates <- mayoral_candidates %>% filter(election_type %in% mayoral_types)
 
 cat("\nDataset split:\n")
@@ -3399,6 +3601,32 @@ anonymise_st_losers <- function(df, label) {
       n_before, " carried a name)\n", sep = "")
   df
 }
+
+# ---- RESTRICTED twin (scientific use only) ---------------------------------
+# The anonymisation is destructive and in-place, so the un-anonymised frame
+# exists only here. Persist it first, into a gitignored sibling directory, so
+# the project's own analyses can use the full ST candidate record while the
+# published files stay licence-compliant. `write_restricted_candidates()` is
+# defined identically in code/landrat_elections/01_landrat_combine.R — KEEP THE
+# TWO COPIES IN SYNC (that script rewrites landrat_candidates after this one).
+# Never redistribute anything under a final_restricted/ directory.
+write_restricted_candidates <- function(df, dir, stem) {
+  dir.create(dir, recursive = TRUE, showWarnings = FALSE)
+  write_rds(df, file.path(dir, paste0(stem, ".rds")))
+  fwrite(df, file.path(dir, paste0(stem, ".csv")))
+  cat("  ", file.path(dir, stem), ".{rds,csv}: ", nrow(df), " rows (",
+      sum(substr(as.character(df$ags), 1, 2) == "15" &
+            !(df$is_winner %in% TRUE) & !is.na(df$candidate_last_name)),
+      " named ST non-winners retained)\n", sep = "")
+}
+
+cat("\n=== Writing RESTRICTED (un-anonymised) candidate twins ===\n")
+write_restricted_candidates(mayoral_candidates,
+                            "data/mayoral_elections/final_restricted",
+                            "mayoral_candidates_restricted")
+write_restricted_candidates(landrat_candidates,
+                            "data/landrat_elections/final_restricted",
+                            "landrat_candidates_restricted")
 
 cat("\n=== Anonymising Sachsen-Anhalt losing candidates (StaLA licence) ===\n")
 mayoral_candidates <- anonymise_st_losers(mayoral_candidates, "mayoral_candidates")

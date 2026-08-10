@@ -676,6 +676,74 @@ check(nrow(he26p) >= 25 && n_distinct(he26p$ags) == nrow(he26p),
       sprintf("HE 2026: %d panel terms (one per Gemeinde, HW/SW deduped)", nrow(he26p)),
       "HE 2026: panel term dedup failed")
 
+
+# ============================================================================
+cat("\n21. MV Bürgermeister of the amtsfreien Gemeinden (Landkreis Ludwigslust-Parchim)\n")
+# The LAIV publishes only OB + Landrat centrally; the hauptamtliche BM of the
+# amtsfreie Gemeinden come from the Kreiswahlleitungen. LUP supplied its five
+# (00_mv_lup_parse.py). Everything below is pinned against the delivered
+# Bekanntmachungen / result prints.
+lup <- c("13076014", "13076060", "13076088", "13076090", "13076108")
+lup_u <- m %>% filter(ags %in% lup)
+check(n_distinct(lup_u$ags) == 5 && nrow(lup_u) == 9,
+      sprintf("MV LUP: %d Gemeinden, %d round-results (2014-2023)",
+              n_distinct(lup_u$ags), nrow(lup_u)),
+      sprintf("MV LUP: expected 5 Gemeinden / 9 rounds, got %d / %d",
+              n_distinct(lup_u$ags), nrow(lup_u)))
+check(all(lup_u$election_type == "B\u00fcrgermeisterwahl"),
+      "MV LUP: all B\u00fcrgermeisterwahl (no OB \u2014 LUP has no kreisfreie Stadt)",
+      "MV LUP: non-B\u00fcrgermeisterwahl election_type leaked in")
+check(!any(lup %in% l$ags),
+      "MV LUP: no Landrat leakage (the Kreis's own Landratswahlen stay LAIV-sourced)",
+      "MV LUP: a municipal AGS reached landrat_unharm")
+# Boizenburg 2021: Jakobeit (SPD/LINKE) lost the Hauptwahl 46.80:45.66 and won
+# the Stichwahl 57.87:42.13.
+boi <- lup_u %>% filter(ags == "13076014", election_year == 2021) %>% arrange(election_date)
+check(nrow(boi) == 2 && boi$round[2] == "stichwahl" &&
+        abs(boi$winner_voteshare[2] - 0.5786673) < 1e-4 &&
+        boi$winner_party[2] == "SPD, DIE LINKE",
+      "MV LUP fixture: Boizenburg 2021 Stichwahl won by SPD/DIE LINKE at 57.87%",
+      "MV LUP fixture: Boizenburg 2021 Stichwahl wrong")
+# L\u00fcbtheen 2022 is a sole-candidate Ja/Nein ballot: g\u00fcltige = Ja + Nein, so the
+# candidate's votes are legitimately below valid_votes.
+lue <- lup_u %>% filter(ags == "13076088")
+check(nrow(lue) == 1 && lue$winner_votes == 1163 && lue$valid_votes == 1287 &&
+        abs(lue$winner_voteshare - 0.9036519) < 1e-4,
+      "MV LUP fixture: L\u00fcbtheen 2022 Ja/Nein ballot 1163 Ja of 1287 g\u00fcltige (90.4%)",
+      "MV LUP fixture: L\u00fcbtheen 2022 Ja/Nein wrong")
+check(all(abs(lup_u$winner_votes / lup_u$valid_votes - lup_u$winner_voteshare) < 1e-6) &&
+        all(lup_u$valid_votes + lup_u$invalid_votes == lup_u$number_voters),
+      sprintf("MV LUP vote integrity: shares = votes/valid and valid+invalid = voters (%d rounds)",
+              nrow(lup_u)),
+      "MV LUP vote integrity failed")
+# Hagenow 2015: the Hauptwahl was inconclusive (CDU 41.5%) and the Stichwahl \u2014
+# missing from the first delivery, supplied on request \u2014 was won by M\u00f6ller
+# (Die Linke) 57.83%. The runner-up of the first round must be the winner of the
+# cycle; ranking the Hauptwahl alone would seat the CDU candidate who lost.
+hag <- mc %>% filter(ags == "13076060", election_year == 2015)
+hag_w <- hag %>% filter(is_winner)
+check(nrow(hag) == 3 && all(hag$has_stichwahl) && nrow(hag_w) == 1 &&
+        hag_w$candidate_last_name == "M\u00f6ller" && hag_w$candidate_rank_hw == 2 &&
+        hag_w$candidate_votes_sw == 2405,
+      "MV LUP fixture: Hagenow 2015 decided by the Stichwahl (M\u00f6ller, 2nd in the Hauptwahl)",
+      "MV LUP fixture: Hagenow 2015 winner wrong \u2014 the Hauptwahl leader must not be seated")
+# Both Hagenow terms belong to ONE person, so 2022 is an incumbent re-election.
+hag_p <- mp %>% filter(ags == "13076060") %>% arrange(election_year)
+check(nrow(hag_p) == 2 && n_distinct(hag_p$person_id) == 1 &&
+        hag_p$term_number[2] == 2 && hag_p$is_incumbent[2] == 1,
+      "MV LUP: Hagenow 2015 + 2022 linked to one person (2022 = incumbent re-election)",
+      "MV LUP: Hagenow terms not linked to a single person")
+# The mechanism that kept the incomplete cycle winner-less is retained but unused.
+check("flag_decisive_round_missing" %in% names(mc) &&
+        sum(mc$flag_decisive_round_missing, na.rm = TRUE) == 0,
+      "MV LUP: flag_decisive_round_missing present and currently 0 rows (no cycle incomplete)",
+      sprintf("MV LUP: flag_decisive_round_missing on %d rows (expected 0)",
+              sum(mc$flag_decisive_round_missing, na.rm = TRUE)))
+lup_p <- mp %>% filter(ags %in% lup)
+check(nrow(lup_p) == 7 && n_distinct(paste(lup_p$ags, lup_p$election_year)) == 7,
+      sprintf("MV LUP: %d panel terms (one per cycle)", nrow(lup_p)),
+      sprintf("MV LUP: expected 7 panel terms, got %d", nrow(lup_p)))
+
 cat("\n════════════════════════════════════════════════════════════════════\n")
 if (failed == 0) {
   cat(sprintf("All checks passed ✓ (%d warnings)\n", warned))

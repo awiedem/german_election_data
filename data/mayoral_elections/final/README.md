@@ -8,13 +8,13 @@ Scope: head-of-municipality elections (`Bürgermeisterwahl`, `Oberbürgermeister
 
 | File | Rows | Cols | Unit | Description |
 |---|---|---|---|---|
-| `mayoral_unharm` | 55,588 | 18 | Election | One row per election-round (winner-level summary), original boundaries |
-| `mayoral_harm` | 52,074 | 25 | Election | Same as above, mapped to 2021 municipal boundaries |
-| `mayoral_candidates` | 113,561 | 46 | Candidate | One row per candidate per election cycle (wide format), original boundaries, incl. candidate characteristics |
-| `mayor_panel` | 41,993 | 31 | Person-election | Within-mayor panel with person IDs, original boundaries |
-| `mayor_panel_harm` | 41,946 | 32 | Person-election | Same as above, mapped to 2021 municipal boundaries |
-| `mayor_panel_annual` | 253,437 | 27 | Person-year | Annual panel (forward-filled from elections), original boundaries |
-| `mayor_panel_annual_harm` | 253,168 | 28 | Person-year | Same as above, mapped to 2021 municipal boundaries |
+| `mayoral_unharm` | 55,596 | 18 | Election | One row per election-round (winner-level summary), original boundaries |
+| `mayoral_harm` | 52,082 | 25 | Election | Same as above, mapped to 2021 municipal boundaries |
+| `mayoral_candidates` | 113,562 | 47 | Candidate | One row per candidate per election cycle (wide format), original boundaries, incl. candidate characteristics |
+| `mayor_panel` | 45,362 | 34 | Person-election | Within-mayor panel with person IDs and ID provenance, original boundaries |
+| `mayor_panel_harm` | 45,315 | 35 | Person-election | Same as above, mapped to 2021 municipal boundaries |
+| `mayor_panel_annual` | 281,439 | 30 | Person-year | Annual panel (forward-filled from elections), original boundaries |
+| `mayor_panel_annual_harm` | 281,170 | 31 | Person-year | Same as above, mapped to 2021 municipal boundaries |
 
 All files are available as `.rds` and `.csv`.
 
@@ -33,7 +33,7 @@ Landrat (county head) elections live in their own dataset at `../../landrat_elec
 
 - **Sachsen-Anhalt candidate names are anonymised (data-licence restriction)**: the Statistisches Landesamt Sachsen-Anhalt supplies the ST source with full candidate names **for scientific use only**; only anonymised data may be redistributed, on the same basis as the Bavarian data. § 80 of the Kommunalwahlordnung für das Land Sachsen-Anhalt (KWO LSA) separately bars publishing Wahlvorschlag (candidate) data more than six months after the final result. Accordingly, in the published ST data **only the elected person is named** — exactly as in Bayern. Losing candidates keep their votes, vote shares, ranks and Wahlvorschlagsträger (party), but carry **no name, forename, title, gender, birth year or any name-derived attribute** (name origin, migration background, surname statistics). This is enforced in `01b_mayoral_candidates.R` and guarded by a `ST licence` check in `99_audit.R`. For the same reason the ST raw and intermediate files (`2026_0661_BM-Wahl_ab_1994.xlsx`, `bmbm.csv`, `st_*_parsed.csv`) are **not distributed with this repository**; obtain them directly from the Statistisches Landesamt Sachsen-Anhalt if you need to re-run the ST stage.
 
-- **Hessen coverage & limitations**: HE (state `06`) is parsed from the Hessisches Statistisches Landesamt report *B VII m – Direktwahlen*, a most-recent-per-Gemeinde/Landkreis snapshot (election dates ~2020–2026). The primary source is now the **May-2026 issue in XLSX form** (`00_he_parse_xlsx.py`), which lists **every Wahlvorschlag with its votes** (real `n_candidates`, up to 20) and **full vote counts** — a major upgrade over the older 2024 PDF (winner + first Wahlvorschlag only), which is retained only as a fallback (`he_pdf_parsed.csv`) for the ~57 units whose last election predates the XLSX's 2020 window. 421 Gemeinden (Bürgermeister + Oberbürgermeister: the 5 kreisfreie Städte + the 7 Sonderstatusstädte Hanau, Fulda, Gießen, Marburg, Rüsselsheim, Wetzlar, Bad Homburg) feed the mayoral dataset; the 21 Landkreise (Landrat) are split to [`../../landrat_elections/final/`](../../landrat_elections/final/). The winner is the **highest-voted Wahlvorschlag** of the decisive round (named, with party + gender); losing Wahlvorschläge carry party + votes but no candidate name. Single-candidate elections are Ja/Nein (winner votes = Ja-Stimmen < valid). Source: HSL report B VII m (statistischebibliothek.de); the parser is a byte-exact reproduction (0/463 party-vote mismatches vs the raw table), and a winner sample was independently re-verified externally.
+- **Hessen coverage and person recovery**: HE (state `06`) now uses the Hessisches Statistisches Landesamt historical workbook *Direktwahlen in Hessen seit 1993* for the full 1993--2026 series: 2,908 municipal round-results on 428 election-time AGS, mapping to 421 current municipalities. It contains every Wahlvorschlag, vote totals, and the elected person's official `Amtszeiten seit 1993` and `Wiederwahl` counters, but normally redacts candidate names. `00_he_hist_parse.py` therefore grafts every public name recoverable from the May-2024 PDF and May-2026 XLSX snapshots—not just winners—and from the 2026 hessenschau pages. All 671 names in the 2024 PDF are parsed; bidirectional Hauptwahl/Stichwahl propagation adds names to the matching round without creating pseudo-candidates. The final candidate file contains 744 named HE candidate rows (552 winners and 192 non-winners). More importantly for longitudinal analysis, the official counters identify every decisive winner even when the name is redacted: `mayor_panel` contains 2,422 HE person-elections for 1,315 people, of which 2,410 rows are counter-linked and 12 recent rows are linked by a public name. Two source-verified return spells—Erhard Rohrbach in Maintal and Rüdiger Heß in Frankenberg (Eder)—are explicitly reconnected across an intervening mayor; `consecutive_terms` resets when they return. The 21 Landkreise are split to [`../../landrat_elections/final/`](../../landrat_elections/final/). Single-candidate elections are Ja/Nein ballots, so the candidate's Ja votes may be below all valid votes.
 
 - **2026 Kommunalwahlen (Bayern + Hessen, newest cycle)**: The most recent local elections — **Bayern** (8 March 2026, Stichwahl 22 March) and **Hessen** (15 March 2026, Stichwahlen 29 March / 12 April, plus Jan/June by-elections) — are added from sources newer than the historical files above, each independently spot-verified against official municipality pages and local press (13/13 winners confirmed).
   - **Bayern 2026** (1,920 Gemeinden incl. 50 Oberbürgermeister; 62 Landrat split to the landrat dataset): from the Bayerisches Landesamt für Statistik *Mandatsträger* XLSX (official). Full candidate-level votes + turnout; the elected person's name/gender/birth year/first-Amtsantritt come from the Mandatsträger sheet and are attached to the winning Wahlvorschlag (the panel links re-elected incumbents by Amtsantritt — 1,075 of the 2026 winners were already in office). Candidate names exist only for the winner (Bayern publishes no losing-candidate names).
@@ -117,6 +117,7 @@ One row per candidate per election cycle. Companion to `mayoral_unharm` -- same 
 | `n_candidates_sw` | Number of candidates in the Stichwahl |
 | `is_winner` | Overall election winner (won HW outright OR won SW) |
 | `flag_superseded` | `TRUE` for Bayern rounds that did not seat the mayor (annulled rounds, or a no-majority Hauptwahl repeated by a later *Neuwahl* within 250 days). Constant within an election. `FALSE` elsewhere. Filter `== FALSE` for decisive rounds only. 239 candidate rows flagged. |
+| `flag_decisive_round_missing` | `TRUE` where the round that **decided** the cycle is not in the source, so the cycle has no winner and every candidate's `is_winner` is `NA`. Constant within an election. `FALSE` for every row at present: the one incomplete cycle it was built for (Hagenow 2015) was completed when the Landkreis supplied the missing Stichwahl. Distinct from a source that is merely silent about the winner — there, the top-voted candidate is taken as the winner. |
 | `candidate_birth_year` | Birth year (NI; BW from the official register) |
 | `candidate_profession` | Profession (NI only) |
 | `office_type` | Office type (BY, SL, BW) |
@@ -145,7 +146,7 @@ One row per candidate per election cycle. Companion to `mayoral_unharm` -- same 
 | Baden-Württemberg | Yes | Yes (100%) | -- | Yes | Yes | -- | Winner only |
 | Bayern | -- | -- | -- | -- | -- | -- | Yes |
 | Brandenburg | Yes | -- | Yes | Yes | -- | -- | Yes |
-| Hessen | Yes | Yes | Yes | Yes | -- | -- | Winner (if Wahlvorschlag 1) + WV1 |
+| Hessen | Partial (public snapshots) | Yes | Yes | Yes | -- | -- | Yes |
 | Sachsen-Anhalt | Yes | -- | Yes | Yes | -- | -- | Yes |
 | Niedersachsen | Yes | -- | Yes (99.9%) | Yes | Yes | Yes | Yes |
 | Nordrhein-Westfalen | Yes | -- | Yes (100%) | Yes | -- | -- | Yes |
@@ -166,7 +167,7 @@ Gender is classified using the Python [`gender-guesser`](https://pypi.org/projec
 5. Accent-normalized fallback (strip diacritics) — confidence 0.90
 6. Manual overrides (~90 entries for typos, rare names, foreign names) — confidence 0.99
 
-**Coverage**: 14,187 / 14,174 named candidates (100%) have gender assigned. 2,129 from raw data, 12,058 predicted. Bayern candidates have no names in the source data and thus no gender. 53 entries without gender are non-person records (party names, place names, initials).
+**Coverage**: 27,391 candidate rows have gender assigned: 11,105 from raw data and 16,286 predicted. Bayern's historical source has no candidate names; its 2026 Mandatsträger supplement does identify the elected person and gender.
 
 **Validation**:
 - Cross-validation against RLP raw data: Accuracy = 0.9979, F1 (female) = 0.9887, Precision = 0.9887, Recall = 0.9887. 4 mismatches are errors in the raw data (verified manually).
@@ -184,7 +185,7 @@ Migration background is classified using a rule-based name-origin approach appli
 4. **Southern European**: Surname-ending patterns (e.g., `-opoulos`, `-elli`, `-etti` = 0.85).
 5. **German** (default): German surname patterns (`Sch-`, `-mann`, `-berg`, etc.) = 0.90; unmatched = 0.50.
 
-**Coverage**: 14,859 candidates with last names classified. 255 (1.7%) flagged as migration background. 121 low-confidence classifications (conf < 0.80), predominantly Eastern European surname endings.
+**Coverage**: all 26,236 candidate rows with a retained last name are classified. 479 (1.8%) are flagged as likely migration background. Most records receive the conservative `default` German-origin classification at confidence 0.50; use the method and confidence fields for sensitivity analysis rather than treating that default as verified ancestry.
 
 **Important caveats**: This method cannot detect naturalized Germans with German-sounding names, nor can it distinguish between recent migration and families that have been in Germany for generations. Some German-origin names match non-German patterns (e.g., "Zein" is both a German and Arabic surname). The low base rate (~1.7%) means even small false-positive rates produce a non-trivial share of misclassifications. Use the confidence scores for sensitivity analysis.
 
@@ -197,20 +198,25 @@ One row per person per election. Tracks individual mayors across multiple terms,
 **Person identification**:
 
 - **Bayern**: Groups consecutive terms via `Tag des ersten Amtsantritt` (same Amtsantritt date across elections = same person). No candidate names are available.
-- **Named states** (NRW, NI, RLP, SL, SH): Name-key matching using `tolower(last_name)_first_initial_state` within each municipality.
-- **Sachsen**: Partial name matching (~49% coverage); remaining winners get sequential IDs.
+- **Hessen**: Uses the official person-level `Amtszeiten seit 1993` / `Wiederwahl` sequence, so all 2,422 decisive winner records receive IDs even when public names are redacted. Two documented non-consecutive return spells and the Waldems repeat election are handled explicitly; only 12 new elections not yet in the official sequence fall back to public-name matching.
+- **Other named states**: Matches a normalized surname plus given-name initial within municipality. Accents, punctuation, academic titles, and source field-order changes are normalized first. A pinned conservative alias map reconnects 34 people (71 election rows) split by obvious transcription variants, added/dropped given names, or documented surname changes; ambiguous same-surname cases remain separate.
+- **Source-limited records**: An unnamed winner is not assigned a name-based pseudo-ID. Thüringen's older records remain outside the person panel because the source publishes names only for recent cycles; Bayern remains fully traceable through Amtsantritt despite lacking names.
 
 **Columns**:
 
 | Column | Description |
 |---|---|
-| `person_id` | Unique mayor identifier (e.g., `p_09_00001` for Bayern, `p_05_mueller_k_05` for NRW) |
+| `person_id` | Unique pseudonymous mayor identifier (for example `p_09_00001`) |
+| `person_id_method` | Identification provenance: `first_amtsantritt`, `hessen_official_term_sequence`, `candidate_name`, or `candidate_name_variant_link` |
+| `source_person_term_number` | Hessen's official number of terms since 1993; `NA` elsewhere |
+| `source_person_reelections` | Hessen's official number of re-elections; `NA` elsewhere |
 | `ags` | 8-digit municipality code (original boundaries) |
 | `ags_21` | 8-digit municipality code mapped to 2021 boundaries (`_harm` only) |
 | `state` | 2-digit state code |
 | `election_year` | Year of the election |
 | `election_date` | Date of the decisive round (Stichwahl date if applicable) |
 | `term_number` | Sequential term count within (person, municipality), starting at 1 |
+| `consecutive_terms` | Count within the current uninterrupted spell; resets after an intervening mayor or a gap over 10 years |
 | `winner_party` | Party of the winning candidate |
 | `winner_voteshare` | Vote share in the decisive round (0--1) |
 | `winning_margin` | Vote share difference between winner and runner-up (0--1) |
@@ -233,7 +239,7 @@ One row per person per election. Tracks individual mayors across multiple terms,
 | `candidate_name_origin_conf` | Confidence in origin classification (0.50--0.95). |
 | `candidate_name_origin_method` | Detection method for origin classification. |
 
-**Coverage**: 14,452 unique mayors (unharm) / 13,971 (harm), spanning 34,495 / 33,319 person-elections. Candidate characteristics available for non-Bayern states (3,089 / 34,495 person-elections have gender; Bayern has no candidate names in source data).
+**Coverage**: 22,342 unique mayors (unharm) / 22,326 (harm), spanning 45,362 / 45,315 person-elections. Candidate gender is populated on 12,651 / 12,636 person-elections; Bayern has no historical candidate names in its source. All rows carry an explicit `person_id_method`.
 
 ---
 
@@ -241,7 +247,7 @@ One row per person per election. Tracks individual mayors across multiple terms,
 
 One row per mayor per year. Forward-fills election-level data across the mayor's term, creating a balanced annual panel. The `_harm` version maps all AGS codes to 2021 boundaries.
 
-Each mayor-election is expanded from `election_year` to the year before the next election in that municipality (or 2025 if no subsequent election is observed).
+Each mayor-election is expanded from `election_year` to the year before the next election in that municipality (or 2026 if no subsequent election is observed).
 
 **Columns**:
 
@@ -251,6 +257,9 @@ Each mayor-election is expanded from `election_year` to the year before the next
 | `ags_21` | 8-digit municipality code mapped to 2021 boundaries (`_harm` only) |
 | `year` | Calendar year |
 | `person_id` | Unique mayor identifier |
+| `person_id_method` | Person-identification provenance, carried from the election panel |
+| `source_person_term_number` | Hessen source term counter, carried from the election panel |
+| `source_person_reelections` | Hessen source re-election counter, carried from the election panel |
 | `state` | 2-digit state code |
 | `election_year` | Year of the election that started this term |
 | `election_date` | Date of the decisive round |
@@ -290,7 +299,7 @@ Each mayor-election is expanded from `election_year` to the year before the next
 | Baden-Württemberg | 1,101 | 143 | `Wahlart` H/N/S in the report (126 Neuwahl + 17 Stichwahl) |
 | Niedersachsen | 1,000 | 93 | Separate Stichwahl PDFs (2006/2013) + round detection |
 | Rheinland-Pfalz | 693 | 227 | `Stichwahltag` column + separate HW/SW results |
-| Hessen | 449 | 97 | `Stichwahl` marker + paired HW/SW rows (report + 2026 hessenschau, %-only) |
+| Hessen | 2,429 | 479 | Historical workbook `Stichwahl` marker + paired HW/SW rows; 2026 hessenschau supplement is %-only |
 | Brandenburg | 294 | 135 | `Wahlart` column (Hauptwahl/Stichwahl) in the Landeswahlleiter workbook |
 | Sachsen-Anhalt | 473 | 380 | Hauptwahl + Stichwahl columns on each source row |
 | Saarland | 42 | 15 | `Wahlart...3` column in raw data |
@@ -303,20 +312,20 @@ Each mayor-election is expanded from `election_year` to the year before the next
 | State | Code | Year Range | Unharm Rows | Panel Persons | Panel Elections | Source |
 |---|---|---|---|---|---|---|
 | Baden-Württemberg | 08 | 2003--2025 (hybrid) | 1,401 | 1,167 | 1,241 | Komm.ONE votemanager (candidate-level) + Stat. Landesamt B VII 3-j/25 (winner-only) |
-| Bayern | 09 | 1945--2025 | 34,824 | 12,246 | 31,383 | Excel (Bayerisches Landesamt) |
-| Brandenburg | 12 | 2010--2026 | 429 | 237 | 295 | Excel (Landeswahlleiter, on request) + wahlen.brandenburg.de |
-| Hessen | 06 | 2017--2024 (snapshot at 06.05.2024) | 509 | 421 | 421 | PDF (Stat. Landesamt B VII m Direktwahlen) |
-| Sachsen | 14 | 2001--2024 | 2,176 | 447 | 524 | Excel (Buergermeisteratlas) |
-| Sachsen-Anhalt | 15 | 1994--2026 | 4,611 | 3,181 | 4,112 | Excel (Stat. Landesamt "BM-Wahl ab 1994") + Dezernat-13 extract |
-| Nordrhein-Westfalen | 05 | 2009--2025 | 1,986 | 1,007 | 1,639 | Excel (IT.NRW) |
-| Rheinland-Pfalz | 07 | 1994--2025 | 1,147 | 128 | 193 | Excel (Stat. Landesamt) |
-| Niedersachsen | 03 | 2006--2025 | 1,186 | 532 | 664 | PDF extraction |
-| Saarland | 10 | 2019--2025 | 72 | 57 | 57 | Excel |
-| Schleswig-Holstein | 01 | 2023--2025 | 45 | 35 | 35 | Web scraping (wahlen-sh.de) |
-| Mecklenburg-Vorpommern | 13 | 2001--2026 | 41 | 21 | 25 | PDF extraction (LAIV-MV Direktwahlen) |
-| Thüringen | 16 | 1994--2026 | 3,978 | 631 | 647 | DB scrape (wahlen.thueringen.de, all Gemeinden) + Info/Daten files (kreisfreie-Stadt OB) |
+| Bayern | 09 | 1945--2026 | 35,782 | 12,643 | 32,233 | Excel (Bayerisches Landesamt historical series + 2026 Mandatsträger) |
+| Brandenburg | 12 | 2010--2026 | 429 | 236 | 295 | Excel (Landeswahlleiter, on request) + wahlen.brandenburg.de |
+| Hessen | 06 | 1993--2026 | 2,908 | 1,315 | 2,422 | HSL historical workbook + B VII m public-name snapshots + hessenschau 2026 |
+| Sachsen | 14 | 2001--2024 | 2,176 | 1,466 | 1,876 | Excel (Bürgermeisteratlas) |
+| Sachsen-Anhalt | 15 | 1994--2026 | 4,614 | 3,163 | 4,109 | Excel (Stat. Landesamt "BM-Wahl ab 1994") + Dezernat-13 extract |
+| Nordrhein-Westfalen | 05 | 2009--2025 | 1,854 | 936 | 1,522 | Excel (IT.NRW) |
+| Rheinland-Pfalz | 07 | 1994--2025 | 1,036 | 127 | 193 | Excel (Stat. Landesamt) |
+| Niedersachsen | 03 | 2006--2025 | 1,243 | 536 | 694 | PDF extraction |
+| Saarland | 10 | 2019--2025 | 69 | 55 | 55 | Excel |
+| Schleswig-Holstein | 01 | 2023--2026 | 57 | 44 | 44 | Web scraping (wahlen-sh.de) |
+| Mecklenburg-Vorpommern | 13 | 2001--2026 | 50 | 24 | 32 | PDF extraction (LAIV-MV Direktwahlen + Kreiswahlleitung Ludwigslust-Parchim) |
+| Thüringen | 16 | 1994--2026 | 3,978 | 630 | 647 | DB scrape (wahlen.thueringen.de, all Gemeinden) + Info/Daten files (kreisfreie-Stadt OB) |
 
-**Note**: Panel person/election counts are from the unharmonized `mayor_panel`. The panel only includes Buergermeisterwahl and Oberbuergermeisterwahl (not Landratswahl, VG/SG-Buergermeisterwahl). Stichwahl-only records are collapsed into the parent election cycle. Bayern dominates with 74.7% of multi-term mayors.
+**Note**: Panel person/election counts are from the unharmonized `mayor_panel`. The panel only includes Buergermeisterwahl and Oberbuergermeisterwahl (not Landratswahl, VG/SG-Buergermeisterwahl). Stichwahl-only records are collapsed into the parent election cycle.
 
 ---
 
@@ -330,7 +339,7 @@ Each mayor-election is expanded from `election_year` to the year before the next
 
 **Thüringen has two sources and largely redacted candidate names.** The Bürgermeisterwahlen of all ~596 Gemeinden (1994–2026, hauptamtlich + ehrenamtlich) are scraped from the Thüringer Landesamt für Statistik database (`wahlen.thueringen.de`) by [`code/mayoral_elections/00_th_scrape.py`](../../../code/mayoral_elections/00_th_scrape.py); the 6 kreisfreie-Stadt Oberbürgermeister elections (Erfurt/Gera/Jena/Suhl/Weimar/Eisenach) come from the raw Info/Daten files via [`00_th_mayoral_parse.py`](../../../code/mayoral_elections/00_th_mayoral_parse.py). Per § 50 Abs. 2 ThürKWO the database **redacts candidate personal data**, so for the Gemeinde Bürgermeisterwahlen `candidate_party` holds the *Wahlvorschlag* (party, or an Einzelbewerber/group label such as "Einzelbewerber", "Weitere Personen") and `candidate_name` is populated only where the Wahlvorschlag is itself a person's name. Consequently the `mayor_panel` tracks only the named subset (631 persons); the bulk of Gemeinde winners appear in the election-level datasets but not the person panel. Election dates are exact (Hauptwahl from the result page, Stichwahl from the "Stichwahl am …" block). The OB elections 1994/2000 (from the Daten HTML) are party-level only (no names). A stratified 57-election sample was independently re-verified against the live source (57/57 match).
 
-**Mecklenburg-Vorpommern is PDF-extracted** from 69 LAIV-MV "Direktwahlen" result PDFs (`data/mayoral_elections/raw/mecklenburg_vorpommern/`) by [`code/mayoral_elections/00_mv_parse.py`](../../../code/mayoral_elections/00_mv_parse.py), which writes a candidate-level intermediate (`mv_parsed.csv`) read by stages 01/01b. Coverage is limited to the kreisfreie / große Städte (Oberbürgermeister; Schwerin, Rostock, Stralsund, Greifswald, Neubrandenburg, Wismar) — smaller municipalities' hauptamtliche Bürgermeister are not published centrally by the Landeswahlleiter. AGS assignment is year-aware: the 2011 Kreisgebietsreform merged four kreisfreie Städte into Landkreise, so e.g. the 2001/2008 Greifswald OB elections carry the then-kreisfreie code `13001000` (harmonized to the 2021 municipality `13075039`), while 2015+ elections carry `13075039` directly. One source quirk: in the **Greifswald 2015 Stichwahl** the PDF's reported Wähler (16,342) is internally inconsistent with gültige + ungültige Stimmen (16,432) by 90 votes — reproduced as printed.
+**Mecklenburg-Vorpommern is PDF-extracted** from 69 LAIV-MV "Direktwahlen" result PDFs (`data/mayoral_elections/raw/mecklenburg_vorpommern/`) by [`code/mayoral_elections/00_mv_parse.py`](../../../code/mayoral_elections/00_mv_parse.py), which writes a candidate-level intermediate (`mv_parsed.csv`) read by stages 01/01b. That central source covers only the kreisfreie / große Städte (Oberbürgermeister; Schwerin, Rostock, Stralsund, Greifswald, Neubrandenburg, Wismar) and the Landräte — the Landeswahlleitung does not publish the hauptamtliche Bürgermeister of the amtsfreien Gemeinden and refers to the **Kreiswahlleitungen** for them. Those are being collected Landkreis by Landkreis; the first delivery, from **Ludwigslust-Parchim** (2026-08-07, completed 2026-08-10), covers its five amtsfreie Gemeinden — Boizenburg/Elbe, Hagenow, Lübtheen, Ludwigslust and Parchim — with 9 rounds over 2014--2023, parsed by [`00_mv_lup_parse.py`](../../../code/mayoral_elections/00_mv_lup_parse.py) into `mv_lup_parsed.csv` (see `lup_amtsfrei/_source_manifest.csv` for per-document provenance). One limitation of that delivery is carried into the data rather than papered over: the **Parchim 2022** Bekanntmachung states no Wahlvorschlagsträger at all, so both candidates have an empty `candidate_party`. The **Hagenow 2015** Stichwahl was missing from the original zip and was supplied on request; both rounds are now present, and Thomas Möller (Die Linke) is linked across his 2015 and 2022 terms. The remaining five Landkreise are still outstanding. AGS assignment is year-aware: the 2011 Kreisgebietsreform merged four kreisfreie Städte into Landkreise, so e.g. the 2001/2008 Greifswald OB elections carry the then-kreisfreie code `13001000` (harmonized to the 2021 municipality `13075039`), while 2015+ elections carry `13075039` directly. One source quirk: in the **Greifswald 2015 Stichwahl** the PDF's reported Wähler (16,342) is internally inconsistent with gültige + ungültige Stimmen (16,432) by 90 votes — reproduced as printed.
 
 **Stichwahl completeness varies.** NRW and Bayern have both candidates in runoff elections. NS 2013 and RLP Stichwahl results list only the winner (1 candidate instead of 2). SH scrapes both Stichwahl candidates. NS only has separate Stichwahl PDFs for 2006 and 2013; other years have no candidate-level Stichwahl data.
 

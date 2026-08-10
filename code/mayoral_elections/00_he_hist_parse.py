@@ -12,9 +12,12 @@ released); the header note also warns the table only reflects what municipalitie
 have transmitted, so very recent elections can be missing.
 
 This parser makes the historical file the BASE for all Hessen cycles and GRAFTS
-candidate names from the two existing sources:
+candidate names from the existing public snapshots:
   * `he_parsed.csv` (00_he_parse_xlsx.py: May-2026 B VII m XLSX + 2024-PDF
     fallback) — winner names for the most-recent election per unit (~2017-2026).
+  * `he_pdf_parsed.csv` (00_he_parse.py: May-2024 B VII m PDF) — the elected
+    candidate and the named first Wahlvorschlag.  The latter recovers losing
+    candidate identities that the newer XLSX fallback deliberately discarded.
   * `he2026_parsed.csv` (00_he_kommunalwahl2026_scrape.py: hessenschau, %-only)
     — ALL candidate names for the 2026 cycles, matched by within-round rank with
     a vote-share tolerance check (party vocabularies differ, so no party join).
@@ -71,6 +74,7 @@ import csv
 import os
 import re
 import sys
+import unicodedata
 from collections import Counter, defaultdict
 
 import openpyxl
@@ -80,8 +84,11 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 RAW_DIR = os.path.join(ROOT, "data", "mayoral_elections", "raw", "hessen")
 XLSX = os.path.join(RAW_DIR, "Direktwahlen_in_Hessen_seit_1993.xlsx")
 HE_PARSED = os.path.join(RAW_DIR, "he_parsed.csv")       # winner names (XLSX+PDF)
+HE_PDF_PARSED = os.path.join(RAW_DIR, "he_pdf_parsed.csv")  # 2024 snapshot names
 HE_2026 = os.path.join(RAW_DIR, "he2026_parsed.csv")     # 2026 candidate names
-OUT = os.path.join(RAW_DIR, "he_hist_parsed.csv")
+OUT = os.environ.get(
+    "GERDA_HE_HIST_OUT", os.path.join(RAW_DIR, "he_hist_parsed.csv")
+)
 
 STATE, STATE_NAME = "06", "Hessen"
 SOURCE = "Direktwahlen_in_Hessen_seit_1993.xlsx"
@@ -196,11 +203,56 @@ def report_winner_traeger_mismatches(rounds):
     return n
 
 
-def graft_he_parsed(rounds):
-    """Attach winner names from he_parsed.csv; append cycles the hist file lacks."""
-    if not os.path.exists(HE_PARSED):
-        print("  he_parsed.csv not found — no winner names grafted")
-        return [], 0, 0
+def _norm_person_name(x):
+    """Order-insensitive comparison key for snapshot-vs-history name checks."""
+    text = str(x or "").casefold().replace("ß", "ss")
+    text = "".join(c for c in unicodedata.normalize("NFKD", text)
+                   if not unicodedata.combining(c))
+    tokens = re.findall(r"[0-9a-z]+", text)
+    return "".join(sorted(t for t in tokens if t not in {"dr", "prof"}))
+
+
+def _snapshot_target(key, rows, by_key, by_ags):
+    """Resolve a public-snapshot cycle to one historical round.
+
+    Exact keys cover all ordinary cases.  The same-date fallback handles the
+    Morschen 2022 Neuwahl, which the PDF labels Stichwahl while the historical
+    file correctly records it as a new Hauptwahl.  The strict full-result
+    fingerprint retains the older protection against date typos.
+    """
+    target = by_key.get(key)
+    if target is not None:
+        return target, "exact"
+
+    same_date = [rd for rd in by_ags.get(key[0], []) if rd["date"] == key[1]]
+    if len(same_date) == 1:
+        return same_date[0], "same-date"
+
+    votes = sorted(int(float(r["candidate_votes"])) for r in rows
+                   if r.get("candidate_votes", "") not in ("", "NA"))
+    valid = rows[0].get("valid_votes", "")
+    candidates = [
+        rd for rd in by_ags.get(key[0], [])
+        if votes and valid and rd["valid"] == int(float(valid))
+        and sorted(w["votes"] for w in rd["wvs"]) == votes
+    ]
+    if len(candidates) == 1:
+        return candidates[0], "fingerprint"
+    return None, "unmatched"
+
+
+def graft_snapshot(rounds, path, label, append_absent=False):
+    """Attach every identifiable candidate name in one public snapshot.
+
+    Winners map to the historical winner even when the snapshot suppresses the
+    winner's vote count.  Other named candidates map by exact votes, with party
+    used only to break vote ties.  Existing names are validated and preserved;
+    this routine never overwrites one source with another.
+    """
+    if not os.path.exists(path):
+        print(f"  {os.path.basename(path)} not found — no names grafted")
+        return [], {"grafted": 0, "already": 0, "unmatched": 0,
+                    "redated": 0, "conflicts": 0}
     by_key = {}
     by_ags = defaultdict(list)
     for rd in rounds:
@@ -208,53 +260,82 @@ def graft_he_parsed(rounds):
         by_ags[rd["ags"]].append(rd)
 
     groups = defaultdict(list)
-    for row in csv.DictReader(open(HE_PARSED, encoding="utf-8")):
+    for row in csv.DictReader(open(path, encoding="utf-8")):
         groups[(row["ags"], row["election_date"], row["round"])].append(row)
 
-    grafted, redated, appended = 0, 0, []
+    stats = {"grafted": 0, "already": 0, "unmatched": 0,
+             "redated": 0, "conflicts": 0}
+    appended = []
     for key, rows in sorted(groups.items()):
-        target = by_key.get(key)
+        target, match_method = _snapshot_target(key, rows, by_key, by_ags)
         if target is None:
-            # fingerprint: same ags + same gültige + same exact vote multiset,
-            # unique across that ags' rounds -> date/round typo in he_parsed.
-            votes = sorted(int(float(r["candidate_votes"])) for r in rows
-                           if r["candidate_votes"] not in ("", "NA"))
-            valid = rows[0]["valid_votes"]
-            cand = [rd for rd in by_ags.get(key[0], [])
-                    if votes and valid and rd["valid"] == int(float(valid))
-                    and sorted(w["votes"] for w in rd["wvs"]) == votes]
-            if len(cand) == 1:
-                target = cand[0]
-                redated += 1
-                print(f"  he_parsed date/round typo -> historical wins: "
-                      f"{key[0]} {rows[0]['ags_name'][:25]} {key[1]}/{key[2]} "
-                      f"-> {target['date']}/{target['round']}")
-            else:
+            named_rows = [r for r in rows if r.get("candidate_name", "").strip()]
+            stats["unmatched"] += len(named_rows)
+            if append_absent:
                 appended.extend(rows)
-                print(f"  he_parsed cycle ABSENT from historical file, appended: "
+                print(f"  {label} cycle ABSENT from historical file, appended: "
                       f"{key[0]} {rows[0]['ags_name'][:25]} {key[1]} {key[2]}")
-                continue
-        win = next((r for r in rows if r["is_winner"] == "TRUE"
-                    and r["candidate_name"].strip()), None)
-        if win is None or target["winner"] is None:
             continue
-        target["winner"]["name"] = win["candidate_name"].strip()
-        target["winner"]["last"] = win["candidate_last_name"].strip()
-        target["winner"]["first"] = win["candidate_first_name"].strip()
-        grafted += 1
-        # PDF-fallback rows leave the party blank for independents — only a
-        # non-empty conflicting label is worth reporting.
-        p = win["candidate_party"].strip()
-        if p and p != target["winner"]["party"]:
-            print(f"  note: grafted winner party label differs: {key} "
-                  f"he_parsed='{p}' hist='{target['winner']['party']}'")
-        # PDF rows code gender male/female, XLSX rows m/w.
-        g = {"male": "m", "female": "w"}.get(win["candidate_gender"].strip(),
-                                             win["candidate_gender"].strip())
-        if g and target["gender"] and g != target["gender"]:
-            print(f"  WARNING: winner gender disagrees at {key}: "
-                  f"he_parsed={g} hist={target['gender']}")
-    return appended, grafted, redated
+
+        if match_method != "exact":
+            stats["redated"] += 1
+            print(f"  {label} {match_method} match -> historical key: "
+                  f"{key[0]} {rows[0]['ags_name'][:25]} {key[1]}/{key[2]} "
+                  f"-> {target['date']}/{target['round']}")
+
+        for row in rows:
+            name = row.get("candidate_name", "").strip()
+            if not name:
+                continue
+
+            candidate = None
+            if row.get("is_winner") == "TRUE" and target["winner"] is not None:
+                candidate = target["winner"]
+            else:
+                raw_vote = row.get("candidate_votes", "")
+                if raw_vote not in ("", "NA"):
+                    vote = int(float(raw_vote))
+                    matches = [w for w in target["wvs"] if w["votes"] == vote]
+                    party = row.get("candidate_party", "").strip()
+                    if len(matches) > 1 and party:
+                        party_matches = [w for w in matches if w["party"] == party]
+                        if len(party_matches) == 1:
+                            matches = party_matches
+                    if len(matches) == 1:
+                        candidate = matches[0]
+
+            if candidate is None:
+                stats["unmatched"] += 1
+                print(f"  WARNING: named {label} candidate could not be matched: "
+                      f"{key} '{name}' votes={row.get('candidate_votes', '')}")
+                continue
+
+            if candidate.get("name", ""):
+                if _norm_person_name(candidate["name"]) != _norm_person_name(name):
+                    stats["conflicts"] += 1
+                    print(f"  WARNING: {label} name '{name}' conflicts with "
+                          f"already-grafted '{candidate['name']}' at {key}")
+                else:
+                    stats["already"] += 1
+                continue
+
+            candidate["name"] = name
+            candidate["last"] = row.get("candidate_last_name", "").strip()
+            candidate["first"] = row.get("candidate_first_name", "").strip()
+            stats["grafted"] += 1
+
+            if candidate is target["winner"]:
+                party = row.get("candidate_party", "").strip()
+                if party and party != candidate["party"]:
+                    print(f"  note: grafted winner party label differs: {key} "
+                          f"{label}='{party}' hist='{candidate['party']}'")
+                gender = row.get("candidate_gender", "").strip()
+                gender = {"male": "m", "female": "w"}.get(gender, gender)
+                if gender and target["gender"] and gender != target["gender"]:
+                    print(f"  WARNING: winner gender disagrees at {key}: "
+                          f"{label}={gender} hist={target['gender']}")
+
+    return appended, stats
 
 
 def graft_hessenschau(rounds):
@@ -305,17 +386,21 @@ def graft_hessenschau(rounds):
     return grafted, skipped
 
 
-def propagate_winner_names(rounds):
-    """Copy a named Stichwahl winner onto the same person's Hauptwahl row so the
-    01b wide pivot pairs the two rounds by name. Only when the winner's Träger
-    is unique in BOTH rounds (redacted 'Einzelbewerbung' twins stay unmatched)."""
+def propagate_stichwahl_names(rounds):
+    """Propagate candidate names between Hauptwahl and Stichwahl records.
+
+    Stage 01b pairs the two rounds by public identity.  A name published only
+    for the runoff must therefore also be present on the corresponding first-
+    round record; otherwise one real candidate becomes two wide rows.  Copy
+    only when the candidate's Träger is unique in BOTH rounds (redacted
+    ``Einzelbewerbung`` twins remain deliberately unmatched).
+    """
     by_ags = defaultdict(list)
     for rd in rounds:
         by_ags[rd["ags"]].append(rd)
     n = 0
     for rd in rounds:
-        w = rd["winner"]
-        if rd["round"] != "stichwahl" or not w or "name" not in w:
+        if rd["round"] != "stichwahl":
             continue
         hw = [x for x in by_ags[rd["ags"]]
               if x["round"] == "hauptwahl" and x["date"] < rd["date"]
@@ -323,12 +408,24 @@ def propagate_winner_names(rounds):
         hw = max(hw, key=lambda x: x["date"], default=None)
         if hw is None or (_days_between(hw["date"], rd["date"]) >= 60):
             continue
-        if sum(1 for v in rd["wvs"] if v["party"] == w["party"]) != 1:
-            continue
-        cands = [v for v in hw["wvs"] if v["party"] == w["party"]]
-        if len(cands) == 1 and "name" not in cands[0]:
-            cands[0].update(name=w["name"], last=w["last"], first=w["first"])
-            n += 1
+        for w in rd["wvs"]:
+            if sum(1 for v in rd["wvs"] if v["party"] == w["party"]) != 1:
+                continue
+            cands = [v for v in hw["wvs"] if v["party"] == w["party"]]
+            if len(cands) != 1:
+                continue
+            h = cands[0]
+            if "name" in w and "name" not in h:
+                h.update(name=w["name"], last=w["last"], first=w["first"])
+                n += 1
+            elif "name" in h and "name" not in w:
+                w.update(name=h["name"], last=h["last"], first=h["first"])
+                n += 1
+            elif "name" in h and "name" in w and \
+                    _norm_person_name(h["name"]) != _norm_person_name(w["name"]):
+                print(f"  WARNING: round-name conflict at {rd['ags']} "
+                      f"{hw['date']}/{rd['date']} party={w['party']}: "
+                      f"HW='{h['name']}' SW='{w['name']}'")
     return n
 
 
@@ -405,18 +502,35 @@ def main():
     assert len(gross) <= 2, f"{len(gross)} rows with printed-% deviation > 0.06 pp"
     print(f"  max |votes/valid - printed %|: {max(x[0] for x in off):.4f} pp")
 
-    print("\n--- grafting winner names from he_parsed.csv ---")
-    appended, grafted, redated = graft_he_parsed(rounds)
-    print(f"  winner names grafted: {grafted} (incl. {redated} via result "
-          f"fingerprint across a date/round typo) | appended he_parsed rows: "
-          f"{len(appended)}")
+    print("\n--- grafting names from he_parsed.csv ---")
+    appended, latest_stats = graft_snapshot(
+        rounds, HE_PARSED, "he_parsed", append_absent=True
+    )
+    print(f"  names grafted: {latest_stats['grafted']} | already present: "
+          f"{latest_stats['already']} | unmatched: {latest_stats['unmatched']} "
+          f"| non-exact cycle matches: {latest_stats['redated']} | conflicts: "
+          f"{latest_stats['conflicts']} | appended rows: {len(appended)}")
+
+    print("\n--- grafting additional names from May-2024 PDF snapshot ---")
+    _, pdf_stats = graft_snapshot(
+        rounds, HE_PDF_PARSED, "he_pdf_parsed", append_absent=False
+    )
+    print(f"  names grafted: {pdf_stats['grafted']} | already present: "
+          f"{pdf_stats['already']} | unmatched: {pdf_stats['unmatched']} "
+          f"| non-exact cycle matches: {pdf_stats['redated']} | conflicts: "
+          f"{pdf_stats['conflicts']}")
+    assert pdf_stats["grafted"] + pdf_stats["already"] == 671, (
+        "May-2024 PDF should contribute or confirm all 671 published names; "
+        f"got {pdf_stats}"
+    )
+    assert pdf_stats["unmatched"] == 0 and pdf_stats["conflicts"] == 0
 
     print("\n--- grafting 2026 candidate names from hessenschau ---")
     hs_grafted, hs_skipped = graft_hessenschau(rounds)
     print(f"  candidate names grafted: {hs_grafted} | skipped: {hs_skipped}")
 
-    n_prop = propagate_winner_names(rounds)
-    print(f"  Stichwahl winner names propagated to their Hauptwahl row: {n_prop}")
+    n_prop = propagate_stichwahl_names(rounds)
+    print(f"  Stichwahl candidate names propagated to their Hauptwahl row: {n_prop}")
 
     out = emit(rounds, appended)
     by_type = Counter(x["election_type"] for x in out)

@@ -10,6 +10,13 @@ Output: data/mayoral_elections/processed/gender_guesser_lookup.csv
 
 The lookup maps candidate_first_name → gender (m/w/empty) with method info.
 The companion R script 04_candidate_characteristics.R reads this CSV.
+
+When the gitignored restricted twin
+data/mayoral_elections/final_restricted/mayoral_candidates_restricted.rds exists,
+the first names it holds and the published file does not — the Sachsen-Anhalt
+losing candidates — are classified into a second, also gitignored lookup,
+gender_guesser_lookup_restricted.csv. The committed lookup is byte-identical
+either way.
 """
 
 import csv
@@ -33,6 +40,16 @@ PROJ_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 INPUT_RDS = os.path.join(PROJ_ROOT, "data", "mayoral_elections", "final", "mayoral_candidates.rds")
 OUTPUT_CSV = os.path.join(PROJ_ROOT, "data", "mayoral_elections", "processed", "gender_guesser_lookup.csv")
 NAMES_TMP = "/tmp/all_first_names.csv"
+
+# Restricted (scientific-use-only) twin: same candidates, but the Sachsen-Anhalt
+# losers keep their names. Its first names go to a SEPARATE, gitignored lookup
+# so the committed one above stays free of them. Both files are optional inputs
+# — this script is a no-op on them when the restricted twin has not been built.
+RESTRICTED_RDS = os.path.join(PROJ_ROOT, "data", "mayoral_elections",
+                              "final_restricted", "mayoral_candidates_restricted.rds")
+RESTRICTED_OUTPUT_CSV = os.path.join(PROJ_ROOT, "data", "mayoral_elections", "processed",
+                                     "gender_guesser_lookup_restricted.csv")
+RESTRICTED_NAMES_TMP = "/tmp/all_first_names_restricted.csv"
 
 # ---------------------------------------------------------------------------
 # Manual gender overrides — typos, rare names, foreign names, ambiguous
@@ -250,30 +267,26 @@ def classify_gender(name_clean, raw_name, detector):
 # Main
 # ---------------------------------------------------------------------------
 
-def main():
-    d = gender.Detector()
-
-    # Step 1: Extract unique first names from RDS via R
-    print("Extracting unique first names from candidates data...")
+def extract_first_names(rds_path, tmp_path):
+    """Unique candidate_first_name values in an .rds candidate file, via R."""
     r_code = f'''
     library(data.table)
-    cand <- readRDS("{INPUT_RDS}")
+    cand <- readRDS("{rds_path}")
     setDT(cand)
     names_dt <- cand[!is.na(candidate_first_name), .(count = .N), by = candidate_first_name]
-    fwrite(names_dt, "{NAMES_TMP}")
+    fwrite(names_dt, "{tmp_path}")
     cat(sprintf("Wrote %d unique first names\\n", nrow(names_dt)))
     '''
     subprocess.run(["Rscript", "-e", r_code], capture_output=True, text=True, check=True)
-
-    # Step 2: Read names
     names = []
-    with open(NAMES_TMP, "r") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
+    with open(tmp_path, "r") as f:
+        for row in csv.DictReader(f):
             names.append(row["candidate_first_name"])
-    print(f"Total unique first_name values: {len(names)}")
+    return names
 
-    # Step 3: Classify
+
+def classify_names(names, d):
+    """Run the full clean → override → gender-guesser cascade over a name list."""
     results = []
     stats = {"classified": 0, "not_person": 0, "initials": 0, "empty": 0,
              "too_short": 0, "unknown": 0, "andy": 0, "manual_exclude": 0}
@@ -310,17 +323,25 @@ def main():
             results.append((raw_name, clean, gender_result, method))
             stats["classified"] += 1
 
-    # Step 4: Write output (pipe-delimited to avoid quoting issues with names
-    # containing double quotes, e.g. 'Marcel "Bratwurst"')
-    os.makedirs(os.path.dirname(OUTPUT_CSV), exist_ok=True)
-    with open(OUTPUT_CSV, "w") as f:
+    return results, stats
+
+
+def write_lookup(path, results):
+    """Pipe-delimited so names containing double quotes ('Marcel "Bratwurst"')
+    need no quoting."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
         f.write("candidate_first_name|name_clean|gender|method\n")
         for raw, clean, g, method in results:
             f.write(f"{raw}|{clean}|{g or ''}|{method}\n")
 
-    # Summary
+
+def report(results, stats, label, out_path):
     total = sum(stats.values())
-    print(f"\n=== Classification Results ===")
+    if not total:
+        print(f"\n=== {label}: nothing to classify ===")
+        return
+    print(f"\n=== Classification Results — {label} ===")
     for k, v in sorted(stats.items(), key=lambda x: -x[1]):
         print(f"  {k}: {v} ({100*v/total:.1f}%)")
 
@@ -333,8 +354,41 @@ def main():
     else:
         print(f"\nAll classifiable names have been classified.")
 
-    print(f"\nOutput: {OUTPUT_CSV}")
+    print(f"\nOutput: {out_path}")
     print(f"Classified: {stats['classified']}/{total} ({100*stats['classified']/total:.1f}%)")
+
+
+def main():
+    d = gender.Detector()
+
+    # ---- Published (anonymised) candidates -> the tracked lookup ----
+    print("Extracting unique first names from candidates data...")
+    names = extract_first_names(INPUT_RDS, NAMES_TMP)
+    print(f"Total unique first_name values: {len(names)}")
+
+    results, stats = classify_names(names, d)
+    write_lookup(OUTPUT_CSV, results)
+    report(results, stats, "published", OUTPUT_CSV)
+
+    # ---- RESTRICTED twin -> a separate, gitignored lookup ----
+    # The Sachsen-Anhalt losing candidates are stripped from the published file,
+    # so their first names never reach the lookup above and 04 would leave them
+    # genderless. Classify the EXTRA names here and keep them in their own file:
+    # gender_guesser_lookup.csv is committed, and a bare list of ST loser first
+    # names has no business in the repository. Scientific use only.
+    if not os.path.exists(RESTRICTED_RDS):
+        print("\nNo restricted candidate file — skipping the restricted lookup.")
+        return
+
+    print("\nExtracting first names from the RESTRICTED candidates data...")
+    all_names = extract_first_names(RESTRICTED_RDS, RESTRICTED_NAMES_TMP)
+    extra = [n for n in all_names if n not in set(names)]
+    print(f"Total unique first_name values: {len(all_names)} "
+          f"({len(extra)} not in the published file)")
+
+    extra_results, extra_stats = classify_names(extra, d)
+    write_lookup(RESTRICTED_OUTPUT_CSV, extra_results)
+    report(extra_results, extra_stats, "restricted-only names", RESTRICTED_OUTPUT_CSV)
 
 
 if __name__ == "__main__":
