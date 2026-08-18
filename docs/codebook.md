@@ -150,10 +150,19 @@ changes what `valid_votes` counts:
   ballots and `valid_votes / number_voters` is a genuine validity rate:
   Rheinland-Pfalz in all years (both the municipal and the county file)
   and Bayern in 2026.
+- **Rheinland-Pfalz state elections 1979–2016** carry no turnout at
+  municipality level at all: `eligible_voters`, `number_voters` and
+  `invalid_votes` are `NA` because the Landeswahlleiter file supplies only
+  party votes. `valid_votes` and every party share are complete, and match
+  the constituency-level file exactly. 2021 onwards has the full block.
 - **Hamburg and Bremen since 2011** use a 5-vote personalized list
   system, so `valid_votes ~ 5 x number_voters` in state elections.
 - **Bayern** state elections count Gesamtstimmen (Erst- plus
-  Zweitstimmen), as both ballots count towards seat allocation.
+  Zweitstimmen), as both ballots count towards seat allocation. The
+  constituency-level file (`ltw_wkr_unharm`) keeps the two ballots apart,
+  so summing its Bayern Zweitstimmen gives about half the municipality
+  file's `valid_votes`. That is a measure difference, not a discrepancy:
+  do not compare the two datasets' Bavarian vote counts directly.
 
 ## Flag columns
 

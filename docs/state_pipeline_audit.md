@@ -20,6 +20,60 @@ The old pipeline (`01_state_unharm.R`) queried the DESTATIS Regionalstatistik/GE
 
 **No degradation in any state.**
 
+## Pooled Briefwahl dropped instead of allocated (found and fixed August 2026)
+
+Found by rolling the Gemeinde-level `state_unharm` and the constituency-level
+`ltw_wkr_unharm` up to statewide totals and comparing them (section 21 of
+`code/state_elections_wahlkreis/99_audit.R`). Turnout was **understated** in
+five states, by up to 12.6 % of a state's voters, because postal votes counted in
+Wahlbezirke that belong to no single municipality were filtered away with the
+blank and total rows instead of being distributed.
+
+Each case was proved against the source's **own statewide row**, which matches
+the constituency pipeline exactly; the municipality sum did not.
+
+| State | Years | What was dropped | Voters recovered |
+|---|---|---|---|
+| Sachsen-Anhalt | 1990–2016 | postal Wahlbezirke booked on the Kreis (5-digit), the Land (`"15"`) or a 10-digit VG code — the parser kept only `^15\d{6}$` | 1990: 58,753 · 1994: 88,283 · 1998: 97,915 · 2002: 101,281 · 2006: 49,285 · 2011: 16,686 · 2016: 20,334 |
+| Sachsen | 1990, 1994, 1999 | per-Wahlkreis rows `LW99-16-BRIEF "Briefwahl WK 16"` (Wahlberechtigte = `x`) | 134,865 · 24,640 · 22,743 |
+| Niedersachsen | 2008–2022 | the Samtgemeinde row's residual over its member Gemeinden — postal votes are counted at Samtgemeinde level | 56,737 · 72,499 · 129,155 · 167,256 |
+| Brandenburg | 2009 | the `Briefwahlergebnis` row of each Landkreis sheet | 178,946 |
+| Brandenburg | 2019 | the `Amt` rows, which hold *only* postal votes (Wahlberechtigte = 0) | 35,999 |
+
+Distribution follows the convention already used elsewhere in `01b`: weighted by
+eligible voters within the pooled unit, rounded, and `eligible_voters` is left
+alone (a postal voter is already in their municipality's electorate). The shared
+helper is `allocate_pooled_counts()` at the top of the Sachsen-Anhalt section; it
+falls back to progressively shorter code prefixes so a block booked on a code
+with no municipalities under it still lands somewhere, and it warns rather than
+silently dropping anything it cannot place.
+
+**Two traps worth remembering.** Brandenburg 2019 hid behind *two* of them: the
+row-type filter tested `== "Amt"` while the column reads `"Amt 5101"`, and
+`grepl("^Amt\\b", ...)` does not work either because R's default TRE engine does
+not honour `\b` — so the block silently never ran. Its Amt rows also are *not*
+aggregates of their members, so the usual `Amt − Σ Gemeinden` residual formula
+would have subtracted 118,144 voters; they are pure postal residuals and must be
+added straight through. The join key is Kreis(5) + Amt number, because the Amt
+row reads `12060000 03` while its member reads `12060024 03`.
+
+**Result.** 59 of the 64 comparable state-years now agree with the constituency
+pipeline within 0.05 % (23 before). What remains, and why:
+
+- **Brandenburg 1990, 1994, 1999** — 11.8 %, 10.1 % and 27.1 % short. These come
+  from OCR of scanned PDFs (`bb_*_ocr.csv`) and are the long-documented Briefwahl
+  misallocation; not fixable without re-digitising the source.
+- **Sachsen 1994** — the *constituency* file is the incomplete one here (49 of 60
+  Wahlkreise, reconstructed from the Internet Archive). The municipality file now
+  matches the source's state row to 2 voters.
+- **Sachsen-Anhalt 2011** — 1,273 voters (0.13 %) still missing, from rows that
+  carry an 8-digit AGS yet do not survive aggregation. Unexplained.
+- **Niedersachsen** — ±0.05 % on eligible voters, concentrated in three Kreise
+  (Goslar +3,319, Celle −635, Heidekreis −436 in 2017), where the source's own
+  Kreis row does not equal the sum of its municipalities. Unexplained.
+- **Bayern** and **Rheinland-Pfalz 1979–2016** are measure and coverage
+  differences, not defects — see `docs/codebook.md`.
+
 ## Pipeline files
 
 | Script | Stage | Description |

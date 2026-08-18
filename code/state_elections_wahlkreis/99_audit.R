@@ -273,18 +273,18 @@ sec("21. CROSS-PIPELINE: Wahlkreis vs GEMEINDE-level state elections")
 # LANDESSTIMMEN, so summing both to the state total must agree to the vote.
 # This is what independently confirms the Hessen 2013/2018 PDF parse.
 #
-# The broad sweep is INFORMATIONAL, not a pass/fail on this pipeline - the two
-# datasets do not always measure the same thing. Known and expected:
-#   Bayern    ratio ~0.50 - the Gemeinde-level files hold GESAMTSTIMMEN (Erst +
-#             Zweit, the official Bavarian measure); the Stimmkreis files keep
-#             the two ballots apart, so the Zweitstimmen are half.
-#   RP        2001-2016 reproduces every party EXACTLY but has no Gemeinde-level
-#             turnout block at all.
-#   BB/ST/NI  ratio 1.01-1.42 - the Gemeinde-level files omit pooled Briefwahl in
-#             some years (cf. flag_briefwahl_only), so the constituency totals are
-#             higher.
-# All of these are properties of the Gemeinde-level pipeline. Hessen, checked
-# hard below, is exact.
+# This comparison is what found the pooled-Briefwahl defect in the Gemeinde-level
+# pipeline in August 2026 (ST 1990-2016, SN 1990/1994/1999, NI 2008-2022, BB 2009,
+# BB 2019 - see docs/state_pipeline_audit.md). Those are fixed; the checks below
+# pin the fix and enumerate what legitimately still differs:
+#   Bayern      ratio ~0.50 - the Gemeinde-level files hold GESAMTSTIMMEN (Erst +
+#               Zweit, the official Bavarian measure); the Stimmkreis files keep
+#               the ballots apart. A measure difference, not a defect.
+#   RP          1979-2016 has NO municipality-level turnout in the source (NA,
+#               which sums to 0 here); every party matches exactly.
+#   BB 90/94/99 OCR-derived scans whose Briefwahl misallocation cannot be repaired
+#               from the current source.
+#   SN 1994     the CONSTITUENCY side is the incomplete one (49 of 60 Wahlkreise).
 mp <- file.path(FIN, "state_unharm.rds")
 if (!file.exists(mp)) {
   wn("state_unharm.rds not found - cross-pipeline check skipped")
@@ -331,6 +331,38 @@ if (!file.exists(mp)) {
     print(off[, .(comparisons = .N, median_wkr_over_gemeinde = round(median(ratio), 3)),
               by = state][order(state)])
   }
+  # (c) REGRESSION GUARD on the August-2026 pooled-Briefwahl fix. Until postal
+  #     rows booked above municipality level were distributed instead of dropped,
+  #     each of these state-years was short by `was_short` voters. The expected
+  #     totals below were each verified against the SOURCE's own statewide row
+  #     (and, where the constituency file covers the year, against that too), so
+  #     they are official figures, not merely the current output. Calibrated:
+  #     every row fires on the pre-fix file.
+  ## NB: the column is `sy`, not `key` -- data.table() treats a `key=` argument
+  ## as the table's key, not as a column.
+  fixed_years <- data.table(
+    sy = c("03_2008","03_2013","03_2017","03_2022","12_2009","12_2019",
+            "14_1990","14_1994","14_1999","15_1990","15_1994","15_1998",
+            "15_2002","15_2006","15_2011","15_2016"),
+    expected = c(3477604, 3621817, 3850064, 3657390, 1425073, 1280895,
+                 2699703, 2093817, 2196285, 1455625, 1182220, 1535441,
+                 1190839, 923277, 1016229, 1147497),
+    was_short = c(56737, 71116, 127956, 167833, 178942, 35999,
+                  134865, 24640, 22740, 58762, 88280, 97907,
+                  101273, 49286, 17959, 20335))
+  gm <- as.data.table(readRDS(mp))[, .(vot = sum(number_voters, na.rm = TRUE)),
+                                   by = .(sy = paste0(state, "_", election_year))]
+  fx <- merge(fixed_years, gm, by = "sy", all.x = TRUE)
+  fx[, off := abs(vot - expected) / expected]
+  bad_fx <- fx[is.na(off) | off > 0.002]
+  if (nrow(bad_fx) == 0) {
+    ok(sprintf("pooled-Briefwahl fix holds in all %d repaired state-years (would be %s voters short without it)",
+               nrow(fx), format(sum(fx$was_short), big.mark = ",")))
+  } else {
+    bad("pooled Briefwahl looks dropped again in the Gemeinde-level pipeline:")
+    print(bad_fx[, .(sy, was_short, expected, got = vot, off = round(off, 4))])
+  }
+
   cat(sprintf("    turnout block exact in %d of %d shared state-years (RP 2001-2016 has no Gemeinde-level turnout)\n",
               nrow(cmpx[abs(elig.w-elig.m) < 0.5 & abs(vot.w-vot.m) < 0.5 & abs(val.w-val.m) < 0.5]),
               nrow(cmpx)))
