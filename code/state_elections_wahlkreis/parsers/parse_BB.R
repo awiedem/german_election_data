@@ -143,7 +143,7 @@ parse_wb_sheet <- function(file, sheet, stimme, year) {
     election_year = as.integer(year),
     election_date = ELECTION_DATES[[as.character(year)]],
     wkr_nr = sprintf("%03d", wkr_int),
-    wkr_name = sprintf("Landtagswahlkreis %02d", wkr_int),
+    wkr_name = NA_character_,   # filled from the per-year name table below
     stimme = stimme,
     party_raw = as.character(party_raw)
   )]
@@ -182,6 +182,34 @@ for (p in plan) {
 }
 
 out <- rbindlist(all_long, use.names = TRUE)
+
+# ---- Wahlkreis NAMES -------------------------------------------------------
+# The Downloadtabelle workbooks carry the Landtagswahlkreis only as a number, so
+# the names come from each election's own Statistischer Bericht via the Stage-0
+# script 00_bb_wkr_names.py.  They are per-year: Brandenburg renumbered its
+# Wahlkreise with the 1993 Kreisgebietsreform and again with the Wahlkreis-
+# aenderungsgesetz of 23 Oct 1998, so WK 11 is "Oranienburg I" (1990),
+# "Havelland I" (1994/1999) and "Uckermark I" (2004 onwards).
+names_csv <- here("data", "state_elections", "processed", "wahlkreis",
+                  "wkr_names", "BB_wkr_names.csv")
+if (!file.exists(names_csv)) {
+  stop("Missing ", names_csv,
+       "\n  Run first:  python3 code/state_elections_wahlkreis/parsers/00_bb_wkr_names.py")
+}
+wkr_names <- fread(names_csv, encoding = "UTF-8",
+                   colClasses = list(character = c("wkr_nr", "wkr_name")))
+wkr_names[, `:=`(election_year = as.integer(election_year),
+                 wkr_int = as.integer(wkr_nr), wkr_nr = NULL)]
+out[, wkr_int := as.integer(wkr_nr)]
+out[, wkr_name := NULL]
+out <- merge(out, wkr_names, by = c("election_year", "wkr_int"), all.x = TRUE)
+if (anyNA(out$wkr_name)) {
+  print(unique(out[is.na(wkr_name), .(election_year, wkr_int)]))
+  stop("BB: Wahlkreis names missing for the (year, Wahlkreis) pairs above")
+}
+out[, wkr_int := NULL]
+cat(sprintf("Wahlkreis names joined: %d distinct names over %d election years\n",
+            uniqueN(out$wkr_name), uniqueN(out$election_year)))
 
 # column order
 col_order <- c("state_abbr", "state", "election_year", "election_date",

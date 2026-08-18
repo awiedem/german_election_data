@@ -665,8 +665,42 @@ for (sp in modern_spec) {
   }
 }
 
-# ---- WRITE -----------------------------------------------------------------
+# ---- Wahlkreis NAMES for the pre-2016 years --------------------------------
+# The LAIV-MV Wahlbezirk workbooks (1994-2011) carry the Wahlkreis only as a
+# number, so those years came out with wkr_name = NA.  The names are supplied by
+# the Stage-0 script 00_mv_wkr_names.py, which reads section 1.3 "Uebersicht
+# ueber die Wahlkreise" of each Statistischer Bericht (2002/2006/2011) and
+# extends 2002 back to 1994/1998 after proving, Gemeinde by Gemeinde, that those
+# elections used the same Wahlkreiseinteilung.  2016/2021 already have names
+# from their XLSX reports and are left untouched.
 final <- rbindlist(emitted, use.names = TRUE)
+
+mv_names_csv <- here("data", "state_elections", "processed", "wahlkreis",
+                     "wkr_names", "MV_wkr_names.csv")
+if (!file.exists(mv_names_csv)) {
+  stop("Missing ", mv_names_csv,
+       "\n  Run first:  python3 code/state_elections_wahlkreis/parsers/00_mv_wkr_names.py")
+}
+mv_names <- fread(mv_names_csv, encoding = "UTF-8",
+                  colClasses = list(character = c("wkr_nr", "wkr_name")))
+mv_names[, `:=`(election_year = as.integer(election_year),
+                wkr_int = as.integer(wkr_nr),
+                wkr_name_src = wkr_name, wkr_nr = NULL, wkr_name = NULL)]
+final[, wkr_int := as.integer(wkr_nr)]
+final <- merge(final, mv_names[, .(election_year, wkr_int, wkr_name_src)],
+               by = c("election_year", "wkr_int"), all.x = TRUE)
+# fill ONLY where the source workbook gave no name; never overwrite a real one
+n_filled <- sum(is.na(final$wkr_name) & !is.na(final$wkr_name_src))
+final[is.na(wkr_name) & !is.na(wkr_name_src), wkr_name := wkr_name_src]
+final[, c("wkr_int", "wkr_name_src") := NULL]
+if (anyNA(final$wkr_name)) {
+  print(unique(final[is.na(wkr_name), .(election_year, wkr_nr)]))
+  stop("MV: Wahlkreis names still missing for the (year, Wahlkreis) pairs above")
+}
+message(sprintf("Wahlkreis names filled for %d rows; %d distinct names over %d years",
+                n_filled, uniqueN(final$wkr_name), uniqueN(final$election_year)))
+
+# ---- WRITE -----------------------------------------------------------------
 setcolorder(final, c("state_abbr","state","election_year","election_date",
                      "wkr_nr","wkr_name","stimme","eligible_voters",
                      "number_voters","valid_votes","invalid_votes",

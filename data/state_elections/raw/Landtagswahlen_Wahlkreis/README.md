@@ -31,7 +31,7 @@ Per-state official sources only (each state's `README.md` has exact URLs):
 | Brandenburg | Wahlkreis (44) | 1990–2024 | most | some | **complete**; includes a `1990–2024 Lange-Reihe` workbook |
 | Bremen | **Wahlbereich**/Stadtteil/Ortsteil | 1947, 1991, 2003–2023 | most | some | no single-member Wahlkreise; mid-history patchy |
 | Hamburg | Wahlkreis (since 2008) / Wahlbezirk | 1957–2025 | 2001–2025 | 1957,1961,1974,1986 | Wahlkreise exist only since 2008; pre-2008 is Wahlbezirk/Stadtteil |
-| Hessen | Wahlkreis (55) | 1946–2023 | 2 recent | 1946–2018 (PDF/TIF) | near-**complete** historical series; mostly scans |
+| Hessen | Wahlkreis (55) | 1946–2023 | 2023 (CSV) + **2018 & 2013 parsed from the B VII 2-4 report PDF** | 1946–2009 (PDF/TIF) | near-**complete** historical series; mostly scans |
 | Mecklenburg-Vorpommern | Wahlkreis (36) | 1990–2021 | most | some | **complete** |
 | Niedersachsen | Wahlkreis (87) | 1947, 1990–2022 | 1998–2022 (.tar.gz/.xml) | few | historical 1951–1986 not obtained (archive PDFs only) |
 | Nordrhein-Westfalen | Wahlkreis (128) | 1954–2022 | 2000–2022 (**.txt**, IT.NRW) | 1954,1958,1962 | gap 1966–1995 not obtained |
@@ -65,6 +65,14 @@ A targeted second pass (`statistischebibliothek.de` SOLR-proxy + state archives)
   (West-Berlin); **SH** 1947,1950,1962,1967,1971,1975. The statistical offices' digitised Landtagswahl
   series for these states start only ~2000–2010; older constituency results exist only as printed
   Statistische Berichte (IT.NRW webshop, Einzelschriften, library/Staatsarchiv) requiring physical scanning.
+
+**August 2026 — Hessen 2018 and 2013 ingested.** The B VII 2-4 – 5j/18 report turned out to
+carry a text layer, and its Table 12 reports 2018 *and* 2013 per Wahlkreis (Wahlkreisstimmen
+and Landesstimmen), so both elections were parsed directly rather than OCR'd — see
+`code/state_elections_wahlkreis/README.md`. The 2013 figures are the office's own back-cast
+onto the 2018 Wahlkreiseinteilung and are flagged as such in the published data. The same
+route (a digitised results report with a text layer) is worth checking before assuming any
+remaining year needs OCR.
 
 **Realistic path for the remaining gaps:** GERDA already holds these states' historical results at
 **Gemeinde level** (`../Landtagswahlen/`); the missing Wahlkreis figures can be **reconstructed** by

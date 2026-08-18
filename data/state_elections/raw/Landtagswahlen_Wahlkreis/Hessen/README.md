@@ -37,6 +37,30 @@ turnout, valid/invalid votes and per-party counts for both **Wahlkreisstimmen**
 (Erststimme) and **Landesstimmen** (Zweitstimme). This is the machine-readable
 constituency-level source for 2023.
 
+## Status in the GERDA pipeline (August 2026)
+
+**2023, 2018 and 2013 are all ingested.** 2023 comes from the open-data CSV; 2018 **and**
+2013 are parsed out of `HE_2018_Landtagswahl_Wahlkreis_BVII2-4.pdf` by
+`code/state_elections_wahlkreis/parsers/00_he_pdf_parse.py`. That report has a usable text
+layer, so no OCR was needed, and its Table 12 gives both elections per Wahlkreis for
+Wahlkreisstimmen (12.1) and Landesstimmen (12.2); Table 15 breaks out the six parties that
+Table 12.2 lumps into "Sonstige" for 2018; Table 1 (statewide, parties named explicitly) is
+used as the validation fixture — the 55 Wahlkreise must reproduce it exactly for every party
+in all four series.
+
+`HE_2018_2013_Landtagswahl_Wahlkreis_Vergleichszahlen_BVII2-1.pdf` is **not** a data source
+but the independent cross-check: it reports the same 2013-on-2018-boundary results, and the
+two documents agree exactly in 53 of 55 Wahlkreise. They differ only on Frankfurt am Main I
+(WK 34) and IV (WK 37), by exactly the Stadtbezirk-531 (Schwanheim) transfer that the 2018
+Wahlkreiseinteilung made — the July-2018 Vergleichszahlen recomputed it, the August-2024
+results report did not. GERDA publishes the B VII 2-4 figures and flags the difference
+(`flag_wkr_boundaries_recomputed`).
+
+For anyone who needs 2013 strictly on the 2018 boundaries, the Vergleichszahlen values for
+those two constituencies are: WK 34 Wahlberechtigte 62,530 / Wähler 38,927 (WK 37: 63,980 /
+46,044). It also breaks REP out of the 2013 residual per Wahlkreis, which B VII 2-4 does not;
+GERDA keeps the single-source B VII 2-4 breakdown, so REP 2013 sits inside `sonstige`.
+
 ## Election years that exist but are NOT downloadable at Wahlkreis level
 
 Hessen has held Landtagswahlen in: 1946, 1950, 1954, 1958, 1962, 1966, 1970, 1974,
@@ -50,7 +74,7 @@ Endgültige Ergebnisse"), which have **not** been digitized as standalone downlo
 
 | Year | Reason not downloadable | Source hint |
 |------|--------------------------|-------------|
-| 2013 | No standalone machine-readable / PDF results report online. Wahlkreis numbers appear only as comparison columns inside the 2018 Vergleichszahlen PDF (downloaded). | Printed report B VII 2-4 – 5j/13. Request from HSL (statistik.hessen.de). |
+| 2013 | **Now ingested** from the 2018 report's comparison columns (see above), but recomputed onto the 2018 Wahlkreiseinteilung. A genuine 2013-boundary source would still require the printed report B VII 2-4 – 5j/13. | Printed report B VII 2-4 – 5j/13. Request from HSL (statistik.hessen.de). |
 | 2009 | Results report (B VII 2-4 – 5j/09) not digitized; library has only the representative-statistics issue (B VII 2-5, a sample survey — not full Wahlkreis results). | HSL print archive; Statistische Bibliothek series HESerie_mods_00000153 (Wahlbeteiligung only). |
 | 2008 | Same as 2009 (only B VII 2-5 Wahlbeteiligung digitized, not the full results report). | HSL print archive. |
 | 2003 | Results published only as kreisfreie-Städte/Landkreise and Gemeinde tables; no Wahlkreis-level downloadable file. | Hessischer Landtag LIS archive (starweb.hessen.de/starweb/LIS/wahlenhessen.htm) links to HSL tables, but no Wahlkreis breakdown download. |

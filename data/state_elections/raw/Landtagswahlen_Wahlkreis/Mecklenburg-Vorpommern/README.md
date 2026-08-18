@@ -87,3 +87,28 @@ state-summary PDFs already present. 2016/2021 use the newer `serviceassistent` X
   (linked from the 1994/1998 result pages). These are HTML views of the same data
   already captured in the XLS files above; no additional bulk file download is offered.
 - The next Landtagswahl is scheduled for 2026-09-20 (not yet held as of download date).
+
+
+## Wahlkreis NAMES (added August 2026)
+
+The LAIV-MV "nach Wahlbezirken" workbooks used for 1994–2011 carry the Wahlkreis as a
+**number only**, so those five elections were published with an empty `wkr_name` until
+August 2026. `code/state_elections_wahlkreis/parsers/00_mv_wkr_names.py` now supplies them:
+
+- **2002, 2006, 2011** — section **1.3 "Übersicht über die Wahlkreise des Landes
+  Mecklenburg-Vorpommern"** of each year's own Statistischer Bericht (already in this
+  folder). That section, not the result tables: the per-Wahlkreis result tables abbreviate
+  the long names (`Mecklenb.-Stre I/Mür II`) and wrap them across two lines. Extraction is
+  coordinate-based — the "Gebiet des Wahlkreises" column edge is located from the wrapped
+  description lines (by mode, not minimum: the page footer and the `1)` / `______` footnotes
+  also start below a numbered row and at the far-left margin).
+- **1994, 1998** — no name is published anywhere in the available material. They take the
+  2002 names, but only after **proving they are the same units**: every Gemeinde appearing in
+  both years' official "nach Gemeinden" workbook must carry the same Wahlkreis number. It
+  does — 1994 vs 2002: 960/960 Gemeinden, 1998 vs 2002: 961/961, 1994 vs 1998: 1068/1068,
+  zero disagreements — and the script re-runs the check on every invocation and aborts if a
+  single Gemeinde ever disagrees.
+- **2016, 2021** already carry names in their XLSX reports and are left untouched.
+
+Names are stored **per election year**: WK 21 is *Mecklenburg-Strelitz I/Müritz II* through
+2002 and *Mecklenburg-Strelitz I* from 2006.

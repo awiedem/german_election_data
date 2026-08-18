@@ -8,11 +8,23 @@
 #
 # Vote system: erststimme = Wahlkreisstimme, zweitstimme = Landesstimme.
 #
-# Machine-readable sources in the HE folder:
-#   - HE_2023_Landtagswahl_Wahlkreis_opendata.csv  -> 2023, 55 Wahlkreise (PARSED)
+# Sources in the HE folder:
+#   - HE_2023_Landtagswahl_Wahlkreis_opendata.csv  -> 2023, 55 Wahlkreise (PARSED HERE)
+#   - HE_2018_Landtagswahl_Wahlkreis_BVII2-4.pdf   -> 2018 AND 2013, 55 Wahlkreise,
+#         parsed by the Stage-0 script 00_he_pdf_parse.py (which also cross-checks
+#         every 2013 figure against HE_2018_2013_..._Vergleichszahlen_BVII2-1.pdf)
+#         into he_pdf/HE_2018_2013_pdf_long.csv, appended below.
 #   - HE_seit1946_..._Landesergebnisse_Tabelle1.xlsx -> STATE-LEVEL only (EXCLUDED:
 #         not Wahlkreis-level; aggregate Land series).
-#   - All .pdf / .tif files are scans -> deferred to OCR stage (EXCLUDED).
+#   - Remaining .pdf / .tif files are pre-2013 scans -> not yet ingested.
+#
+# NB on 2013: the Dec-2017 LWG amendment re-cut some Wahlkreise, and the source
+# reports the 2013 results recomputed onto the 2018 Wahlkreiseinteilung.  Rows
+# carry flag_wkr_boundaries_recomputed = 1 where that is the case (0 for 2018,
+# and 0 for the two Frankfurt Wahlkreise 34/37 that B VII 2-4 left on their own
+# 2013 boundaries - see 00_he_pdf_parse.py).
+#
+# Run order: python3 .../00_he_pdf_parse.py  ->  Rscript .../parse_HE.R
 # =============================================================================
 
 library(here)
@@ -95,14 +107,16 @@ long[, `:=`(
   state_abbr    = "HE",
   state         = "Hessen",
   election_year = 2023L,
-  election_date = "2023-10-08"
+  election_date = "2023-10-08",
+  flag_wkr_boundaries_recomputed = 0L
 )]
 
 # enforce exact column order
 col_order <- c("state_abbr", "state", "election_year", "election_date",
                "wkr_nr", "wkr_name", "stimme",
                "eligible_voters", "number_voters",
-               "valid_votes", "invalid_votes", "party_raw", "votes")
+               "valid_votes", "invalid_votes", "party_raw", "votes",
+               "flag_wkr_boundaries_recomputed")
 setcolorder(long, col_order)
 setorder(long, election_year, stimme, wkr_nr, party_raw)
 
@@ -164,6 +178,53 @@ cat("\n    valid_votes statewide  erst: source", src_valid_e,
     "mine", my_valid_e, "match", src_valid_e == my_valid_e, "\n")
 cat("    valid_votes statewide zweit: source", src_valid_z,
     "mine", my_valid_z, "match", src_valid_z == my_valid_z, "\n")
+
+# =============================================================================
+# 2018 + 2013 - Stage-0 PDF parse (B VII 2-4, cross-checked against B VII 2-1)
+# =============================================================================
+pdf_csv <- file.path(out_dir, "he_pdf", "HE_2018_2013_pdf_long.csv")
+if (!file.exists(pdf_csv)) {
+  stop("Missing ", pdf_csv,
+       "\n  Run first:  python3 code/state_elections_wahlkreis/parsers/00_he_pdf_parse.py")
+}
+pdf_long <- fread(pdf_csv, encoding = "UTF-8",
+                  colClasses = list(character = c("state_abbr", "state", "election_date",
+                                                  "wkr_nr", "wkr_name", "stimme",
+                                                  "party_raw")))
+stopifnot(setequal(names(pdf_long), col_order))
+setcolorder(pdf_long, col_order)
+
+cat("\n=========== HE 2018 + 2013 (from B VII 2-4) ===========\n")
+cat("    rows read        :", nrow(pdf_long), "\n")
+cat("    Wahlkreise/year  :\n")
+print(pdf_long[, .(n_wkr = uniqueN(wkr_nr), n_parties = uniqueN(party_raw)),
+               by = .(election_year, stimme)])
+
+# per (year, wkr, stimme): sum(party votes) must equal valid_votes
+chk2 <- pdf_long[, .(sum_party = sum(votes, na.rm = TRUE), valid = unique(valid_votes)),
+                 by = .(election_year, wkr_nr, stimme)]
+chk2[, disc := abs(sum_party - valid)]
+cat("    vote integrity   : groups", nrow(chk2), "| max abs discrepancy", max(chk2$disc), "\n")
+if (any(chk2$disc > 0)) { print(chk2[disc > 0]); stop("HE PDF rows fail vote integrity") }
+
+# the 55 Wahlkreis names must be the same objects the 2023 open data uses
+n23 <- unique(long[, .(wkr_nr, wkr_name)])
+n_pdf <- unique(pdf_long[, .(wkr_nr, wkr_name)])
+cmp_names <- merge(n23, n_pdf, by = "wkr_nr", suffixes = c("_2023", "_pdf"))
+cat("    Wahlkreis names identical to the 2023 open data:",
+    sum(cmp_names$wkr_name_2023 == cmp_names$wkr_name_pdf), "/", nrow(cmp_names), "\n")
+if (!all(cmp_names$wkr_name_2023 == cmp_names$wkr_name_pdf)) {
+  print(cmp_names[wkr_name_2023 != wkr_name_pdf]); stop("HE Wahlkreis names diverge across years")
+}
+
+long <- rbindlist(list(long, pdf_long), use.names = TRUE)
+setorder(long, election_year, stimme, wkr_nr, party_raw)
+
+cat("\n=========== COMBINED (HE) ===========\n")
+print(long[, .(rows = .N, n_wkr = uniqueN(wkr_nr)), by = .(election_year, stimme)])
+cat("boundary flag rows by year:\n")
+print(long[, .(recomputed = sum(flag_wkr_boundaries_recomputed), rows = .N),
+           by = election_year])
 
 # (c) Wahlkreis count per year
 cat("\n(c) Wahlkreis count per year:\n")

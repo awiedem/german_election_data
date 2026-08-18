@@ -65,12 +65,29 @@ for (cc in c("eligible_voters", "number_voters", "valid_votes", "invalid_votes")
 }
 raw[, state := state_code[state_abbr]]                       # overwrite with 2-digit code
 stopifnot(!any(is.na(raw$state)))
+
+## flag_wkr_boundaries_recomputed --------------------------------------------
+## 1 = the row's Wahlkreis figures were recomputed by the statistical office onto
+## a LATER election's Wahlkreiseinteilung, so they are not on the boundaries that
+## were actually in force on election day. Only Hessen 2013 is affected so far
+## (the Dec-2017 LWG amendment re-cut some Wahlkreise and the only published
+## constituency figures for 2013 are back-cast onto the 2018 ones); every other
+## state-year is on its own boundaries. Parsers that do not emit the column mean 0.
+if (!"flag_wkr_boundaries_recomputed" %in% names(raw)) {
+  raw[, flag_wkr_boundaries_recomputed := 0L]
+}
+raw[is.na(flag_wkr_boundaries_recomputed), flag_wkr_boundaries_recomputed := 0L]
+raw[, flag_wkr_boundaries_recomputed := as.integer(flag_wkr_boundaries_recomputed)]
+chk_flag <- raw[, uniqueN(flag_wkr_boundaries_recomputed),
+                by = .(state, election_year, wkr_nr, stimme)]
+stopifnot(all(chk_flag$V1 == 1))   # must be constant within a row of the wide table
 raw[, party := normalise_party_v(party_raw)]
 
 #### Long output: normalised party, counts + share ####
 key_cols <- c("state", "state_abbr", "election_year", "election_date",
               "wkr_nr", "wkr_name", "stimme",
-              "eligible_voters", "number_voters", "valid_votes", "invalid_votes")
+              "eligible_voters", "number_voters", "valid_votes", "invalid_votes",
+              "flag_wkr_boundaries_recomputed")
 long <- raw[, .(votes = sum(votes, na.rm = TRUE),
                 votes_na = all(is.na(votes))),       # track genuinely-absent (no candidate)
             by = c(key_cols, "party")]
@@ -84,7 +101,7 @@ setorder(long, state, election_year, stimme, wkr_nr, party)
 #### Wide output: party SHARES, GERDA-style ####
 meta_cols <- c("state", "election_year", "election_date", "wkr_nr", "wkr_name",
                "stimme", "eligible_voters", "number_voters", "valid_votes",
-               "invalid_votes", "turnout")
+               "invalid_votes", "turnout", "flag_wkr_boundaries_recomputed")
 # Explicit id formula (meta only) — one row per (state,year,wkr,stimme).
 # Using "..." would wrongly fold `votes`/`vote_share` into the row key and explode rows.
 id_form <- as.formula(paste(paste(meta_cols, collapse = " + "), "~ party"))
@@ -108,8 +125,10 @@ wide[, flag_naive_turnout_above_1 := as.integer(!is.na(turnout) & turnout > 1)]
 wide[, turnout := ifelse(!is.na(turnout) & turnout > 1.5, NA_real_, turnout)]
 
 #### Column ordering: flags, meta, sorted party shares, other, cdu_csu ####
-front_flags <- c("flag_no_valid_votes", "flag_naive_turnout_above_1")
-final_order <- c(front_flags, meta_cols, sort(pcols), "other", "cdu_csu")
+front_flags <- c("flag_no_valid_votes", "flag_naive_turnout_above_1",
+                 "flag_wkr_boundaries_recomputed")
+final_order <- c(front_flags, setdiff(meta_cols, front_flags),
+                 sort(pcols), "other", "cdu_csu")
 final_order <- final_order[final_order %in% names(wide)]
 setcolorder(wide, final_order)
 wide <- wide[, ..final_order]
@@ -130,8 +149,13 @@ cat(sprintf("States: %d | Years: %d-%d | Party columns: %d\n",
             uniqueN(wide$state), min(wide$election_year), max(wide$election_year), length(pcols)))
 cat("Rows per stimme:\n"); print(wide[, .N, by = stimme])
 cat("Rows per state x stimme:\n"); print(dcast(wide, state ~ stimme, value.var = "wkr_nr", fun.aggregate = length))
-cat(sprintf("\nflag_no_valid_votes: %d | flag_naive_turnout_above_1: %d\n",
-            sum(wide$flag_no_valid_votes), sum(wide$flag_naive_turnout_above_1)))
+cat(sprintf("\nflag_no_valid_votes: %d | flag_naive_turnout_above_1: %d | flag_wkr_boundaries_recomputed: %d\n",
+            sum(wide$flag_no_valid_votes), sum(wide$flag_naive_turnout_above_1),
+            sum(wide$flag_wkr_boundaries_recomputed)))
+cat("Rows with recomputed Wahlkreis boundaries, by state-year:\n")
+print(wide[flag_wkr_boundaries_recomputed == 1, .N, by = .(state, election_year)])
+cat("Placeholder / missing wkr_name rows: ",
+    sum(is.na(wide$wkr_name) | grepl("^Landtagswahlkreis [0-9]+$", wide$wkr_name)), "\n")
 # integrity: share of party columns summing to ~1 (excluding all-NA rows)
 ssum <- rowSums(as.matrix(wide[, ..pcols]), na.rm = TRUE)
 cat(sprintf("Wide rows where Σ party shares in [0.99,1.01]: %d / %d\n",

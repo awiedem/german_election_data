@@ -76,3 +76,32 @@ All from Statistische Bibliothek series `BBSerie_mods_00000816` (B VII 2-3), via
 None. All Brandenburg Landtagswahlen (1990, 1994, 1999, 2004, 2009, 2014, 2019, 2024)
 were downloaded at the Wahlkreis level in machine-readable XLSX. Brandenburg was created
 in 1990; there are no earlier state elections.
+
+
+## Wahlkreis NAMES (added August 2026)
+
+The `BB_<year>_Landtagswahl_Wahlkreis.xlsx` Downloadtabellen identify the Landtagswahlkreis
+by **number only**, which is why the published data carried the placeholder
+`"Landtagswahlkreis NN"` until August 2026. The names live in the
+`BB_<year>_Landtagswahl_Wahlkreis_StatBericht.pdf` reports and are now read by
+`code/state_elections_wahlkreis/parsers/00_bb_wkr_names.py`:
+
+| Years | Source in the report | Method |
+|---|---|---|
+| 2004 | contents listing ("01 Prignitz I 54") | extracted from the text layer on every run |
+| 2009, 2014, 2019, 2024 | per-Wahlkreis section headings ("3.1 Wahlkreis 01 Prignitz I") | extracted from the text layer on every run |
+| 1994, 1999 | 1994: section-1 table headings "Wahlkreis: NN (Name)", report pp. 10–53. 1999: appendix "Einteilung des Landes in Wahlkreise …", report pp. 156–160 | **image-only scans** — read visually off 150–200 dpi renderings and pinned in the script |
+| 1990 | "Verzeichnis der Wahlkreise", p. 8 of the joint report of the Gemeinsames Statistisches Amt | OCR text layer unusable ("Baeskow-", "Liibben-", "Cottbus!") — read visually at 400 dpi and pinned |
+
+Names are stored **per election year**. Brandenburg renumbered its Wahlkreise with the 1993
+Kreisgebietsreform and again with the Wahlkreisänderungsgesetz of 23 October 1998, so WK 11
+is *Oranienburg I* (1990), *Havelland I* (1994, 1999) and *Uckermark I* (2004 onwards).
+
+Two text-layer artefacts are pinned and repaired, each keyed on the broken string so the
+override fails loudly if the source PDF is re-issued: 2004 WK 35 renders as
+`Frankfurt [Oder])` on the contents page (report pp. 43/88/116 print `Frankfurt (Oder)`),
+and the 2009 WK 31 heading splits its roman numeral, yielding `Oder-Spree I V`.
+
+**Source typo kept in mind, not kept in the data:** the 1990 Verzeichnis prints WK 32 as
+`Eilsenhüttenstadt, Land`; WK 34 on the same page spells the town correctly, so the name is
+published as `Beeskow-Frankfurt/Oder II-Eisenhüttenstadt, Land`.

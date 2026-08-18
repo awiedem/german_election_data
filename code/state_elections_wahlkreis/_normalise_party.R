@@ -101,6 +101,13 @@ normalise_party <- function(pname) {
   if (grepl("^DIB$|^DEMOKRATIE IN BEWEGUNG", p_up))         return("dib")
   if (grepl("^DM$|^DEUTSCHE MITTE", p_up))                   return("dm")
   if (grepl("^MENSCHLICHE WELT", p_up))                      return("menschliche_welt")
+  # Oekologische Linke. NRW writes "OekoLinX" (2010, 2022), Hessen "OekoLinX
+  # Hessen" - the same party with a state suffix, like "FREIE WAEHLER
+  # Mecklenburg-Vorpommern" above, so both land in `oekolinx`. NRW's earlier
+  # "OekoLi" (2000, 2005) is deliberately NOT folded in here: that would move
+  # already-published NRW columns, and audit section 12 already surfaces the
+  # oekoli/oekolinx split for a separate decision.
+  if (grepl("^[OÖ]KOLINX", p_up))                            return("oekolinx")
   if (grepl("GARTENPARTEI", p_up))                            return("gartenpartei")
   if (grepl("^NATUR.?GESETZ", p_up))                          return("naturgesetz")
   if (grepl("^DA$|^DEMOKRATIEALTERNATIVE", p_up))              return("da")

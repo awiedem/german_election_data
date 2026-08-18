@@ -322,14 +322,44 @@ municipal elections.
 
 ## Constituency level
 
-**Files:** `ltw_wkr_unharm` (7,607 x 399), `ltw_wkr_unharm_long`
-(128,023 x 15) in `data/state_elections/final/`.
+**Files:** `ltw_wkr_unharm` (7,827 x 400), `ltw_wkr_unharm_long`
+(132,478 x 16) in `data/state_elections/final/`.
 
 Landtagswahl results at constituency level for all 16 states, in the
 same wide and long shapes as the federal Wahlkreis files, with `stimme`,
 `wkr_nr`, `wkr_name`, `state_abbr`, the turnout block, `other`,
 `flag_no_valid_votes` and `flag_naive_turnout_above_1`. The long file
 carries `party`, `votes` and `vote_share`.
+
+| Variable                          | Type    | Description                                                                                                                                                                                                                                                                                              |
+|:----------------------------------|:--------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `flag_wkr_boundaries_recomputed` | integer | 1 where the constituency figures were back-cast by the statistical office onto a *later* election's Wahlkreiseinteilung, so they are not on the boundaries in force on election day. Currently Hessen 2013 only (106 of 110 rows) — see below. 0 everywhere else, including every other state-year. |
+
+**`wkr_name` is per election year, not per constituency number.** States
+renumber and rename their Wahlkreise, so the same `wkr_nr` can be a
+different constituency in a different year: Brandenburg's WK 11 is
+*Oranienburg I* in 1990, *Havelland I* in 1994 and 1999, and
+*Uckermark I* from 2004 onwards. Always key on `(state, election_year,
+wkr_nr)`; never join constituencies across years on the number alone.
+
+**Hessen 2013 sits on the 2018 constituency boundaries.** The only
+published constituency figures for the 2013 Landtagswahl are the
+comparison columns of the 2018 report, which the Hessisches
+Statistisches Landesamt recomputed onto the Wahlkreiseinteilung created
+by the December 2017 amendment to the Landtagswahlgesetz. Those rows
+carry `flag_wkr_boundaries_recomputed == 1`. The two Frankfurt am Main
+constituencies affected by the one sub-municipal transfer (WK 34 and WK
+37, Stadtbezirk 531 Schwanheim) were *not* recomputed in that report and
+therefore stand on their own 2013 boundaries, flagged 0. Their combined
+figures are identical either way, so aggregating WK 34 and WK 37 gives a
+boundary-consistent pair.
+
+The practical size of the effect: on the 2018 boundaries the 2013
+Wahlkreisstimmen give the direct mandate to the CDU in 42 constituencies
+and the SPD in 13, whereas the 2013 election as actually held returned
+41 CDU and 14 SPD. One constituency changes hands purely because of the
+re-cut. For 2018 the same calculation reproduces the official result
+exactly (CDU 40, SPD 10, GRÜNE 5).
 
 # Municipal elections
 
