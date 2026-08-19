@@ -2,10 +2,22 @@
 # Stage-1 cleaning parser: Bayern (BY) Landtagswahl at Stimmkreis level
 # Constituency unit: Stimmkreis (~91). Two votes: erststimme + zweitstimme.
 #
-# Machine-readable sources only (PDF scans excluded -> future OCR stage):
-#   - BY_2018_Landtagswahl_Stimmkreise.csv  (91 Stimmkreise, current+prev year)
-#   - BY_2023_Landtagswahl_Stimmkreise.csv  (91 Stimmkreise, current+prev year)
-# Validation against the statewide "990;Bayern" row of the Wahlkreise CSVs.
+# 2018 + 2023: machine-readable votemanager CSVs (BY_{2018,2023}_Landtagswahl_
+# Stimmkreise.csv), validated against the statewide "990;Bayern" row of the
+# Wahlkreise CSVs (below).
+#
+# 2008 + 2013 (91 / 90 Stimmkreise): parsed by the Stage-0 script
+# 00_by_pdf_parse.py from the two Statistische Berichte B VII 2-4 (the only
+# machine-readable source at Stimmkreis level for these years; a genuine text
+# layer, no OCR) into by_pdf/BY_2008_2013_pdf_long.csv, appended below. That
+# script hard-validates every Stimmkreis's party sequence, sums to the state
+# fixture (bottom-up, exactly), Stimmberechtigte/Wähler totals, recomputed
+# shares against the pinned official results, and per-Stimmkreis vote integrity
+# (see its docstring). It also resolves the deterministic 2008 label character
+# corruption (comma/period/hyphen/ü/ö/ß) - by_pdf's party_raw and wkr_name are
+# already decoded to normal spelling.
+#
+# Run order: python3 .../00_by_pdf_parse.py  ->  Rscript .../parse_BY.R
 #
 # Output: long tidy CSV, one row per (Stimmkreis x stimme x party).
 # =============================================================================
@@ -272,8 +284,60 @@ print(combined %>% group_by(election_year) %>%
 cat("\nDistinct party_raw:\n")
 print(sort(unique(combined$party_raw)))
 
+# =============================================================================
+# 2008 + 2013 - Stage-0 PDF parse (Statistische Berichte, cross-validated against
+# the state fixture and pinned official results inside 00_by_pdf_parse.py)
+# =============================================================================
+pdf_csv <- file.path(out_dir, "by_pdf", "BY_2008_2013_pdf_long.csv")
+if (!file.exists(pdf_csv)) {
+  stop("Missing ", pdf_csv,
+       "\n  Run first:  python3 code/state_elections_wahlkreis/parsers/00_by_pdf_parse.py")
+}
+col_order <- c("state_abbr", "state", "election_year", "election_date",
+              "wkr_nr", "wkr_name", "stimme",
+              "eligible_voters", "number_voters",
+              "valid_votes", "invalid_votes", "party_raw", "votes")
+pdf_long <- fread(pdf_csv, encoding = "UTF-8",
+                  colClasses = list(character = c("state_abbr", "state", "election_date",
+                                                  "wkr_nr", "wkr_name", "stimme",
+                                                  "party_raw")))
+stopifnot(setequal(names(pdf_long), col_order))
+setcolorder(pdf_long, col_order)
+
+cat("\n=========== BY 2008 + 2013 (from the Statistische Berichte PDFs) ===========\n")
+cat("    rows read      :", nrow(pdf_long), "\n")
+print(pdf_long[, .(n_sk = uniqueN(wkr_nr), n_parties = uniqueN(party_raw)),
+               by = .(election_year, stimme)])
+
+# per (year, wkr, stimme): sum(party votes) must equal valid_votes (re-verifies
+# the Stage-0 script's own check on the emitted long file, independently of it)
+chk3 <- pdf_long[, .(sum_party = sum(votes, na.rm = TRUE), valid = unique(valid_votes)),
+                 by = .(election_year, wkr_nr, stimme)]
+chk3[, disc := abs(sum_party - valid)]
+cat("    vote integrity : groups", nrow(chk3), "| max abs discrepancy", max(chk3$disc), "\n")
+if (any(chk3$disc > 0)) { print(chk3[disc > 0]); stop("BY PDF rows fail vote integrity") }
+
+# Stimmkreis counts match the Stage-0 docstring's pinned expectation
+n_sk_by_year <- pdf_long[, .(n_sk = uniqueN(wkr_nr)), by = election_year]
+print(n_sk_by_year)
+if (!isTRUE(all.equal(n_sk_by_year[election_year == 2008, n_sk], 91L))) {
+  stop("BY 2008: expected 91 Stimmkreise")
+}
+if (!isTRUE(all.equal(n_sk_by_year[election_year == 2013, n_sk], 90L))) {
+  stop("BY 2013: expected 90 Stimmkreise")
+}
+
+combined <- rbindlist(list(combined, pdf_long), use.names = TRUE)
+setorder(combined, election_year, wkr_nr, stimme, party_raw)
+
+cat("\n=========== COMBINED (BY, all 4 elections) ===========\n")
+print(combined[, .(rows = .N, n_sk = uniqueN(wkr_nr)), by = election_year])
+
+cat(sprintf("\nTotal rows emitted: %d\n", nrow(combined)))
+cat(sprintf("Distinct party_raw: %d\n", uniqueN(combined$party_raw)))
+
 # ---------------------------------------------------------------------------
-# WRITE
+# WRITE (single write, all 4 elections)
 # ---------------------------------------------------------------------------
 out_path <- file.path(out_dir, "BY_ltw_wkr_long.csv")
 fwrite(combined, out_path)

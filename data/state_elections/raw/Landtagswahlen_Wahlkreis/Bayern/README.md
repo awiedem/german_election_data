@@ -179,5 +179,49 @@ election (1946 → 2023)** with no remaining gaps.
 
 ---
 
+## Stimmkreis-level processing status (2026-08-19)
+
+**2018 + 2023**: parsed directly from the machine-readable Stimmkreise CSVs by
+`parsers/parse_BY.R`.
+
+**2008 + 2013**: parsed by `parsers/00_by_pdf_parse.py` from
+`BY_2008_Landtagswahl_StatBericht_BVII2-4.pdf` (91 Stimmkreise) and
+`BY_2013_Landtagswahl_StatBericht_BVII2-4.pdf` (90 Stimmkreise) - both carry a
+genuine text layer, one Stimmkreis per page (2008: pp. 18-108; 2013: pp. 15-104).
+Output: `data/state_elections/processed/wahlkreis/by_pdf/BY_2008_2013_pdf_long.csv`,
+appended by `parse_BY.R` into the combined `BY_ltw_wkr_long.csv`.
+
+- State-level validation fixture: 2013 uses p. 7 ("1. Landes- und
+  Wahlkreisergebnisse / Bayern"), which shares the exact per-party Erst-/
+  Zweitstimmen table layout of a Stimmkreis page. 2008 uses p. 5 ("A. Ergebnis
+  der Wahl..."), which reports only the combined Gesamtstimmen (= Erst- und
+  Zweitstimmen) per party with Sitze - there is no separate statewide 2008
+  Erst-/Zweitstimmen breakdown anywhere in the report (the Bezirk tables on
+  pp. 7-17 that would carry it are image-only, no text layer).
+- Both years report gültige/ungültige Stimmen **separately per Stimme** (Erst vs
+  Zweit differ, e.g. SK101/2013: gültig Erst 65,008 vs gültig Zweit 64,858), so
+  `valid_votes`/`invalid_votes` are emitted per Stimme, not combined.
+- "Sonstige 08"/"Sonstige 03" (the report's own residual row) is "X"
+  (suppressed) in every one of the 181 Stimmkreise and both state fixtures -
+  confirmed to never carry a real count anywhere - so it is excluded from the
+  emitted data.
+- The 2008 report's Stimmkreis-table font corrupts LABEL text only (digits are
+  clean): comma -> "{", period -> "!", hyphen -> "?", ü -> bare "¨", ö -> bare
+  "`", ß -> "\x8f". Deterministic and applied via `str.translate`; verified
+  against the clean Abkürzungen legend (p. 4) and independently against the
+  ~90 place names shared with the uncorrupted 2013 report, which decode
+  byte-for-byte identically (e.g. "Ansbach-Süd, Weißenburg-Gunzenhausen").
+  Party abbreviation "ödp" is genuinely lowercase in the 2008 report (confirmed
+  on the uncorrupted p. 4 legend), unlike 2013's "ÖDP" - kept as printed per
+  year, not force-canonicalized.
+- All hard validations pass: per-Stimmkreis party sequence/token-count
+  integrity; SK-level sums reproduce the state fixture exactly per party
+  (2013: Erst and Zweit separately; 2008: Erst+Zweit combined, since that is
+  all p. 5 reports); Stimmberechtigte/Wähler sums match the state fixture
+  exactly; recomputed Gesamtstimmen shares match the pinned official
+  Landeswahlleiter results within ±0.1pp; per-Stimmkreis per-Stimme sum of
+  named party votes equals gültige Stimmen exactly; abgegeben = gültig +
+  ungültig exactly. See the script's docstring for full detail.
+
 *Compiled automatically for the GERDA election database. Raw files are stored verbatim;
 do not modify.*
