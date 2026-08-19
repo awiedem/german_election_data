@@ -46,7 +46,12 @@ sec("4. VOTE INTEGRITY (long: Sum party votes == valid_votes)")
 ig <- long[!is.na(votes) & !is.na(valid_votes) & valid_votes>0,
            .(s=sum(votes), v=valid_votes[1]), by=.(state,election_year,wkr_nr,stimme)]
 ig[, d:=abs(s-v)]
-if(nrow(ig[d>1])==0) ok(sprintf("all %d (wkr,stimme) groups reconcile (max |diff|=%g)",nrow(ig),max(ig$d))) else bad(sprintf("%d groups fail integrity (max diff %g)",nrow(ig[d>1]),max(ig$d)))
+# One pinned exception: HE 2009 WK 44 (Offenbach Land I) - the OFFICIAL printed
+# per-Wahlkreis table sums 11 Wahlkreisstimmen short of its own gueltige; the
+# Land block carries the corrected figure. Kept as printed (see 00_he09_pdf_parse.py).
+ig_known <- ig[state=="06" & election_year==2009 & wkr_nr=="44" & stimme=="erststimme" & d==11]
+ig_bad   <- ig[d>1][!ig_known, on=.(state,election_year,wkr_nr,stimme)]
+if(nrow(ig_bad)==0) ok(sprintf("all %d (wkr,stimme) groups reconcile (max |diff|=%g; the HE 2009 WK44 11-vote source defect is pinned)",nrow(ig),max(ig$d))) else { bad(sprintf("%d groups fail integrity (max diff %g)",nrow(ig_bad),max(ig_bad$d))); print(ig_bad) }
 
 sec("5. SHARES (wide: Sum party shares == 1)")
 ss <- rowSums(as.matrix(wide[,..pc]), na.rm=TRUE)
@@ -188,12 +193,12 @@ for(f in mvf){
   else bad(sprintf("MV %d WK %s = %s (expected '%s')",f[[1]],f[[2]],paste(got,collapse="/"),f[[3]]))
 }
 
-sec("19. HESSEN 2013/2018 (constituency series added August 2026)")
+sec("19. HESSEN 2009/2013/2018 (constituency series added August 2026)")
 he_years <- sort(unique(wide[state=="06"]$election_year))
-if(identical(he_years,c(2013L,2018L,2023L))){ ok("HE covers 2013, 2018, 2023")
+if(identical(he_years,c(2009L,2013L,2018L,2023L))){ ok("HE covers 2009, 2013, 2018, 2023")
 } else bad(paste("HE years:",paste(he_years,collapse=",")))
 hec <- wide[state=="06", .N, by=.(election_year,stimme)]
-if(all(hec$N==55) && nrow(hec)==6){ ok("HE: 55 Wahlkreise x 2 Stimmen in each of the 3 years")
+if(all(hec$N==55) && nrow(hec)==8){ ok("HE: 55 Wahlkreise x 2 Stimmen in each of the 4 years")
 } else { bad("HE Wahlkreis/stimme counts are off"); print(hec) }
 # statewide fixtures straight out of Table 1 of B VII 2-4 - 5j/18 (which is also
 # the official published result: 2018 Landesstimmen CDU 27.0, GRUENE 19.8,
@@ -251,8 +256,9 @@ fl <- wide$flag_wkr_boundaries_recomputed
 if(!is.null(fl) && all(fl %in% c(0L,1L))){ ok("flag present and strictly 0/1")
 } else bad("flag_wkr_boundaries_recomputed missing or not 0/1")
 fr <- unique(wide[flag_wkr_boundaries_recomputed==1, .(state,election_year)])
-if(nrow(fr)==1 && fr$state=="06" && fr$election_year==2013L){
-  ok("only Hessen 2013 is back-cast onto a later Wahlkreiseinteilung")
+fr_expect <- data.table(state=c("06","08"), election_year=c(2013L,2001L))
+if(nrow(fr)==2 && nrow(fsetdiff(fr, fr_expect))==0){
+  ok("only Hessen 2013 and BaWue 2001 are back-cast onto a later Wahlkreiseinteilung")
 } else { bad("unexpected state-years flagged as recomputed"); print(fr) }
 # Frankfurt am Main I / IV keep their own 2013 boundaries in B VII 2-4, so they
 # are deliberately NOT flagged; everything else in HE 2013 is.
@@ -264,8 +270,18 @@ if(all(f34$flag_wkr_boundaries_recomputed==0) && nrow(f34)==4 &&
 } else bad(sprintf("HE 2013 flag pattern wrong (WK34/37 rows=%d flagged=%d; others=%d flagged=%d)",
                  nrow(f34), sum(f34$flag_wkr_boundaries_recomputed),
                  nrow(f_other), sum(f_other$flag_wkr_boundaries_recomputed)))
-if(sum(wide[state!="06"]$flag_wkr_boundaries_recomputed)==0){ ok("no non-Hessen row is flagged")
-} else bad("a non-Hessen row is flagged as recomputed")
+# BW 2001 (from the 2006 report's comparison columns): the source stars exactly
+# 11 of 70 Wahlkreise as recomputed onto the 2006 Wahlkreiseinteilung.
+BW01_STARRED <- c("05","06","08","10","11","13","14","18","20","66","68")
+b01 <- wide[state=="08" & election_year==2001]
+if(nrow(b01)==70 &&
+   identical(sort(b01[flag_wkr_boundaries_recomputed==1, wkr_nr]), BW01_STARRED)){
+  ok("BW 2001: exactly the 11 source-starred Wahlkreise are flagged (59 on own boundaries)")
+} else bad(sprintf("BW 2001 flag pattern wrong (rows=%d flagged=%d)",
+                   nrow(b01), sum(b01$flag_wkr_boundaries_recomputed)))
+if(sum(wide[!(state %in% c("06","08"))]$flag_wkr_boundaries_recomputed)==0){
+  ok("no row outside HE/BW is flagged")
+} else bad("a row outside HE/BW is flagged as recomputed")
 
 sec("21. CROSS-PIPELINE: Wahlkreis vs GEMEINDE-level state elections")
 # The strongest check available: state_unharm is built from entirely different
@@ -300,15 +316,19 @@ if (!file.exists(mp)) {
   aw <- roll(wide[stimme == "zweitstimme"]); am <- roll(mun)
   cmpx <- merge(aw, am, by = c("state","election_year"), suffixes = c(".w",".m"))
 
-  # (a) HARD: Hessen must be exact on every quantity in every year
+  # (a) HARD: Hessen must be exact on every quantity in every year.
+  # One pinned exception: HE 2009's printed WK 1 Landesstimmen "Waehler" is 40
+  # above its own gueltige+ungueltige (source typo, kept as printed - see
+  # 00_he09_pdf_parse.py), so the Wahlkreis side's vot is exactly +40 there.
   qty <- c("elig","vot","val", pz)
   he <- cmpx[state == "06"]
   he_bad <- unlist(lapply(qty, function(q) {
     d <- he[[paste0(q,".w")]] - he[[paste0(q,".m")]]
+    if (q == "vot") d[he$election_year == 2009L] <- d[he$election_year == 2009L] - 40
     if (any(abs(d) > 0.5)) sprintf("%s: %s", q, paste(round(d), collapse=",")) else NULL
   }))
-  if (nrow(he) == 3 && length(he_bad) == 0) {
-    ok("HESSEN 2013/2018/2023: every quantity and party reproduces the Gemeinde-level pipeline EXACTLY")
+  if (nrow(he) == 4 && length(he_bad) == 0) {
+    ok("HESSEN 2009/2013/2018/2023: every quantity and party reproduces the Gemeinde-level pipeline EXACTLY (2009 vot +40 = the pinned WK1 source typo)")
   } else { bad("Hessen differs from the Gemeinde-level pipeline"); print(he_bad) }
 
   # (b) BROAD: party votes, only where both pipelines actually report the party
@@ -367,6 +387,73 @@ if (!file.exists(mp)) {
               nrow(cmpx[abs(elig.w-elig.m) < 0.5 & abs(vot.w-vot.m) < 0.5 & abs(val.w-val.m) < 0.5]),
               nrow(cmpx)))
 }
+
+sec("22. AUGUST 2026 CLEAN-PDF ADDITIONS (28 elections, 9 states)")
+# Coverage: every election added from the clean text-layer PDFs must be present
+# with its exact Wahlkreis count. See docs/ltw_wkr_recoverability.md.
+add_cov <- data.table(
+  state = c("01","03","04","04","04","04","06",
+            "08","08","08","09","09",
+            rep("10", 9),
+            rep("11", 5), "14","14"),
+  election_year = c(2005L, 2008L, 2003L, 2007L, 2011L, 2023L, 2009L,
+                    2001L, 2006L, 2011L, 2008L, 2013L,
+                    1980L, 1985L, 1990L, 1994L, 1999L, 2004L, 2009L, 2012L, 2017L,
+                    1999L, 2001L, 2006L, 2011L, 2021L, 2004L, 2009L),
+  n_wkr = c(40L, 87L, 2L, 2L, 2L, 2L, 55L,
+            70L, 70L, 70L, 91L, 90L,
+            rep(3L, 9),
+            rep(78L, 5), 60L, 60L))
+got_cov <- wide[, .(n = uniqueN(wkr_nr)), by = .(state, election_year)]
+cc <- merge(add_cov, got_cov, by = c("state","election_year"), all.x = TRUE)
+if (nrow(cc[is.na(n) | n != n_wkr]) == 0) {
+  ok(sprintf("all %d added elections present with their exact Wahlkreis counts", nrow(add_cov)))
+} else { bad("added elections missing or with wrong Wahlkreis counts:"); print(cc[is.na(n) | n != n_wkr]) }
+
+# Pinned statewide fixtures: party COUNTS from the source reports' own printed
+# Land rows (each was reproduced exactly by the stage-0 parsers at build time).
+add_fix <- data.table(
+  state  = c("11","11","11","11","11","11",
+             "04","04","04","04",
+             "06","06","03","03",
+             "14","01","01","09","09"),
+  election_year = c(1999L,1999L,2001L,2006L,2011L,2021L,
+                    2003L,2007L,2011L,2023L,
+                    2009L,2009L,2008L,2008L,
+                    2004L,2005L,2005L,2013L,2013L),
+  stimme = c(rep("zweitstimme", 16), "zweitstimme", "erststimme","zweitstimme"),
+  party  = c("spd","cdu","spd","spd","spd","spd",
+             "spd","spd","spd","spd",
+             "cdu","spd","cdu","spd",
+             "cdu","cdu","spd","csu","csu"),
+  votes_exp = c(349731, 637311, 481772, 424054, 413332, 390329,
+                123645, 101664, 505348, 376610,
+                963763, 614648, 1456742, 1036727,
+                855203, 576095, 554879, 2754256, 2882169))
+got_fix <- long[, .(v = sum(votes, na.rm = TRUE)),
+                by = .(state, election_year, stimme, party)]
+ff <- merge(add_fix, got_fix, by = c("state","election_year","stimme","party"), all.x = TRUE)
+if (nrow(ff[is.na(v) | v != votes_exp]) == 0) {
+  ok(sprintf("all %d pinned statewide party counts reproduce the source Land rows exactly", nrow(add_fix)))
+} else { bad("pinned statewide counts diverge:"); print(ff[is.na(v) | v != votes_exp]) }
+
+# BY 2008 has no statewide Erst/Zweit split in its report; its gold standard is
+# Gesamtstimmen (Erst+Zweit combined) from the p.5 table.
+by08 <- long[state=="09" & election_year==2008 & party=="csu", sum(votes, na.rm=TRUE)]
+if (by08 == 4603960) { ok("BY 2008: CSU Gesamtstimmen (erst+zweit) == 4,603,960 as printed")
+} else bad(sprintf("BY 2008 CSU Gesamtstimmen = %d (expected 4,603,960)", by08))
+
+# Share-level pins where the source has no machine-readable Land row (SL series
+# table) or the count was not independently recorded (BW 2001 comparison cols).
+shr <- function(st, yr, pt, stm) {
+  d <- long[state==st & election_year==yr & stimme==stm]
+  sum(d[party==pt]$votes, na.rm=TRUE) / sum(unique(d[, .(wkr_nr, valid_votes)])$valid_votes)
+}
+s1 <- 100*shr("10", 1994L, "spd", "einzelstimme")
+s2 <- 100*shr("08", 2001L, "cdu", "einzelstimme")
+if (abs(s1 - 49.4) <= 0.1 && abs(s2 - 44.8) <= 0.1) {
+  ok(sprintf("SL 1994 SPD %.1f%% and BW 2001 CDU %.1f%% match the official statewide shares", s1, s2))
+} else bad(sprintf("share pins off: SL 1994 SPD %.2f (49.4), BW 2001 CDU %.2f (44.8)", s1, s2))
 
 cat(sprintf("\n=================  AUDIT SUMMARY: %d FAIL, %d WARN  =================\n", fail, warn))
 quit(status = if(fail>0) 1 else 0)
