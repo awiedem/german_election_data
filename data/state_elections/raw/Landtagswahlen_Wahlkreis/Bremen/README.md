@@ -171,3 +171,117 @@ cleanly with `json.load(open(f, encoding='utf-8-sig'))`).
 
 Added file verified with `curl -sIL` (HTTP 200, `application/javascript`) and `python3
 json.load` parse check; confirmed on disk with `ls -la` / `file`.
+
+---
+
+## Processing status (2026-08-19): 2003 / 2007 / 2011 / 2023 added at Wahlbereich level
+
+The four PDF Hefte in section C not already covered by the votemanager OpenData CSVs
+(2015, 2019) have now been parsed into the constituency-level (Wahlbereich) long file.
+Parser: `code/state_elections_wahlkreis/parsers/00_hb_pdf_parse.py` (Stage-0, PDF ->
+`processed/wahlkreis/hb_pdf/HB_2003_2023_pdf_long.csv`), consumed by `parse_HB.R`
+(Stage-1, combined with 2015/2019 into `processed/wahlkreis/HB_ltw_wkr_long.csv`).
+`HB_ltw_wkr_long.csv` now covers all 6 machine-parseable elections (2003, 2007, 2011,
+2015, 2019, 2023), 164 rows, both Wahlbereiche (Stadt Bremen `01`, Stadt Bremerhaven
+`02`), `stimme = "zweitstimme"` throughout.
+
+**Where each year's table actually lives** (the front-matter Inhaltsverzeichnis page
+numbers do NOT match `pdftotext` pagination -- located by grepping body text):
+- 2003 (Heft 106): pdftotext p. 34, "Tab. 1 ... am 25. Mai 2003 / Vorläufige
+  Ergebnisse" (the single-year "Gesamtübersichten" table; a near-identical "Tab. 1"
+  earlier in the front matter is a 2003-vs-1999 comparison table and was NOT used).
+- 2007 (Heft 110): pdftotext p. 39, same "Gesamtübersichten"/"Vorläufige Ergebnisse"
+  pattern.
+- 2011 (Heft 113 Teil 1): pdftotext p. 53, "Tab. 1 ... am 22. Mai 2011 / Endgültige
+  Ergebnisse" (short party codes SPD/CDU/GRÜNE/...; an earlier equivalent "Amtliches
+  Endergebnis" page at pdftotext p. 50 uses full official names + "Liste N:" labels
+  for the identical numbers -- not used, harder to parse unambiguously).
+- 2023 (Heft 126): pdftotext p. 29 (0-idx 28), "Tabelle 1 ... am 14. Mai 2023 /
+  Endgültiges Ergebnis" (an identically-titled TOC entry on an earlier page was
+  excluded by requiring "Wahlberechtigte insgesamt" as an extra anchor string).
+
+**2003/2007 structure**: neither Heft ever prints the word "endgültig" -- both label
+their Tab. 1 "Vorläufige Ergebnisse" (preliminary), and no later "endgültig" table
+exists in either Heft. This is nevertheless the official record these Hefte publish,
+and it is internally exact (see validation below), so it is used as-is. Both years
+used a single list vote (Listenstimme, one vote per voter, pre-2011 system): one row
+per party, one Anzahl/% pair per Wahlbereich (Bremen / Bremerhaven / Land), directly
+under "Von den gültigen Stimmen entfielen auf". `valid_votes` = "Gültige Stimmen"
+directly (Stimmen and Stimmzettel coincide under a 1-vote system).
+
+**2011/2023 structure**: both use Bremen's 5-vote system (Listenstimmen +
+Personenstimmen = Zusammen per party, per Wahlbereich); only the Zusammen ("Z") row
+is emitted, matching the `_SUMME_LISTE_KANDIDATEN` semantics parse_HB.R already uses
+for 2015/2019. `valid_votes` = gültige STIMMEN (the table's own "Insgesamt"/"Z" row
+under "Gültige Stimmen / Sitze"), NOT "Gültige Stimmzettel" (one Stimmzettel carries 5
+Stimmen) -- mirrors the D2 semantics documented in `parse_HB.R`'s header.
+
+**Turnout field mapping** (all 4 years): `eligible_voters` = Wahlberechtigte
+insgesamt; `number_voters` = Wähler(-innen) insgesamt / Wahlbeteiligung (ballot
+casters, "B"); `invalid_votes` = Ungültige Stimmen (2003/2007) or Ungültige
+Stimmzettel (2011/2023); `valid_votes` as described above per system.
+
+**Parsing method**: `pdftotext -layout`, then split each line on runs of 2+
+whitespace characters. Verified safe for both column separation and German
+thousands-grouped numbers (e.g. "1 115 686") because -layout pads inter-column gaps
+with several spaces while a genuine thousands separator is exactly one space; proven
+correct downstream by the sum-of-parties == Gültige-Stimmen identity, which would
+break immediately on any digit-grouping error. For the 2011/2023 nine-column rows
+(Anzahl/%/Sitze x 3 Wahlbereiche) only each triplet's Anzahl (not %/Sitze) is
+numerically parsed, avoiding comma-decimal and Sitze-adjacent-to-next-Anzahl merge
+hazards. Multi-line party-name wraps (e.g. "Dialog"/"Grundeinkommen", "FREIE"/
+"WÄHLER"/"BREMEN", "Für"/"Bremerhaven", "Partei für schulmedizinische"/
+"Verjüngungsforschung") are reassembled by collecting every pre-marker token across
+a party's L/P/Z sub-rows.
+
+**Hard validations, all pass** (see `00_hb_pdf_parse.py` output for the full log):
+1. both Wahlbereiche + the Land Bremen block present, all 4 years.
+2. per Wahlbereich (Bremen, Bremerhaven, Land Bremen): sum of party votes ==
+   valid_votes EXACTLY, all 4 years.
+3. Wahlbereich Bremen + Wahlbereich Bremerhaven == Land Bremen EXACTLY, per party and
+   per turnout field, all 4 years.
+4. pinned official statewide (Land Bremen) shares, all within 0.13pp (tolerance
+   0.15pp): 2003 SPD 42.35 (pin 42.3), CDU 29.88 (29.8), GRÜNE 12.76 (12.8), FDP 4.18
+   (4.2); 2007 SPD 36.83 (36.7), CDU 25.66 (25.6), GRÜNE 16.43 (16.5), Die Linke.
+   8.40 (8.4), FDP 5.96 (6.0); 2011 SPD 38.60 (38.6), GRÜNE 22.45 (22.5), CDU 20.35
+   (20.4), DIE LINKE 5.63 (5.6); 2023 SPD 29.80 (29.8), CDU 26.22 (26.2), GRÜNE 11.89
+   (11.9), DIE LINKE 10.89 (10.9), BIW 9.39 (9.4), FDP 5.08 (5.1).
+5. 2023 only: recomputed per-Wahlbereich party shares reproduce the InstantAtlas
+   `data.js` "Parteien: Stimmenverteilung" `comparisonValues` (Bremen/Bremerhaven/Land)
+   within 0.1pp for all 39 checked (party, Wahlbereich) cells, full coverage of all
+   16 parties in Tabelle 1 (8 of them only ran in one Wahlbereich and are cross-checked
+   there only).
+
+**Distinct `party_raw` values** (kept verbatim per source, not reconciled across
+years):
+- 2003 (14): SPD, CDU, GRÜNE, DVU, B.H.V., BBW, DP, GRAUE, DIE FRAUEN, FDP, PBC, PDS,
+  Schill, SAV.
+- 2007 (13): SPD, CDU, GRÜNE, FDP, DVU, Deutschland, Die Konservativen, BIW, Die
+  Weissen, Die Linke., REP, DIE FRAUEN, PBC.
+- 2011 (16): SPD, CDU, GRÜNE, DIE LINKE, FDP, BIW, BBL, Dialog Grundeinkommen, B+B,
+  BIP, FREIE WÄHLER BREMEN, Für Bremerhaven, NPD, PIRATEN, PdB, RRP.
+- 2023 (16): CDU, SPD, GRÜNE, DIE LINKE, FDP, BIW, Die PARTEI, PIRATEN, dieBasis, GFA,
+  MLPD, MERA25, ÖDP, Partei für schulmedizinische Verjüngungsforschung,
+  Tierschutzpartei, Volt.
+
+**Quirks worth knowing**:
+- 2007's "Deutschland" party (Bremerhaven only, 338 votes) is printed with that bare
+  label in the source itself (confirmed against an independent secondary source,
+  wahlen-in-deutschland.de, which uses the same label) -- kept verbatim, not a
+  parsing artifact.
+- 2011's BIP party row is labelled "Personenstimmen**"/"Insgesamt**" (not the usual
+  "Personenstimmen"/"Zusammen") due to a footnote reference in the source; the parser
+  treats "Insgesamt**" as an equivalent "Zusammen" (Z) marker.
+- 2003/2007 tables never say "endgültig" (see structure note above) -- this is a
+  property of the source, not a gap in this extraction.
+- 118 rows total from the PDF Hefte (2003: 28, 2007: 26, 2011: 32, 2023: 32), all
+  `stimme = "zweitstimme"`; combined with the existing 2015 (21 rows) and 2019
+  (25 rows) CSV-derived rows for 164 rows total in `HB_ltw_wkr_long.csv`.
+
+Files changed/added by this pass:
+- `code/state_elections_wahlkreis/parsers/00_hb_pdf_parse.py` (new)
+- `code/state_elections_wahlkreis/parsers/parse_HB.R` (extended: reads the fixture,
+  re-validates, combines with 2015/2019, single write at the end)
+- `data/state_elections/processed/wahlkreis/hb_pdf/HB_2003_2023_pdf_long.csv` (new)
+- `data/state_elections/processed/wahlkreis/HB_ltw_wkr_long.csv` (regenerated)
+- this README (status section appended)

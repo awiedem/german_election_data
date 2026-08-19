@@ -13,18 +13,22 @@
 #     HB_2019_Buergerschaftswahl_Bremen_ebene3.csv
 #     HB_2019_Buergerschaftswahl_Bremerhaven_ebene3.csv
 #
-#   EXCLUDED: HB_2023_..._data.js (InstantAtlas) carries ONLY vote SHARES (%),
-#   no absolute votes / no valid_votes -> cannot satisfy the integrity check,
-#   so 2023 is excluded per the clean-only mandate. All other files are PDF/TIF
-#   scans (deferred) or finer geo levels (ebene6/8/11 = Wahlbezirk/Stadtteil/
-#   Ortsteil, below the Wahlbereich -> not the constituency unit).
+#   All other files are PDF scans or finer geo levels (ebene6/8/11 =
+#   Wahlbezirk/Stadtteil/Ortsteil, below the Wahlbereich -> not the
+#   constituency unit) -- EXCEPT four PDF Hefte with a digital text layer,
+#   which the Stage-0 script 00_hb_pdf_parse.py hard-validates and parses:
+#     2003 (Heft 106), 2007 (Heft 110), 2011 (Heft 113 Teil 1), 2023 (Heft 126)
+#   -> hb_pdf/HB_2003_2023_pdf_long.csv, appended below (see that script's
+#   header for source pages, table structure per year, and validations).
 #
 # VOTE SYSTEM: Bremen is a city-state with a 5-vote proportional system since
 #   2011. A voter distributes 5 votes among a party LIST and/or that party's
 #   individual candidates. The party's TOTAL Stimmen (list + all its candidates)
 #   determines seats -> this is the proportional "list" result. There is only
 #   ONE ballot type (no separate Erst-/Zweitstimme). Per task spec it is mapped
-#   to stimme = "zweitstimme" (the proportional list result).
+#   to stimme = "zweitstimme" (the proportional list result). Before 2011
+#   (2003, 2007) Bremen used a single list vote (Listenstimme) -- also mapped
+#   to stimme = "zweitstimme" per the same single-ballot convention.
 #
 # votemanager column legend (verified empirically against the data):
 #   A  = Wahlberechtigte (eligible_voters)
@@ -41,6 +45,8 @@
 #   party totals. Every code matched a published total EXACTLY (0 residual,
 #   statewide sums identical). The mapping is PER YEAR -- ballot order differs
 #   between 2015 and 2019 (e.g. D2 = Gruene in 2015 but CDU in 2019).
+#
+# Run order: python3 .../00_hb_pdf_parse.py  ->  Rscript .../parse_HB.R
 # =============================================================================
 
 library(here)
@@ -128,27 +134,80 @@ parse_one <- function(file, year, date) {
     )
 }
 
-long <- pmap_dfr(files, parse_one)
+long_2015_2019 <- pmap_dfr(files, parse_one)
 
 # column order exactly as required
 col_order <- c("state_abbr", "state", "election_year", "election_date",
                "wkr_nr", "wkr_name", "stimme", "eligible_voters",
                "number_voters", "valid_votes", "invalid_votes",
                "party_raw", "votes")
-long <- long[, col_order]
+long_2015_2019 <- long_2015_2019[, col_order]
 
-fwrite(long, out_csv)
-cat("Wrote", nrow(long), "rows to", out_csv, "\n")
-
-# --- VALIDATION ---------------------------------------------------------------
-cat("\n=== (a) per (wkr,stimme): |sum(party votes) - valid_votes| ===\n")
-chk <- long %>%
+# --- VALIDATION (2015 / 2019) --------------------------------------------------
+cat("\n=== (a) per (wkr,stimme): |sum(party votes) - valid_votes| (2015/2019) ===\n")
+chk <- long_2015_2019 %>%
   group_by(election_year, wkr_nr, wkr_name, stimme, valid_votes) %>%
   summarise(sum_votes = sum(votes), .groups = "drop") %>%
   mutate(disc = abs(sum_votes - valid_votes))
 print(as.data.frame(chk))
 cat("MAX abs discrepancy:", max(chk$disc),
     "| groups checked:", nrow(chk), "\n")
+stopifnot(max(chk$disc) == 0)
 
-cat("\n=== (c) Wahlbereich count per year (expect 2) ===\n")
-print(long %>% distinct(election_year, wkr_nr) %>% count(election_year))
+cat("\n=== (c) Wahlbereich count per year (expect 2) (2015/2019) ===\n")
+print(long_2015_2019 %>% distinct(election_year, wkr_nr) %>% count(election_year))
+
+# =============================================================================
+# 2003 / 2007 / 2011 / 2023 -- Stage-0 PDF parse (Statistische Mitteilungen
+# Hefte 106 / 110 / 113 / 126), cross-validated (party sums vs Gueltige
+# Stimmen, Bremen+Bremerhaven vs Land Bremen, pinned official shares, and for
+# 2023 also the InstantAtlas .js shares) -- see 00_hb_pdf_parse.py header.
+# =============================================================================
+pdf_csv <- file.path(dirname(out_csv), "hb_pdf", "HB_2003_2023_pdf_long.csv")
+if (!file.exists(pdf_csv)) {
+  stop("Missing ", pdf_csv,
+       "\n  Run first:  python3 code/state_elections_wahlkreis/parsers/00_hb_pdf_parse.py")
+}
+pdf_long <- fread(pdf_csv, encoding = "UTF-8",
+                  colClasses = list(character = c("state_abbr", "state", "election_date",
+                                                  "wkr_nr", "wkr_name", "stimme",
+                                                  "party_raw")))
+stopifnot(setequal(names(pdf_long), col_order))
+setcolorder(pdf_long, col_order)
+
+cat("\n=========== HB 2003/2007/2011/2023 (from the PDF Hefte) ===========\n")
+cat("    rows read      :", nrow(pdf_long), "\n")
+print(pdf_long[, .(n_wkr = uniqueN(wkr_nr), n_parties = uniqueN(party_raw)),
+               by = .(election_year, stimme)])
+
+# per (year, wkr): sum(party votes) must equal valid_votes exactly
+chk2 <- pdf_long[, .(sum_party = sum(votes, na.rm = TRUE), valid = unique(valid_votes)),
+                 by = .(election_year, wkr_nr)]
+chk2[, disc := abs(sum_party - valid)]
+cat("    vote integrity : groups", nrow(chk2), "| max abs discrepancy", max(chk2$disc), "\n")
+if (any(chk2$disc > 0)) { print(chk2[disc > 0]); stop("HB PDF rows fail vote integrity") }
+
+# the 2 Wahlbereich names must be the same objects the 2015/2019 data uses
+n_2015_2019 <- unique(as.data.table(long_2015_2019)[, .(wkr_nr, wkr_name)])
+n_pdf <- unique(pdf_long[, .(wkr_nr, wkr_name)])
+cmp_names <- merge(n_2015_2019, n_pdf, by = "wkr_nr", suffixes = c("_15_19", "_pdf"))
+if (!all(cmp_names$wkr_name_15_19 == cmp_names$wkr_name_pdf)) {
+  print(cmp_names[wkr_name_15_19 != wkr_name_pdf])
+  stop("HB Wahlbereich names diverge across years")
+}
+cat("    Wahlbereich names identical to the 2015/2019 data: 2 / 2\n")
+
+# =============================================================================
+# COMBINE + WRITE (single write)
+# =============================================================================
+long <- rbindlist(list(as.data.table(long_2015_2019), pdf_long), use.names = TRUE)
+setorder(long, election_year, wkr_nr, party_raw)
+
+cat("\n=========== COMBINED (HB) ===========\n")
+print(long[, .(rows = .N, n_wkr = uniqueN(wkr_nr)), by = election_year])
+
+cat(sprintf("\nTotal rows emitted: %d\n", nrow(long)))
+cat(sprintf("Distinct party_raw: %d\n", n_distinct(long$party_raw)))
+
+fwrite(long, out_csv)
+cat("Wrote", nrow(long), "rows to", out_csv, "\n")
