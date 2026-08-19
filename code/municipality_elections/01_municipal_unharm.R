@@ -9439,14 +9439,14 @@ baden_wuerttemberg_2019_gemeinderatswahlen_data_sub$Turnout <- baden_wuerttember
 ###### Baden-Wuerttemberg 2024 Gemeinderatswahlen ----
 #### Load election data ----
 baden_wuerttemberg_2024_gemeinderatswahlen_data <- as.data.table(read_delim(
-  "raw/baden_wuerttemberg/baden_wuerttemberg_2024.csv",
+  "raw/baden_wuerttemberg/baden_wuerttemberg_2024.csv.gz",
   delim = ";",
   locale = locale(encoding = "ISO-8859-1")
 )) |>
   bind_rows(
     # add seat data
     as.data.table(read_delim(
-      "raw/baden_wuerttemberg/baden_wuerttemberg_2024_seats.csv",
+      "raw/baden_wuerttemberg/baden_wuerttemberg_2024_seats.csv.gz",
       delim = ";",
       locale = locale(encoding = "ISO-8859-1")
     )) |>

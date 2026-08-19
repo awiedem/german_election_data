@@ -1,0 +1,444 @@
+[
+  {
+    "id": "1",
+    "name": "CDU",
+    "longName": "Christlich Demokratische Union Deutschlands",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "2",
+    "name": "SPD",
+    "longName": "Sozialdemokratische Partei Deutschlands",
+    "color": "#FF0000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "3",
+    "name": "GRÜNE",
+    "longName": "BÜNDNIS 90/DIE GRÜNEN",
+    "color": "#1C7726",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "4",
+    "name": "FDP",
+    "longName": "Freie Demokratische Partei",
+    "color": "#F3C600",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "6",
+    "name": "ÖDP",
+    "longName": "Ökologisch-Demokratische Partei",
+    "color": "#FAC090",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "9",
+    "name": "DIE LINKE",
+    "longName": "DIE LINKE",
+    "color": "#C44165",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "25",
+    "name": "FREIE WÄHLER",
+    "longName": "FREIE WÄHLER",
+    "color": "#FF6600",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "89",
+    "name": "PIRATEN",
+    "longName": "Piratenpartei Deutschland",
+    "color": "#E46C0A",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "97",
+    "name": "AfD",
+    "longName": "Alternative für Deutschland",
+    "color": "#376092",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "100",
+    "name": "Die PARTEI",
+    "longName": "Partei für Arbeit; Rechtsstaat; Tierschutz; Elitenförderung und basisdemokratische Initiative",
+    "color": "#870E2F",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "102",
+    "name": "III. Weg",
+    "longName": "DER DRITTE WEG",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "118",
+    "name": "BIG",
+    "longName": "Bündnis für Innovation & Gerechtigkeit",
+    "color": "#CCCCCC",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "129",
+    "name": "Volt",
+    "longName": "Volt Deutschland",
+    "color": "#D43FD4",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "133",
+    "name": "dieBasis",
+    "longName": "Basisdemokratische Partei Deutschland",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "160",
+    "name": "BSW",
+    "longName": "Bündnis Sahra Wagenknecht - Vernunft und Gerechtigkeit",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "162",
+    "name": "KLIMALISTE",
+    "longName": "Klimaliste Deutschland",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "28",
+    "name": "WG",
+    "longName": "Wählergruppe 1",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": true,
+    "parentId": "999"
+  },
+  {
+    "id": "29",
+    "name": "WG",
+    "longName": "Wählergruppe 2",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": true,
+    "parentId": "999"
+  },
+  {
+    "id": "30",
+    "name": "WG",
+    "longName": "Wählergruppe 3",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": true,
+    "parentId": "999"
+  },
+  {
+    "id": "31",
+    "name": "WG",
+    "longName": "Wählergruppe 4",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": true,
+    "parentId": "999"
+  },
+  {
+    "id": "32",
+    "name": "WG",
+    "longName": "Wählergruppe 5",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": true,
+    "parentId": "999"
+  },
+  {
+    "id": "33",
+    "name": "WG",
+    "longName": "Wählergruppe 6",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": true,
+    "parentId": "999"
+  },
+  {
+    "id": "73",
+    "name": "WG",
+    "longName": "Wählergruppe 7",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": true,
+    "parentId": "999"
+  },
+  {
+    "id": "74",
+    "name": "WG",
+    "longName": "Wählergruppe 8",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": true,
+    "parentId": "999"
+  },
+  {
+    "id": "75",
+    "name": "WG",
+    "longName": "Wählergruppe 9",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": true,
+    "parentId": "999"
+  },
+  {
+    "id": "76",
+    "name": "WG",
+    "longName": "Wählergruppe 10",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": true,
+    "parentId": "999"
+  },
+  {
+    "id": "56",
+    "name": "gemWV",
+    "longName": "gemeinsamer Wahlvorschlag 1",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "78",
+    "name": "gemWV",
+    "longName": "gemeinsamer Wahlvorschlag 2",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "42",
+    "name": "EBW",
+    "longName": "Einzelbewerber 1",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "43",
+    "name": "EBW",
+    "longName": "Einzelbewerber 2",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "44",
+    "name": "EBW",
+    "longName": "Einzelbewerber 3",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "45",
+    "name": "EBW",
+    "longName": "Einzelbewerber 4",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "46",
+    "name": "EBW",
+    "longName": "Einzelbewerber 5",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "68",
+    "name": "EBW",
+    "longName": "Einzelbewerber 6",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "69",
+    "name": "EBW",
+    "longName": "Einzelbewerber 7",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "70",
+    "name": "EBW",
+    "longName": "Einzelbewerber 8",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "71",
+    "name": "EBW",
+    "longName": "Einzelbewerber 9",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "72",
+    "name": "EBW",
+    "longName": "Einzelbewerber 10",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "5",
+    "name": "REP",
+    "longName": "DIE REPUBLIKANER",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "8",
+    "name": "Graue Panther",
+    "longName": "Graue Panther",
+    "color": "#C0C0C0",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "10",
+    "name": "NATURG.",
+    "longName": "NATURGESETZ PARTEI, AUFBRUCH ZU NEUEM BEWUSSTSEIN",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "11",
+    "name": "CM",
+    "longName": "CHRISTLICHE MITTE - Für ein Deutschland nach GOTTES Geboten",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "7",
+    "name": "APD",
+    "longName": "AUTOFAHRER- und BÜRGERINTERESSEN PARTEI DEUTSCHLANDS",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "130",
+    "name": "BASISDEMOKRATIE",
+    "longName": "Basisdemokratie statt Obrigkeitsstaat",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "165",
+    "name": "ABG",
+    "longName": "Aktion Bürger für Gerechtigkeit",
+    "color": "#db5edb",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "38",
+    "name": "DKP",
+    "longName": "Deutsche Kommunistische Partei",
+    "color": "#CCCCCC",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "96",
+    "name": "parteiunabh.",
+    "longName": "parteiunabhängig",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "12",
+    "name": "PBC",
+    "longName": "Partei Bibeltreuer Christen",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "13",
+    "name": "NPD",
+    "longName": "Nationaldemokratische Partei Deutschlands",
+    "color": "#7A0000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "20",
+    "name": "Tierschutzpartei",
+    "longName": "PARTEI MENSCH UMWELT TIERSCHUTZ",
+    "color": "#506928",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "131",
+    "name": "Dr. Moritz",
+    "longName": "Parteilos Dr. med. Moritz Ingrid",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "132",
+    "name": "Klimaliste",
+    "longName": "Klimaliste RLP e.V.",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "34",
+    "name": "Mehrh.wahl",
+    "longName": "Mehrheitswahl",
+    "color": "#000000",
+    "isParent": false,
+    "isWaehlergruppe": false
+  },
+  {
+    "id": "999",
+    "name": "SUMME WÄHLERGRUPPE",
+    "longName": "SUMME WÄHLERGRUPPE",
+    "color": "#555555",
+    "isParent": true,
+    "isWaehlergruppe": true
+  }
+]

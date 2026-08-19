@@ -1,0 +1,106 @@
+[
+  {
+  "id": "LK_LANDRATSWAHL",
+  "type": "DIRECT",
+  "label": "Landratswahl",
+  "fullLabel": "Landratswahl",
+  "description": null,
+  "geoType": "LK"
+  },
+  {
+  "id": "KS_BUERGERMEISTERWAHL",
+  "type": "DIRECT",
+  "label": "Stadtbürgermeisterwahl",
+  "fullLabel": "Stadtbürgermeisterwahl",
+  "description": null,
+  "geoType": "KS"
+  },
+  {
+  "id": "VF_BUERGERMEISTERWAHL",
+  "type": "DIRECT",
+  "label": "Bürgermeisterwahl",
+  "fullLabel": "Bürgermeisterwahl",
+  "description": null,
+  "geoType": "VF"
+  },
+  {
+  "id": "VG_BUERGERMEISTERWAHL",
+  "type": "DIRECT",
+  "label": "Oberbürgermeister",
+  "fullLabel": "Oberbürgermeister",
+  "description": null,
+  "geoType": "VG"
+  },
+  {
+  "id": "GD_ORTSBUERGERMEISTERWAHL",
+  "type": "DIRECT",
+  "label": "Bürgermeisterwahl",
+  "fullLabel": "Bürgermeisterwahl",
+  "description": null,
+  "geoType": "GD"
+  },
+  {
+  "id": "LK_KREISTAGSWAHL",
+  "type": "RELATION",
+  "label": "Kreistagswahl",
+  "fullLabel": "Kreistagswahl",
+  "description": null,
+  "geoType": "LK"
+  },
+  {
+  "id": "KS_STADTRATSWAHL",
+  "type": "RELATION",
+  "label": "Stadtratswahl",
+  "fullLabel": "Stadtratswahl",
+  "description": null,
+  "geoType": "KS"
+  },
+  {
+  "id": "VF_VERBANDSFREIEGEMEINDERATSWAHL",
+  "type": "RELATION",
+  "label": "Verbandsfreiegemeinderatswahl",
+  "fullLabel": "Verbandsfreiegemeinderatswahl",
+  "description": null,
+  "geoType": "VF"
+  },
+  {
+  "id": "VG_VERBANDSGEMEINDERATSWAHL",
+  "type": "RELATION",
+  "label": "Verbandsgemeinderatswahl",
+  "fullLabel": "Verbandsgemeinderatswahl",
+  "description": null,
+  "geoType": "VG"
+  },
+  {
+  "id": "GD_GEMEINDERATSWAHL",
+  "type": "RELATION",
+  "label": "Gemeinderatswahl",
+  "fullLabel": "Gemeinderatswahl",
+  "description": null,
+  "geoType": "GD"
+  },
+  {
+  "id": "BEZIRKSTAGSWAHL",
+  "type": "RELATION",
+  "label": "Bezirkstagswahl",
+  "fullLabel": "Bezirkstagswahl",
+  "description": null,
+  "geoType": "LK"
+  },
+  {
+  "id": "LE_KREIS",
+  "type": "RELATION",
+  "label": "Landesergebnis Kreiswahl",
+  "fullLabel": "Kreiswahl",
+  "description": null,
+  "geoType": "LK"
+  },
+  {
+  "id": "LE_VERBAND",
+  "type": "RELATION",
+  "label": "Landesergebnis Verbandsgemeinderatswahl",
+  "fullLabel": "Verbandsgemeinderatswahl",
+  "description": null,
+  "geoType": "LK"
+  }
+  ]

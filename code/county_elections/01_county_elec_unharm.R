@@ -10,6 +10,8 @@ options(scipen = 999)
 pacman::p_load("tidyverse", "data.table", "readxl", "haschaR")
 conflict_prefer("filter", "dplyr")
 
+source("code/county_elections/county_election_support.R")
+
 # NB: this used to point at a nested `Kreistagswahlen/Kreistagswahlen/` copy that
 # duplicated its parent. That copy is now marked com.dropbox.ignored (and
 # gitignored) so it no longer syncs, leaving it empty — the raw files live in the
@@ -1069,8 +1071,14 @@ parse_sn_legacy <- function(filepath, year) {
   names(raw_sel) <- names(col_map)
   df <- as.data.frame(raw_sel, stringsAsFactors = FALSE)
 
-  # Filter to 8-digit AGS (municipality level)
-  df <- df[!is.na(df$ags) & nchar(df$ags) == 8, ]
+  # Keep municipality rows. Larger municipalities can be split across
+  # numbered election areas (for example 14173140-1 through -3); these must be
+  # summed back to the eight-digit municipality rather than discarded.
+  df <- df[
+    !is.na(df$ags) & grepl("^\\d{8}(-\\d+)?$", as.character(df$ags)),
+  ]
+  df$ags <- sub("-\\d+$", "", as.character(df$ags))
+  df$ags_name <- sub("\\s+\\d+$", "", as.character(df$ags_name))
 
   # Convert to numeric
   all_numeric <- c("eligible_voters", "number_voters", "invalid_votes",
@@ -1083,6 +1091,22 @@ parse_sn_legacy <- function(filepath, year) {
 
   # Remove rows with all-NA vote data
   df <- df[!is.na(df$eligible_voters) | !is.na(df$number_voters), ]
+
+  # Aggregate numbered election areas to one municipality row. No workbook
+  # contains both a municipality total and its numbered components.
+  df <- df |>
+    group_by(ags) |>
+    summarise(
+      ags_name = first(ags_name),
+      across(
+        all_of(unique(all_numeric)),
+        ~ if (all(is.na(.x))) NA_real_ else sum(.x, na.rm = TRUE)
+      ),
+      .groups = "drop"
+    )
+  if (anyDuplicated(df$ags)) {
+    stop("Saxony legacy parser produced duplicate municipality AGS.", call. = FALSE)
+  }
 
   # Add metadata
   df$election_year <- as.integer(year)
@@ -1520,8 +1544,8 @@ df_bb <- tryCatch({
   df_bb |> count(election_year) |> print()
   df_bb
 }, error = function(e) {
-  cat("  BB FAILED:", conditionMessage(e), "\n")
-  cat("  Skipping BB — known tibble name-mangling issue\n")
+  cat("  Legacy BB parser failed:", conditionMessage(e), "\n")
+  cat("  The validated Brandenburg parser will run during integration.\n")
   NULL
 })
 
@@ -1965,14 +1989,10 @@ parse_he_sheet <- function(filepath, sheet_name) {
     voters_col <- which(grepl("^W.hler$", r2))[1]
     eligible_col <- which(grepl("Wahlberechtigte", r2))[1]
 
-    # Eligible voters "Insgesamt" is typically 2-3 cols after the Wahlberechtigte label
-    # Find the "Ins-gesamt" in row 3 near the eligible_col
-    if (!is.na(eligible_col)) {
-      # Look for first data column after eligible_col that has large numbers
-      for (ec in (eligible_col):(eligible_col + 4)) {
-        test_val <- as.numeric(as.character(all_data[[ec]][which(valid_rows)[1]]))
-        if (!is.na(test_val) && test_val > 100) { eligible_col <- ec; break }
-      }
+    # Eligibility is split into components; the published total is the column
+    # immediately before the voters column in every multi-block sheet.
+    if (!is.na(voters_col) && voters_col > 1L) {
+      eligible_col <- voters_col - 1L
     }
 
     df$eligible_voters <- if (!is.na(eligible_col)) as.numeric(as.character(all_data[[eligible_col]][valid_rows])) else NA_real_
@@ -2062,6 +2082,12 @@ parse_he_sheet <- function(filepath, sheet_name) {
           invalid_col <- i
         }
       }
+    }
+
+    # In 1981 and 1985, the header scan lands on the first eligibility
+    # component. The published total is immediately before the voters column.
+    if (year %in% c(1981L, 1985L) && !is.na(voter_col) && voter_col > 1L) {
+      elig_col <- voter_col - 1L
     }
 
     # Fallback for valid_col: if not found, try column before first party position
@@ -2354,6 +2380,16 @@ if (file.exists(he_2026_csv)) {
 }
 
 df_he <- bind_rows(he_results)
+
+df_he <- df_he |>
+  mutate(
+    source_limitation = election_year == 1956L & ags == "06440022",
+    source_note = if_else(
+      source_limitation,
+      "Official workbook reports more voters than eligible voters.",
+      NA_character_
+    )
+  )
 
 # Remove Landkreis aggregate rows (AGS ending in "000") where municipality-level
 # rows also exist for the same county. These are redundant sums.
@@ -3679,6 +3715,179 @@ cat("NRW total:", nrow(df_nrw), "rows x", ncol(df_nrw), "cols\n")
 cat("NRW years:", paste(sort(unique(df_nrw$election_year)), collapse = ", "), "\n")
 df_nrw |> count(election_year) |> print()
 
+# Replace the legacy catch-and-skip Brandenburg block with the validated parser.
+# Any missing source or parse failure now stops the build.
+source("code/county_elections/parsers/parse_bb.R")
+df_bb <- parse_bb_county_elections(
+  file.path(raw_dir, "Brandenburg")
+)
+validate_county_election_parser_output(df_bb, "Brandenburg parser")
+
+# The 1993 and 1998 official publication provides validated county totals.
+source("code/county_elections/parsers/parse_bb_1993_1998.R")
+df_bb_history <- parse_bb_1993_1998_county_summary(
+  file.path(raw_dir, "Brandenburg")
+)
+validate_county_election_parser_output(
+  df_bb_history, "Brandenburg 1993/1998 parser"
+)
+df_bb <- bind_rows(
+  df_bb |> filter(!election_year %in% c(1993L, 1998L)),
+  df_bb_history
+)
+
+# Add the 1994 county and county-equivalent results from the official scanned
+# publication. Later NRW files are available at municipality level.
+source("code/county_elections/parsers/parse_nrw_1994.R")
+df_nrw_1994 <- parse_nrw_1994_county_elections(raw_dir)
+validate_county_election_parser_output(df_nrw_1994, "NRW 1994 parser")
+df_nrw <- bind_rows(
+  df_nrw |> filter(election_year != 1994L),
+  df_nrw_1994
+)
+
+# Add exact 2025 county totals from the published HTML pages and municipality
+# contributions from the official IT.NRW polling-district extract. Independent
+# cities remain represented by their exact city-council row only.
+source("code/county_elections/parsers/parse_nrw_2025.R")
+df_nrw_2025_county <- parse_nrw_2025_county_elections(raw_dir)
+validate_county_election_parser_output(
+  df_nrw_2025_county,
+  "NRW 2025 county parser"
+)
+df_nrw_2025_municipality <- parse_nrw_2025_municipality_elections(
+  "data/county_elections/raw/local_elections_nrw/KW25_Stimmbezirke.csv"
+)
+validate_county_election_parser_output(
+  df_nrw_2025_municipality,
+  "NRW 2025 municipality parser"
+)
+df_nrw_2025 <- bind_rows(
+  df_nrw_2025_county,
+  df_nrw_2025_municipality
+)
+validate_county_election_parser_output(df_nrw_2025, "NRW 2025 combined parser")
+df_nrw <- bind_rows(
+  df_nrw |> filter(election_year != 2025L),
+  df_nrw_2025
+)
+
+# RLP is available at county/county-equivalent level for 2004-2024.
+source("code/county_elections/parsers/parse_rlp.R")
+df_rlp <- parse_rlp_county_elections("data/county_elections/raw") |>
+  select(-starts_with("vote_count_"))
+validate_county_election_parser_output(df_rlp, "RLP parser")
+
+# The official 2024 portal also publishes complete municipal contributions to
+# each of the 24 Landkreis Kreistag contests. Keep the exact county rows above
+# and append the municipality layer. The parser retains additional raw-count
+# audit fields, but the main output uses the ballot-equivalent party shares
+# that are comparable to the existing RLP county series.
+source("code/county_elections/parsers/parse_rlp_2024_muni.R")
+df_rlp_2024_muni_full <- parse_rlp_2024_municipality(
+  file.path(raw_dir, "Rheinland-Pfalz", "2024_municipality")
+)
+rlp_2024_party_cols <- sub(
+  "^vote_count_", "",
+  grep("^vote_count_", names(df_rlp_2024_muni_full), value = TRUE)
+)
+df_rlp_2024_muni <- df_rlp_2024_muni_full |>
+  select(
+    ags, ags_name, county, state, election_year,
+    eligible_voters, number_voters, valid_votes, invalid_votes, turnout,
+    result_level, contest_type, event_scope, source_limitation, source_note,
+    all_of(rlp_2024_party_cols)
+  )
+validate_county_election_parser_output(
+  df_rlp_2024_muni, "RLP 2024 municipality parser"
+)
+df_rlp <- bind_rows(df_rlp, df_rlp_2024_muni)
+
+# Historical MV sources cover 1990-2011. The 2011 reform result is available
+# only as six county totals; earlier years are municipality-level.
+source("code/county_elections/parsers/parse_mv_history.R")
+df_mv_history <- suppressWarnings(
+  parse_mv_historical_county_elections(raw_dir)
+) |>
+  mutate(
+    source_limitation = case_when(
+      election_year == 1999L & ags == "13059050" ~ TRUE,
+      election_year == 2009L ~ TRUE,
+      TRUE ~ FALSE
+    ),
+    source_note = case_when(
+      election_year == 1999L & ags == "13059050" ~
+        "Official source reports 159 voters but 158 eligible voters.",
+      election_year == 2009L ~
+        "One Bützow-Land postal pool (864 valid votes) cannot be assigned to municipalities.",
+      TRUE ~ NA_character_
+    )
+  )
+validate_county_election_parser_output(df_mv_history, "MV historical parser")
+df_mv <- bind_rows(
+  df_mv |> filter(!election_year %in% unique(df_mv_history$election_year)),
+  df_mv_history
+)
+
+# The 2011 reform workbook also publishes 804 exact municipality rows, but
+# reports postal votes for Amt-administered municipalities in 78 separate
+# administrative-office pools. Retain the exact six county totals above,
+# append the incomplete municipality layer, and preserve the pools separately
+# without allocating or imputing them.
+source("code/county_elections/parsers/parse_mv_2011_muni.R")
+df_mv_2011_muni <- parse_mv_2011_municipality_election(raw_dir)
+validate_county_election_parser_output(
+  df_mv_2011_muni, "MV 2011 municipality parser"
+)
+df_mv_2011_postal_pools <- attr(df_mv_2011_muni, "postal_pools")
+if (is.null(df_mv_2011_postal_pools) ||
+    nrow(df_mv_2011_postal_pools) != 78L) {
+  stop("MV 2011 municipality parser omitted the postal-pool audit rows.",
+       call. = FALSE)
+}
+df_mv <- bind_rows(df_mv, df_mv_2011_muni)
+
+write_rds(
+  df_mv_2011_postal_pools,
+  "data/county_elections/final/county_elec_mv_2011_postal_pools.rds"
+)
+fwrite(
+  df_mv_2011_postal_pools,
+  "data/county_elections/final/county_elec_mv_2011_postal_pools.csv"
+)
+
+# Saxony's 1994/95 reform wave was staggered. Most rows are county totals; two
+# 1995 supplementary contests are published at municipality level.
+source("code/county_elections/parsers/parse_sn_history.R")
+df_sn_history <- parse_sn_historical_county_elections(
+  file.path(raw_dir, "Sachsen")
+) |>
+  mutate(
+    source_limitation = election_year == 1994L,
+    source_note = if_else(
+      election_year == 1994L,
+      paste0(
+        "The source reports exact party and voter counts but only rounded ",
+        "valid/invalid ballot percentages; valid_votes and invalid_votes are unavailable."
+      ),
+      NA_character_
+    )
+  )
+validate_county_election_parser_output(df_sn_history, "Saxony historical parser")
+df_sn <- bind_rows(
+  df_sn |> filter(!election_year %in% unique(df_sn_history$election_year)),
+  df_sn_history
+)
+
+# Thuringia's pre-2004 sources are municipality results on historical codes.
+source("code/county_elections/parsers/parse_th_history.R")
+df_th_history <- parse_th_historical_county_elections(raw_dir)
+validate_county_election_parser_output(df_th_history, "Thuringia historical parser")
+df_th <- bind_rows(
+  df_th |> filter(!election_year %in% unique(df_th_history$election_year)),
+  df_th_history
+)
+
 
 # =============================================================================
 # Combine all states and write output
@@ -3695,20 +3904,24 @@ if (exists("df_bw") && nrow(df_bw) > 0) all_dfs <- c(all_dfs, list(df_bw))
 if (exists("df_sh") && nrow(df_sh) > 0) all_dfs <- c(all_dfs, list(df_sh))
 if (exists("df_ni") && nrow(df_ni) > 0) all_dfs <- c(all_dfs, list(df_ni))
 if (exists("df_nrw") && nrow(df_nrw) > 0) all_dfs <- c(all_dfs, list(df_nrw))
+if (exists("df_rlp") && nrow(df_rlp) > 0) all_dfs <- c(all_dfs, list(df_rlp))
 df_all <- bind_rows(all_dfs)
 
 # Ensure AGS, county, state are character with proper zero-padding
 df_all <- df_all |>
   mutate(
-    ags = sprintf("%08s", as.character(ags)),
-    county = sprintf("%05s", as.character(county)),
-    state = sprintf("%02s", as.character(state))
+    ags = str_pad(as.character(ags), 8L, pad = "0"),
+    county = str_pad(as.character(county), 5L, pad = "0"),
+    state = str_pad(as.character(state), 2L, pad = "0")
   )
+
+df_all <- add_county_election_metadata(df_all)
 
 # Reorder: meta cols first, then party cols sorted, then flags
 meta_cols <- c("ags", "ags_name", "county", "state", "election_year",
                "eligible_voters", "number_voters", "valid_votes", "invalid_votes",
-               "turnout")
+               "turnout", "result_level", "contest_type", "event_scope",
+               "source_limitation", "source_note")
 party_cols_all <- setdiff(names(df_all), c(meta_cols, "waehlergruppen", "einzelbewerber"))
 
 df_all <- df_all |>
@@ -3720,6 +3933,21 @@ cat("Final:", nrow(df_all), "rows x", ncol(df_all), "cols\n")
 cat("States:", paste(sort(unique(df_all$state)), collapse = ", "), "\n")
 
 glimpse(df_all)
+
+# Invalid turnout is permitted only for a row with a documented source
+# limitation. This catches parser column shifts before they reach final files.
+unexpected_bad_turnout <- df_all |>
+  filter(!is.na(turnout), (turnout < 0 | turnout > 1), !source_limitation)
+if (nrow(unexpected_bad_turnout) > 0L) {
+  print(unexpected_bad_turnout |>
+          select(state, election_year, ags, ags_name,
+                 eligible_voters, number_voters, turnout))
+  stop(
+    "Found ", nrow(unexpected_bad_turnout),
+    " invalid turnout rows without a documented source limitation.",
+    call. = FALSE
+  )
+}
 
 # Write
 write_rds(df_all, "data/county_elections/final/county_elec_unharm.rds")

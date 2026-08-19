@@ -22,6 +22,8 @@ pacman::p_load(
   "haschaR"
 )
 
+source("code/county_elections/county_election_support.R")
+
 # Load unharmonized data ----------------------------------------------------
 
 cat("Loading unharmonized county election data...\n")
@@ -35,6 +37,7 @@ df <- read_rds("data/county_elections/final/county_elec_unharm.rds") |>
     ags = pad_zero_conditional(ags, 7),
     county = str_sub(ags, 1, 5)
   ) |>
+  add_county_election_metadata() |>
   arrange(ags, election_year)
 
 cat("Loaded:", nrow(df), "rows,", ncol(df), "columns\n")
@@ -45,7 +48,8 @@ cat("Years:", paste(sort(unique(df$election_year)), collapse = ", "), "\n")
 
 metadata_cols <- c("ags", "ags_name", "county", "state", "election_year",
                    "eligible_voters", "number_voters", "valid_votes",
-                   "invalid_votes", "turnout")
+                   "invalid_votes", "turnout", "result_level", "contest_type",
+                   "event_scope", "source_limitation", "source_note")
 party_vars <- setdiff(names(df), metadata_cols)
 
 cat("Party variables found:", length(party_vars), "\n")
@@ -94,19 +98,38 @@ df <- df |>
       ags == "15089190" & election_year == 2007 ~ "15089042",  # Kleinmühlingen → Bördeland
       ags == "15089335" & election_year == 2007 ~ "15089042",  # Welsleben → Bördeland
       ags == "15089370" & election_year == 2007 ~ "15089042",  # Zens → Bördeland
+      # Mecklenburg-Vorpommern historical codes absent from the annual crosswalk
+      ags == "13057004" & election_year == 1990 ~ "13071002",  # Altenhagen
+      ags == "13053108" & election_year == 2004 ~ "13072082",  # Prebberede
+      # Thuringia short-lived/pre-reform municipalities absent from the crosswalk
+      ags == "16022540" & election_year == 1990 ~ "16061049",  # Streitholz → Hohes Kreuz
+      ags == "16063047" & election_year == 1994 ~ "16063003",  # Kupfersuhl → Bad Salzungen
+      ags == "16063056" & election_year == 1994 ~ "16063003",  # Möhra → Bad Salzungen
+      ags == "16063057" & election_year == 1994 ~ "16063003",  # Moorgrund → Bad Salzungen
+      ags == "16068054" & election_year == 1994 ~ "16051000",  # Töttelstädt → Erfurt
+      ags == "16069022" & election_year == 1994 ~ "16069053",  # Heßberg → Veilsdorf
+      ags == "16073098" & election_year == 1994 ~ "16073109",  # Weißen → Uhlstädt-Kirchhasel
+      ags == "16074023" & election_year == 1994 ~ "16074094",  # Gernewitz → Stadtroda
       TRUE ~ ags
     )
   )
 
 # After correcting AGS codes, aggregate any duplicates
 df <- df |>
-  group_by(ags, election_year, state) |>
+  group_by(
+    ags, election_year, state, result_level, event_scope
+  ) |>
   summarise(
     across(
       c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
       ~ sum(.x, na.rm = TRUE)
     ),
     across(any_of(c("ags_name", "county")), first),
+    source_limitation = any(source_limitation, na.rm = TRUE),
+    source_note = {
+      notes <- unique(stats::na.omit(source_note))
+      if (length(notes)) paste(notes, collapse = " | ") else NA_character_
+    },
     .groups = "drop"
   ) |>
   arrange(ags, election_year)
@@ -114,14 +137,13 @@ df <- df |>
 cat("After AGS corrections:", nrow(df), "rows\n")
 
 # ==========================================================================
-# Split into county-level (BW, BY) and municipality-level (all others)
+# Split using the row-level source resolution
 # ==========================================================================
 
-county_level_states <- c("08", "09")  # BW and BY
-df_cty <- df |> filter(state %in% county_level_states)
-df_muni <- df |> filter(!state %in% county_level_states)
+df_cty <- df |> filter(result_level == "county")
+df_muni <- df |> filter(result_level == "municipality")
 
-cat("\nCounty-level data (BW, BY):", nrow(df_cty), "rows\n")
+cat("\nCounty-level source data:", nrow(df_cty), "rows\n")
 cat("Municipality-level data:", nrow(df_muni), "rows\n")
 
 # ==========================================================================
@@ -255,12 +277,19 @@ cat("Municipality rows entering harmonization:", nrow(df_cw), "\n")
 
 # Harmonize municipality-level data
 votes_muni <- df_cw |>
-  group_by(ags_21, election_year) |>
+  group_by(
+    ags_21, election_year, event_scope
+  ) |>
   summarise(
     across(
       c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
       ~ sum(.x * pop_cw, na.rm = TRUE)
     ),
+    source_limitation = any(source_limitation, na.rm = TRUE),
+    source_note = {
+      notes <- unique(stats::na.omit(source_note))
+      if (length(notes)) paste(notes, collapse = " | ") else NA_character_
+    },
     .groups = "drop"
   ) |>
   mutate(
@@ -271,6 +300,8 @@ votes_muni <- df_cw |>
   ) |>
   rename(ags = ags_21) |>
   mutate(
+    result_level = "municipality",
+    contest_type = NA_character_,
     flag_unsuccessful_naive_merge = 0  # placeholder, updated below
   )
 
@@ -328,7 +359,12 @@ df_cty_unmatched <- df_cty_cw |> filter(is.na(county_code_21))
 if (nrow(df_cty_unmatched) > 0) {
   cat("Applying year-1 fallback to", nrow(df_cty_unmatched), "unmatched county rows...\n")
   df_cty_unmatched <- df_cty_unmatched |>
-    mutate(year_cw = pmax(pmin(election_year - 1, 2020), 1990)) |>
+    mutate(
+      year_cw = case_when(
+        state == "14" & election_year == 1994L ~ 1995L,
+        TRUE ~ pmax(pmin(election_year - 1, 2020), 1990)
+      )
+    ) |>
     select(-county_code_21, -pop_cw, -area_cw) |>
     left_join(
       cw_cty |> select(county_code, year, county_code_21, pop_cw, area_cw) |>
@@ -364,12 +400,19 @@ cat("County rows entering harmonization:", nrow(df_cty_cw), "\n")
 
 # Harmonize county-level data
 votes_cty <- df_cty_cw |>
-  group_by(county_code_21, election_year) |>
+  group_by(
+    county_code_21, election_year, event_scope
+  ) |>
   summarise(
     across(
       c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
       ~ sum(.x * pop_cw, na.rm = TRUE)
     ),
+    source_limitation = any(source_limitation, na.rm = TRUE),
+    source_note = {
+      notes <- unique(stats::na.omit(source_note))
+      if (length(notes)) paste(notes, collapse = " | ") else NA_character_
+    },
     .groups = "drop"
   ) |>
   mutate(
@@ -381,6 +424,8 @@ votes_cty <- df_cty_cw |>
   # Convert 5-digit county code to 8-digit AGS (county + "000")
   mutate(
     ags = paste0(pad_zero_conditional(county_code_21, 4), "000"),
+    result_level = "county",
+    contest_type = NA_character_,
     flag_unsuccessful_naive_merge = 0
   ) |>
   select(-county_code_21)
@@ -408,6 +453,7 @@ df_harm <- votes |>
     state = substr(ags, 1, 2),
     county = substr(ags, 1, 5)
   ) |>
+  add_county_election_metadata() |>
   relocate(state, .after = election_year) |>
   arrange(ags, election_year)
 
@@ -488,7 +534,7 @@ cat("Rows with incongruent total vote share:",
 
 cat("\n--- Output 1: Municipality-level ---\n")
 
-df_muni_out <- df_harm |> filter(!state %in% county_level_states)
+df_muni_out <- df_harm |> filter(result_level == "municipality")
 
 # Add municipality-level covariates
 area_pop <- read_rds("data/covars_municipality/final/ags_area_pop_emp.rds") |>
@@ -523,15 +569,34 @@ df_harm_counts <- df_harm |>
 # Aggregate municipality-level rows to county level
 # (BW/BY rows already are county-level — county == substr(ags, 1, 5))
 df_cty_agg <- df_harm_counts |>
-  group_by(county, election_year, state) |>
+  group_by(
+    county, election_year, state, event_scope, result_level
+  ) |>
   summarise(
     across(
       c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
       ~ sum(.x, na.rm = TRUE)
     ),
     flag_unsuccessful_naive_merge = max(flag_unsuccessful_naive_merge, na.rm = TRUE),
+    source_limitation = any(source_limitation, na.rm = TRUE),
+    source_note = {
+      notes <- unique(stats::na.omit(source_note))
+      if (length(notes)) paste(notes, collapse = " | ") else NA_character_
+    },
     .groups = "drop"
   ) |>
+  group_by(county, election_year, state, event_scope) |>
+  # Some events have both an exact published county total and a lower-level
+  # municipality layer. Prefer the exact county row, especially when pooled
+  # postal votes make the municipality layer intentionally incomplete.
+  filter(
+    if (any(result_level == "county")) {
+      result_level == "county"
+    } else {
+      result_level == "municipality"
+    }
+  ) |>
+  ungroup() |>
   mutate(
     across(
       c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
@@ -544,10 +609,15 @@ df_cty_out <- df_cty_agg |>
   mutate(
     across(all_of(party_vars), ~ ifelse(valid_votes > 0, .x / valid_votes, NA_real_)),
     turnout = ifelse(eligible_voters > 0, number_voters / eligible_voters, NA_real_),
+    result_level = "county",
+    contest_type = NA_character_,
     # Use county code as the identifier (5-digit)
     ags = paste0(county, "000")
   ) |>
   rename(county_code = county) |>
+  mutate(county = county_code) |>
+  add_county_election_metadata() |>
+  select(-county) |>
   arrange(county_code, election_year)
 
 # Recompute derived columns and total_vote_share for county-level
