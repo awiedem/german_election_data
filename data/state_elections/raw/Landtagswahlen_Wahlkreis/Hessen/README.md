@@ -161,3 +161,34 @@ genuinely missing at constituency level.
 content-type) before download, and confirmed bytes/type on disk with `ls`/`file`. Every
 historical scan's election year was visually verified from its cover/data pages, because
 the `cache/hessen` URL year labels are unreliable (1974 URL == 1978 election).*
+
+---
+
+## 2009 ingested at Wahlkreis level (2026-08-19)
+
+`HE_2009_Landtagswahl_Wahlkreis.pdf` (Staatsanzeiger Nr. 8/2009, digital text layer, 31
+pages) is now parsed by `code/state_elections_wahlkreis/parsers/00_he09_pdf_parse.py` into
+`data/state_elections/processed/wahlkreis/he_pdf/HE_2009_pdf_long.csv`, which
+`parse_HE.R` appends as a third fixture alongside 2023 (open data) and 2018/2013 (B VII
+2-4). All 55 Wahlkreise, both Wahlkreisstimmen (erststimme) and Landesstimmen
+(zweitstimme), 10 Landesliste parties + 5 Wahlkreis-only individual/local candidates
+(APPD in WK 13, Bürgerbewegung – WIR in WK 18 and 52, FAMILIE SCHMIDT in WK 8,
+Menschlichkeit in WK 47, Wolf Ruppert – direkt in WK 37).
+
+**2009 predates the Dec-2017 LWG re-cut** — its 55 Wahlkreise are on their own,
+pre-2018 boundaries, not the same units as 2013/2018/2023 despite the shared 1–55
+numbering. `flag_wkr_boundaries_recomputed = 0` throughout (nothing was recomputed;
+2009 is simply a separate, self-contained boundary regime), and `parse_HE.R`
+deliberately does not compare 2009 Wahlkreis names against later years.
+
+Two source defects were found by hard validation (both kept as printed, each pinned as
+the *only* instance of its kind before anything was written):
+- **Wahlkreis 44 (Offenbach Land I):** printed gültige Wahlkreisstimmen (50,596) exceeds
+  the sum of its own printed party columns by 11 votes. The statewide "Land Hessen"
+  block's CDU/Wahlkreisstimmen total reflects the corrected figure (11 higher than
+  summing the 55 printed per-Wahlkreis CDU values) — i.e. the per-Wahlkreis table, not
+  the statewide total, is what's wrong.
+- **Wahlkreis 1 (Kassel-Land I):** printed Landesstimmen "Wähler" (58,488) is 40 higher
+  than that Wahlkreis's own gültige+ungültige Landesstimmen (58,448) — a typo,
+  independent of the Wahlkreis-44 defect, confirmed via two independent extraction
+  methods (`pdfplumber` word geometry and `pdftotext -layout`).

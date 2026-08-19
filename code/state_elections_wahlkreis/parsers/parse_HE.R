@@ -220,6 +220,52 @@ if (!all(cmp_names$wkr_name_2023 == cmp_names$wkr_name_pdf)) {
 long <- rbindlist(list(long, pdf_long), use.names = TRUE)
 setorder(long, election_year, stimme, wkr_nr, party_raw)
 
+# =============================================================================
+# 2009 - Stage-0 PDF parse (Staatsanzeiger Nr. 8/2009, own pre-2018 boundaries)
+# =============================================================================
+# NB: 2009 predates the Dec-2017 LWG re-cut entirely, so its 55 Wahlkreise are
+# NOT the same geographic units as 2013/2018/2023 (even though both run 1-55).
+# Unlike the 2018/2013 block above, we deliberately do NOT compare wkr_name
+# against later years here - see 00_he09_pdf_parse.py for the boundary story.
+# flag_wkr_boundaries_recomputed = 0 for every 2009 row (own boundaries, no
+# recomputation happened).
+pdf09_csv <- file.path(out_dir, "he_pdf", "HE_2009_pdf_long.csv")
+if (!file.exists(pdf09_csv)) {
+  stop("Missing ", pdf09_csv,
+       "\n  Run first:  python3 code/state_elections_wahlkreis/parsers/00_he09_pdf_parse.py")
+}
+pdf09_long <- fread(pdf09_csv, encoding = "UTF-8",
+                    colClasses = list(character = c("state_abbr", "state", "election_date",
+                                                    "wkr_nr", "wkr_name", "stimme",
+                                                    "party_raw")))
+stopifnot(setequal(names(pdf09_long), col_order))
+setcolorder(pdf09_long, col_order)
+
+cat("\n=========== HE 2009 (Staatsanzeiger Nr. 8/2009) ===========\n")
+cat("    rows read        :", nrow(pdf09_long), "\n")
+print(pdf09_long[, .(n_wkr = uniqueN(wkr_nr), n_parties = uniqueN(party_raw)),
+                 by = .(election_year, stimme)])
+
+# per (wkr, stimme): sum(party votes) must equal valid_votes, EXCEPT the
+# single pinned Wahlkreis-44/erststimme source defect (11-vote gap, kept as
+# printed - see 00_he09_pdf_parse.py). The exception is pinned exactly, not a
+# loosened global tolerance.
+chk09 <- pdf09_long[, .(sum_party = sum(votes, na.rm = TRUE), valid = unique(valid_votes)),
+                    by = .(wkr_nr, stimme)]
+chk09[, disc := valid - sum_party]
+pinned09 <- chk09[wkr_nr == "44" & stimme == "erststimme" & disc == 11L]
+unexpected09 <- chk09[disc != 0L][!(wkr_nr == "44" & stimme == "erststimme" & disc == 11L)]
+cat("    vote integrity   : groups", nrow(chk09),
+    "| pinned Wahlkreis-44 erststimme gap found:", nrow(pinned09) == 1L,
+    "| unexpected discrepancies:", nrow(unexpected09), "\n")
+if (nrow(pinned09) != 1L || nrow(unexpected09) > 0L) {
+  print(chk09[disc != 0L])
+  stop("HE 2009 PDF rows fail vote integrity (expected exactly the pinned Wahlkreis-44 gap)")
+}
+
+long <- rbindlist(list(long, pdf09_long), use.names = TRUE)
+setorder(long, election_year, stimme, wkr_nr, party_raw)
+
 cat("\n=========== COMBINED (HE) ===========\n")
 print(long[, .(rows = .N, n_wkr = uniqueN(wkr_nr)), by = .(election_year, stimme)])
 cat("boundary flag rows by year:\n")
