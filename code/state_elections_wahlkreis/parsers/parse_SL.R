@@ -4,11 +4,19 @@
 #
 # Vote system: einzelstimme (one Listenstimme across 3 große Wahlkreise).
 #
-# Only machine-readable source: SL_2022_Landtagswahl_KERG.csv (votemanager KERG,
-# ";"-separated, UTF-8 BOM). It contains Land + 3 Wahlkreise + 52 Gemeinden.
-# We keep ONLY the 3 Wahlkreis rows (Nr 1/2/3, gehört-zu = 10). The Land total
-# row (Nr 10) is used for validation only. Gemeinde rows (gehört-zu 1/2/3) are
-# dropped. All other SL years are scans (PDF/TIF) -> excluded (future OCR stage).
+# 2022: SL_2022_Landtagswahl_KERG.csv (votemanager KERG, ";"-separated, UTF-8
+# BOM). It contains Land + 3 Wahlkreise + 52 Gemeinden. We keep ONLY the 3
+# Wahlkreis rows (Nr 1/2/3, gehört-zu = 10). The Land total row (Nr 10) is
+# used for validation only. Gemeinde rows (gehört-zu 1/2/3) are dropped.
+#
+# 1980-2017 (9 elections): parsed by the Stage-0 script 00_sl_pdf_parse.py
+# from the digital long-series table "Landtagswahlen 1980 bis 2022 nach
+# Landtagswahlkreisen" (SL_1980-2022_Landtagswahl_Wahlkreis.pdf) into
+# sl_pdf/SL_1980_2017_pdf_long.csv, appended below. That script hard-validates
+# every row against the printed percent columns, Gültige Stimmen, pinned
+# official statewide shares, and the 2022 KERG figures (independent source).
+#
+# Run order: python3 .../00_sl_pdf_parse.py  ->  Rscript .../parse_SL.R
 #
 # Output: a long tidy CSV, one row per (Wahlkreis x stimme x party).
 # =============================================================================
@@ -137,7 +145,6 @@ long <- long %>% filter(party_raw %in% keep_parties)
 long$votes <- as.integer(round(long$votes))
 
 setorder(setDT(long), wkr_nr, party_raw)
-fwrite(long, out_csv)
 
 # ---------------------------------------------------------------------------
 # VALIDATION
@@ -183,6 +190,58 @@ print(agg)
 cat(sprintf("\n(c) n_wahlkreise = %d (expected 3)\n",
             n_distinct(long$wkr_nr)))
 
+# =============================================================================
+# 1980-2017 - Stage-0 PDF parse (long-series table, cross-checked vs KERG 2022)
+# =============================================================================
+pdf_csv <- file.path(out_dir, "sl_pdf", "SL_1980_2017_pdf_long.csv")
+if (!file.exists(pdf_csv)) {
+  stop("Missing ", pdf_csv,
+       "\n  Run first:  python3 code/state_elections_wahlkreis/parsers/00_sl_pdf_parse.py")
+}
+col_order <- c("state_abbr", "state", "election_year", "election_date",
+               "wkr_nr", "wkr_name", "stimme",
+               "eligible_voters", "number_voters",
+               "valid_votes", "invalid_votes", "party_raw", "votes")
+pdf_long <- fread(pdf_csv, encoding = "UTF-8",
+                  colClasses = list(character = c("state_abbr", "state", "election_date",
+                                                  "wkr_nr", "wkr_name", "stimme",
+                                                  "party_raw")))
+stopifnot(setequal(names(pdf_long), col_order))
+setcolorder(pdf_long, col_order)
+
+cat("\n=========== SL 1980-2017 (from the long-series table) ===========\n")
+cat("    rows read      :", nrow(pdf_long), "\n")
+print(pdf_long[, .(n_wkr = uniqueN(wkr_nr), n_parties = uniqueN(party_raw)),
+               by = .(election_year, stimme)])
+
+# per (year, wkr): sum(party votes) must equal valid_votes
+chk2 <- pdf_long[, .(sum_party = sum(votes, na.rm = TRUE), valid = unique(valid_votes)),
+                 by = .(election_year, wkr_nr)]
+chk2[, disc := abs(sum_party - valid)]
+cat("    vote integrity : groups", nrow(chk2), "| max abs discrepancy", max(chk2$disc), "\n")
+if (any(chk2$disc > 0)) { print(chk2[disc > 0]); stop("SL PDF rows fail vote integrity") }
+
+# the 3 Wahlkreis names must be the same objects the 2022 KERG data uses
+n22  <- unique(as.data.table(long)[, .(wkr_nr, wkr_name)])
+n_pdf <- unique(pdf_long[, .(wkr_nr, wkr_name)])
+cmp_names <- merge(n22, n_pdf, by = "wkr_nr", suffixes = c("_2022", "_pdf"))
+if (!all(cmp_names$wkr_name_2022 == cmp_names$wkr_name_pdf)) {
+  print(cmp_names[wkr_name_2022 != wkr_name_pdf])
+  stop("SL Wahlkreis names diverge across years")
+}
+cat("    Wahlkreis names identical to the 2022 KERG data: 3 / 3\n")
+
+long <- rbindlist(list(as.data.table(long), pdf_long), use.names = TRUE)
+setorder(long, election_year, wkr_nr, party_raw)
+
+cat("\n=========== COMBINED (SL) ===========\n")
+print(long[, .(rows = .N, n_wkr = uniqueN(wkr_nr)), by = election_year])
+
 cat(sprintf("\nTotal rows emitted: %d\n", nrow(long)))
 cat(sprintf("Distinct party_raw: %d\n", n_distinct(long$party_raw)))
+
+# =============================================================================
+# WRITE OUTPUT
+# =============================================================================
+fwrite(long, out_csv)
 cat(sprintf("Output: %s\n", out_csv))

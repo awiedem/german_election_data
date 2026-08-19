@@ -116,6 +116,11 @@ normalise_party <- function(pname) {
   if (grepl("^B[UÜ]NDNIS.?DKP.?KPD", p_up))                   return("buendnis_dkp_kpd")
   if (grepl("^OFFEN.*SIVE.*D", p_up))                          return("offensive_d")
   if (grepl("^CHR.?L$", p_up))                                 return("chr_l")
+  # source-side residual / grouped labels, EXACT match only ("Sonstige Partei"
+  # must keep its own key): the SL long-series table and HE 2013 report a
+  # combined "Sonstige" figure; SL additionally groups "Wählergruppen"
+  if (p_cmp == "SONSTIGE")                                     return("sonstige")
+  if (p_cmp == "WÄHLERGRUPPEN")                                return("waehlergruppen")
   # Fallback: clean to snake_case (warn about potential collisions)
   cleaned <- tolower(p)
   cleaned <- gsub("[^a-z0-9äöüß]+", "_", cleaned)

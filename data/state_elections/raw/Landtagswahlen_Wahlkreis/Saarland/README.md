@@ -169,3 +169,15 @@ MyCoRe library, byte sizes match source; the 1980–2022 table is a 2-page text 
 (same Sonderheft 172 compendium).
 
 _Second pass last updated: 2026-06-27._
+
+---
+
+## Status in the pipeline (August 2026)
+
+`SL_1980-2022_Landtagswahl_Wahlkreis.pdf` (the 2-page digital bulk table) is now **parsed**
+by `code/state_elections_wahlkreis/parsers/00_sl_pdf_parse.py` into the 1980–2017 rows of
+`SL_ltw_wkr_long.csv`; 2022 continues to come from the KERG CSV via `parse_SL.R`. The
+stage-0 script hard-validates every count against the table's own printed percent columns,
+Gültige Stimmen per row, pinned official statewide CDU/SPD shares, and (for 2022) the KERG
+figures as an independent source — all exact. The pre-1980 scanned Kreis-level reports
+remain unparsed (OCR class).
