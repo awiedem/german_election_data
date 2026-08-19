@@ -1,6 +1,6 @@
 # GERDA TODO / Status
 
-Tracking outstanding work on the German Election Database. Last updated: 2026-07-23.
+Tracking outstanding work on the German Election Database. Last updated: 2026-08-19.
 
 ---
 
@@ -78,6 +78,27 @@ Cross-validation against `bundeslaendeR` (Stelzle) identifies six state × party
 - [ ] **Municipal 2024 missing states**: currently have BW, SL, BB, MV, SN, ST, TH. Missing **HE, NI, NRW, RLP, SH** for 2024. Some of these may not have held 2024 Gemeinderatswahlen.
   - **RLP 2024 specifically**: raw data not yet in repo. The Oct 2025 Gemeinderatswahlen zip covers BW, SL, SN, ST, TH but not RLP. Maurice Baudet von Gersdorff (email) was reaching out to the RLP statistical office. Blocked on data acquisition.
   - Note: RLP **mayoral** (Direktwahlen) 1994–2024 was delivered (Dec 2025 file) and is in `mayoral_unharm` (16 RLP mayoral elections in 2024).
+
+### 9. Wahlkreis-level state elections (August 2026 extension)
+
+**Done (branch `ltw-wkr-clean-extensions`):** 28 elections added to `ltw_wkr_unharm`
+from clean text-layer PDFs already in the repo, no OCR (BE 1999–2021, BW 2001–2011,
+BY 2008/2013, HB 2003–2023, HE 2009, NI 2008, SN 2004/2009, SL 1980–2017, SH 2005).
+Coverage now 103 elections, 1980–2026. Per-election recoverability of everything
+still missing: `docs/ltw_wkr_recoverability.md`. Audit: 0 FAIL.
+
+**Follow-ups:**
+- [ ] Re-download the two corrupt raw PDFs (BW 1996 `BVII2.pdf`, BE 1995
+  `Ergebnisbericht.pdf` — broken xref, gs-unrecoverable) and re-classify them.
+- [ ] Source the Bremen Hefte for 1991/1995/1999 (full party detail; the long-series
+  PDF alone was judged insufficient — seat-winning parties hidden in Sonstige).
+- [ ] Larger recoverability scan of the OTHER pipelines' raw holdings (state
+  Gemeinde-level historical PDFs, county elections, mayoral), same method:
+  empirical text-layer tests + per-file classification.
+- [ ] Investigate the pre-existing BW 2026 CSV parser warning: statewide mismatch of
+  5,108 erststimme votes for "Anderer Kreiswahlvorschlag" (warns, doesn't halt).
+- [ ] The remaining Wahlkreis gaps are OCR-class (see the recoverability doc); they
+  join the OCR problem in item 1 above rather than the clean pipeline.
 
 ---
 

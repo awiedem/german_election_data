@@ -362,6 +362,12 @@ Same method, targeting 2025 boundaries using `ags_1990_to_2025_crosswalk.rds` (c
 
 See `docs/state_pipeline_audit.md` for comprehensive documentation of known data quality issues, source data limitations, and all pipeline changes.
 
+### 5.6 Constituency (Wahlkreis) level
+
+A separate pipeline, `code/state_elections_wahlkreis/`, builds Landtagswahl results at the constituency level — the geographic unit below the state and below the Kreis (Wahlkreis in most states, Stimmkreis in Bayern, Wahlbereich in Bremen). It follows the same numbered-stage pattern: per-state Stage-0 parsers (R for machine-readable sources; nine self-validating Python scripts for elections that exist only as clean text-layer report PDFs) emit long intermediates into `data/state_elections/processed/wahlkreis/`, and `01_ltw_wkr_unharm.R` binds them into `ltw_wkr_unharm{,_long}` in `data/state_elections/final/` (103 elections, 1980–2026, all 16 states, as of August 2026).
+
+Every Stage-0 parser must reproduce its source's own printed statewide totals exactly by summing the extracted Wahlkreise, and `99_audit.R` (22 sections) re-checks the final files, including a cross-pipeline reconciliation against `state_unharm` — the check that found the pooled-Briefwahl defect described in section 5.5's audit doc. Wahlkreis boundaries are each election's own (no cross-time harmonization; `wkr_nr`/`wkr_name` are keyed per election year). Full pipeline documentation: `code/state_elections_wahlkreis/README.md`; per-election recoverability of the remaining gaps: `docs/ltw_wkr_recoverability.md`.
+
 ---
 
 ## 6. Municipal Elections

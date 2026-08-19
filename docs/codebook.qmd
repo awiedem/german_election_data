@@ -336,14 +336,53 @@ elections.
 
 ## Constituency level
 
-**Files:** `ltw_wkr_unharm` (7,607 x 399), `ltw_wkr_unharm_long` (128,023 x 15)
-in `data/state_elections/final/`.
+**Files:** `ltw_wkr_unharm` (9,818 x 459), `ltw_wkr_unharm_long` (166,016 x 16)
+in `data/state_elections/final/`. 103 elections, 1980--2026 (Saarland reaches
+back to 1980; all other states 1990 or later).
 
 Landtagswahl results at constituency level for all 16 states, in the same wide
 and long shapes as the federal Wahlkreis files, with `stimme`, `wkr_nr`,
 `wkr_name`, `state_abbr`, the turnout block, `other`, `flag_no_valid_votes` and
 `flag_naive_turnout_above_1`. The long file carries `party`, `votes` and
 `vote_share`.
+
+| Variable | Type | Description |
+|:---|:---|:---|
+| `flag_wkr_boundaries_recomputed` | integer | 1 where the constituency figures were back-cast by the statistical office onto a *later* election's Wahlkreiseinteilung, so they are not on the boundaries in force on election day. Hessen 2013 (106 of 110 rows) and Baden-Württemberg 2001 (11 of 70 rows) — see below. 0 everywhere else, including every other state-year. |
+
+**`wkr_name` is per election year, not per constituency number.** States
+renumber and rename their Wahlkreise, so the same `wkr_nr` can be a different
+constituency in a different year: Brandenburg's WK 11 is *Oranienburg I* in
+1990, *Havelland I* in 1994 and 1999, and *Uckermark I* from 2004 onwards.
+Always key on `(state, election_year, wkr_nr)`; never join constituencies
+across years on the number alone.
+
+**Hessen 2013 sits on the 2018 constituency boundaries.** The only published
+constituency figures for the 2013 Landtagswahl are the comparison columns of
+the 2018 report, which the Hessisches Statistisches Landesamt recomputed onto
+the Wahlkreiseinteilung created by the December 2017 amendment to the
+Landtagswahlgesetz. Those rows carry `flag_wkr_boundaries_recomputed == 1`.
+The two Frankfurt am Main constituencies affected by the one sub-municipal
+transfer (WK 34 and WK 37, Stadtbezirk 531 Schwanheim) were *not* recomputed
+in that report and therefore stand on their own 2013 boundaries, flagged 0.
+Their combined figures are identical either way, so aggregating WK 34 and
+WK 37 gives a boundary-consistent pair.
+
+**Baden-Württemberg 2001 comes from the 2006 report's comparison columns.**
+Eleven of the 70 Wahlkreise were recomputed there onto the 2006 boundaries and
+carry `flag_wkr_boundaries_recomputed == 1`; the other 59 stand on their own
+2001 boundaries. Five fringe parties (2,806 votes statewide, 0.1%) appear only
+as the source's combined residual, which the dataset carries in the `sonstige`
+column.
+
+Three further source caveats from the August 2026 additions: Bremen 2003 and
+2007 are the official *vorläufige* results (their Hefte publish no final
+Wahlbereich table; internally exact, within 0.13pp of the final statewide
+shares); Berlin's `number_voters` can exceed `valid + invalid` for one Stimme
+because a voter may leave one of the two votes blank; and Berlin 2021 is the
+election as held (later annulled and repeated in 2023, which is a separate
+election year in the data). The full account of which missing elections are
+recoverable and which are not is `docs/ltw_wkr_recoverability.md`.
 
 # Municipal elections
 

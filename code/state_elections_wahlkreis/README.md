@@ -11,24 +11,28 @@ Gemeinde-level state pipeline (`code/state_elections/`), analogous to the federa
 | Stage | Script | Purpose |
 |---|---|---|
 | Raw grab | (one-off, documented in the raw README) | Download official Wahlkreis result files → `data/state_elections/raw/Landtagswahlen_Wahlkreis/<State>/` |
-| Stage 0a | `parsers/00_he_pdf_parse.py` | **Hessen 2018 + 2013** out of the B VII 2-4 report PDF (no OCR needed — it has a text layer), cross-checked against the independent B VII 2-1 "Vergleichszahlen" report → `processed/wahlkreis/he_pdf/HE_2018_2013_pdf_long.csv` |
+| Stage 0a | `parsers/00_<abbr>_pdf_parse.py` (9 scripts: `he`, `he09`, `sl`, `sh`, `by`, `ni`, `bw`, `hb`, `be`, `sn`) | Elections that exist only as **clean text-layer report PDFs** (no OCR anywhere) → `processed/wahlkreis/<abbr>_pdf/<ABBR>_*_pdf_long.csv`. Each script hard-validates (statewide reproduction, per-row integrity, pinned official shares) and refuses to write on failure. See "August 2026 clean-PDF additions" below and `docs/ltw_wkr_recoverability.md` |
 | Stage 0b | `parsers/00_bb_wkr_names.py`, `parsers/00_mv_wkr_names.py` | Wahlkreis **names** for Brandenburg (1990-2024) and Mecklenburg-Vorpommern (1994-2011), whose result workbooks carry only the constituency number → `processed/wahlkreis/wkr_names/<ABBR>_wkr_names.csv` |
-| Stage 0 | `parsers/parse_<ABBR>.R` (16 scripts) | Per-state parser: read the machine-readable raw file(s) (plus the Stage-0a/0b intermediates for HE/BB/MV), emit a tidy LONG intermediate `data/state_elections/processed/wahlkreis/<ABBR>_ltw_wkr_long.csv` |
+| Stage 0 | `parsers/parse_<ABBR>.R` (16 scripts) | Per-state parser: read the machine-readable raw file(s) plus the Stage-0a/0b fixture CSVs, re-validate, emit a tidy LONG intermediate `data/state_elections/processed/wahlkreis/<ABBR>_ltw_wkr_long.csv` |
 | Stage 1 | `01_ltw_wkr_unharm.R` | Bind all states, normalise party labels, build the unharmonized outputs |
-| helper | `_normalise_party.R` | Party-name → snake_case normaliser (copy of the municipality pipeline's, with extra rules: letter-spaced acronyms "C D U"→cdu; "Die Grauen"→graue fix; REP/Grüne-coalition folds) |
+| helper | `_normalise_party.R` | Party-name → snake_case normaliser (copy of the municipality pipeline's, with extra rules: letter-spaced acronyms "C D U"→cdu; the "Graue Panther"≠"Die Grauen" split; source residuals "Sonstige"/"Andere"→sonstige; REP/Grüne-coalition folds) |
 
 Run order:
 
 ```bash
-python3 code/state_elections_wahlkreis/parsers/00_he_pdf_parse.py     # before parse_HE.R
-python3 code/state_elections_wahlkreis/parsers/00_bb_wkr_names.py     # before parse_BB.R
-python3 code/state_elections_wahlkreis/parsers/00_mv_wkr_names.py     # before parse_MV.R
-Rscript  code/state_elections_wahlkreis/parsers/parse_<ABBR>.R        # each state
+python3 code/state_elections_wahlkreis/parsers/00_<abbr>_pdf_parse.py  # each PDF pre-stage, before its parse_<ABBR>.R
+python3 code/state_elections_wahlkreis/parsers/00_bb_wkr_names.py      # before parse_BB.R
+python3 code/state_elections_wahlkreis/parsers/00_mv_wkr_names.py      # before parse_MV.R
+Rscript  code/state_elections_wahlkreis/parsers/parse_<ABBR>.R         # each state
 Rscript  code/state_elections_wahlkreis/01_ltw_wkr_unharm.R
 Rscript  code/state_elections_wahlkreis/99_audit.R
 ```
 
-The three Stage-0 scripts each validate their own output and refuse to write on
+Python requirements: `pdfplumber` everywhere; `pikepdf` + `fontTools` for
+`00_sn_pdf_parse.py` (`pip install pikepdf fonttools`); poppler's `pdftotext`
+on PATH for `00_sl/00_sh/00_hb/00_be_pdf_parse.py`.
+
+Every Stage-0 script validates its own output and refuses to write on
 failure, so a broken parse cannot reach the R stages.
 
 ## Outputs (`data/state_elections/final/`)
@@ -46,8 +50,8 @@ columns · `other` · `cdu_csu`.
 
 `flag_wkr_boundaries_recomputed` = 1 where the constituency figures were back-cast onto a
 **later** election's Wahlkreiseinteilung and so are not on the boundaries in force on
-election day. Hessen 2013 only (106 of its 110 rows); 0 for every other state-year. See the
-Hessen note below.
+election day. Hessen 2013 (106 of its 110 rows) and BaWü 2001 (11 of 70 rows — the
+source-starred Wahlkreise); 0 for every other state-year. See the Hessen and BaWü notes below.
 
 **`wkr_name` is per election year.** States renumber their Wahlkreise, so the same `wkr_nr`
 can be a different constituency in a different year (Brandenburg WK 11 = Oranienburg I in
@@ -59,28 +63,30 @@ Baden-Württemberg through 2021 and Saarland. The two-vote split begins when a s
 second vote — note **NW from 2010** and **BW from 2026** (so NW 2000/2005 and BW 2016/2021 are
 einzelstimme; later years are erst/zweit). Bayern's constituency is the **Stimmkreis** with both votes.
 
-## Coverage (machine-readable elections; as built June 2026)
+## Coverage (as built August 2026; ★ = added Aug 2026 from clean text-layer PDFs)
 
-| State | Years (Wahlkreis level, machine-readable) |
+| State | Years (Wahlkreis level) |
 |---|---|
 | Brandenburg | 1990,1994,1999,2004,2009,2014,2019,2024 |
-| Berlin | 2016,2023 |
-| Baden-Württemberg | 2016,2021,2026 |
-| Bayern (Stimmkreis) | 2018,2023 |
-| Bremen (Wahlbereich) | 2015,2019 |
-| Hessen | 2013,2018,2023 |
+| Berlin | ★1999,★2001,★2006,★2011,2016,★2021,2023 |
+| Baden-Württemberg | ★2001,★2006,★2011,2016,2021,2026 |
+| Bayern (Stimmkreis) | ★2008,★2013,2018,2023 |
+| Bremen (Wahlbereich) | ★2003,★2007,★2011,2015,2019,★2023 |
+| Hessen | ★2009,2013,2018,2023 |
 | Hamburg | 2008,2011,2015,2020,2025 |
 | Mecklenburg-Vorpommern | 1994,1998,2002,2006,2011,2016,2021 |
-| Niedersachsen | 1998,2003,2013,2017,2022 |
+| Niedersachsen | 1998,2003,★2008,2013,2017,2022 |
 | Nordrhein-Westfalen | 2000,2005,2010,2012,2017,2022 |
 | Rheinland-Pfalz | 2001,2006,2011,2016,2021,2026 |
-| Schleswig-Holstein | 2000,2009,2017,2022 |
-| Saarland | 2022 |
-| Sachsen | 1994,1999,2014,2019,2024 |
+| Schleswig-Holstein | 2000,★2005,2009,2017,2022 |
+| Saarland | ★1980,★1985,★1990,★1994,★1999,★2004,★2009,★2012,★2017,2022 |
+| Sachsen | 1994,1999,★2004,★2009,2014,2019,2024 |
 | Sachsen-Anhalt | 1990,1994,1998,2002,2006,2011,2016,2021 |
 | Thüringen | 1990,1994,1999,2004,2009,2014,2019,2024 |
 
-7,827 wide rows · 132,478 long rows · 384 parties · 1990–2026.
+103 elections · 9,818 wide rows · 166,016 long rows · 443 party columns · 1980–2026.
+What remains missing and why (OCR-class scans, corrupt raw, percentages-only, absent
+raw, or no constituency level): `docs/ltw_wkr_recoverability.md`.
 
 ### Hessen 2013 + 2018 (added August 2026)
 
@@ -140,6 +146,52 @@ Names are stored **per election year**: BB renumbered with the 1993 Kreisgebiets
 again with the Wahlkreisänderungsgesetz of 23 October 1998, and MV renamed WK 21 between
 2002 and 2006.
 
+### August 2026 clean-PDF additions (26 elections, 8 further states)
+
+A feasibility audit (empirical text-layer tests on every candidate raw PDF, then a
+proof-of-concept parser per family) showed that far more of the missing elections than
+expected exist as **digital text-layer reports** in the repo — deterministically
+parseable, no OCR. Nine Stage-0a scripts now cover them; every one reproduces its
+source's own printed statewide totals exactly by summing the extracted Wahlkreise.
+Per-election classification of everything still missing: `docs/ltw_wkr_recoverability.md`.
+Family notes (full detail in each script's docstring):
+
+- **Saarland 1980–2017** (`00_sl_pdf_parse.py`): the StaLA long-series table (2 pages, all
+  3 große Wahlkreise, 1980–2022). Cross-checked against the KERG-derived 2022 rows exactly,
+  including Sonstige == the KERG residual.
+- **Hessen 2009** (`00_he09_pdf_parse.py`): the Staatsanzeiger issue. Two defects in the
+  OFFICIAL tables are pinned exactly and kept as printed: WK 44's party rows sum 11
+  Wahlkreisstimmen short of its printed gültige (the Land block carries the corrected
+  figure), and WK 1's Landesstimmen-Wähler is 40 above its own gültig+ungültig.
+- **Bayern 2008 + 2013** (`00_by_pdf_parse.py`): one Stimmkreis per page; gültig/ungültig
+  are per-Stimme source values. The 2008 PDF corrupts label characters deterministically
+  (digits untouched) — repaired via a fixed substitution map verified against the report's
+  own legend; its Bezirk pages are image-only (not needed).
+- **Niedersachsen 2008** (`00_ni_pdf_parse.py`): Table 3's left/right page pairs zipped
+  positionally; all 17 ballot parties itemized; only the "L 08" comparison sub-block used.
+- **Baden-Württemberg 2006 + 2011, and 2001 from the 2006 report's comparison columns**
+  (`00_bw_pdf_parse.py`): 2001 has 13 itemized party rows (~99.9% of votes) plus the
+  verbatim "Sonstige (nur 2001)" residual (0.1%); the 11 source-starred Wahlkreise are
+  flagged boundary-recomputed. Independent cross-check: the 2011 report's own 2006
+  comparison columns reproduce the 2006 extraction exactly on all 70 Wahlkreise.
+- **Bremen 2003, 2007, 2011, 2023** (`00_hb_pdf_parse.py`): each year's own Heft; 2011+
+  use the "Zusammen" row of the 5-vote system. Caveat: the 2003/2007 Hefte publish only
+  "Vorläufige Ergebnisse" (no final Wahlbereich table exists) — internally exact, within
+  0.13pp of the final statewide shares. 2023 cross-checked against the InstantAtlas JSON.
+- **Berlin 1999, 2001, 2006, 2011, 2021** (`00_be_pdf_parse.py`): two report geometries
+  (dense grid 1999–2011; one-page-per-Wahlkreis 2021). Runs on `pdftotext -bbox` only:
+  BE 2006's embedded font makes pdfplumber silently read digit 3 as 2. Party identity
+  always comes from each report's own statewide table, never from stacked headers.
+  Note: Wähler ≠ gültig+ungültig in Berlin (voters may leave one of the two votes blank).
+- **Sachsen 2004 + 2009** (`00_sn_pdf_parse.py`): Tables 7–10. The 2004 PDF's fonts lack
+  ToUnicode maps; text is recovered deterministically from each font's /Differences array
+  via the standard Macintosh glyph order (pikepdf + fontTools; zero unresolved glyphs,
+  asserted). The 2009 report's 2004 comparison columns provide a cross-check: 47/60
+  Wahlkreise exact, the 13 divergent ones are the 2004→2009 boundary changes (pinned).
+- **Schleswig-Holstein 2005** (`00_sh_pdf_parse.py`): section 2.1's paired turnout/votes
+  tables; space serves as both thousands and column separator, disambiguated by a
+  thousands-group token regex with hard per-row token-count checks.
+
 ## Validation (every parser + the final build)
 
 - **Statewide reproduction**: summing each parser's Wahlkreise per party reproduces the source file's
@@ -182,12 +234,18 @@ when summing all party columns (that double-counts the Union → ~1.3). Sum the 
 
 ## Known limitations (clean-data scope)
 
-- **Machine-readable only.** Historical years available only as scanned PDF/TIF are **deferred to a
-  future OCR stage**, not parsed here (so no OCR guess-work enters the clean dataset). This is why
-  pre-~2000 coverage is thin for several western states (see the raw README's coverage table).
-- Specific PDF-only gaps with no clean machine-readable source: **SN** 2004/2009, **SH** 2005/2012,
-  **BE** 2021 (CSV retired by the source), **HE** pre-2023, **NW/RP/NI/BW** older years.
+- **Deterministic sources only.** Elections whose raw files are scans (or OCR-quality text
+  layers) are **deferred to a future OCR stage**, not parsed here — no OCR guess-work
+  enters the clean dataset. The full per-election classification of what remains missing
+  and why is `docs/ltw_wkr_recoverability.md` (headlines: HE 1991–2008 except 2009,
+  SH 1992/1996, SN 1990, BW 1992, BE 1990, BY 1990–2003, RP 1996 are OCR-class; BW 1996
+  and BE 1995 raw PDFs are corrupt and need re-downloading; SH 2012 exists only as
+  percentages; NI 1990/1994, NW 1990/1995, RP 1991 have no constituency-level raw;
+  HB 1991–1999 skipped by decision — only 6 major parties + residual recoverable).
 - **HH 2015 erststimme** is percentage-only at the source → that one vote/year omitted (zweitstimme present).
+- **HB 2003/2007 are the official *vorläufige* results** (their Hefte publish no final
+  Wahlbereich table); **BE 2021** is the (valid at the time, later annulled and in 2023
+  repeated) election, kept as its own election year.
 - **City-states**: Bremen's unit is the Wahlbereich (Bremen/Bremerhaven), not single-member districts;
   Hamburg's Wahlkreise exist only from 2008.
 - Boundaries are each election's **own** Wahlkreis definitions (unharmonized). Wahlkreise are redrawn

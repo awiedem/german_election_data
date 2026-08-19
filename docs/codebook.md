@@ -1,5 +1,6 @@
 # GERDA Codebook
-2026-08-04
+
+2026-08-19
 
 # About this codebook
 
@@ -26,33 +27,33 @@ to that file, and state which shared blocks apply.
 
 ## Identifiers
 
-| Variable                        | Type      | Description                                                                                                                                                                                                                                                                                                                                                                                                                          |
-|:--------------------------------|:----------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `ags`                           | character | Municipality identifier (Amtlicher Gemeindeschlüssel), 8-digit character string. Digits 1–2 are the state, 1–5 the county. Leading zeros are significant (Schleswig-Holstein `"01..."`, Hamburg `"02..."`), so the column must always be read as character — reading it as numeric silently breaks joins. In unharmonized files it is the code in force at the time of the election; in harmonized files it is the target-year code. |
-| `ags_name`                      | character | Municipality name as carried by the source.                                                                                                                                                                                                                                                                                                                                                                                          |
-| `ags_21`, `ags_25`              | character | Municipality identifier mapped to 2021 (or 2025) boundaries.                                                                                                                                                                                                                                                                                                                                                                         |
-| `ags_name_21`, `ags_name_25`    | character | Municipality name under the target-year definition.                                                                                                                                                                                                                                                                                                                                                                                  |
-| `county`                        | character | County identifier, the first 5 digits of `ags`.                                                                                                                                                                                                                                                                                                                                                                                      |
-| `county_code`, `county_code_21` | character | County identifier in county-level files, optionally harmonized to 2021.                                                                                                                                                                                                                                                                                                                                                              |
-| `county_name`                   | character | County name.                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `state`                         | character | State identifier, the first 2 digits of `ags` (`"01"` Schleswig-Holstein … `"16"` Thüringen).                                                                                                                                                                                                                                                                                                                                        |
-| `state_name`                    | character | State name. English in the federal and European files, German in most others.                                                                                                                                                                                                                                                                                                                                                        |
-| `wkr_nr`, `wkr_name`            | character | Constituency (Wahlkreis) number and name.                                                                                                                                                                                                                                                                                                                                                                                            |
-| `election_year`                 | numeric   | Year of the election.                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `election_date`                 | Date      | Date of the election.                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `ags` | character | Municipality identifier (Amtlicher Gemeindeschlüssel), 8-digit character string. Digits 1–2 are the state, 1–5 the county. Leading zeros are significant (Schleswig-Holstein `"01..."`, Hamburg `"02..."`), so the column must always be read as character — reading it as numeric silently breaks joins. In unharmonized files it is the code in force at the time of the election; in harmonized files it is the target-year code. |
+| `ags_name` | character | Municipality name as carried by the source. |
+| `ags_21`, `ags_25` | character | Municipality identifier mapped to 2021 (or 2025) boundaries. |
+| `ags_name_21`, `ags_name_25` | character | Municipality name under the target-year definition. |
+| `county` | character | County identifier, the first 5 digits of `ags`. |
+| `county_code`, `county_code_21` | character | County identifier in county-level files, optionally harmonized to 2021. |
+| `county_name` | character | County name. |
+| `state` | character | State identifier, the first 2 digits of `ags` (`"01"` Schleswig-Holstein … `"16"` Thüringen). |
+| `state_name` | character | State name. English in the federal and European files, German in most others. |
+| `wkr_nr`, `wkr_name` | character | Constituency (Wahlkreis) number and name. |
+| `election_year` | numeric | Year of the election. |
+| `election_date` | Date | Date of the election. |
 
 ## Turnout block
 
 These columns appear, with the same meaning, in every election-result
 dataset.
 
-| Variable          | Type    | Description                                                                                                                                                          |
-|:------------------|:--------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `eligible_voters` | numeric | Number of eligible voters (Wahlberechtigte).                                                                                                                         |
-| `number_voters`   | numeric | Number of voters (Wähler), including those casting invalid ballots.                                                                                                  |
-| `valid_votes`     | numeric | Number of valid votes (gültige Stimmen). In multi-vote systems this counts cast *votes*, not ballots — see “Multi-vote systems” below.                               |
-| `invalid_votes`   | numeric | Number of invalid votes (ungültige Stimmen).                                                                                                                         |
-| `turnout`         | numeric | `number_voters / eligible_voters`, a proportion in 0–1. Where mail-in allocation pushes the naive ratio above 1 it is capped, and a flag records that it was capped. |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `eligible_voters` | numeric | Number of eligible voters (Wahlberechtigte). |
+| `number_voters` | numeric | Number of voters (Wähler), including those casting invalid ballots. |
+| `valid_votes` | numeric | Number of valid votes (gültige Stimmen). In multi-vote systems this counts cast *votes*, not ballots — see “Multi-vote systems” below. |
+| `invalid_votes` | numeric | Number of invalid votes (ungültige Stimmen). |
+| `turnout` | numeric | `number_voters / eligible_voters`, a proportion in 0–1. Where mail-in allocation pushes the naive ratio above 1 it is capped, and a flag records that it was capped. |
 
 Any of these may be `NA` where the source does not report them; the
 dataset sections and the usage notes name the specific state-years
@@ -73,16 +74,16 @@ most use `valid_votes`, the federal and European municipality files use
 
 Recurring aggregate columns:
 
-| Variable           | Type    | Description                                                                                                                                               |
-|:-------------------|:--------|:----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `other`            | numeric | Combined share of all parties not carried as their own column. Typically computed as a residual, floored at zero.                                         |
-| `cdu_csu`          | numeric | Combined CDU/CSU share. CDU and CSU never compete in the same state, so this is the union of the two and is the column to use for cross-state comparison. |
-| `far_right`        | numeric | Combined share of parties classified as far right.                                                                                                        |
-| `far_left`         | numeric | Combined share of parties classified as far left, **excluding** Die Linke/PDS.                                                                            |
-| `far_left_w_linke` | numeric | As `far_left`, but including Die Linke/PDS.                                                                                                               |
-| `total_vote_share` | numeric | Sum of all party shares in the row. A diagnostic: it should be ~1.                                                                                        |
-| `waehlergruppen`   | numeric | Combined share of local voter groups (municipal and county elections).                                                                                    |
-| `einzelbewerber`   | numeric | Combined share of independent candidates (municipal and county elections).                                                                                |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `other` | numeric | Combined share of all parties not carried as their own column. Typically computed as a residual, floored at zero. |
+| `cdu_csu` | numeric | Combined CDU/CSU share. CDU and CSU never compete in the same state, so this is the union of the two and is the column to use for cross-state comparison. |
+| `far_right` | numeric | Combined share of parties classified as far right. |
+| `far_left` | numeric | Combined share of parties classified as far left, **excluding** Die Linke/PDS. |
+| `far_left_w_linke` | numeric | As `far_left`, but including Die Linke/PDS. |
+| `total_vote_share` | numeric | Sum of all party shares in the row. A diagnostic: it should be ~1. |
+| `waehlergruppen` | numeric | Combined share of local voter groups (municipal and county elections). |
+| `einzelbewerber` | numeric | Combined share of independent candidates (municipal and county elections). |
 
 **Zero versus missing.** How a zero is treated is *not* uniform across
 GERDA, because the sources differ. Each dataset section states its rule.
@@ -110,17 +111,17 @@ using population-weighted crosswalks from `data/crosswalks/`.
 Municipalities that merged are combined; municipalities that split have
 their votes distributed across successors by population weight.
 
-| Variable                        | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-|:--------------------------------|:--------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `pop_cw`                        | numeric | Population-based crosswalk weight: the share of the source municipality assigned to this target municipality. Sums to 1 within each source `(ags, year)`.                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `area_cw`                       | numeric | Area-based crosswalk weight, defined analogously.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `emp_cw`                        | numeric | Employment-based crosswalk weight.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `weights`                       | numeric | The weight actually applied to this row during aggregation.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `n_predecessors`                | integer | Number of source municipalities merged into this target boundary.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `flag_unsuccessful_naive_merge` | int/num | 1 where the direct crosswalk merge failed and the row was resolved by a fallback (previous-year code, identity mapping, or a manual correction). Not an error marker — a record of how the row was matched.                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `flag_aggregated`               | integer | 1 where the row is the result of merging several predecessor municipalities.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `flag_partial_coverage`         | integer | County-council harmonized output (`_muni` and `_cty`). 1 where the source covers less than 99 % of the 2021 unit’s population, so the row’s **counts** describe only part of it — turnout and vote shares remain valid for the part that voted. `NA` means not assessed. Set on the six 2021 Saxon counties overlapping the four 1994 Kreise whose Kreistagswahl the Sächsisches Verfassungsgericht annulled, and on 25 municipality-years: 23 in Rheinland-Pfalz, whose source is already reported on 2025 boundaries, plus Leipzig 1999 and one Sachsen-Anhalt 2004 row that genuinely cover only a fragment. |
-| `area`, `population`            | numeric | Area (km²) and population (in thousands) of the municipality, from official Gemeindeverzeichnis registers, carried through the crosswalk.                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `pop_cw` | numeric | Population-based crosswalk weight: the share of the source municipality assigned to this target municipality. Sums to 1 within each source `(ags, year)`. |
+| `area_cw` | numeric | Area-based crosswalk weight, defined analogously. |
+| `emp_cw` | numeric | Employment-based crosswalk weight. |
+| `weights` | numeric | The weight actually applied to this row during aggregation. |
+| `n_predecessors` | integer | Number of source municipalities merged into this target boundary. |
+| `flag_unsuccessful_naive_merge` | int/num | 1 where the direct crosswalk merge failed and the row was resolved by a fallback (previous-year code, identity mapping, or a manual correction). Not an error marker — a record of how the row was matched. |
+| `flag_aggregated` | integer | 1 where the row is the result of merging several predecessor municipalities. |
+| `flag_partial_coverage` | integer | County-council harmonized output (`_muni` and `_cty`). 1 where the source covers less than 99 % of the 2021 unit’s population, so the row’s **counts** describe only part of it — turnout and vote shares remain valid for the part that voted. `NA` means not assessed. Set on the six 2021 Saxon counties overlapping the four 1994 Kreise whose Kreistagswahl the Sächsisches Verfassungsgericht annulled, and on 25 municipality-years: 23 in Rheinland-Pfalz, whose source is already reported on 2025 boundaries, plus Leipzig 1999 and one Sachsen-Anhalt 2004 row that genuinely cover only a fragment. |
+| `area`, `population` | numeric | Area (km²) and population (in thousands) of the municipality, from official Gemeindeverzeichnis registers, carried through the crosswalk. |
 
 The method used to harmonize votes differs by pipeline and is
 deliberate: federal, state, county and European results convert shares
@@ -150,19 +151,10 @@ changes what `valid_votes` counts:
   ballots and `valid_votes / number_voters` is a genuine validity rate:
   Rheinland-Pfalz in all years (both the municipal and the county file)
   and Bayern in 2026.
-- **Rheinland-Pfalz state elections 1979–2016** carry no turnout at
-  municipality level at all: `eligible_voters`, `number_voters` and
-  `invalid_votes` are `NA` because the Landeswahlleiter file supplies only
-  party votes. `valid_votes` and every party share are complete, and match
-  the constituency-level file exactly. 2021 onwards has the full block.
 - **Hamburg and Bremen since 2011** use a 5-vote personalized list
   system, so `valid_votes ~ 5 x number_voters` in state elections.
 - **Bayern** state elections count Gesamtstimmen (Erst- plus
-  Zweitstimmen), as both ballots count towards seat allocation. The
-  constituency-level file (`ltw_wkr_unharm`) keeps the two ballots apart,
-  so summing its Bayern Zweitstimmen gives about half the municipality
-  file's `valid_votes`. That is a measure difference, not a discrepancy:
-  do not compare the two datasets' Bavarian vote counts directly.
+  Zweitstimmen), as both ballots count towards seat allocation.
 
 ## Flag columns
 
@@ -170,17 +162,17 @@ Flags are diagnostics, never silent corrections: the underlying value is
 left as recorded and the flag tells you how to interpret it. Values are
 1/0 or `TRUE`/`FALSE`.
 
-| Variable                                           | Description                                                                                                                                             |
-|:---------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `flag_naive_turnout_above_1`                       | The uncapped `number_voters / eligible_voters` exceeded 1, generally a mail-in allocation rounding artifact.                                            |
-| `flag_harm_turnout_above_1`                        | As above, arising after harmonization.                                                                                                                  |
-| `flag_turnout_above_1`                             | European-elections equivalent; turnout was capped at 1.                                                                                                 |
-| `flag_no_valid_votes`                              | The row reports no valid votes.                                                                                                                         |
-| `flag_briefwahl_only`                              | A “municipality” that is really a mail-in voting district: `eligible_voters == 0` but `valid_votes > 0`.                                                |
-| `flag_briefwahl_agg`                               | A county-level mail-in aggregate row (`ags` ending `999`, `eligible_voters == 0`), present only in 1994 and 1998. Filter these out for balanced panels. |
-| `flag_total_votes_incongruent`                     | The summed party votes do not match `valid_votes`.                                                                                                      |
-| `flag_other_party_residual`                        | The `other` column was derived as a residual rather than reported.                                                                                      |
-| `flag_unsuccessful_naive_merge`, `flag_aggregated` | See the harmonization block above.                                                                                                                      |
+| Variable | Description |
+|:---|:---|
+| `flag_naive_turnout_above_1` | The uncapped `number_voters / eligible_voters` exceeded 1, generally a mail-in allocation rounding artifact. |
+| `flag_harm_turnout_above_1` | As above, arising after harmonization. |
+| `flag_turnout_above_1` | European-elections equivalent; turnout was capped at 1. |
+| `flag_no_valid_votes` | The row reports no valid votes. |
+| `flag_briefwahl_only` | A “municipality” that is really a mail-in voting district: `eligible_voters == 0` but `valid_votes > 0`. |
+| `flag_briefwahl_agg` | A county-level mail-in aggregate row (`ags` ending `999`, `eligible_voters == 0`), present only in 1994 and 1998. Filter these out for balanced panels. |
+| `flag_total_votes_incongruent` | The summed party votes do not match `valid_votes`. |
+| `flag_other_party_residual` | The `other` column was derived as a residual rather than reported. |
+| `flag_unsuccessful_naive_merge`, `flag_aggregated` | See the harmonization block above. |
 
 # Federal elections
 
@@ -209,28 +201,28 @@ districts do not report mail-in votes separately, so the pipeline
 allocates them proportionally. These columns record the inputs and the
 result of that allocation.
 
-| Variable                                                            | Type      | Description                                                                                                            |
-|:--------------------------------------------------------------------|:----------|:-----------------------------------------------------------------------------------------------------------------------|
-| `voters_wo_blockingnotice`                                          | numeric   | Eligible voters without Sperrvermerk (source field A1).                                                                |
-| `voters_blockingnotice`                                             | numeric   | Eligible voters with Sperrvermerk (A2) — those issued a polling card.                                                  |
-| `voters_par25_2`                                                    | numeric   | Voters registered under § 25(2) BWO (A3).                                                                              |
-| `voters_w_ballot`                                                   | numeric   | Voters with a Wahlschein, i.e. mail-in and out-of-district voters (B1).                                                |
-| `unique_mailin`                                                     | numeric   | 1 where the municipality has its own mail-in district, 0 where it shares one with other municipalities.                |
-| `unique_multi_mailin`                                               | numeric   | 1 where the municipality has several mail-in districts of its own.                                                     |
-| `voters_weight`                                                     | numeric   | The municipality’s share of its county’s eligible voters, used to allocate shared mail-in votes.                       |
-| `blocked_weight`                                                    | numeric   | The municipality’s share of its county’s Sperrvermerk voters, the weight actually applied to mail-in ballots.          |
-| `eligible_voters_orig`, `number_voters_orig`, `blocked_voters_orig` | numeric   | The source values before mail-in allocation. Compare against the allocated columns to see what the allocation changed. |
-| `turnout_wo_mailin`                                                 | numeric   | `number_voters_orig / eligible_voters_orig` — turnout computed from pre-allocation figures.                            |
-| `bwbez`                                                             | character | Briefwahlbezirk identifier (in `federal_muni_raw`).                                                                    |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `voters_wo_blockingnotice` | numeric | Eligible voters without Sperrvermerk (source field A1). |
+| `voters_blockingnotice` | numeric | Eligible voters with Sperrvermerk (A2) — those issued a polling card. |
+| `voters_par25_2` | numeric | Voters registered under § 25(2) BWO (A3). |
+| `voters_w_ballot` | numeric | Voters with a Wahlschein, i.e. mail-in and out-of-district voters (B1). |
+| `unique_mailin` | numeric | 1 where the municipality has its own mail-in district, 0 where it shares one with other municipalities. |
+| `unique_multi_mailin` | numeric | 1 where the municipality has several mail-in districts of its own. |
+| `voters_weight` | numeric | The municipality’s share of its county’s eligible voters, used to allocate shared mail-in votes. |
+| `blocked_weight` | numeric | The municipality’s share of its county’s Sperrvermerk voters, the weight actually applied to mail-in ballots. |
+| `eligible_voters_orig`, `number_voters_orig`, `blocked_voters_orig` | numeric | The source values before mail-in allocation. Compare against the allocated columns to see what the allocation changed. |
+| `turnout_wo_mailin` | numeric | `number_voters_orig / eligible_voters_orig` — turnout computed from pre-allocation figures. |
+| `bwbez` | character | Briefwahlbezirk identifier (in `federal_muni_raw`). |
 
 **Vote-total diagnostics** (harmonized files):
 
-| Variable                       | Type    | Description                                                                                                                             |
-|:-------------------------------|:--------|:----------------------------------------------------------------------------------------------------------------------------------------|
-| `total_votes`                  | numeric | Row sum of all party vote counts.                                                                                                       |
-| `total_votes_incogruence`      | numeric | `total_votes - valid_votes`. Note the misspelling of “incongruence” in the column name; it is retained to avoid breaking existing code. |
-| `perc_total_votes_incogruence` | numeric | The same discrepancy as a share of `valid_votes`.                                                                                       |
-| `flag_total_votes_incongruent` | integer | 1 where the discrepancy is non-zero.                                                                                                    |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `total_votes` | numeric | Row sum of all party vote counts. |
+| `total_votes_incogruence` | numeric | `total_votes - valid_votes`. Note the misspelling of “incongruence” in the column name; it is retained to avoid breaking existing code. |
+| `perc_total_votes_incogruence` | numeric | The same discrepancy as a share of `valid_votes`. |
+| `flag_total_votes_incongruent` | integer | 1 where the discrepancy is non-zero. |
 
 `federal_muni_raw` additionally carries `gruene_comb` and
 `linke_pds_comb`, which combine the separately reported predecessor
@@ -244,13 +236,13 @@ x 127) in `data/federal_elections/county_level/final/`.
 Shared blocks apply, with 111 party columns. County-level data reaches
 back to 1953, further than the municipality files.
 
-| Variable             | Type      | Description                                                                                                                       |
-|:---------------------|:----------|:----------------------------------------------------------------------------------------------------------------------------------|
-| `ags`                | character | In `federal_cty_unharm`, the 5-digit county code (the column name is retained for continuity).                                    |
-| `county_code`        | character | County identifier in the harmonized file.                                                                                         |
-| `year`               | numeric   | Election year in `federal_cty_unharm`, alongside `election_date`.                                                                 |
-| `total_votes`        | numeric   | Row sum of party vote counts (harmonized file).                                                                                   |
-| `flag_briefwahl_agg` | integer   | 1 for mail-in aggregate rows (`ags` ending `999`, no eligible voters), present in 1994 and 1998 only. Filter for balanced panels. |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `ags` | character | In `federal_cty_unharm`, the 5-digit county code (the column name is retained for continuity). |
+| `county_code` | character | County identifier in the harmonized file. |
+| `year` | numeric | Election year in `federal_cty_unharm`, alongside `election_date`. |
+| `total_votes` | numeric | Row sum of party vote counts (harmonized file). |
+| `flag_briefwahl_agg` | integer | 1 for mail-in aggregate rows (`ags` ending `999`, no eligible voters), present in 1994 and 1998 only. Filter for balanced panels. |
 
 ## Constituency (Wahlkreis) level
 
@@ -262,13 +254,13 @@ back to 1953, further than the municipality files.
 Unlike the other federal files, vote shares here are proportions of
 `valid_votes`, and results are split by ballot.
 
-| Variable                     | Type      | Description                                                                                                                                                   |
-|:-----------------------------|:----------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `stimme`                     | character | Which ballot the row describes: `"erststimme"` (candidate vote) or `"zweitstimme"` (party-list vote). Every constituency-year appears twice, once per ballot. |
-| `elected_party`              | character | Party that won the constituency’s direct mandate (Direktmandat). Populated on `erststimme` rows only.                                                         |
-| `other`                      | numeric   | Combined share of parties without their own column.                                                                                                           |
-| `flag_no_valid_votes`        | integer   | 1 where the row reports no valid votes.                                                                                                                       |
-| `flag_naive_turnout_above_1` | integer   | 1 where uncapped turnout exceeded 1.                                                                                                                          |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `stimme` | character | Which ballot the row describes: `"erststimme"` (candidate vote) or `"zweitstimme"` (party-list vote). Every constituency-year appears twice, once per ballot. |
+| `elected_party` | character | Party that won the constituency’s direct mandate (Direktmandat). Populated on `erststimme` rows only. |
+| `other` | numeric | Combined share of parties without their own column. |
+| `flag_no_valid_votes` | integer | 1 where the row reports no valid votes. |
+| `flag_naive_turnout_above_1` | integer | 1 where uncapped turnout exceeded 1. |
 
 `federal_wkr_unharm_long` holds the same results in long format — one
 row per constituency, ballot and party — which is usually easier to work
@@ -287,14 +279,14 @@ compared directly. It carries the identifier, turnout and party blocks
 
 `wkr_2021_to_2025_crosswalk` documents the boundary reform itself:
 
-| Variable                               | Type      | Description                                                                                   |
-|:---------------------------------------|:----------|:----------------------------------------------------------------------------------------------|
-| `boundary_change`                      | character | `"unchanged"` (283 constituencies), `"redrawn"`, or `"new"`.                                  |
-| `renamed`                              | logical   | Whether the constituency name changed even if its boundary did not.                           |
-| `prior_2021_wkr_nr`, `prior_2021_name` | character | The 2021 predecessor constituency. `NA` where `boundary_change == "new"`.                     |
-| `recomputed_2021_eligible`             | numeric   | 2021 eligible voters recomputed on 2025 boundaries.                                           |
-| `actual_2021_eligible`                 | numeric   | Eligible voters as actually reported in 2021.                                                 |
-| `eligible_delta`                       | numeric   | Difference between the two. Zero for unchanged constituencies — a check on the recomputation. |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `boundary_change` | character | `"unchanged"` (283 constituencies), `"redrawn"`, or `"new"`. |
+| `renamed` | logical | Whether the constituency name changed even if its boundary did not. |
+| `prior_2021_wkr_nr`, `prior_2021_name` | character | The 2021 predecessor constituency. `NA` where `boundary_change == "new"`. |
+| `recomputed_2021_eligible` | numeric | 2021 eligible voters recomputed on 2025 boundaries. |
+| `actual_2021_eligible` | numeric | Eligible voters as actually reported in 2021. |
+| `eligible_delta` | numeric | Difference between the two. Zero for unchanged constituencies — a check on the recomputation. |
 
 # State elections
 
@@ -312,16 +304,16 @@ columns).
 Shared blocks apply. The three harmonized files differ only in target
 boundary year and all begin in 1990.
 
-| Variable                                                                         | Type    | Description                                                                                                                                                                                                                        |
-|:---------------------------------------------------------------------------------|:--------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `flag_briefwahl_only`                                                            | integer | 1 where `eligible_voters == 0` and `valid_votes > 0` — a mail-in district rather than a municipality. Chiefly Brandenburg 1990, Schleswig-Holstein 1983, and Nordrhein-Westfalen 1966 major cities.                                |
-| `flag_no_valid_votes`                                                            | integer | 1 where the row reports no valid votes.                                                                                                                                                                                            |
-| `flag_naive_turnout_above_1`                                                     | integer | 1 where uncapped turnout exceeded 1.                                                                                                                                                                                               |
-| `flag_harm_turnout_above_1`                                                      | integer | As above, after harmonization (harmonized files).                                                                                                                                                                                  |
-| `flag_other_party_residual`                                                      | integer | 1 where `other` was computed as a residual rather than reported by the source.                                                                                                                                                     |
-| `total_vote_share`                                                               | numeric | Sum of all party shares; a diagnostic that should be ~1.                                                                                                                                                                           |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `flag_briefwahl_only` | integer | 1 where `eligible_voters == 0` and `valid_votes > 0` — a mail-in district rather than a municipality. Chiefly Brandenburg 1990, Schleswig-Holstein 1983, and Nordrhein-Westfalen 1966 major cities. |
+| `flag_no_valid_votes` | integer | 1 where the row reports no valid votes. |
+| `flag_naive_turnout_above_1` | integer | 1 where uncapped turnout exceeded 1. |
+| `flag_harm_turnout_above_1` | integer | As above, after harmonization (harmonized files). |
+| `flag_other_party_residual` | integer | 1 where `other` was computed as a residual rather than reported by the source. |
+| `total_vote_share` | numeric | Sum of all party shares; a diagnostic that should be ~1. |
 | `einzelbewerber`, `einzelbewerber_1`, `einzelbewerber_2`, `einzelbewerber_innen` | numeric | Independent candidates. The source lists them under several distinct labels which are deliberately not merged, because in some state-years they identify different individuals. Sum them if you want a single independents series. |
-| `area_ags`, `population_ags`, `employees_ags`, `pop_density_ags`                 | numeric | Municipality covariates joined in from `ags_area_pop_emp` (harmonized files). See the covariates section.                                                                                                                          |
+| `area_ags`, `population_ags`, `employees_ags`, `pop_density_ags` | numeric | Municipality covariates joined in from `ags_area_pop_emp` (harmonized files). See the covariates section. |
 
 **Zero-vote recoding.** A party that received zero votes across *all*
 municipalities in a state-year is recoded from 0 to `NA`, so that “did
@@ -331,8 +323,10 @@ municipal elections.
 
 ## Constituency level
 
-**Files:** `ltw_wkr_unharm` (7,827 x 400), `ltw_wkr_unharm_long`
-(132,478 x 16) in `data/state_elections/final/`.
+**Files:** `ltw_wkr_unharm` (9,818 x 459), `ltw_wkr_unharm_long`
+(166,016 x 16) in `data/state_elections/final/`. 103 elections,
+1980–2026 (Saarland reaches back to 1980; all other states 1990 or
+later).
 
 Landtagswahl results at constituency level for all 16 states, in the
 same wide and long shapes as the federal Wahlkreis files, with `stimme`,
@@ -340,16 +334,16 @@ same wide and long shapes as the federal Wahlkreis files, with `stimme`,
 `flag_no_valid_votes` and `flag_naive_turnout_above_1`. The long file
 carries `party`, `votes` and `vote_share`.
 
-| Variable                          | Type    | Description                                                                                                                                                                                                                                                                                              |
-|:----------------------------------|:--------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `flag_wkr_boundaries_recomputed` | integer | 1 where the constituency figures were back-cast by the statistical office onto a *later* election's Wahlkreiseinteilung, so they are not on the boundaries in force on election day. Currently Hessen 2013 only (106 of 110 rows) — see below. 0 everywhere else, including every other state-year. |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `flag_wkr_boundaries_recomputed` | integer | 1 where the constituency figures were back-cast by the statistical office onto a *later* election’s Wahlkreiseinteilung, so they are not on the boundaries in force on election day. Hessen 2013 (106 of 110 rows) and Baden-Württemberg 2001 (11 of 70 rows) — see below. 0 everywhere else, including every other state-year. |
 
 **`wkr_name` is per election year, not per constituency number.** States
 renumber and rename their Wahlkreise, so the same `wkr_nr` can be a
-different constituency in a different year: Brandenburg's WK 11 is
-*Oranienburg I* in 1990, *Havelland I* in 1994 and 1999, and
-*Uckermark I* from 2004 onwards. Always key on `(state, election_year,
-wkr_nr)`; never join constituencies across years on the number alone.
+different constituency in a different year: Brandenburg’s WK 11 is
+*Oranienburg I* in 1990, *Havelland I* in 1994 and 1999, and *Uckermark
+I* from 2004 onwards. Always key on `(state, election_year, wkr_nr)`;
+never join constituencies across years on the number alone.
 
 **Hessen 2013 sits on the 2018 constituency boundaries.** The only
 published constituency figures for the 2013 Landtagswahl are the
@@ -363,12 +357,22 @@ therefore stand on their own 2013 boundaries, flagged 0. Their combined
 figures are identical either way, so aggregating WK 34 and WK 37 gives a
 boundary-consistent pair.
 
-The practical size of the effect: on the 2018 boundaries the 2013
-Wahlkreisstimmen give the direct mandate to the CDU in 42 constituencies
-and the SPD in 13, whereas the 2013 election as actually held returned
-41 CDU and 14 SPD. One constituency changes hands purely because of the
-re-cut. For 2018 the same calculation reproduces the official result
-exactly (CDU 40, SPD 10, GRÜNE 5).
+**Baden-Württemberg 2001 comes from the 2006 report’s comparison
+columns.** Eleven of the 70 Wahlkreise were recomputed there onto the
+2006 boundaries and carry `flag_wkr_boundaries_recomputed == 1`; the
+other 59 stand on their own 2001 boundaries. Five fringe parties (2,806
+votes statewide, 0.1%) appear only as the source’s combined residual,
+which the dataset carries in the `sonstige` column.
+
+Three further source caveats from the August 2026 additions: Bremen 2003
+and 2007 are the official *vorläufige* results (their Hefte publish no
+final Wahlbereich table; internally exact, within 0.13pp of the final
+statewide shares); Berlin’s `number_voters` can exceed `valid + invalid`
+for one Stimme because a voter may leave one of the two votes blank; and
+Berlin 2021 is the election as held (later annulled and repeated in
+2023, which is a separate election year in the data). The full account
+of which missing elections are recoverable and which are not is
+`docs/ltw_wkr_recoverability.md`.
 
 # Municipal elections
 
@@ -402,13 +406,13 @@ nationally — each state sets its own schedule.
 
 Shared blocks apply: identifiers, turnout, harmonization.
 
-| Variable                                                                                              | Type      | Description                                                                                                                                                          |
-|:------------------------------------------------------------------------------------------------------|:----------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `election_type`                                                                                       | character | Type of council election.                                                                                                                                            |
-| `cdu_csu`, `spd`, `linke_pds`, `gruene`, `afd`, `piraten`, `fdp`, `die_partei`, `freie_wahler`, `bsw` | numeric   | Vote share for each of the ten major parties, as a proportion of `valid_votes`.                                                                                      |
-| `other`                                                                                               | numeric   | Combined share of all remaining lists — local voter groups, joint nominations, independents, minor parties. In many small municipalities this is the largest column. |
-| `seats_*`                                                                                             | numeric   | Council seats won, ten columns matching the party columns. `municipal_unharm` only — see below.                                                                      |
-| `replaced_0_with_na_*`                                                                                | numeric   | Ten flags (1/0) recording zero-to-`NA` recoding — see below.                                                                                                         |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `election_type` | character | Type of council election. |
+| `cdu_csu`, `spd`, `linke_pds`, `gruene`, `afd`, `piraten`, `fdp`, `die_partei`, `freie_wahler`, `bsw` | numeric | Vote share for each of the ten major parties, as a proportion of `valid_votes`. |
+| `other` | numeric | Combined share of all remaining lists — local voter groups, joint nominations, independents, minor parties. In many small municipalities this is the largest column. |
+| `seats_*` | numeric | Council seats won, ten columns matching the party columns. `municipal_unharm` only — see below. |
+| `replaced_0_with_na_*` | numeric | Ten flags (1/0) recording zero-to-`NA` recoding — see below. |
 
 ## Zero votes versus no list (`replaced_0_with_na_*`)
 
@@ -482,13 +486,13 @@ the county. Baden-Württemberg and Bayern publish at county level and are
 harmonized with county crosswalks; the other states use municipality
 crosswalks.
 
-| Variable                                                         | Type    | Description                                                                                            |
-|:-----------------------------------------------------------------|:--------|:-------------------------------------------------------------------------------------------------------|
-| `waehlergruppen`                                                 | numeric | Combined share of local voter groups (Wählergruppen), which win a large share of county council seats. |
-| `einzelbewerber`                                                 | numeric | Combined share of independent candidates.                                                              |
-| `flag_total_votes_incongruent`                                   | integer | 1 where summed party votes do not match `valid_votes`.                                                 |
-| `perc_total_votes_incogruence`                                   | numeric | That discrepancy as a share of `valid_votes` (note the retained misspelling).                          |
-| `area_ags`, `population_ags`, `employees_ags`, `pop_density_ags` | numeric | Municipality covariates joined in (`_muni` file).                                                      |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `waehlergruppen` | numeric | Combined share of local voter groups (Wählergruppen), which win a large share of county council seats. |
+| `einzelbewerber` | numeric | Combined share of independent candidates. |
+| `flag_total_votes_incongruent` | integer | 1 where summed party votes do not match `valid_votes`. |
+| `perc_total_votes_incogruence` | numeric | That discrepancy as a share of `valid_votes` (note the retained misspelling). |
+| `area_ags`, `population_ags`, `employees_ags`, `pop_density_ags` | numeric | Municipality covariates joined in (`_muni` file). |
 
 Niedersachsen’s three-vote system makes the standard formula invalid, so
 `invalid_votes` is `NA` there. Hamburg is excluded (its
@@ -537,23 +541,23 @@ counties x 18 years). This is a council-composition panel, not an
 election table: a county’s seat distribution is repeated every year
 until the next election changes it.
 
-| Variable                                                                                                        | Type      | Description                                                                                                                                                                                                                                                     |
-|:----------------------------------------------------------------------------------------------------------------|:----------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `county`                                                                                                        | character | County identifier (5-digit), matching `county` in `county_elec_unharm`.                                                                                                                                                                                         |
-| `county_name`                                                                                                   | character | Name of the county or kreisfreie Stadt.                                                                                                                                                                                                                         |
-| `county_type`                                                                                                   | character | `"Landkreis"` or `"kreisfreie Stadt"`.                                                                                                                                                                                                                          |
-| `state`, `state_name`                                                                                           | character | State identifier and name.                                                                                                                                                                                                                                      |
-| `year`                                                                                                          | integer   | Calendar year (2008–2025).                                                                                                                                                                                                                                      |
-| `government_party`                                                                                              | character | Party of the county executive (Landrat / Oberbürgermeister); `"parteilos"` = independent. Inferred from the source column `Regierungspartei`, whose exact interpretation is not documented upstream. `NA` for 2023–2025, as the newer sources do not report it. |
-| `seats_total`                                                                                                   | integer   | Total council size. `NA` where the source left it blank (39 rows).                                                                                                                                                                                              |
-| `seats_spd`, `seats_cdu_csu`, `seats_fdp`, `seats_gruene`, `seats_freie_wahler`, `seats_linke_pds`, `seats_afd` | integer   | Seats won by each major party. Blank in source = 0 seats.                                                                                                                                                                                                       |
-| `seats_regional`                                                                                                | integer   | Seats won by regional parties (e.g. SSW). Not comparable across the 2022/2023 boundary — see below.                                                                                                                                                             |
-| `seats_other`                                                                                                   | integer   | Seats won by all remaining parties combined. Not comparable across that boundary either.                                                                                                                                                                        |
-| `seats_local_other`                                                                                             | integer   | `seats_freie_wahler + seats_regional + seats_other`: everything not held by the six major parties. Defined identically in all years, so this is the column to use for time series.                                                                              |
-| `flag_seats_total_incongruent`                                                                                  | logical   | `TRUE` where `seats_total` does not equal the sum of the nine party columns (8 rows). Source discrepancies are kept as recorded.                                                                                                                                |
-| `comment`                                                                                                       | character | Free-text note from the source.                                                                                                                                                                                                                                 |
-| `source`                                                                                                        | character | Source URL(s) for the row.                                                                                                                                                                                                                                      |
-| `last_checked`                                                                                                  | Date      | Date the source entry was last verified.                                                                                                                                                                                                                        |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `county` | character | County identifier (5-digit), matching `county` in `county_elec_unharm`. |
+| `county_name` | character | Name of the county or kreisfreie Stadt. |
+| `county_type` | character | `"Landkreis"` or `"kreisfreie Stadt"`. |
+| `state`, `state_name` | character | State identifier and name. |
+| `year` | integer | Calendar year (2008–2025). |
+| `government_party` | character | Party of the county executive (Landrat / Oberbürgermeister); `"parteilos"` = independent. Inferred from the source column `Regierungspartei`, whose exact interpretation is not documented upstream. `NA` for 2023–2025, as the newer sources do not report it. |
+| `seats_total` | integer | Total council size. `NA` where the source left it blank (39 rows). |
+| `seats_spd`, `seats_cdu_csu`, `seats_fdp`, `seats_gruene`, `seats_freie_wahler`, `seats_linke_pds`, `seats_afd` | integer | Seats won by each major party. Blank in source = 0 seats. |
+| `seats_regional` | integer | Seats won by regional parties (e.g. SSW). Not comparable across the 2022/2023 boundary — see below. |
+| `seats_other` | integer | Seats won by all remaining parties combined. Not comparable across that boundary either. |
+| `seats_local_other` | integer | `seats_freie_wahler + seats_regional + seats_other`: everything not held by the six major parties. Defined identically in all years, so this is the column to use for time series. |
+| `flag_seats_total_incongruent` | logical | `TRUE` where `seats_total` does not equal the sum of the nine party columns (8 rows). Source discrepancies are kept as recorded. |
+| `comment` | character | Free-text note from the source. |
+| `source` | character | Source URL(s) for the row. |
+| `last_checked` | Date | Date the source entry was last verified. |
 
 **The three-way split of non-major-party seats is not comparable over
 time.** The hand-compiled 2008–2022 rows often folded Freie Wähler and
@@ -584,14 +588,14 @@ municipality convention, so party shares sum to roughly
 
 Shared blocks apply, with 71 party columns.
 
-| Variable                            | Type    | Description                                                              |
-|:------------------------------------|:--------|:-------------------------------------------------------------------------|
-| `voters_wo_sperrvermerk`            | numeric | Eligible voters without Sperrvermerk (A1).                               |
-| `voters_w_sperrvermerk`             | numeric | Eligible voters with Sperrvermerk (A2) — EU citizens.                    |
-| `voters_par24_2`                    | numeric | Voters registered under § 24(2) EuWO (A3) — Germans abroad.              |
-| `voters_w_wahlschein`               | numeric | Voters with a Wahlschein (absentee ballot certificate, B1).              |
-| `flag_turnout_above_1`              | integer | 1 where turnout exceeded 1 before capping (mail-in allocation rounding). |
-| `flag_aggregated`, `n_predecessors` | integer | Harmonization bookkeeping — see the shared block.                        |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `voters_wo_sperrvermerk` | numeric | Eligible voters without Sperrvermerk (A1). |
+| `voters_w_sperrvermerk` | numeric | Eligible voters with Sperrvermerk (A2) — EU citizens. |
+| `voters_par24_2` | numeric | Voters registered under § 24(2) EuWO (A3) — Germans abroad. |
+| `voters_w_wahlschein` | numeric | Voters with a Wahlschein (absentee ballot certificate, B1). |
+| `flag_turnout_above_1` | integer | 1 where turnout exceeded 1 before capping (mail-in allocation rounding). |
+| `flag_aggregated`, `n_predecessors` | integer | Harmonization bookkeeping — see the shared block. |
 
 Zero handling here follows the *zero preserved* pattern: a 0 means the
 source reported no votes, and parties that did not run in a given year
@@ -640,14 +644,14 @@ Brandenburg single-candidate elections are Ja/Nein votes, as in Hessen.
 
 One row per municipality, election and round.
 
-| Variable           | Type      | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-|:-------------------|:----------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `election_type`    | character | `Bürgermeisterwahl`, `Oberbürgermeisterwahl`, `VG-Bürgermeisterwahl` (Verbandsgemeinde), or `SG-Bürgermeisterwahl` (Samtgemeinde).                                                                                                                                                                                                                                                                                                                                                    |
-| `round`            | character | `"hauptwahl"` (first round) or `"stichwahl"` (runoff).                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `winner_party`     | character | Party or nominating list of the winner. This is the formal Wahlvorschlagsträger, **not** the winner’s party membership: candidates affiliated with a party frequently run as Einzelbewerber in local elections and are recorded with a blank party. Do not “correct” these against secondary sources.                                                                                                                                                                                 |
-| `winner_votes`     | numeric   | Votes for the winner. `NA` where the source reports shares only, or where the winner was not the first-listed Wahlvorschlag in a winner-only source.                                                                                                                                                                                                                                                                                                                                  |
-| `winner_voteshare` | numeric   | Winner’s share of valid votes (0–1).                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `flag_superseded`  | logical   | Bayern only. `TRUE` for a round that did not seat a mayor and was superseded by a later valid round: either annulled (`Wahlart` contains “ungültig”), or a Hauptwahl without an absolute majority that was not resolved by a runoff and was followed by a repeat Hauptwahl within 250 days. Duly-won Hauptwahlen that merely preceded a later by-election are **not** flagged. Rows are kept, not dropped — filter `== FALSE` for decisive rounds only. `FALSE` for all other states. |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `election_type` | character | `Bürgermeisterwahl`, `Oberbürgermeisterwahl`, `VG-Bürgermeisterwahl` (Verbandsgemeinde), or `SG-Bürgermeisterwahl` (Samtgemeinde). |
+| `round` | character | `"hauptwahl"` (first round) or `"stichwahl"` (runoff). |
+| `winner_party` | character | Party or nominating list of the winner. This is the formal Wahlvorschlagsträger, **not** the winner’s party membership: candidates affiliated with a party frequently run as Einzelbewerber in local elections and are recorded with a blank party. Do not “correct” these against secondary sources. |
+| `winner_votes` | numeric | Votes for the winner. `NA` where the source reports shares only, or where the winner was not the first-listed Wahlvorschlag in a winner-only source. |
+| `winner_voteshare` | numeric | Winner’s share of valid votes (0–1). |
+| `flag_superseded` | logical | Bayern only. `TRUE` for a round that did not seat a mayor and was superseded by a later valid round: either annulled (`Wahlart` contains “ungültig”), or a Hauptwahl without an absolute majority that was not resolved by a runoff and was followed by a repeat Hauptwahl within 250 days. Duly-won Hauptwahlen that merely preceded a later by-election are **not** flagged. Rows are kept, not dropped — filter `== FALSE` for decisive rounds only. `FALSE` for all other states. |
 
 `mayoral_harm` adds the harmonization block plus `flag_pre_1990`,
 `flag_aggregated`, `flag_turnout_above_1`, `flag_voteshare_above_1` and
@@ -659,37 +663,36 @@ only, so absolute counts are `NA`).
 One row per candidate per election cycle, wide across rounds: Hauptwahl
 results carry the `_hw` suffix and Stichwahl results the `_sw` suffix.
 
-| Variable                                                                               | Type      | Description                                                                                                                                                                |
-|:---------------------------------------------------------------------------------------|:----------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `election_date`, `election_date_sw`                                                    | Date      | Hauptwahl and Stichwahl dates. `election_date_sw` is `NA` without a runoff.                                                                                                |
-| `has_stichwahl`                                                                        | logical   | Whether the cycle went to a runoff.                                                                                                                                        |
-| `turnout`, `turnout_sw`                                                                | numeric   | Turnout in each round.                                                                                                                                                     |
-| `candidate_name`, `candidate_last_name`, `candidate_first_name`                        | character | Candidate name. `NA` for Bayern (losing candidates are not named in the source) and for Thüringen, where §50 ThürKWO redacts them.                                         |
-| `candidate_party`                                                                      | character | Nominating list — as with `winner_party`, the formal Wahlvorschlagsträger.                                                                                                 |
-| `candidate_votes_hw`, `candidate_voteshare_hw`, `candidate_rank_hw`, `n_candidates_hw` | numeric   | Hauptwahl votes, share, rank (1 = most votes), and field size.                                                                                                             |
-| `candidate_votes_sw`, `candidate_voteshare_sw`, `candidate_rank_sw`, `n_candidates_sw` | numeric   | The same for the Stichwahl; `NA` for candidates not in the runoff.                                                                                                         |
-| `is_winner`                                                                            | logical   | Whether this candidate won the cycle (outright in the Hauptwahl or in the runoff). Use this rather than max votes — in winner-only sources the winner is flagged directly. |
-| `flag_superseded`                                                                      | logical   | As in `mayoral_unharm`, made constant within each `(ags, election_date, election_type)`.                                                                                   |
-| `flag_decisive_round_missing`                                                          | logical   | `TRUE` where the round that decided the cycle is absent from the source: the rounds held are real but seated nobody, so `is_winner` is `NA` for every candidate and the cycle contributes no mayor to `mayor_panel`. Constant within an election. `FALSE` for every row at present — the one incomplete cycle it was built for (Hagenow 2015) has since been completed — but partial deliveries recur, and without the flag the leader of an inconclusive Hauptwahl is silently seated. |
-| `candidate_birth_year`, `candidate_profession`                                         | num/chr   | Available for some states only.                                                                                                                                            |
-| `office_type`                                                                          | character | Office type; Bayern and Saarland only.                                                                                                                                     |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `election_date`, `election_date_sw` | Date | Hauptwahl and Stichwahl dates. `election_date_sw` is `NA` without a runoff. |
+| `has_stichwahl` | logical | Whether the cycle went to a runoff. |
+| `turnout`, `turnout_sw` | numeric | Turnout in each round. |
+| `candidate_name`, `candidate_last_name`, `candidate_first_name` | character | Candidate name. `NA` for Bayern (losing candidates are not named in the source) and for Thüringen, where §50 ThürKWO redacts them. |
+| `candidate_party` | character | Nominating list — as with `winner_party`, the formal Wahlvorschlagsträger. |
+| `candidate_votes_hw`, `candidate_voteshare_hw`, `candidate_rank_hw`, `n_candidates_hw` | numeric | Hauptwahl votes, share, rank (1 = most votes), and field size. |
+| `candidate_votes_sw`, `candidate_voteshare_sw`, `candidate_rank_sw`, `n_candidates_sw` | numeric | The same for the Stichwahl; `NA` for candidates not in the runoff. |
+| `is_winner` | logical | Whether this candidate won the cycle (outright in the Hauptwahl or in the runoff). Use this rather than max votes — in winner-only sources the winner is flagged directly. |
+| `flag_superseded` | logical | As in `mayoral_unharm`, made constant within each `(ags, election_date, election_type)`. |
+| `candidate_birth_year`, `candidate_profession` | num/chr | Available for some states only. |
+| `office_type` | character | Office type; Bayern and Saarland only. |
 
 **Predicted candidate characteristics.** Gender and name-origin fields
 are *estimates from names*, not verified attributes, and should be
 described as such in any published analysis.
 
-| Variable                                                                                                                       | Type      | Description                                                                                                   |
-|:-------------------------------------------------------------------------------------------------------------------------------|:----------|:--------------------------------------------------------------------------------------------------------------|
-| `candidate_gender`                                                                                                             | character | `"m"` or `"w"`.                                                                                               |
-| `candidate_gender_source`                                                                                                      | character | `"raw"` (from the election authority) or `"predicted"`.                                                       |
-| `candidate_gender_method`                                                                                                      | character | `raw`, `full_de`, `full_global`, `hyphen_first_de`, `hyphen_first_global`, `accent_norm_global`, or `manual`. |
-| `candidate_gender_prob`                                                                                                        | numeric   | Confidence, 0–1: 1.0 raw, 0.99 `full_de`/`manual`, 0.95 `hyphen_first_de`, 0.90 global.                       |
-| `candidate_name_origin`                                                                                                        | character | `"german"`, `"turkish"`, `"arabic"`, `"eastern_european"`, `"southern_european"`.                             |
-| `candidate_name_origin_conf`                                                                                                   | numeric   | Confidence, 0.50–0.95.                                                                                        |
-| `candidate_name_origin_method`                                                                                                 | character | `"combined"`, `"surname_match"`, `"firstname_match"`, `"surname_pattern"`, `"default"`.                       |
-| `candidate_migration_bg`                                                                                                       | integer   | 0 = German-origin name, 1 = likely non-German origin.                                                         |
-| `candidate_migration_bg_prob`                                                                                                  | numeric   | Probability of migration background, 0–1.                                                                     |
-| `candidate_local_surname`, `candidate_surname_county_share`, `candidate_surname_n_counties`, `candidate_surname_overrep_ratio` | num/int   | **Placeholders, all `NA`.** Surname-rootedness measures awaiting telephone directory data.                    |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `candidate_gender` | character | `"m"` or `"w"`. |
+| `candidate_gender_source` | character | `"raw"` (from the election authority) or `"predicted"`. |
+| `candidate_gender_method` | character | `raw`, `full_de`, `full_global`, `hyphen_first_de`, `hyphen_first_global`, `accent_norm_global`, or `manual`. |
+| `candidate_gender_prob` | numeric | Confidence, 0–1: 1.0 raw, 0.99 `full_de`/`manual`, 0.95 `hyphen_first_de`, 0.90 global. |
+| `candidate_name_origin` | character | `"german"`, `"turkish"`, `"arabic"`, `"eastern_european"`, `"southern_european"`. |
+| `candidate_name_origin_conf` | numeric | Confidence, 0.50–0.95. |
+| `candidate_name_origin_method` | character | `"combined"`, `"surname_match"`, `"firstname_match"`, `"surname_pattern"`, `"default"`. |
+| `candidate_migration_bg` | integer | 0 = German-origin name, 1 = likely non-German origin. |
+| `candidate_migration_bg_prob` | numeric | Probability of migration background, 0–1. |
+| `candidate_local_surname`, `candidate_surname_county_share`, `candidate_surname_n_counties`, `candidate_surname_overrep_ratio` | num/int | **Placeholders, all `NA`.** Surname-rootedness measures awaiting telephone directory data. |
 
 Gender classification uses the Python `gender-guesser` package; raw
 gender from Rheinland-Pfalz, Saarland and Baden-Württemberg takes
@@ -706,34 +709,34 @@ row per person per year (254,045 rows), forward-filling the term. The
 `_harm` variants add `ags_21` and map to 2021 boundaries (41,732 and
 248,384 rows).
 
-| Variable                           | Type      | Description                                                                                                  |
-|:-----------------------------------|:----------|:-------------------------------------------------------------------------------------------------------------|
-| `person_id`                        | character | Unique mayor identifier (e.g. `p_09_00001` for Bayern), linking a person’s terms.                            |
-| `term_number`                      | integer   | Sequential term within (person, municipality), starting at 1.                                                |
-| `consecutive_terms`                | integer   | Consecutive terms, resetting after a gap of more than one cycle.                                             |
-| `winner_party`, `winner_voteshare` | chr/num   | Party and vote share in the decisive round.                                                                  |
-| `winning_margin`                   | numeric   | Vote-share gap between winner and runner-up.                                                                 |
-| `margin_change`                    | numeric   | Change in that margin since the previous election.                                                           |
-| `n_candidates`                     | numeric   | Size of the candidate field.                                                                                 |
-| `is_incumbent`                     | integer   | 1 where `term_number >= 2`.                                                                                  |
-| `next_runs_again`                  | integer   | 1 if this person wins the next election, 0 if someone else does, `NA` if there is no subsequent election.    |
-| `party_switch`                     | integer   | 1 where the winning party changed from the previous election.                                                |
-| `is_new_party_mayor`               | integer   | 1 where this party wins in this municipality for the first time.                                             |
-| `tenure_start`                     | numeric   | Year of the person’s first election in this municipality.                                                    |
-| `years_in_office`                  | numeric   | `election_year - tenure_start`.                                                                              |
-| `term_start_date`                  | Date      | Date of first taking office (Bayern: Amtsantritt; elsewhere the first election date).                        |
-| `n_terms`, `total_tenure_years`    | int/num   | Total terms observed, and the year span from first to last election.                                         |
-| `has_margin_variation`             | logical   | Whether the winning margin varies across this person’s terms — useful for judging fixed-effects feasibility. |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `person_id` | character | Unique mayor identifier (e.g. `p_09_00001` for Bayern), linking a person’s terms. |
+| `term_number` | integer | Sequential term within (person, municipality), starting at 1. |
+| `consecutive_terms` | integer | Consecutive terms, resetting after a gap of more than one cycle. |
+| `winner_party`, `winner_voteshare` | chr/num | Party and vote share in the decisive round. |
+| `winning_margin` | numeric | Vote-share gap between winner and runner-up. |
+| `margin_change` | numeric | Change in that margin since the previous election. |
+| `n_candidates` | numeric | Size of the candidate field. |
+| `is_incumbent` | integer | 1 where `term_number >= 2`. |
+| `next_runs_again` | integer | 1 if this person wins the next election, 0 if someone else does, `NA` if there is no subsequent election. |
+| `party_switch` | integer | 1 where the winning party changed from the previous election. |
+| `is_new_party_mayor` | integer | 1 where this party wins in this municipality for the first time. |
+| `tenure_start` | numeric | Year of the person’s first election in this municipality. |
+| `years_in_office` | numeric | `election_year - tenure_start`. |
+| `term_start_date` | Date | Date of first taking office (Bayern: Amtsantritt; elsewhere the first election date). |
+| `n_terms`, `total_tenure_years` | int/num | Total terms observed, and the year span from first to last election. |
+| `has_margin_variation` | logical | Whether the winning margin varies across this person’s terms — useful for judging fixed-effects feasibility. |
 
 `mayor_panel_annual` replaces the term-summary columns with
 position-in-cycle measures:
 
-| Variable                 | Type    | Description                                                                                     |
-|:-------------------------|:--------|:------------------------------------------------------------------------------------------------|
-| `year`                   | integer | Calendar year.                                                                                  |
-| `years_since_election`   | numeric | `year - election_year`.                                                                         |
-| `years_to_next_election` | numeric | Years until the next election (`NA` if unknown).                                                |
-| `electoral_cycle_pos`    | numeric | Position in the cycle, from 0 in the election year to just under 1 in the year before the next. |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `year` | integer | Calendar year. |
+| `years_since_election` | numeric | `year - election_year`. |
+| `years_to_next_election` | numeric | Years until the next election (`NA` if unknown). |
+| `electoral_cycle_pos` | numeric | Position in the cycle, from 0 in the election year to just under 1 in the year before the next. |
 
 Both panels carry the same predicted-characteristics columns as
 `mayoral_candidates`, constant within a term.
@@ -770,31 +773,27 @@ dataset and publishable in their own right.
 (451,772 x 9), `cty_crosswalks` (14,165 x 11) in
 `data/crosswalks/final/`.
 
-| Variable                                         | Type      | Description                                                                                                                                                                       |
-|:-------------------------------------------------|:----------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `ags` / `county_code`                            | character | Source municipality or county code, as of `year`. In `ags_crosswalks` this column is stored as numeric; cast it with `as.character()` (and restore leading zeros) before joining. |
-| `ags_name` / `county_name`                       | character | Source name.                                                                                                                                                                      |
-| `year`                                           | integer   | Year whose boundaries the source code refers to.                                                                                                                                  |
-| `ags_21` / `ags_25` / `county_code_21`           | character | Target code under the harmonized boundary definition.                                                                                                                             |
-| `ags_name_21` / `ags_name_25` / `county_name_21` | character | Target name.                                                                                                                                                                      |
-| `pop_cw`, `area_cw`, `emp_cw`                    | numeric   | Population-, area- and employment-based weights for the source→target mapping. Each sums to 1 within a source `(code, year)`.                                                     |
-| `area`, `population`, `employees`                | numeric   | Area (km²), population (thousands) and employees (thousands) of the source unit.                                                                                                  |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `ags` / `county_code` | character | Source municipality or county code, as of `year`. In `ags_crosswalks` this column is stored as numeric; cast it with `as.character()` (and restore leading zeros) before joining. |
+| `ags_name` / `county_name` | character | Source name. |
+| `year` | integer | Year whose boundaries the source code refers to. |
+| `ags_21` / `ags_25` / `county_code_21` | character | Target code under the harmonized boundary definition. |
+| `ags_name_21` / `ags_name_25` / `county_name_21` | character | Target name. |
+| `pop_cw`, `area_cw`, `emp_cw` | numeric | Population-, area- and employment-based weights for the source→target mapping. Each sums to 1 within a source `(code, year)`. |
+| `area`, `population`, `employees` | numeric | Area (km²), population (thousands) and employees (thousands) of the source unit. |
 
 A source unit that did not change appears once with weight 1. A
 municipality that merged appears once, pointing at its successor with
 weight 1. A municipality that split appears once per successor, with
 weights summing to 1.
 
-<div>
-
-> **Note**
+> [!NOTE]
 >
 > When chaining crosswalks across several target years, verify that the
 > resulting weights still sum to 1 per source `(code, year)`.
 > Un-rescaled chained weights silently inflate or deflate harmonized
 > vote counts.
-
-</div>
 
 # Covariates
 
@@ -805,15 +804,15 @@ boundaries and generated alongside the crosswalks.
 `data/covars_municipality/final/`, `cty_area_pop_emp` (12,800 x 7) in
 `data/covars_county/final/`.
 
-| Variable                              | Type      | Description                                                                                    |
-|:--------------------------------------|:----------|:-----------------------------------------------------------------------------------------------|
-| `ags_21` / `county_code_21`           | character | Municipality or county identifier at 2021 boundaries.                                          |
-| `ags_name_21` / `county_name_21`      | character | Name under the 2021 definition.                                                                |
-| `year`                                | numeric   | Year of observation.                                                                           |
-| `area_ags` / `area_cty`               | numeric   | Area in km², from official Gemeindeverzeichnis files.                                          |
-| `population_ags` / `population_cty`   | numeric   | Population in thousands.                                                                       |
-| `employees_ags` / `employees_cty`     | numeric   | Employees subject to social-security contributions, in thousands. Available from 1997 onwards. |
-| `pop_density_ags` / `pop_density_cty` | numeric   | Population density, derived from the population and area columns.                              |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `ags_21` / `county_code_21` | character | Municipality or county identifier at 2021 boundaries. |
+| `ags_name_21` / `county_name_21` | character | Name under the 2021 definition. |
+| `year` | numeric | Year of observation. |
+| `area_ags` / `area_cty` | numeric | Area in km², from official Gemeindeverzeichnis files. |
+| `population_ags` / `population_cty` | numeric | Population in thousands. |
+| `employees_ags` / `employees_cty` | numeric | Employees subject to social-security contributions, in thousands. Available from 1997 onwards. |
+| `pop_density_ags` / `pop_density_cty` | numeric | Population density, derived from the population and area columns. |
 
 Shapefiles (VG250 municipality and county boundaries for 2000 and 2021)
 are published alongside these under `data/shapefiles/`.
