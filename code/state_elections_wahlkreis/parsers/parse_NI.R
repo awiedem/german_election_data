@@ -388,9 +388,52 @@ parse_html_statewide_1998 <- function(html_dir) {
 }
 sw_1998 <- parse_html_statewide_1998(attr(ni98, "html_dir"))
 
+# ===========================================================================
+# (C) 2008 - Stage-0 PDF parse (Table 3, Wahlkreis level; L08 block only)
+#     Parsed by 00_ni_pdf_parse.py from NI_2008_Landtagswahl_StatBericht.pdf
+#     (LSN Statistischer Bericht B VII 2-2 - 2j/08). That script hard-validates
+#     every row against Gültige Stimmen (sum of all 18 party columns - 5 main
+#     parties on the left half of the table plus 13 minor parties on the right
+#     half), the report's own printed Land Niedersachsen row (per party, per
+#     stimme, exactly), Wähler == gültige + ungültige, and the pinned official
+#     Zweitstimme shares (CDU/SPD/FDP/DIE LINKE/GRÜNE). NI's 2008 Wahlkreis
+#     boundaries differ from 2013+, so this keeps the report's own WK
+#     numbers/names with NO cross-year identity check (unlike 1998/2003 vs.
+#     2013+, which share boundaries and are cross-checked via sw_check()).
+#
+# Run order: python3 .../00_ni_pdf_parse.py  ->  Rscript .../parse_NI.R
+# ===========================================================================
+message("Reading 2008 (Stage-0 PDF fixture) ...")
+ni08_csv <- here("data", "state_elections", "processed", "wahlkreis",
+                 "ni_pdf", "NI_2008_pdf_long.csv")
+if (!file.exists(ni08_csv)) {
+  stop("Missing ", ni08_csv,
+       "\n  Run first:  python3 code/state_elections_wahlkreis/parsers/00_ni_pdf_parse.py")
+}
+ni08 <- fread(ni08_csv, encoding = "UTF-8",
+             colClasses = list(character = c("state_abbr", "state", "election_date",
+                                             "wkr_nr", "wkr_name", "stimme", "party_raw")))
+stopifnot(setequal(names(ni08), OUT_COLS))
+setcolorder(ni08, OUT_COLS)
+
+cat("\n=========== NI 2008 (from the Statistischer Bericht PDF, Table 3) ===========\n")
+cat("    rows read      :", nrow(ni08), "\n")
+print(ni08[, .(n_wkr = uniqueN(wkr_nr), n_parties = uniqueN(party_raw)), by = stimme])
+
+# re-validate (independently of the Python stage-0 checks): per (wkr,stimme)
+# sum(party votes) must equal valid_votes
+chk08 <- ni08[, .(sum_party = sum(votes, na.rm = TRUE), valid = unique(valid_votes)),
+             by = .(wkr_nr, stimme)]
+chk08[, disc := abs(sum_party - valid)]
+cat("    vote integrity : groups", nrow(chk08), "| max abs discrepancy", max(chk08$disc), "\n")
+if (any(chk08$disc > 0)) { print(chk08[disc > 0]); stop("NI 2008 PDF rows fail vote integrity") }
+
+cat(sprintf("    n_wahlkreise   : %d (expected 87)\n", uniqueN(ni08$wkr_nr)))
+stopifnot(uniqueN(ni08$wkr_nr) == 87L)
+
 # ---- combine --------------------------------------------------------------
 
-all_df <- rbindlist(c(csv_years, list(ni98, ni03)), use.names = TRUE, fill = TRUE)
+all_df <- rbindlist(c(csv_years, list(ni98, ni03, ni08)), use.names = TRUE, fill = TRUE)
 setcolorder(all_df, OUT_COLS)
 all_df <- all_df[order(election_year, wkr_nr, stimme, party_raw)]
 

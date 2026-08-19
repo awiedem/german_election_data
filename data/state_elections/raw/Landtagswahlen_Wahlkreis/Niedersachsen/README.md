@@ -143,3 +143,53 @@ Conclusion: 1951, 1955, 1959, 1963, 1967, 1970, 1974, 1978, 1982, 1986, 1994 rem
 obtainable only as **printed** Statistische Berichte / "Statistik von Niedersachsen"
 Wahlhefte, or via the interactive LSN-Online survey 143 (no static download). No public
 constituency-level digital file exists.
+
+## 2008 PDF extraction (2026-08-19) — Wahlkreis level recovered, status: DONE
+
+`NI_2008_Landtagswahl_StatBericht.pdf` Table 3 ("Ergebnisse der Landtagswahl 2008 —
+Erst- und Zweitstimmen — nach Landtagswahlkreisen mit Vergleichszahlen [...]", PDF pp.
+57–100, 0-indexed) is a digital-text-layer table reporting, per Wahlkreis, four
+comparison sub-blocks: L 08 (2008 Landtagswahl, the one we want), L 03 (2003
+Landtagswahl), B 05 (2005 Bundestagswahl), E 04 (2004 Europawahl). Only L 08 is kept.
+
+Extracted by `code/state_elections_wahlkreis/parsers/00_ni_pdf_parse.py`
+(coordinate-based pdfplumber parse) into
+`data/state_elections/processed/wahlkreis/ni_pdf/NI_2008_pdf_long.csv`, then appended
+by `parsers/parse_NI.R` to `NI_ltw_wkr_long.csv` alongside 1998/2003/2013/2017/2022.
+
+**Layout:** the table is split across alternating page halves — a LEFT page (WK/Land
+block headers, block markers "L 08"/"L 03"/"B 05"/"E 04", row labels "Zahl I"/"%"/"Zahl
+II"/"%", and 9 columns: Wahlberechtigte, Wähler, ungültige, gültige, CDU, SPD, FDP,
+GRÜNE, DIE LINKE. Niedersachsen) immediately followed by its RIGHT continuation page
+(13 further columns — Volksabstimmung, Die Weissen, Die Friesen, GRAUE, REP, FAMILIE,
+FW, Die Tierschutzpartei, NPD, ödp, PBC, EB, Sonstige — completely unlabelled, no WK
+headers, same row order as the left page). The two halves are zipped by position within
+each page pair (57+58, 59+60, ..., 99+100), with a hard length check per pair.
+
+**2008 Wahlkreis boundaries differ from 2013+.** The output uses the 2008 report's own
+WK numbers (001–087) and names verbatim; there is no cross-year Wahlkreis-identity check
+against 2013/2017/2022 (unlike 1998/2003, which share the 2013+ boundaries and are
+cross-checked in `parse_NI.R`'s `sw_check()`).
+
+**Validation (all hard, all passed):** (1) exactly 87 Wahlkreise + the Land Niedersachsen
+row, both stimme; (2) per (WK, stimme), the sum of all 18 party columns (5 left + 13
+right) equals gültige Stimmen exactly — 174 groups, max discrepancy 0; (3) per party,
+both stimme, the sum over the 87 Wahlkreise equals the report's own printed Land
+Niedersachsen row exactly — 36 checks (18 parties × 2 stimme), max discrepancy 0; (4)
+Wähler == gültige + ungültige per (WK, stimme) — 176 groups, max discrepancy 0; (5)
+pinned official Zweitstimme shares matched to ±0.1pp: CDU 42.53% (pinned 42.5), SPD
+30.27% (30.3), FDP 8.17% (8.2), DIE LINKE. Niedersachsen 7.10% (7.1), GRÜNE 8.01% (8.0).
+
+**Party list (17 on the ballot, both stimme; verbatim `party_raw` as printed in the
+PDF):** CDU, SPD, FDP, GRÜNE, DIE LINKE. Niedersachsen, Volksabstimmung, Die Weissen,
+Die Friesen, GRAUE, REP, FAMILIE, FW, Die Tierschutzpartei, NPD, ödp, PBC, EB. An
+18th column, "Sonstige", is printed on the right page but carries zero votes in every
+Wahlkreis for both stimme once all 17 named parties are itemised — dropped from the
+emitted CSV (same convention as the Saarland PDF parser: never-voted columns are not
+emitted). "DIE LINKE. Niedersachsen" is the exact column header printed in the report
+(the pre-merger state-branch name); "GRAUE" and "Die Tierschutzpartei" are the report's
+own (non-obvious) header wording, reconstructed from 3-line wrapped column headers.
+
+**Output:** 2,958 rows (87 Wahlkreise × 17 parties × 2 stimme), 1,479 per stimme.
+Combined `NI_ltw_wkr_long.csv` now covers 6 elections (1998, 2003, 2008, 2013, 2017,
+2022), 11,309 rows total.
