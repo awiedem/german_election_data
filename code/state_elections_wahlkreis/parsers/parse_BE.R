@@ -19,6 +19,16 @@
 #   BE_2023_Abgeordnetenhauswahl_Ergebnisbericht.xlsx, sheet "1" carries the
 #   statewide Erst/Zweit Anzahl for 2023 (cols 2/4) AND 2016 (cols 6/8); its
 #   per-Wahlkreis sheets "3.1".."3.78" were spot-checked too.
+#
+# 1999 / 2001 / 2006 / 2011 / 2021: parsed by the Stage-0 script
+# 00_be_pdf_parse.py from the five digital-text Ergebnisberichte into
+# be_pdf/BE_1999_2021_pdf_long.csv, appended below.  That script hard-validates
+# every figure against the reports' own printed totals - the Berlin grand-total
+# row of each Wahlkreis table, the statewide table 1.x party by party, the
+# Bezirk subtotals, the separate turnout table, and the pinned official
+# Zweitstimmen shares - and writes nothing if any check fails.
+#
+# Run order: python3 .../00_be_pdf_parse.py  ->  Rscript .../parse_BE.R
 # =============================================================================
 
 library(here)
@@ -190,9 +200,107 @@ be23_z <- parse_wb_sheet(f2023, "AGH_W2", "zweitstimme", 2023L, "2023-02-12",
                          col_valid = 17, col_invalid = 18,
                          party_start = 19)
 
-combined <- rbindlist(list(be16_e, be16_z, be23_e, be23_z), use.names = TRUE)
-setcolorder(combined, OUT_COLS)
+xlsx_years <- rbindlist(list(be16_e, be16_z, be23_e, be23_z), use.names = TRUE)
+setcolorder(xlsx_years, OUT_COLS)
+
+# =============================================================================
+# 1999-2021 - Stage-0 PDF parse of the five Ergebnisberichte
+# =============================================================================
+pdf_csv <- file.path(out_dir, "be_pdf", "BE_1999_2021_pdf_long.csv")
+if (!file.exists(pdf_csv)) {
+  stop("Missing ", pdf_csv,
+       "\n  Run first:  python3 code/state_elections_wahlkreis/parsers/00_be_pdf_parse.py")
+}
+pdf_long <- fread(pdf_csv, encoding = "UTF-8",
+                  colClasses = list(character = c("state_abbr", "state",
+                                                  "election_date", "wkr_nr",
+                                                  "wkr_name", "stimme",
+                                                  "party_raw")))
+stopifnot(setequal(names(pdf_long), OUT_COLS))
+setcolorder(pdf_long, OUT_COLS)
+
+cat("\n=========== BE 1999-2021 (from the Ergebnisbericht PDFs) ===========\n")
+print(pdf_long[, .(rows = .N, n_wkr = uniqueN(wkr_nr), n_parties = uniqueN(party_raw)),
+               by = .(election_year, stimme)])
+
+# (a) 78 Wahlkreise in every (year, stimme), and one row per party in each
+stopifnot(pdf_long[, uniqueN(wkr_nr), by = .(election_year, stimme)]$V1 == 78L)
+dupes <- pdf_long[, .N, by = .(election_year, stimme, wkr_nr, party_raw)][N > 1L]
+if (nrow(dupes)) { print(head(dupes)); stop("BE PDF rows: duplicate party keys") }
+
+# (b) one date per election year, and the expected five elections
+dates <- unique(pdf_long[, .(election_year, election_date)])
+stopifnot(nrow(dates) == 5L,
+          identical(sort(dates$election_year), c(1999L, 2001L, 2006L, 2011L, 2021L)),
+          identical(dates[order(election_year)]$election_date,
+                    c("1999-10-10", "2001-10-21", "2006-09-17", "2011-09-18",
+                      "2021-09-26")))
+
+# (c) per (year, stimme, Wahlkreis): the party counts must add up to
+#     valid_votes.  "x" in the report (party not on that ballot) is NA here.
+chk <- pdf_long[, .(sum_party = sum(votes, na.rm = TRUE),
+                    valid = unique(valid_votes)),
+                by = .(election_year, stimme, wkr_nr)]
+chk[, disc := abs(sum_party - valid)]
+cat("    vote integrity : groups", nrow(chk), "| max abs discrepancy",
+    max(chk$disc), "\n")
+if (any(chk$disc > 0)) { print(chk[disc > 0]); stop("BE PDF rows fail vote integrity") }
+
+# (d) turnout is one value per (year, stimme, Wahlkreis), and is ordered
+turn <- pdf_long[, .(n_e = uniqueN(eligible_voters), n_v = uniqueN(number_voters),
+                     n_g = uniqueN(valid_votes), n_u = uniqueN(invalid_votes)),
+                 by = .(election_year, stimme, wkr_nr)]
+stopifnot(turn[, all(c(n_e, n_v, n_g, n_u) == 1L)])
+# Berlin publishes Waehler per Wahlkreis, not "abgegebene Stimmen": a voter may
+# hand in a ballot without marking one of the two votes, so gueltige+ungueltige
+# normally falls slightly short of Waehler (and in a handful of Wahlkreise the
+# reports print the reverse by one or two votes).  Both are properties of the
+# source, so this is a band, not an identity; the exact pinning happens in
+# Stage 0 against the reports' own printed totals.
+bal <- unique(pdf_long[, .(election_year, stimme, wkr_nr, eligible_voters,
+                           number_voters, valid_votes, invalid_votes)])
+bal[, slack := number_voters - valid_votes - invalid_votes]
+cat(sprintf("    unmarked ballots: %d of %d Wahlkreis-Stimme cells exceed 5%% of Waehler\n",
+            bal[abs(slack) > 0.05 * number_voters, .N], nrow(bal)))
+stopifnot(bal[, all(abs(slack) <= 0.05 * number_voters &
+                    number_voters <= eligible_voters)])
+
+# (e) Wahlkreis ids: "BB-WW" with the Bezirk number Berlin itself uses.  From
+#     2001 on that is the 12-Bezirk numbering the 2016/2023 Wahlbezirk files
+#     use, so the Bezirk part must map to the same name in both sources.  1999
+#     predates the Bezirksreform and runs on the 23 old Wahlkreisverbaende, so
+#     it deliberately does NOT line up - asserted here so the break is visible.
+stopifnot(pdf_long[, all(grepl("^[0-9]{2}-[0-9]{2}$", wkr_nr))])
+bez <- function(d) unique(d[, .(bez_nr = substr(wkr_nr, 1, 2),
+                                bez = sub(" [0-9]+$", "", wkr_name))])
+ref_bez <- bez(as.data.table(xlsx_years))
+new_bez <- bez(pdf_long[election_year >= 2001L])
+cmp <- merge(ref_bez, new_bez, by = "bez_nr", suffixes = c("_xlsx", "_pdf"))
+if (nrow(cmp) != 12L || any(cmp$bez_xlsx != cmp$bez_pdf)) {
+  print(cmp); stop("BE Bezirk numbering diverges between the xlsx and PDF years")
+}
+cat("    Bezirk numbering identical to the 2016/2023 files: 12 / 12\n")
+old_bez <- bez(pdf_long[election_year == 1999L])
+stopifnot(nrow(old_bez) == 23L,
+          identical(sort(old_bez$bez_nr), sprintf("%02d", 1:23)))
+# Of the twelve numbers the two layouts share, only 01 (Mitte) names the same
+# Bezirk; 02 is Tiergarten in 1999 and Friedrichshain-Kreuzberg from 2001 on.
+same <- merge(ref_bez, old_bez, by = "bez_nr", suffixes = c("_new", "_1999"))
+stopifnot(sum(same$bez_new == same$bez_1999) == 1L,
+          same[bez_nr == "02"]$bez_1999 == "Tiergarten")
+cat("    1999 uses the 23 pre-2001 Wahlkreisverbaende (own numbering 01-23)\n")
+
+# =============================================================================
+# COMBINE + WRITE
+# =============================================================================
+combined <- rbindlist(list(xlsx_years, pdf_long), use.names = TRUE)
 setorder(combined, election_year, stimme, wkr_nr, party_raw)
+
+cat("\n=========== COMBINED (BE) ===========\n")
+print(combined[, .(rows = .N, n_wkr = uniqueN(wkr_nr),
+                   n_parties = uniqueN(party_raw)), by = election_year])
+cat(sprintf("\nTotal rows emitted: %d\n", nrow(combined)))
+cat(sprintf("Distinct party_raw: %d\n", uniqueN(combined$party_raw)))
 
 out_csv <- file.path(out_dir, "BE_ltw_wkr_long.csv")
 fwrite(combined, out_csv)

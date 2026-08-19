@@ -87,3 +87,40 @@ A second gap-fill agent independently re-checked all 10 missing years (1950, 195
 - **archive.org / Wikimedia Commons:** no scanned *Berliner Statistik B VII 3* Hefte for the target years surfaced.
 
 Conclusion unchanged: 1950–1985 West-Berlin Abgeordnetenhaus per-Wahlkreis results exist only as undigitised printed Hefte; institutional scan request (AfS Berlin-Brandenburg / Staatsbibliothek zu Berlin) remains the only route.
+
+## Processing status (August 2026)
+
+Which of the files above are actually parsed into the Wahlkreis dataset, and from where inside each PDF.
+
+Seven Abgeordnetenhauswahlen are now in `data/state_elections/processed/wahlkreis/BE_ltw_wkr_long.csv`: 1999, 2001, 2006, 2011, 2016, 2021, 2023. All 78 Wahlkreise, both Stimmen, for every one of them.
+
+- **2016 and 2023** come from the two `..._Wahlbezirk.xlsx` files and are read directly by `code/state_elections_wahlkreis/parsers/parse_BE.R`.
+- **1999, 2001, 2006, 2011 and 2021** come from the five Ergebnisbericht PDFs. `code/state_elections_wahlkreis/parsers/00_be_pdf_parse.py` extracts them into `data/state_elections/processed/wahlkreis/be_pdf/BE_1999_2021_pdf_long.csv`, which `parse_BE.R` then appends. Run the Python script first; it writes nothing unless every check passes.
+
+None of this needed OCR: all five PDFs carry a real text layer.
+
+### Where the numbers come from inside each report
+
+| Election | Vote counts per Wahlkreis | Turnout per Wahlkreis | Party names and statewide totals |
+|---|---|---|---|
+| 1999 | tables 2.1 / 2.3, PDF pp. 64–67 / 72–75 | table 3, pp. 80–111 | table 1.3, p. 54 |
+| 2001 | tables 2.1 / 2.3, pp. 54–57 / 62–65 | table 3, pp. 70–95 | table 1.3, p. 46 |
+| 2006 | tables 2.1 / 2.3, pp. 24–27 / 32–35 | table 3, pp. 40–65 | table 1.3, p. 14 |
+| 2011 | tables 2.1 / 2.3, pp. 24–27 / 32–35 | table 3, pp. 40–65 | table 1.2, p. 12 |
+| 2021 | tables 3.1–3.78, pp. 21–98 | same pages | table 1, p. 6 |
+
+(PDF page numbers. They match the printed page numbers in 1999, 2001, 2006 and 2021; in the 2011 report the printed numbers run two lower.)
+
+Tables 2.2 and 2.4 (1999–2011) and table 5.2 (2021) carry the same results as percentages and are deliberately not read. In 1999–2011 the count tables are printed as two-page spreads: the left page holds the row label and the first parties, the right page the remaining parties with the label repeated at the outer edge.
+
+### Two things to know before touching this data
+
+**Do not use pdfplumber on these files.** `BE_2006_Abgeordnetenhauswahl_Ergebnisbericht.pdf` has a broken ToUnicode map: pdfplumber silently decodes the digit "3" as "2" on the Wahlkreis pages, so a page full of 3s comes out with none. poppler's `pdftotext` decodes the same font correctly, and the parser uses `pdftotext -bbox` throughout for that reason. The parser's reconciliation against the reports' own printed totals is what would catch a recurrence.
+
+**1999 is on the old Bezirk layout.** The Bezirksreform of 1 January 2001 merged 23 Bezirke into 12. The 1999 report therefore groups its 78 Wahlkreise under 23 Wahlkreisverbände, numbered 01 Mitte, 02 Tiergarten, 03 Wedding, … 23 Hellersdorf, and `wkr_nr` follows that numbering. From 2001 on the same field uses the 12-Bezirk numbering that the 2016 and 2023 spreadsheets use. Only number 01 (Mitte) means the same thing in both. Wahlkreis boundaries were also recut between elections within each era, so `wkr_nr` is an identifier within an election year, not across years.
+
+**2021 was annulled.** The Verfassungsgerichtshof declared the 26 September 2021 election invalid and it was repeated on 12 February 2023 (already in the dataset). 2021 remains a published, official election with its own final result, and is kept as such; the two share the same 78 Wahlkreise.
+
+### What is still missing
+
+Unchanged by this pass: 1990 needs OCR (scanned image PDF), 1995's PDF has a broken xref table and yields nothing, and 1950–1985 exist only as undigitised printed Hefte (see the gap-fill sections above).

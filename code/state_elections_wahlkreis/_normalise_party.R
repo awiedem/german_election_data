@@ -72,6 +72,11 @@ normalise_party <- function(pname) {
   if (grepl("^BAYERNPARTEI$|^BP$", p_up))                 return("bp")
   if (grepl("^SCHILL|^PRO$|^RECHTSSTAATLICHE|RECHTSSTAATLICH.*OFFENSIVE", p_up)) return("schill")
   if (grepl("^STATT", p_up))                              return("statt_partei")
+  # the bare label "Graue Panther" (2013+) is the modern standalone party,
+  # DISTINCT from the pre-2008 "DIE GRAUEN - Graue Panther" and from "Die
+  # Grauen": in Berlin 2021/2023 both lists stand on the SAME ballot, so the
+  # old catch-all merged two different parties into one column (found Aug 2026)
+  if (p_cmp == "GRAUEPANTHER")                             return("graue_panther")
   if (grepl("^GRAUE|^DIE GRAUEN", p_up))                  return("graue")
   if (grepl("^ZENTRUM$", p_up))                            return("zentrum")
   if (grepl("^FREIE SACHSEN", p_up))                       return("freie_sachsen")
