@@ -111,3 +111,38 @@ Wiederholungswahl. Machine-readable (CSV/XLSX) for 2016, 2021, 2026; PDF for all
 **No gap remains** — 1952 is now obtained as a dedicated Wahlkreis report. The earliest unified-state
 Baden-Württemberg election (1952, the constituent-assembly vote that created the state) is the
 theoretical earliest, and it is now covered.
+
+## Processing status (parsers/parse_BW.R + parsers/00_bw_pdf_parse.py)
+
+- **2016, 2021, 2026** — parsed directly from the XLSX/CSV machine-readable files by
+  `parse_tiled_xlsx()` / `parse_2026_csv()` in `parse_BW.R`.
+- **2001, 2006, 2011** — parsed by `00_bw_pdf_parse.py` (Stage 0) from
+  `BW_2006_Landtagswahl_Wahlkreis_BVII2.pdf` and `BW_2011_Landtagswahl_Wahlkreis_BVII2.pdf`. Each
+  report's Tabelle 1 (PDF pp. 4-22) carries BOTH the current year's result AND the prior election's
+  comparison figures per Wahlkreis, so 2001 is extracted from BW_2006's own "prior" columns (2006
+  itself and 2011 come from each report's "current" columns). Coordinate-based (pdfplumber
+  word-level x-position) parsing, the same anchor-bootstrap method used for HE/BB; hard-validated
+  against the reports' own printed Land Baden-Württemberg totals, pinned official statewide shares,
+  printed percentages, and — for 2006 — an independent-source cross-check against BW_2011's own
+  2006-comparison columns. Output: `data/state_elections/processed/wahlkreis/bw_pdf/BW_2001_2011_pdf_long.csv`,
+  appended by `parse_BW.R` into the combined `BW_ltw_wkr_long.csv`.
+  - **Boundary recomputation**: BW's 70 Wahlkreise were redrawn before 2011. Both reports mark a
+    subset of Wahlkreise (footnote "*)") whose COMPARISON-year figures were recomputed onto the
+    current year's Wahlkreiseinteilung: 11 of 70 in the 2006 report (2001-on-2006-boundaries — WK
+    05, 06, 08, 10, 11, 13, 14, 18, 20, 66, 68) and 37 of 70 in the 2011 report
+    (2006-on-2011-boundaries). GERDA publishes 2001 on BW_2006's own native boundaries (not
+    recomputed further); `flag_wkr_boundaries_recomputed = 1` marks the 11 affected 2001 rows (0
+    for every other row, all years). Cross-checking BW_2011's 2006-comparison columns against
+    BW_2006's own 2006-current columns confirms this recomputation is EXACTLY vote-conserving
+    statewide, once two footnoted party grafts are accounted for: the 2011 report's "DIE LINKE"
+    row inherits WASG's 2006 figure as its prior-column (footnote: "2006: WASG (2007 Vereinigung
+    WASG und Die Linke.)"), and its "Volksabstimmung" row inherits "Deutschland"'s 2006 figure
+    (footnote: "2006: Deutschland.") — both confirmed as exact matches, not just approximately
+    conserved.
+  - **Quirks**: pdfplumber drops '%%'-column glyphs on some pages (2006: only the WK 68-70 page;
+    2011: the entire document) even though `pdftotext -layout` renders them fine — harmless, since
+    the emitted schema carries counts, not percentages, and the parser bootstraps either column
+    width transparently. A Wahlkreis with more than one independent candidate
+    ("Einzelbewerber") prints a second, unlabelled Anzahl/%%/Veränderung line directly beneath the
+    labelled row (seen in BW_2011 WK 35 Mannheim I); the parser detects and sums these. See the
+    module docstring in `00_bw_pdf_parse.py` for full detail.

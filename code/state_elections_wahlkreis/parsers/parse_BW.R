@@ -2,14 +2,37 @@
 # parse_BW.R  —  Stage-1 cleaning parser, Baden-Wuerttemberg Landtagswahl
 #                at CONSTITUENCY (Wahlkreis) level.
 #
-# Machine-readable sources only (PDF/TIF scans excluded -> future OCR stage):
+# Machine-readable sources (PDF/TIF scans pre-2001 excluded -> future OCR stage):
 #   2016 : BW_2016_Landtagswahl_Wahlkreis_BVII2.xlsx   (tiled "Tabelle1" report)
 #   2021 : BW_2021_Landtagswahl_Wahlkreis_BVII2.xlsx   (tiled "Tabelle1" report)
 #   2026 : BW_2026_Landtagswahl_alle_Ebenen_inkl_Wahlkreis.csv (all-levels open data)
+#   2001, 2006, 2011 : parsed by the Stage-0 script 00_bw_pdf_parse.py from the
+#         BW_2006_Landtagswahl_Wahlkreis_BVII2.pdf and BW_2011_..._BVII2.pdf
+#         text-layer reports (each carries the current year's result AND the
+#         prior election's comparison figures per Wahlkreis -> 2001 comes from
+#         BW_2006's prior columns), into bw_pdf/BW_2001_2011_pdf_long.csv,
+#         appended below. That script hard-validates every row against the
+#         report's own Land total, pinned official statewide shares, printed
+#         percentages, and an independent-source cross-check (BW_2011's own
+#         2006-comparison columns vs BW_2006's 2006-current columns).
 #
 # Vote system:
-#   2016 & 2021 -> single vote  -> stimme = "einzelstimme"
-#   2026        -> two-vote system introduced -> stimme = "erststimme" + "zweitstimme"
+#   2001-2021  -> single vote  -> stimme = "einzelstimme"
+#   2026       -> two-vote system introduced -> stimme = "erststimme" + "zweitstimme"
+#
+# Boundary recomputation: BW's 70 Wahlkreise were redrawn before 2011. Both the
+# 2006 report (comparing to 2001) and the 2011 report (comparing to 2006) mark
+# a subset of Wahlkreise whose COMPARISON-year figures were recomputed onto the
+# CURRENT year's Wahlkreiseinteilung (footnote "*)"). GERDA publishes each
+# year on its own report's native boundaries (2001 from BW_2006's own prior
+# columns, un-recomputed further); flag_wkr_boundaries_recomputed = 1 marks
+# the 2001 rows for the 11 Wahlkreise BW_2006 itself flagged as recomputed
+# onto the 2006 Wahlkreiseinteilung (0 for the other 2001 rows, and 0 for
+# every 2006/2011/2016/2021/2026 row -- see 00_bw_pdf_parse.py for the
+# 2006-vs-2011-boundary cross-check, which additionally confirms BW's
+# recomputation is exactly vote-conserving statewide).
+#
+# Run order: python3 .../00_bw_pdf_parse.py  ->  Rscript .../parse_BW.R
 #
 # Output: long, tidy CSV, one row per (Wahlkreis x stimme x party).
 # =============================================================================
@@ -28,7 +51,7 @@ dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE)
 
 OUT_COLS <- c("state_abbr","state","election_year","election_date","wkr_nr",
               "wkr_name","stimme","eligible_voters","number_voters","valid_votes",
-              "invalid_votes","party_raw","votes")
+              "invalid_votes","party_raw","votes","flag_wkr_boundaries_recomputed")
 
 # --- helper: clean German integer strings ("1.234", spaces, "x", ".") -> numeric
 to_int <- function(x) {
@@ -221,6 +244,13 @@ L16 <- parse_tiled_xlsx(f16, 2016L, "2016-03-13")
 L21 <- parse_tiled_xlsx(f21, 2021L, "2021-03-14")
 L26 <- parse_2026_csv(f26, 2026L, "2026-03-08")
 
+# none of these three years carry a boundary-recomputation footnote
+land16 <- attr(L16, "land_total"); land21 <- attr(L21, "land_total"); land26 <- attr(L26, "land_total")
+L16$flag_wkr_boundaries_recomputed <- 0L
+L21$flag_wkr_boundaries_recomputed <- 0L
+L26$flag_wkr_boundaries_recomputed <- 0L
+attr(L16, "land_total") <- land16; attr(L21, "land_total") <- land21; attr(L26, "land_total") <- land26
+
 # ---- VALIDATION -------------------------------------------------------------
 validate <- function(long, label, has_stimme = FALSE) {
   cat("\n==== VALIDATION", label, "====\n")
@@ -268,20 +298,61 @@ validate(L16, "2016")
 validate(L21, "2021")
 validate(L26, "2026")
 
+# =============================================================================
+# 2001 + 2006 + 2011 — Stage-0 PDF parse (BW_2006 + BW_2011 B VII 2 reports)
+# =============================================================================
+pdf_csv <- file.path(OUT_DIR, "bw_pdf", "BW_2001_2011_pdf_long.csv")
+if (!file.exists(pdf_csv)) {
+  stop("Missing ", pdf_csv,
+       "\n  Run first:  python3 code/state_elections_wahlkreis/parsers/00_bw_pdf_parse.py")
+}
+pdf_long <- fread(pdf_csv, encoding = "UTF-8",
+                  colClasses = list(character = c("state_abbr", "state", "election_date",
+                                                  "wkr_nr", "wkr_name", "stimme",
+                                                  "party_raw")))
+stopifnot(setequal(names(pdf_long), OUT_COLS))
+setcolorder(pdf_long, OUT_COLS)
+
+cat("\n=========== BW 2001 + 2006 + 2011 (from the B VII 2 Wahlkreis reports) ===========\n")
+cat("    rows read      :", nrow(pdf_long), "\n")
+print(pdf_long[, .(n_wkr = uniqueN(wkr_nr), n_parties = uniqueN(party_raw),
+                   n_flagged = sum(flag_wkr_boundaries_recomputed)),
+               by = .(election_year, stimme)])
+
+# re-validate: per (year, wkr) sum(party votes) must equal valid_votes -- the
+# Stage-0 script already hard-validated this against the report's own printed
+# figures; re-checked here as the standard cross-boundary safety net (same
+# pattern as parse_SL.R / parse_HE.R for their own pdf_long fixtures).
+chk_bw <- pdf_long[, .(sum_party = sum(votes, na.rm = TRUE), valid = unique(valid_votes)),
+                   by = .(election_year, wkr_nr)]
+chk_bw[, disc := abs(sum_party - valid)]
+cat("    vote integrity : groups", nrow(chk_bw), "| max abs discrepancy", max(chk_bw$disc), "\n")
+if (any(chk_bw$disc > 0)) { print(chk_bw[disc > 0]); stop("BW PDF rows fail vote integrity") }
+
+cat("    n Wahlkreise per year:\n")
+print(pdf_long[, .(n_wkr = uniqueN(wkr_nr)), by = election_year])
+if (any(pdf_long[, uniqueN(wkr_nr), by = election_year]$V1 != 70))
+  stop("BW PDF years must have exactly 70 Wahlkreise each")
+
 # ---- COMBINE & WRITE --------------------------------------------------------
 final <- rbindlist(list(
   as.data.table(L16)[, ..OUT_COLS],
   as.data.table(L21)[, ..OUT_COLS],
-  as.data.table(L26)[, ..OUT_COLS]
+  as.data.table(L26)[, ..OUT_COLS],
+  pdf_long[, ..OUT_COLS]
 ), use.names = TRUE)
 
 # integer-cast counts (keep NA)
 for (cc in c("eligible_voters","number_voters","valid_votes","invalid_votes","votes"))
   final[[cc]] <- as.integer(round(final[[cc]]))
+final$flag_wkr_boundaries_recomputed <- as.integer(final$flag_wkr_boundaries_recomputed)
 
 final[, election_year := as.integer(election_year)]
 setcolorder(final, OUT_COLS)
 setorder(final, election_year, wkr_nr, stimme, party_raw)
+
+cat("\n=========== COMBINED (BW) ===========\n")
+print(final[, .(rows = .N, n_wkr = uniqueN(wkr_nr)), by = election_year])
 
 outfile <- file.path(OUT_DIR, "BW_ltw_wkr_long.csv")
 fwrite(final, outfile)

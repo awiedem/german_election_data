@@ -122,6 +122,7 @@ normalise_party <- function(pname) {
   # the one source-residual column. SL additionally groups "Wählergruppen"
   if (p_cmp == "SONSTIGE")                                     return("sonstige")
   if (p_cmp == "ANDERE")                                       return("sonstige")
+  if (grepl("^SONSTIGE \\(NUR (19|20)[0-9]{2}\\)$", p_up))     return("sonstige")
   if (p_cmp == "WÄHLERGRUPPEN")                                return("waehlergruppen")
   # Fallback: clean to snake_case (warn about potential collisions)
   cleaned <- tolower(p)
