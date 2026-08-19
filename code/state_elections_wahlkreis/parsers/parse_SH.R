@@ -32,8 +32,22 @@
 #           no turnout, no party totals, only 7 "ausgewählter Parteien", no
 #           statewide total row) -> integrity check impossible. Counts live only
 #           in SH_2012_..._Wahlbericht.pdf -> deferred to OCR stage.
-#   - 2005: no machine-readable WK file at all (only B VII 2 5/05 PDF) -> OCR.
-#   - All .pdf / .tif : deferred to the future OCR stage.
+#   - All other .pdf / .tif : deferred to the future OCR stage.
+#
+# 2005 (40 Wahlkreise, digital text layer - NOT OCR): parsed by the Stage-0
+# script 00_sh_pdf_parse.py from SH_2005_Landtagswahl_Bericht_B_VII_2_5_05.pdf
+# section 2.1 ("Ergebnisse nach Landtagswahlkreisen - Anzahl") into
+# sh_pdf/SH_2005_pdf_long.csv, appended below. That script hard-validates
+# every (Wahlkreis, Stimme) against Gültige Stimmen, Table A Wähler vs
+# Table B gültig+ungültig, the printed Land-row party totals, and pinned
+# official statewide Zweitstimme shares. wkr_nr kept UNPADDED ("1".."40"),
+# matching the 2009 intermediate's convention for the same 40-Wahlkreis
+# boundary (2000/2009 unpadded; 2022 zero-padded - a pre-existing
+# inconsistency, not touched here). 2005 Wahlkreis names/boundaries are NOT
+# forced to match 2000 or 2009 (e.g. WK 4 is "Flensburg" in 2005 vs
+# "Flensburg-West" in 2000) - each year's own report names are used verbatim.
+#
+# Run order: python3 .../00_sh_pdf_parse.py  ->  Rscript .../parse_SH.R
 # =============================================================================
 
 library(here)
@@ -533,6 +547,50 @@ validate_year <- function(r, yr) {
 }
 
 v <- mapply(validate_year, results, names(results), SIMPLIFY = FALSE)
+
+# =============================================================================
+# 2005 - Stage-0 PDF parse (digital text layer, 40 Wahlkreise)
+# =============================================================================
+pdf_csv <- file.path(here("data", "state_elections", "processed", "wahlkreis"),
+                     "sh_pdf", "SH_2005_pdf_long.csv")
+if (!file.exists(pdf_csv)) {
+  stop("Missing ", pdf_csv,
+       "\n  Run first:  python3 code/state_elections_wahlkreis/parsers/00_sh_pdf_parse.py")
+}
+pdf_long <- fread(pdf_csv, encoding = "UTF-8",
+                  colClasses = list(character = c("state_abbr", "state", "election_date",
+                                                  "wkr_nr", "wkr_name", "stimme",
+                                                  "party_raw")))
+stopifnot(setequal(names(pdf_long), OUT_COLS))
+setcolorder(pdf_long, OUT_COLS)
+pdf_long$votes <- as.integer(pdf_long$votes)
+
+cat("\n=========== SH 2005 (from the digital B VII 2-5/05 PDF) ===========\n")
+cat("    rows read      :", nrow(pdf_long), "\n")
+print(pdf_long[, .(n_wkr = uniqueN(wkr_nr), n_parties = uniqueN(party_raw)),
+               by = .(election_year, stimme)])
+
+# re-check integrity independently in R: per (wkr, stimme), sum(party votes,
+# na.rm=TRUE) == valid_votes (the stage-0 script already hard-checked this
+# against the printed Gültige Stimmen; this re-derives it from the fixture
+# CSV itself, catching any drift introduced between the two scripts)
+chk_pdf <- pdf_long[, .(sum_party = sum(votes, na.rm = TRUE), valid = unique(valid_votes)),
+                    by = .(wkr_nr, stimme)]
+chk_pdf[, disc := abs(sum_party - valid)]
+cat("    vote integrity : groups", nrow(chk_pdf), "| max abs discrepancy", max(chk_pdf$disc), "\n")
+if (any(chk_pdf$disc > 0)) { print(chk_pdf[disc > 0]); stop("SH 2005 PDF rows fail vote integrity") }
+
+n_wkr_2005 <- uniqueN(pdf_long$wkr_nr)
+if (n_wkr_2005 != 40L) stop("SH 2005: expected 40 Wahlkreise, got ", n_wkr_2005)
+cat("    Wahlkreise     : 40 / 40\n")
+
+final <- rbindlist(list(final, pdf_long), use.names = TRUE)
+final[, .wkr_nr_num := as.integer(wkr_nr)]
+setorder(final, election_year, .wkr_nr_num, stimme, party_raw)
+final[, .wkr_nr_num := NULL]
+
+cat("\n=========== COMBINED (SH, incl. 2005) ===========\n")
+print(final[, .(rows = .N, n_wkr = uniqueN(wkr_nr)), by = election_year])
 
 # ---- WRITE ----
 fwrite(final, OUT_CSV)

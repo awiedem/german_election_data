@@ -199,3 +199,24 @@ library and the Landesarchiv Schleswig-Holstein; recovery requires a physical sc
 loan, not an online download.
 
 _Second gap-fill: 2026-06-27._
+
+## Status in the pipeline (August 2026)
+
+`SH_2005_Landtagswahl_Bericht_B_VII_2_5_05.pdf` (RC4-encrypted, digital text layer — `pdftotext`
+reads it directly, no OCR needed) is now parsed at Wahlkreis level. Earlier notes in this repo
+described 2005 as having "no machine-readable WK file" and deferred it to a future OCR stage; that
+turned out to be unnecessary — the PDF's text layer is extractable, so 2005 was added as a Stage-0
+PDF parser instead:
+
+- Parser: `code/state_elections_wahlkreis/parsers/00_sh_pdf_parse.py`, extended into
+  `code/state_elections_wahlkreis/parsers/parse_SH.R`.
+- Source table: report section 2.1 "Ergebnisse nach Landtagswahlkreisen — Anzahl" (pdf pages 12–15),
+  40 Wahlkreise (2005 boundaries — not the 35 used since 2012), Erst- and Zweitstimme.
+- Output: `data/state_elections/processed/wahlkreis/sh_pdf/SH_2005_pdf_long.csv`, folded into
+  `data/state_elections/processed/wahlkreis/SH_ltw_wkr_long.csv` alongside 2000/2009/2017/2022.
+- Hard-validated against: per-(Wahlkreis, Stimme) party-sum vs. gültige Stimmen; Table A Wähler vs.
+  Table B gültig+ungültig; the printed Land-row per-party totals (exact); and pinned official
+  statewide Zweitstimme shares (CDU/SPD/FDP/GRÜNE/SSW, ±0.1pp). All checks pass.
+- 2012 remains excluded (percentage-only WK files, no absolute counts or statewide total row to
+  validate against) and is still deferred to a future OCR stage, as are the pre-2000 scanned Hefte
+  (1954, 1958, 1979–1996) listed above.

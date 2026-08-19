@@ -118,8 +118,10 @@ normalise_party <- function(pname) {
   if (grepl("^CHR.?L$", p_up))                                 return("chr_l")
   # source-side residual / grouped labels, EXACT match only ("Sonstige Partei"
   # must keep its own key): the SL long-series table and HE 2013 report a
-  # combined "Sonstige" figure; SL additionally groups "Wählergruppen"
+  # combined "Sonstige" figure, SH 2005 the same thing as "Andere"; all map to
+  # the one source-residual column. SL additionally groups "Wählergruppen"
   if (p_cmp == "SONSTIGE")                                     return("sonstige")
+  if (p_cmp == "ANDERE")                                       return("sonstige")
   if (p_cmp == "WÄHLERGRUPPEN")                                return("waehlergruppen")
   # Fallback: clean to snake_case (warn about potential collisions)
   cleaned <- tolower(p)
