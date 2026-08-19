@@ -168,3 +168,66 @@ nonetheless available for **all 60 WK** in the `… 1994` columns of
 `SN_1999_Landtagswahl_Wahlkreis.csv`, so 1994 is effectively complete at WK level when the
 two files are combined. The statewide summary page (`lw94wergsn14.htm`) was no longer
 archivable as raw content and is not stored.
+
+---
+
+## 2004 & 2009 PARSED (2026-08) — from the two B VII 2-2 reports
+
+Both historical reports listed above are now the machine-readable source for their
+election. Neither needed OCR: both carry a full digital text layer. The parser is
+`code/state_elections_wahlkreis/parsers/00_sn_pdf_parse.py` (stage 0), whose output
+`data/state_elections/processed/wahlkreis/sn_pdf/SN_2004_2009_pdf_long.csv` is appended
+by `parsers/parse_SN.R`.
+
+### Which tables are read
+
+Both reports use the same numbering. Per election we read four tables:
+
+| Table | Content | 2009 report (PDF pages) | 2004 report (PDF pages) |
+|---|---|---|---|
+| 7 | Wahlberechtigte, Wähler, gültige Direkt- und Listenstimmen | 32–35 | 30–33 |
+| 8 | Direkt- und Listenstimmen: gültig / ungültig | 36–39 | 34–37 |
+| 9 | Gültige Direktstimmen nach Parteien und anderen Wahlvorschlägen | 40–55 | 38–53 |
+| 10 | Gültige Listenstimmen nach Parteien | 56–63 | 54–61 |
+
+Tables 9 and 10 are wide tables printed across facing half-pages (left page: row labels
+plus the first columns; right page: the remaining columns). Table 9 additionally splits
+its columns into two blocks, so all 61 rows (60 Wahlkreise + the printed "Sachsen" total)
+appear once per block, over four page-pairs of 17/17/17/10 rows.
+
+### The 2004 PDF has a broken font encoding
+
+The 2004 report's Type1/Type3 font subsets carry no ToUnicode CMap. `pdftotext` and
+`pdfplumber` therefore return mojibake for every table page. The glyph names in each
+font's `/Encoding /Differences` array are of the form `/G<N>`, where `N` indexes the
+standard Macintosh glyph order, so the mapping is fully recoverable: the parser reads
+`/Differences` with pikepdf, maps `/G<N>` → `fontTools.ttLib.standardGlyphOrder[N]` →
+`fontTools.agl.AGL2UV`, and re-parses the raw content stream itself, tracking `Tf` font
+switches and decoding `Tj`/`TJ` byte strings through the correct per-font map. This
+resolves 100 % of characters (53 899 characters over the 32 table pages, zero unresolved
+glyph codes), which the parser asserts. The 2009 report needs none of this and is parsed
+with pdfplumber word coordinates.
+
+### Two quirks worth knowing
+
+- **Wahlkreis boundaries changed between 2004 and 2009.** The 2009 report prints its 2004
+  comparison columns on the *2009* boundaries, so for 13 Wahlkreise (12, 15, 18, 19, 31,
+  32, 52, 54, 55, 56, 57, 59, 60) its 2004 figures differ from the 2004 report's own.
+  Wahlkreis numbers and names are identical in both reports; statewide totals are
+  unaffected. We emit each report's own figures, i.e. 2004 on 2004 boundaries. The parser
+  uses the other 47 Wahlkreise as an independent cross-check and pins the changed set.
+- **Wahlkreis 31 (Leipzig 7) held a Wiederholungswahl of the Direktwahl in 2006.** The
+  2009 report shows that repeat result in its "2004" Direktstimmen column (statewide
+  2 035 621 rather than 2 052 877). We emit the original 2004 election as printed in the
+  2004 report.
+
+### Validation
+
+The stage-0 script writes nothing unless every check passes: 60 Wahlkreise plus the
+printed Sachsen row per table; sum over Wahlkreise equal to the printed Sachsen row for
+every single party and every turnout column; sum of party votes equal to gültige Stimmen
+and Wähler equal to gültige + ungültige per Wahlkreis and stimme; every printed percent
+reproducing its own count; the official statewide Listenstimmen shares within 0.1 pp; the
+two turnout tables agreeing with each other; and the emitted candidacy counts matching the
+candidate numbers the reports state in their Vorbemerkungen (391 Direktkandidaten in 2004,
+398 in 2009).

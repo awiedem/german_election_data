@@ -3,7 +3,7 @@
 # Constituency unit: Landtagswahlkreis (60 WK since reunification)
 # Vote system: erststimme (Direktstimme) + zweitstimme (Listenstimme)
 #
-# Machine-readable sources parsed (PDF/TIF scans excluded by design):
+# Machine-readable sources parsed (image-only scans excluded by design):
 #   - SN_1999_Landtagswahl_Wahlkreis.csv  -> 1999 (60 WK, both stimmen)
 #                                            +1994 zweitstimme (60 WK) [NOT emitted;
 #                                             1994 comes from HTML which has both stimmen]
@@ -11,6 +11,18 @@
 #   - SN_2014_Landtagswahl_Wahlkreis_originale.xlsx -> 2014 (60 WK)
 #   - SN_2019_Landtagswahl_Wahlkreis_Gemeinde_Kreis.xlsx -> 2019 (60 WK)
 #   - SN_2024_Landtagswahl_Wahlkreis_Gemeinde_Kreis.xlsx -> 2024 (60 WK)
+#
+# 2004 + 2009 (60 WK each, both stimmen): parsed by the Stage-0 script
+# 00_sn_pdf_parse.py from the two official B VII 2-2 reports (digital text
+# layer, no OCR) into sn_pdf/SN_2004_2009_pdf_long.csv, appended below. The
+# 2004 report's fonts carry no ToUnicode map; that script recovers the text
+# deterministically from each font's /Encoding /Differences array. It
+# hard-validates every row against the printed Sachsen total (per party),
+# gültige Stimmen, the printed percent columns, the pinned official statewide
+# shares, the candidate counts the reports state, and - for 2004 - the
+# independent 2004 columns of the 2009 report.
+#
+# Run order: python3 .../00_sn_pdf_parse.py  ->  Rscript .../parse_SN.R
 #
 # Output: long tidy CSV, one row per (Wahlkreis x stimme x party_raw).
 # =====================================================================
@@ -244,7 +256,6 @@ all[, wkr_nr := as.character(wkr_nr)]
 setcolorder(all, OUT_COLS)
 
 out_csv <- file.path(out_dir, "SN_ltw_wkr_long.csv")
-fwrite(all, out_csv)
 
 # =====================================================================
 # VALIDATION
@@ -318,9 +329,88 @@ cat("  1994: HTML has 49/60 WK and no Land row -> no statewide check possible\n"
 cat("\n(c) Wahlkreis count per year (expected 60)\n")
 print(all[, .(n_wkr = uniqueN(wkr_nr)), by = election_year][order(election_year)])
 
+# =====================================================================
+# 2004 + 2009 - Stage-0 PDF parse (official B VII 2-2 reports)
+# =====================================================================
+pdf_csv <- file.path(out_dir, "sn_pdf", "SN_2004_2009_pdf_long.csv")
+if (!file.exists(pdf_csv)) {
+  stop("Missing ", pdf_csv,
+       "\n  Run first:  python3 code/state_elections_wahlkreis/parsers/00_sn_pdf_parse.py")
+}
+pdf_long <- fread(pdf_csv, encoding = "UTF-8",
+                  colClasses = list(character = c("state_abbr", "state",
+                                                  "election_date", "wkr_nr",
+                                                  "wkr_name", "stimme",
+                                                  "party_raw")))
+stopifnot(setequal(names(pdf_long), OUT_COLS))
+setcolorder(pdf_long, OUT_COLS)
+
+cat("\n=========== SN 2004 + 2009 (from the B VII 2-2 reports) ===========\n")
+cat("    rows read      :", nrow(pdf_long), "\n")
+print(pdf_long[, .(n_wkr = uniqueN(wkr_nr), n_parties = uniqueN(party_raw)),
+               by = .(election_year, stimme)][order(election_year, stimme)])
+
+# 60 Wahlkreise, numbered 01..60, in both years and both stimmen
+chk_wkr <- pdf_long[, .(ok = identical(sort(unique(wkr_nr)),
+                                       sprintf("%02d", 1:60))),
+                    by = .(election_year, stimme)]
+if (!all(chk_wkr$ok)) { print(chk_wkr); stop("SN PDF years: Wahlkreis set != 01..60") }
+cat("    Wahlkreis set  : 01..60 in every (year, stimme) group\n")
+
+# per (year, wkr, stimme): sum(party votes) must equal valid_votes, and
+# Wähler must equal gültige + ungültige
+chk2 <- pdf_long[, .(sum_party = sum(votes, na.rm = TRUE),
+                     valid = unique(valid_votes),
+                     voters = unique(number_voters),
+                     invalid = unique(invalid_votes)),
+                 by = .(election_year, wkr_nr, stimme)]
+chk2[, `:=`(disc = abs(sum_party - valid), disc_turnout = abs(voters - valid - invalid))]
+cat("    vote integrity : groups", nrow(chk2),
+    "| max |sum(party) - gültig| =", max(chk2$disc),
+    "| max |Wähler - gültig - ungültig| =", max(chk2$disc_turnout), "\n")
+if (any(chk2$disc > 0) || any(chk2$disc_turnout > 0)) {
+  print(chk2[disc > 0 | disc_turnout > 0]); stop("SN PDF rows fail vote integrity")
+}
+
+# statewide Listenstimmen shares against the official results
+official <- data.table(
+  election_year = c(rep(2004L, 6), rep(2009L, 6)),
+  party_raw = c("CDU", "PDS", "SPD", "NPD", "FDP", "GRÜNE",
+                "CDU", "DIE LINKE", "SPD", "FDP", "GRÜNE", "NPD"),
+  share = c(41.1, 23.6, 9.8, 9.2, 5.9, 5.1,
+            40.2, 20.6, 10.4, 10.0, 6.4, 5.6))
+z <- pdf_long[stimme == "zweitstimme"]
+denom <- unique(z[, .(election_year, wkr_nr, valid_votes)])[
+  , .(valid = sum(valid_votes)), by = election_year]
+got <- z[, .(votes = sum(votes)), by = .(election_year, party_raw)][
+  denom, on = "election_year"][, share_got := 100 * votes / valid]
+cmp <- merge(official, got, by = c("election_year", "party_raw"))
+cmp[, diff := round(share_got - share, 2)]
+cat("\n    statewide Listenstimmen shares vs official results:\n")
+print(cmp[, .(election_year, party_raw, share_got = round(share_got, 2), share, diff)])
+if (nrow(cmp) != nrow(official) || any(abs(cmp$diff) > 0.1)) {
+  stop("SN PDF years: statewide Listenstimmen shares off by more than 0.1pp")
+}
+
+# Wahlkreis names must be consistent within a year
+n_names <- pdf_long[, uniqueN(wkr_name), by = .(election_year, wkr_nr)]
+stopifnot(all(n_names$V1 == 1L))
+
+all <- rbindlist(list(all, pdf_long), use.names = TRUE)
+setorder(all, election_year, wkr_nr, stimme, party_raw)
+
+cat("\n=========== COMBINED (SN) ===========\n")
+print(all[, .(rows = .N, n_wkr = uniqueN(wkr_nr),
+              n_parties = uniqueN(party_raw)), by = election_year][order(election_year)])
+
 cat("\nTotal rows emitted:", nrow(all), "\n")
-cat("Output:", out_csv, "\n")
 
 # distinct party labels
 cat("\nDistinct party_raw labels:\n")
 print(sort(unique(all$party_raw)))
+
+# =====================================================================
+# WRITE OUTPUT
+# =====================================================================
+fwrite(all, out_csv)
+cat("\nOutput:", out_csv, "\n")
