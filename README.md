@@ -135,6 +135,7 @@ data <- readRDS("federal_muni_harm_21.rds")
 
 ### Usage notes
 
+- Excel users can choose **Excel (.xlsx)** on the [download page](https://www.german-elections.com/election-data/). Workbooks contain the same table as the CSV, with geographic codes stored as text and vote shares displayed as percentages. Party columns in `federal_muni_raw` remain absolute counts.
 - Use harmonized datasets for time-series analyses under stable geographic units; use unharmonized datasets where original boundaries matter.
 - Vote shares for "Other" can be large in small municipalities where major parties do not field candidates. See the [Codebook](docs/codebook.md) for per-state reporting rules.
 
@@ -143,6 +144,14 @@ data <- readRDS("federal_muni_harm_21.rds")
 1. **Code**: Scripts for data ingestion, cleaning, harmonization, and analysis. See `docs/data_pipeline.md` for a walkthrough.
 2. **Data**: Raw and processed datasets for municipal, state, and federal elections, plus boundary shapefiles and crosswalks. Ready-to-use files are in `final/` subdirectories (e.g., `data/federal_elections/municipality_level/final/`).
 3. **Output**: Analysis results and visualizations.
+
+### Refreshing Excel exports
+
+After updating final CSV/RDS outputs, run `python3 code/export_excel.py` and
+`python3 code/checks/check_excel_exports.py` before publishing. This regenerates
+the matching `.xlsx` files in the same `final/` directories and records source
+hashes in `docs/excel_exports.json`. Unchanged exports are skipped. See
+[Excel export maintenance](docs/excel_exports.md) for requirements and release order.
 
 ## Data Sources
 
