@@ -123,7 +123,7 @@ gerda_data_list()
 data <- load_gerda_web("federal_muni_harm_25", verbose = TRUE, file_format = "rds")
 ```
 
-Key functions: `load_gerda_web()` (download by name), `gerda_data_list()` (catalog), `add_gerda_covariates()` (30 INKAR county-level socioeconomic variables), `add_gerda_census()` (16 municipality-level indicators from Census 2022), `party_crosswalk()` (map German party names to ParlGov IDs). Package source: [GitHub](https://github.com/hhilbig/gerda) | [CRAN](https://cran.r-project.org/package=gerda).
+Key functions: `load_gerda_web()` (download by name), `gerda_data_list()` (catalog), `add_gerda_covariates()` (30 INKAR county-level socioeconomic variables), `add_gerda_census()` (14 municipality-level indicators from Census 2022), `party_crosswalk()` (map German party names to ParlGov IDs). Package source: [GitHub](https://github.com/hhilbig/gerda) | [CRAN](https://cran.r-project.org/package=gerda).
 
 ### Direct download (without the R package)
 
