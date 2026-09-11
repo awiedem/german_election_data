@@ -367,7 +367,7 @@ glimpse(df_harm)
 
 # write
 fwrite(df_harm, "data/state_elections/final/state_harm.csv")
-write_rds(df_harm, "data/state_elections/final/state_harm.rds")
+write_rds(df_harm, "data/state_elections/final/state_harm.rds", compress = "gz")
 
 
 

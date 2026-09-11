@@ -556,7 +556,7 @@ df_all <- df_all |>
 
 glimpse(df_all)
 
-write_rds(df_all, "data/european_elections/final/european_muni_unharm.rds")
+write_rds(df_all, "data/european_elections/final/european_muni_unharm.rds", compress = "gz")
 fwrite(df_all, "data/european_elections/final/european_muni_unharm.csv")
 
 cat("\nWritten:", nrow(df_all), "rows x", ncol(df_all), "columns\n")

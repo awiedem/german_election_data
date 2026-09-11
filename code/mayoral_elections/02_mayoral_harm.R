@@ -621,7 +621,7 @@ glimpse(df_harm)
 # 12. Save -----------------------------------------------------------------
 
 fwrite(df_harm, "data/mayoral_elections/final/mayoral_harm.csv")
-write_rds(df_harm, "data/mayoral_elections/final/mayoral_harm.rds")
+write_rds(df_harm, "data/mayoral_elections/final/mayoral_harm.rds", compress = "gz")
 
 cat("\nSaved to data/mayoral_elections/final/mayoral_harm.{csv,rds}\n")
 cat("Done.\n")

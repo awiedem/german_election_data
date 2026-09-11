@@ -1058,7 +1058,7 @@ cat("[OK] national valid_votes reconcile to the unharmonised file in every year\
 
 # Write .csv file
 fwrite(df_harm, file = "data/federal_elections/municipality_level/final/federal_muni_harm_21.csv")
-write_rds(df_harm, "data/federal_elections/municipality_level/final/federal_muni_harm_21.rds")
+write_rds(df_harm, "data/federal_elections/municipality_level/final/federal_muni_harm_21.rds", compress = "gz")
 
 
 

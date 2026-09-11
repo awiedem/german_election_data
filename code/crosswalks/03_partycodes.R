@@ -83,7 +83,7 @@ crosswalk <- crosswalk %>%
 glimpse(crosswalk)
 
 # Save crosswalk
-write_rds(crosswalk, "data/crosswalks/party_crosswalk.rds")
+write_rds(crosswalk, "data/crosswalks/party_crosswalk.rds", compress = "gz")
 
 ### END
 

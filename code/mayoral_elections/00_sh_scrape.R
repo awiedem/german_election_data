@@ -952,7 +952,7 @@ cat("\n=== Saving raw data ===\n")
 
 outdir <- "data/mayoral_elections/raw/sh"
 
-write_rds(sh_raw, file.path(outdir, "sh_mayoral_scraped.rds"))
+write_rds(sh_raw, file.path(outdir, "sh_mayoral_scraped.rds"), compress = "gz")
 fwrite(sh_raw, file.path(outdir, "sh_mayoral_scraped.csv"))
 
 cat("Saved to:\n")

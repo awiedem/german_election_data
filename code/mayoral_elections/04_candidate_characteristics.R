@@ -344,7 +344,7 @@ classifications <- unique_names |>
     )
   )
 
-write_rds(classifications, lookup_out)
+write_rds(classifications, lookup_out, compress = "gz")
 
 cat("\nName origin classification summary:\n")
 classifications |>
@@ -434,7 +434,7 @@ for (col in new_cols) {
 }
 
 cat("\n=== Saving ===\n")
-write_rds(cand, "data/mayoral_elections/final/mayoral_candidates.rds")
+write_rds(cand, "data/mayoral_elections/final/mayoral_candidates.rds", compress = "gz")
 fwrite(cand, "data/mayoral_elections/final/mayoral_candidates.csv")
 cat("Saved mayoral_candidates.{rds,csv} with characteristics columns\n")
 
@@ -496,7 +496,7 @@ if (!file.exists(restricted_in)) {
   # substitutes for one another in downstream analysis code.
   cand_r <- cand_r[, names(cand)]
 
-  write_rds(cand_r, restricted_in)
+  write_rds(cand_r, restricted_in, compress = "gz")
   fwrite(cand_r, "data/mayoral_elections/final_restricted/mayoral_candidates_restricted.csv")
   cat("\nSaved mayoral_candidates_restricted.{rds,csv} with characteristics columns\n")
 

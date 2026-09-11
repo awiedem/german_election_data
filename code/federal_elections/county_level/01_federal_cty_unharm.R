@@ -529,7 +529,7 @@ cat(sprintf("Flagged %d Briefwahl aggregate rows\n", sum(df$flag_briefwahl_agg))
 
 names(df)
 
-write_rds(df, "data/federal_elections/county_level/final/federal_cty_unharm.rds")
+write_rds(df, "data/federal_elections/county_level/final/federal_cty_unharm.rds", compress = "gz")
 fwrite(df, "data/federal_elections/county_level/final/federal_cty_unharm.csv")
 
 

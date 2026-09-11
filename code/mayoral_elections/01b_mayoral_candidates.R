@@ -3612,7 +3612,7 @@ anonymise_st_losers <- function(df, label) {
 # Never redistribute anything under a final_restricted/ directory.
 write_restricted_candidates <- function(df, dir, stem) {
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
-  write_rds(df, file.path(dir, paste0(stem, ".rds")))
+  write_rds(df, file.path(dir, paste0(stem, ".rds")), compress = "gz")
   fwrite(df, file.path(dir, paste0(stem, ".csv")))
   cat("  ", file.path(dir, stem), ".{rds,csv}: ", nrow(df), " rows (",
       sum(substr(as.character(df$ags), 1, 2) == "15" &
@@ -3639,12 +3639,12 @@ landrat_candidates <- anonymise_st_losers(landrat_candidates, "landrat_candidate
 cat("\n=== Saving data ===\n")
 
 # Mayoral output
-write_rds(mayoral_candidates, "data/mayoral_elections/final/mayoral_candidates.rds")
+write_rds(mayoral_candidates, "data/mayoral_elections/final/mayoral_candidates.rds", compress = "gz")
 fwrite(mayoral_candidates, "data/mayoral_elections/final/mayoral_candidates.csv")
 
 # Landrat output (new standalone dataset)
 dir.create("data/landrat_elections/final", recursive = TRUE, showWarnings = FALSE)
-write_rds(landrat_candidates, "data/landrat_elections/final/landrat_candidates.rds")
+write_rds(landrat_candidates, "data/landrat_elections/final/landrat_candidates.rds", compress = "gz")
 fwrite(landrat_candidates, "data/landrat_elections/final/landrat_candidates.csv")
 
 cat("Data saved to:\n")

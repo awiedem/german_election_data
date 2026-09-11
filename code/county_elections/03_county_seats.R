@@ -800,7 +800,7 @@ cat("Panel built:", nrow(df), "rows x", ncol(df), "cols\n")
 out_rds <- here::here("data/county_elections/final/county_council_seats.rds")
 out_csv <- here::here("data/county_elections/final/county_council_seats.csv")
 
-write_rds(df, out_rds)
+write_rds(df, out_rds, compress = "gz")
 fwrite(df, out_csv)
 cat("Written:\n  ", out_rds, "\n  ", out_csv, "\n")
 

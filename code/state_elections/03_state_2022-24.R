@@ -3356,7 +3356,7 @@ write_rds(
     path,
     "../../../state_elections/final",
     "state_2224_unharm.rds"
-  )
+  ), compress = "gz"
 )
 
 

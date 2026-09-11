@@ -20119,7 +20119,7 @@ kommunalwahlen_merge <- force_utf8(kommunalwahlen_merge)
 
 write_rds(
   kommunalwahlen_merge,
-  file = here::here("data/municipal_elections/final/municipal_unharm.rds")
+  file = here::here("data/municipal_elections/final/municipal_unharm.rds"), compress = "gz"
 )
 fwrite(
   kommunalwahlen_merge,

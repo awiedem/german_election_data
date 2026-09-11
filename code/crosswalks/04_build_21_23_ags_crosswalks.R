@@ -127,7 +127,7 @@ cw_21_22_23 <- cw_21_22_23 %>%
 
 # save
 fwrite(cw_21_22_23, "data/crosswalks/final/crosswalk_ags_2021_2022_to_2023.csv")
-write_rds(cw_21_22_23, "data/crosswalks/final/crosswalk_ags_2021_2022_to_2023.rds")
+write_rds(cw_21_22_23, "data/crosswalks/final/crosswalk_ags_2021_2022_to_2023.rds", compress = "gz")
 
 # ────────────────────────────────────────────────────────────────
 # 5.   Extend existing 1990-2021 crosswalk to 1990-2023 (+2022)
@@ -231,7 +231,7 @@ cw_1990_23 %>%
 ## ───────────────────────────────────────────────────────────────
 ## 9.  Save
 ## ───────────────────────────────────────────────────────────────
-write_rds(cw_1990_23, "data/crosswalks/final/ags_1990_to_2023_crosswalk.rds")
+write_rds(cw_1990_23, "data/crosswalks/final/ags_1990_to_2023_crosswalk.rds", compress = "gz")
 data.table::fwrite(
   cw_1990_23,
   "data/crosswalks/final/ags_1990_to_2023_crosswalk.csv"
@@ -380,6 +380,6 @@ cw_full |>
 
 # # write
 fwrite(cw_full, "data/covars_municipality/final/ags_area_pop_emp_2023.csv")
-write_rds(cw_full, "data/covars_municipality/final/ags_area_pop_emp_2023.rds")
+write_rds(cw_full, "data/covars_municipality/final/ags_area_pop_emp_2023.rds", compress = "gz")
 
 ### END

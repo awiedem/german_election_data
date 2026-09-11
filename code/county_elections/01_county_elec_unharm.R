@@ -5335,7 +5335,7 @@ force_utf8 <- function(df) {
 
 df_all <- force_utf8(df_all)
 
-write_rds(df_all, "data/county_elections/final/county_elec_unharm.rds")
+write_rds(df_all, "data/county_elections/final/county_elec_unharm.rds", compress = "gz")
 fwrite(df_all, "data/county_elections/final/county_elec_unharm.csv")
 cat("Written to data/county_elections/final/\n")
 

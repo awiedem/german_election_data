@@ -467,8 +467,8 @@ cw_24_25 %>%
 assert_crosswalk_valid(cw_23_25, "crosswalk_ags_2023_to_2025")
 assert_crosswalk_valid(cw_24_25, "crosswalk_ags_2024_to_2025")
 
-write_rds(cw_23_25, "data/crosswalks/final/crosswalk_ags_2023_to_2025.rds")
-write_rds(cw_24_25, "data/crosswalks/final/crosswalk_ags_2024_to_2025.rds")
+write_rds(cw_23_25, "data/crosswalks/final/crosswalk_ags_2023_to_2025.rds", compress = "gz")
+write_rds(cw_24_25, "data/crosswalks/final/crosswalk_ags_2024_to_2025.rds", compress = "gz")
 
 # merge the two crosswalks
 cw_23_24_25 <- cw_23_25 %>%
@@ -485,7 +485,7 @@ cw_23_24_25 %>%
     print(n = 100)
 
 # save
-write_rds(cw_23_24_25, "data/crosswalks/final/crosswalk_ags_2023_24_to_2025.rds")
+write_rds(cw_23_24_25, "data/crosswalks/final/crosswalk_ags_2023_24_to_2025.rds", compress = "gz")
 
 
 

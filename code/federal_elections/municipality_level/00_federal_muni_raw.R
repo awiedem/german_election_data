@@ -1593,7 +1593,7 @@ names(df)
 
 # Write unharmonized df ---------------------------------------------------
 
-write_rds(df, file = "data/federal_elections/municipality_level/final/federal_muni_raw.rds")
+write_rds(df, file = "data/federal_elections/municipality_level/final/federal_muni_raw.rds", compress = "gz")
 fwrite(df, file = "data/federal_elections/municipality_level/final/federal_muni_raw.csv")
 
 

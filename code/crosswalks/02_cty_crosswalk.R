@@ -50,7 +50,7 @@ cw_combined <- cw_combined |>
 
 # write crosswalk df
 fwrite(cw_combined, "data/crosswalks/final/cty_crosswalks.csv")
-write_rds(cw_combined, "data/crosswalks/final/cty_crosswalks.rds")
+write_rds(cw_combined, "data/crosswalks/final/cty_crosswalks.rds", compress = "gz")
 
 
 
@@ -131,7 +131,7 @@ cw <- cw |>
 
 # write
 fwrite(cw, "data/covars_county/final/cty_area_pop_emp.csv")
-write_rds(cw, "data/covars_county/final/cty_area_pop_emp.rds")
+write_rds(cw, "data/covars_county/final/cty_area_pop_emp.rds", compress = "gz")
 
 
 ### END

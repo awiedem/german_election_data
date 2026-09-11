@@ -639,7 +639,7 @@ df_harm <- df_harm |>
 
 # Write .csv file
 fwrite(df_harm, file = "data/federal_elections/municipality_level/final/federal_muni_harm_25.csv")
-write_rds(df_harm, "data/federal_elections/municipality_level/final/federal_muni_harm_25.rds")
+write_rds(df_harm, "data/federal_elections/municipality_level/final/federal_muni_harm_25.rds", compress = "gz")
 
 
 

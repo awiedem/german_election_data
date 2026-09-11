@@ -7324,5 +7324,5 @@ state_unharm <- state_unharm |>
 
 # Write output
 fwrite(state_unharm, "data/state_elections/final/state_unharm.csv")
-write_rds(state_unharm, "data/state_elections/final/state_unharm.rds")
+write_rds(state_unharm, "data/state_elections/final/state_unharm.rds", compress = "gz")
 cat("Written to data/state_elections/final/state_unharm.{csv,rds}\n")

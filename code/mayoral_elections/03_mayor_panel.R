@@ -1310,20 +1310,20 @@ for (s in sort(unique(harm$panel$state))) {
 cat("\n=== Saving ===\n")
 
 # Unharmonized (original boundaries)
-write_rds(unharm$panel, "data/mayoral_elections/final/mayor_panel.rds")
+write_rds(unharm$panel, "data/mayoral_elections/final/mayor_panel.rds", compress = "gz")
 fwrite(unharm$panel, "data/mayoral_elections/final/mayor_panel.csv")
 cat("Saved mayor_panel.{rds,csv} (unharmonized)\n")
 
-write_rds(unharm$annual, "data/mayoral_elections/final/mayor_panel_annual.rds")
+write_rds(unharm$annual, "data/mayoral_elections/final/mayor_panel_annual.rds", compress = "gz")
 fwrite(unharm$annual, "data/mayoral_elections/final/mayor_panel_annual.csv")
 cat("Saved mayor_panel_annual.{rds,csv} (unharmonized)\n")
 
 # Harmonized (2021 boundaries)
-write_rds(harm$panel, "data/mayoral_elections/final/mayor_panel_harm.rds")
+write_rds(harm$panel, "data/mayoral_elections/final/mayor_panel_harm.rds", compress = "gz")
 fwrite(harm$panel, "data/mayoral_elections/final/mayor_panel_harm.csv")
 cat("Saved mayor_panel_harm.{rds,csv} (harmonized)\n")
 
-write_rds(harm$annual, "data/mayoral_elections/final/mayor_panel_annual_harm.rds")
+write_rds(harm$annual, "data/mayoral_elections/final/mayor_panel_annual_harm.rds", compress = "gz")
 fwrite(harm$annual, "data/mayoral_elections/final/mayor_panel_annual_harm.csv")
 cat("Saved mayor_panel_annual_harm.{rds,csv} (harmonized)\n")
 

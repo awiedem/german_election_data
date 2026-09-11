@@ -598,7 +598,7 @@ df_harm <- df_harm |>
 
 ## save
 fwrite(df_harm, "data/municipal_elections/final/municipal_harm_25.csv")
-write_rds(df_harm, "data/municipal_elections/final/municipal_harm_25.rds")
+write_rds(df_harm, "data/municipal_elections/final/municipal_harm_25.rds", compress = "gz")
 
 
 # Create plot -------------------------------------------------------------

@@ -551,7 +551,7 @@ glimpse(df_final)
 cat("Saving harmonized data...\n")
 
 fwrite(df_final, "data/state_elections/final/state_harm_23.csv")
-write_rds(df_final, "data/state_elections/final/state_harm_23.rds")
+write_rds(df_final, "data/state_elections/final/state_harm_23.rds", compress = "gz")
 
 cat("Done!\n")
 cat("Total observations:", nrow(df_final), "\n")

@@ -1069,7 +1069,7 @@ cat("By state:\n")
 print(combined_unharm %>% count(state, state_name))
 
 # Save unharm
-write_rds(combined_unharm, "data/landrat_elections/final/landrat_unharm.rds")
+write_rds(combined_unharm, "data/landrat_elections/final/landrat_unharm.rds", compress = "gz")
 fwrite(combined_unharm, "data/landrat_elections/final/landrat_unharm.csv")
 cat("\n✓ Saved landrat_unharm.{rds,csv}\n")
 
@@ -1324,7 +1324,7 @@ if (nrow(new_long) > 0) {
   if (build_restricted) {
     dir.create("data/landrat_elections/final_restricted",
                recursive = TRUE, showWarnings = FALSE)
-    write_rds(combined_cands, restricted_cands_path)
+    write_rds(combined_cands, restricted_cands_path, compress = "gz")
     fwrite(combined_cands,
            "data/landrat_elections/final_restricted/landrat_candidates_restricted.csv")
     cat("\n✓ Saved RESTRICTED landrat_candidates_restricted.{rds,csv}:",
@@ -1345,7 +1345,7 @@ if (nrow(new_long) > 0) {
   cat("By state:\n")
   print(combined_cands %>% count(state, state_name))
 
-  write_rds(combined_cands, "data/landrat_elections/final/landrat_candidates.rds")
+  write_rds(combined_cands, "data/landrat_elections/final/landrat_candidates.rds", compress = "gz")
   fwrite(combined_cands, "data/landrat_elections/final/landrat_candidates.csv")
   cat("\n✓ Saved landrat_candidates.{rds,csv}\n")
 }

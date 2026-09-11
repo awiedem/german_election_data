@@ -261,7 +261,7 @@ state_elections <- state_elections |>
 ## Save for now
 
 fwrite(state_elections, 'data/state_elections/final/state_unharm.csv')
-write_rds(state_elections, 'data/state_elections/final/state_unharm.rds')
+write_rds(state_elections, 'data/state_elections/final/state_unharm.rds', compress = "gz")
 
 
 # Fix BaWü data from raw files -------------------------------------------
@@ -369,7 +369,7 @@ cat("After BaWü fix: BaWü eligible_voters =",
 
 ## Re-save
 fwrite(state_elections, 'data/state_elections/final/state_unharm.csv')
-write_rds(state_elections, 'data/state_elections/final/state_unharm.rds')
+write_rds(state_elections, 'data/state_elections/final/state_unharm.rds', compress = "gz")
 
 
 ### END

@@ -367,7 +367,7 @@ inspect <- df_harm %>%
 
 # Write .csv file
 fwrite(df_harm, file = "data/federal_elections/county_level/final/federal_cty_harm.csv")
-write_rds(df_harm, file = "data/federal_elections/county_level/final/federal_cty_harm.rds")
+write_rds(df_harm, file = "data/federal_elections/county_level/final/federal_cty_harm.rds", compress = "gz")
 
 
 

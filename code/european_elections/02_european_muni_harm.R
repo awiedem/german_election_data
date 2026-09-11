@@ -311,7 +311,7 @@ df_harm <- df_harm |>
 
 glimpse(df_harm)
 
-write_rds(df_harm, "data/european_elections/final/european_muni_harm.rds")
+write_rds(df_harm, "data/european_elections/final/european_muni_harm.rds", compress = "gz")
 fwrite(df_harm, "data/european_elections/final/european_muni_harm.csv")
 
 cat("\nWritten:", nrow(df_harm), "rows x", ncol(df_harm), "columns\n")

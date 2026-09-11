@@ -2707,12 +2707,12 @@ cat("  landrat_unharm:", nrow(landrat_unharm), "rows (Landratswahl)\n")
 cat("\n=== Saving data ===\n")
 
 # Mayoral output
-write_rds(mayoral_unharm, "data/mayoral_elections/final/mayoral_unharm.rds")
+write_rds(mayoral_unharm, "data/mayoral_elections/final/mayoral_unharm.rds", compress = "gz")
 fwrite(mayoral_unharm, "data/mayoral_elections/final/mayoral_unharm.csv")
 
 # Landrat output (new standalone dataset)
 dir.create("data/landrat_elections/final", recursive = TRUE, showWarnings = FALSE)
-write_rds(landrat_unharm, "data/landrat_elections/final/landrat_unharm.rds")
+write_rds(landrat_unharm, "data/landrat_elections/final/landrat_unharm.rds", compress = "gz")
 fwrite(landrat_unharm, "data/landrat_elections/final/landrat_unharm.csv")
 
 cat("Data saved to:\n")

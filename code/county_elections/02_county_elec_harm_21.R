@@ -710,7 +710,7 @@ cat("Municipality-level:", nrow(df_muni_out), "rows,",
     length(unique(df_muni_out$state)), "states\n")
 
 fwrite(df_muni_out, "data/county_elections/final/county_elec_harm_21_muni.csv")
-write_rds(df_muni_out, "data/county_elections/final/county_elec_harm_21_muni.rds")
+write_rds(df_muni_out, "data/county_elections/final/county_elec_harm_21_muni.rds", compress = "gz")
 
 # ==========================================================================
 # OUTPUT 2: County-level (aggregate municipalities to county, + BW/BY)
@@ -795,7 +795,7 @@ cat("County-level:", nrow(df_cty_out), "rows,",
     length(unique(df_cty_out$state)), "states\n")
 
 fwrite(df_cty_out, "data/county_elections/final/county_elec_harm_21_cty.csv")
-write_rds(df_cty_out, "data/county_elections/final/county_elec_harm_21_cty.rds")
+write_rds(df_cty_out, "data/county_elections/final/county_elec_harm_21_cty.rds", compress = "gz")
 
 # ==========================================================================
 # Summary

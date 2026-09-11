@@ -2345,11 +2345,11 @@ df <- df |>
 
 # Write unharmonized df ---------------------------------------------------
 
-write_rds(df, file = "data/federal_elections/municipality_level/final/federal_muni_unharm.rds")
+write_rds(df, file = "data/federal_elections/municipality_level/final/federal_muni_unharm.rds", compress = "gz")
 fwrite(df, file = "data/federal_elections/municipality_level/final/federal_muni_unharm.csv")
 
 write_rds <- mailin_df |>
-  write_rds("data/federal_elections/municipality_level/additional/mailin_df.rds")
+  write_rds("data/federal_elections/municipality_level/additional/mailin_df.rds", compress = "gz")
 
 # Create latex table of mailin_df -----------------------------------------
 
