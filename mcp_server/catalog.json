@@ -24,9 +24,10 @@
         "expected_rows": 107295
       },
       "license": {
-        "status": "pending_explicit_reuse_statement",
-        "public_launch_approved": false,
-        "notice": "Public launch is blocked until the GERDA maintainers publish an explicit reuse statement for this dataset."
+        "status": "CC-BY-4.0",
+        "public_launch_approved": true,
+        "url": "https://creativecommons.org/licenses/by/4.0/",
+        "notice": "The GERDA federal-election datasets, database compilation, and documentation may be used, copied, redistributed, and accessed through automated services under CC BY 4.0. This permission applies only to rights held by the GERDA maintainers; source materials remain subject to any terms imposed by their original providers."
       },
       "citation": {
         "text": "Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, and Andreas Wiedemann. 2025. GERDA: The German Election Database. Scientific Data 12: 618.",

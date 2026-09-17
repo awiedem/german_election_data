@@ -6,11 +6,10 @@ municipality lookup, bounded result queries, and citation-aware downloads.
 
 ## Status
 
-The server is implemented for private testing. The intended public endpoint is
-`https://mcp.german-elections.com/mcp`, but public launch is blocked until the
-GERDA maintainers publish an explicit reuse statement for the federal dataset.
-The catalog records this status and exposes it to clients. A concise draft is
-available in [`PROPOSED_DATA_REUSE_STATEMENT.md`](PROPOSED_DATA_REUSE_STATEMENT.md).
+The public endpoint is `https://mcp.german-elections.com/mcp`. This is an
+experimental service with no availability guarantee. The federal-data reuse
+terms are published in [`DATA_REUSE_STATEMENT.md`](DATA_REUSE_STATEMENT.md), and
+the catalog exposes the license status to clients.
 
 ## Tools
 
@@ -45,7 +44,13 @@ For local Codex testing, add the running HTTP server:
 codex mcp add gerda --url http://127.0.0.1:8000/mcp
 ```
 
-Remove or disable that local configuration before adding the future public URL.
+Remove or disable that local configuration before adding the public URL.
+
+For the public service, use:
+
+```sh
+codex mcp add gerda --url https://mcp.german-elections.com/mcp
+```
 
 ## Tests
 
@@ -73,6 +78,5 @@ Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, and Andreas Wiedemann.
 
 The `deploy/` directory contains the systemd, Nginx, rate-limit, and log-rotation
 definitions. The application must run as the non-login `gerda-mcp` user and
-bind only to `127.0.0.1:8000`. Do not enable the public Nginx site, create DNS,
-request a certificate, or open firewall ports until the license gate recorded
-in `catalog.json` has been resolved.
+bind only to `127.0.0.1:8000`. Nginx terminates TLS and limits MCP requests to 60
+per minute per IP address with a burst of 10.

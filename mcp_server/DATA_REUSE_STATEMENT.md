@@ -1,4 +1,4 @@
-# Proposed federal-data reuse statement
+# Federal-data reuse statement
 
 The GERDA federal-election datasets, database compilation, and documentation
 may be used, copied, redistributed, and accessed through automated services,
@@ -15,7 +15,4 @@ Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, and Andreas Wiedemann.
 2025. “GERDA: The German Election Database.” *Scientific Data* 12: 618.
 <https://doi.org/10.1038/s41597-025-04811-5>
 
-## Status
-
-This wording is a proposal. It does not authorize public launch until the GERDA
-maintainers approve and publish it.
+Approved for publication on September 17, 2026.

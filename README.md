@@ -128,9 +128,8 @@ Key functions: `load_gerda_web()` (download by name), `gerda_data_list()` (catal
 ### Agent access (MCP pilot)
 
 The [`mcp_server`](mcp_server/README.md) directory contains a read-only MCP
-pilot for agent access to the 2025-harmonized federal municipality dataset.
-Public access remains disabled until the project publishes an explicit data
-reuse statement.
+service for agent access to the 2025-harmonized federal municipality dataset.
+The public endpoint is `https://mcp.german-elections.com/mcp`.
 
 ### Direct download (without the R package)
 
