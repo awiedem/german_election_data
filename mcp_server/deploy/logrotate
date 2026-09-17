@@ -1,0 +1,12 @@
+/var/log/nginx/gerda-mcp-access.log /var/log/nginx/gerda-mcp-error.log {
+    daily
+    rotate 7
+    missingok
+    notifempty
+    compress
+    delaycompress
+    sharedscripts
+    postrotate
+        invoke-rc.d nginx rotate >/dev/null 2>&1
+    endscript
+}

@@ -125,6 +125,13 @@ data <- load_gerda_web("federal_muni_harm_25", verbose = TRUE, file_format = "rd
 
 Key functions: `load_gerda_web()` (download by name), `gerda_data_list()` (catalog), `add_gerda_covariates()` (30 INKAR county-level socioeconomic variables), `add_gerda_census()` (14 municipality-level indicators from Census 2022), `party_crosswalk()` (map German party names to ParlGov IDs). Package source: [GitHub](https://github.com/hhilbig/gerda) | [CRAN](https://cran.r-project.org/package=gerda).
 
+### Agent access (MCP pilot)
+
+The [`mcp_server`](mcp_server/README.md) directory contains a read-only MCP
+pilot for agent access to the 2025-harmonized federal municipality dataset.
+Public access remains disabled until the project publishes an explicit data
+reuse statement.
+
 ### Direct download (without the R package)
 
 ```R

@@ -1,0 +1,30 @@
+[project]
+name = "gerda-mcp"
+version = "0.1.0"
+description = "Read-only MCP access to published GERDA election data"
+readme = "README.md"
+requires-python = ">=3.12,<3.15"
+dependencies = [
+  "duckdb>=1.5,<2",
+  "mcp>=2.2,<3",
+]
+
+[project.scripts]
+gerda-mcp = "gerda_mcp.server:main"
+gerda-mcp-prepare = "gerda_mcp.prepare:main"
+
+[dependency-groups]
+dev = [
+  "pytest>=9,<10",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gerda_mcp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

@@ -61,6 +61,10 @@ Rplots.pdf
 code/mayoral_elections/__pycache__/
 __pycache__/
 *.pyc
+mcp_server/.venv/
+mcp_server/data/
+.pytest_cache/
+.ruff_cache/
 
 # Mayoral scraper HTML/JSON caches (regenerable via the 00_*_scrape.py scripts; the
 # committed artifacts are the parsed *_scraped.csv / *_parsed.csv. TH cache ~107MB).

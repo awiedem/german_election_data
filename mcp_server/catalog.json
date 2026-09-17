@@ -1,0 +1,126 @@
+{
+  "catalog_version": 1,
+  "datasets": {
+    "federal_muni_harm_25": {
+      "title": "GERDA federal elections at municipality level, harmonized to 2025 boundaries",
+      "description": "German federal election results mapped to stable 2025 municipality boundaries. Party results are vote shares stored as proportions.",
+      "geographic_level": "municipality",
+      "coverage": {
+        "start_year": 1990,
+        "end_year": 2025
+      },
+      "harmonization_year": 2025,
+      "release_identifier": "git:86ce618a355c1baa720c326b1a169e96958fd0ee",
+      "source": {
+        "commit": "86ce618a355c1baa720c326b1a169e96958fd0ee",
+        "url": "https://media.githubusercontent.com/media/awiedem/german_election_data/86ce618a355c1baa720c326b1a169e96958fd0ee/data/federal_elections/municipality_level/final/federal_muni_harm_25.csv",
+        "canonical_download_url": "https://github.com/awiedem/german_election_data/raw/main/data/federal_elections/municipality_level/final/federal_muni_harm_25.csv",
+        "size_bytes": 64466108,
+        "sha256": "5177a26811e8fea3d41a806a17a287ac87db2aafac3258ca990bbdee05f078b8"
+      },
+      "artifact": {
+        "filename": "federal_muni_harm_25.parquet",
+        "metadata_filename": "federal_muni_harm_25.metadata.json",
+        "expected_rows": 107295
+      },
+      "license": {
+        "status": "pending_explicit_reuse_statement",
+        "public_launch_approved": false,
+        "notice": "Public launch is blocked until the GERDA maintainers publish an explicit reuse statement for this dataset."
+      },
+      "citation": {
+        "text": "Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, and Andreas Wiedemann. 2025. GERDA: The German Election Database. Scientific Data 12: 618.",
+        "doi": "https://doi.org/10.1038/s41597-025-04811-5"
+      },
+      "usage_notes": [
+        "Use this harmonized dataset for comparisons over time on stable 2025 municipality boundaries.",
+        "AGS, state, and county identifiers are strings; leading zeros are significant.",
+        "Party values and turnout are proportions from 0 to 1, not percentages.",
+        "The federal municipality files use number_voters as the denominator for party vote shares."
+      ],
+      "caveats": [
+        "Joint mail-in voting district results are allocated to municipalities using polling-card voter weights.",
+        "Boundary harmonization uses population and related crosswalk weights and can create small rounding discrepancies.",
+        "Quality-flag columns identify unsuccessful naive merges, turnout corrections, and vote-total discrepancies.",
+        "Some small-party columns are null in election years in which the party did not contest or was not separately reported."
+      ],
+      "required_columns": [
+        "ags",
+        "election_year",
+        "election_date",
+        "ags_name",
+        "state_name",
+        "state",
+        "county",
+        "eligible_voters",
+        "number_voters",
+        "valid_votes",
+        "turnout",
+        "cdu",
+        "spd",
+        "afd",
+        "cdu_csu",
+        "far_right",
+        "flag_total_votes_incongruent"
+      ],
+      "base_columns": [
+        "ags",
+        "ags_name",
+        "state",
+        "state_name",
+        "county",
+        "election_year",
+        "election_date"
+      ],
+      "schema_groups": {
+        "identifiers": {
+          "columns": ["ags", "election_year", "election_date", "ags_name", "state_name", "state", "county"]
+        },
+        "mail_in_and_counts": {
+          "columns": ["unique_mailin", "unique_multi_mailin", "eligible_voters_orig", "eligible_voters", "number_voters_orig", "number_voters", "valid_votes", "invalid_votes", "voters_wo_blockingnotice", "voters_blockingnotice", "voters_par25_2", "blocked_voters_orig", "voters_w_ballot"]
+        },
+        "weights": {
+          "columns": ["pop_weight", "area_weight", "voters_weight", "blocked_weight"]
+        },
+        "turnout": {
+          "columns": ["turnout", "turnout_wo_mailin"]
+        },
+        "party_shares": {
+          "first_column": "cdu",
+          "last_column": "far_left_w_linke"
+        },
+        "quality": {
+          "columns": ["flag_naive_turnout_above_1", "flag_unsuccessful_naive_merge", "total_votes", "flag_total_votes_incongruent", "total_votes_incogruence", "perc_total_votes_incogruence"]
+        },
+        "geographic_covariates": {
+          "columns": ["area_cw", "area", "population"]
+        }
+      },
+      "column_definitions": {
+        "ags": "Eight-digit German municipality identifier on 2025 boundaries; stored as a string.",
+        "ags_name": "Municipality name.",
+        "state": "Two-digit German state identifier; stored as a string.",
+        "state_name": "German state name.",
+        "county": "Five-digit county identifier; stored as a string.",
+        "election_year": "Calendar year of the federal election.",
+        "election_date": "Date of the federal election.",
+        "eligible_voters": "Harmonized number of eligible voters.",
+        "number_voters": "Harmonized number of voters, including invalid ballots.",
+        "valid_votes": "Number of valid votes.",
+        "invalid_votes": "Number of invalid votes.",
+        "turnout": "number_voters divided by eligible_voters; proportion from 0 to 1.",
+        "turnout_wo_mailin": "Turnout before allocation of shared mail-in districts; proportion from 0 to 1.",
+        "cdu_csu": "Combined CDU/CSU vote share; proportion from 0 to 1.",
+        "far_right": "Aggregate vote share for parties classified as far right by GERDA; proportion from 0 to 1.",
+        "far_left": "Aggregate vote share for parties classified as far left, excluding Linke/PDS; proportion from 0 to 1.",
+        "far_left_w_linke": "Aggregate far-left vote share including Linke/PDS; proportion from 0 to 1.",
+        "flag_naive_turnout_above_1": "Indicator that the pre-correction turnout calculation exceeded 1.",
+        "flag_unsuccessful_naive_merge": "Indicator that harmonization required a fallback rather than a direct crosswalk merge.",
+        "flag_total_votes_incongruent": "Indicator that reconstructed total votes differ from reported valid votes.",
+        "total_votes": "Sum of individual party vote columns.",
+        "area": "Municipality area after harmonization.",
+        "population": "Municipality population used or attached during harmonization."
+      }
+    }
+  }
+}

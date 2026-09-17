@@ -1,0 +1,32 @@
+[Unit]
+Description=GERDA read-only MCP server
+After=network.target
+
+[Service]
+Type=simple
+User=gerda-mcp
+Group=gerda-mcp
+WorkingDirectory=/opt/gerda-mcp
+Environment=GERDA_MCP_CATALOG=/opt/gerda-mcp/catalog.json
+Environment=GERDA_MCP_DATA_DIR=/var/lib/gerda-mcp
+ExecStart=/opt/gerda-mcp/.venv/bin/gerda-mcp --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+SystemCallArchitectures=native
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target
