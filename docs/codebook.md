@@ -613,10 +613,10 @@ Direct elections of municipal mayors (Bürgermeister /
 Oberbürgermeister), 1945–2026, covering 13 states. Head-of-county
 elections are published separately — see the Landrat section.
 
-**Files:** `mayoral_unharm` (55,588 x 18), `mayoral_harm` (52,074 x 25),
-`mayoral_candidates` (113,561 x 46), `mayor_panel` (41,993 x 31),
-`mayor_panel_harm` (41,946 x 32), `mayor_panel_annual` (253,437 x 27),
-`mayor_panel_annual_harm` (253,168 x 28) in
+**Files:** `mayoral_unharm` (55,597 x 18), `mayoral_harm` (52,088 x 26),
+`mayoral_candidates` (113,562 x 47), `mayor_panel` (45,363 x 34),
+`mayor_panel_harm` (45,331 x 35), `mayor_panel_annual` (281,446 x 30),
+`mayor_panel_annual_harm` (281,216 x 31) in
 `data/mayoral_elections/final/`.
 
 Hessen is a complete series from the introduction of direct mayoral
@@ -648,6 +648,7 @@ One row per municipality, election and round.
 |:---|:---|:---|
 | `election_type` | character | `Bürgermeisterwahl`, `Oberbürgermeisterwahl`, `VG-Bürgermeisterwahl` (Verbandsgemeinde), or `SG-Bürgermeisterwahl` (Samtgemeinde). |
 | `round` | character | `"hauptwahl"` (first round) or `"stichwahl"` (runoff). |
+| `flag_shared_ags` | logical | Distinct historical municipalities share the AGS in the source. Use `ags_name` as part of the unharmonized election key for these rows. In `mayoral_harm`, TRUE if any contributing predecessor has this flag. |
 | `winner_party` | character | Party or nominating list of the winner. This is the formal Wahlvorschlagsträger, **not** the winner’s party membership: candidates affiliated with a party frequently run as Einzelbewerber in local elections and are recorded with a blank party. Do not “correct” these against secondary sources. |
 | `winner_votes` | numeric | Votes for the winner. `NA` where the source reports shares only, or where the winner was not the first-listed Wahlvorschlag in a winner-only source. |
 | `winner_voteshare` | numeric | Winner’s share of valid votes (0–1). |

@@ -256,6 +256,11 @@ fit_mrp_issue <- function(issue, data,
 
   use_bym2_issue <- use_bym2 && has_kreis && !is.null(W_kreis)
   if (use_bym2_issue) {
+    # Missing geographic assignments are handled by the model's complete-case
+    # sample; a KNOWN county absent from the spatial graph is a mapping error.
+    missing_counties <- setdiff(as.character(stats::na.omit(issue_data$county_code)), rownames(W_kreis))
+    if (length(missing_counties)) stop("Survey counties missing from adjacency matrix: ",
+                                       paste(missing_counties, collapse = ", "))
     # Filter to counties present in adjacency matrix
     issue_data <- issue_data |>
       filter(county_code %in% rownames(W_kreis))

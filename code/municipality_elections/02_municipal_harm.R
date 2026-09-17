@@ -8,6 +8,8 @@ rm(list = ls())
 conflicts_prefer(dplyr::filter)
 
 # Disallow scientific notation: leads to errors when loading data
+source("code/shared/harmonization_audit.R")
+
 options(scipen = 999)
 
 # Set working directory if running 01_municipal_unharm.R before this
@@ -17,6 +19,7 @@ setwd(here::here())
 cw <- fread("data/crosswalks/final/ags_crosswalks.csv") |>
   mutate(
     ags = pad_zero_conditional(ags, 7),
+    ags_21 = pad_zero_conditional(ags_21, 7),
     weights = pop_cw * population
     )
 
@@ -52,7 +55,7 @@ cw_rp_2025 <- expand.grid(
 for (col in names(cw)) {
   if (!col %in% names(cw_rp_2025)) cw_rp_2025[[col]] <- NA
   # match the crosswalk's own storage types (ags is padded character, ags_21 is
-  # integer) so the downstream binds do not hit a character/double clash
+  # character) so the downstream binds do not hit a character/double clash
   cw_rp_2025[[col]] <- methods::as(cw_rp_2025[[col]], class(cw[[col]])[1])
 }
 cw <- rbind(cw, as.data.table(cw_rp_2025)[, names(cw), with = FALSE])
@@ -197,7 +200,7 @@ stopifnot(nrow(chain_chk) == 0)
 
 # Merge with unharmonized election data -----------------------------------
 
-df <- readr::read_rds("data/municipal_elections/final/municipal_unharm.rds") |>
+df <- gerda_read_election_source("data/municipal_elections/final/municipal_unharm.rds") |>
   # filter years before 1990: no crosswalks available
   filter(election_year >= 1990) |>
   mutate(election_year = as.numeric(election_year))
@@ -553,6 +556,14 @@ glimpse(df_cw)
 # output together with all of its votes (this is how the four Rheinland-Palatine
 # StaLA codes lost 2004/2009/2014). Nothing may be dropped without being listed
 # here on purpose.
+gerda_audit_mapping(
+  df |> filter(election_year < 2021), df_cw |> filter(election_year < 2021),
+  "id", "ags_21", "municipal_21_historical", target_codes = cw$ags_21)
+gerda_audit_mapping(
+  df |> filter(election_year == 2021),
+  df |> filter(election_year == 2021) |> mutate(ags_21 = ags),
+  "id", "ags_21", "municipal_21_identity", weight = NULL, target_codes = cw$ags_21)
+
 allowed_unmatched <- character(0) # (ags, election_year) ids allowed to fail
 not_merged <- df_cw %>%
   filter(election_year < 2021) %>%
@@ -690,6 +701,11 @@ df_post21_cw <- bind_rows(df_post21_pre25, df_post21_25)
 # HARD STOP, as above: an unplaced AGS disappears from the output with all of
 # its votes. (This is what swallowed the three Niedersachsen Samtgemeinde
 # aggregates in 2021 without a word.)
+gerda_audit_mapping(
+  df |> filter(election_year > 2021), df_post21_cw,
+  "id", "ags_21", "municipal_21_backward", weight = "final_pop_cw",
+  target_codes = cw$ags_21)
+
 allowed_unmatched_post21 <- character(0)
 not_merged_post21 <- df_post21_cw |>
   filter(is.na(ags_21)) |>
@@ -788,7 +804,7 @@ df_harm_post21 <- sums_post21 |>
   left_join_check_obs(means_post21, by = c("ags", "year")) |>
   left_join_check_obs(flags_post21, by = c("ags", "year")) |>
   left_join_check_obs(area_pop_post21, by = c("ags", "year")) |>
-  mutate(ags = as.numeric(ags))
+  mutate(ags = pad_zero_conditional(ags, 7))
 
 
 # Create full df ----------------------------------------------------------
@@ -801,6 +817,8 @@ glimpse(area_pop)
 glimpse(ags21)
 
 
+ags21 <- ags21 |> mutate(ags = pad_zero_conditional(ags, 7))
+
 # Merge harmonized data
 df_harm <- sums |>
   left_join_check_obs(means, by = c("ags", "year")) |>
@@ -812,7 +830,7 @@ df_harm <- sums |>
     mutate(ags_name = ags_name.x) |>
     select(-c(ags_name.x, ags_name.y, ags_name_21, emp_cw, employees, year_cw, id)) |>
     rename(year = election_year) |>
-    mutate(ags = as.numeric(ags))) |>
+    mutate(ags = pad_zero_conditional(ags, 7))) |>
   # Bind post-2021 harmonized data (2023, 2024, 2025 mapped to 2021 boundaries)
   bind_rows(df_harm_post21) |>
   # Create state variable
@@ -823,7 +841,7 @@ df_harm <- sums |>
   ) |>
   relocate(state, .after = year) |>
   relocate(county, .after = state) |>
-  mutate(ags = as.numeric(ags)) |>
+  mutate(ags = pad_zero_conditional(ags, 7)) |>
   # Merge with 2021 area and population data
   left_join_check_obs(ags21, by = c("ags", "year")) |>
   mutate(

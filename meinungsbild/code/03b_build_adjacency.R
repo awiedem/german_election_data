@@ -41,7 +41,7 @@ krs_sf <- krs_sf |>
 # Check for missing
 missing <- setdiff(target_codes, krs_sf$county_code)
 if (length(missing) > 0) {
-  message("WARNING: ", length(missing), " poststrat codes not in shapefile: ",
+  stop(length(missing), " poststrat codes not in shapefile: ",
           paste(head(missing, 10), collapse = ", "))
 }
 

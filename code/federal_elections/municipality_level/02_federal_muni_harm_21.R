@@ -6,6 +6,8 @@
 rm(list = ls())
 
 # Disallow scientific notation: leads to errors when loading data
+source("code/shared/harmonization_audit.R")
+
 options(scipen = 999)
 pacman::p_load(
   "tidyverse",
@@ -56,7 +58,7 @@ cw_info_ever_merged_ags_21 <- cw %>%
 
 # Read unharmonized election data -----------------------------------------
 
-df <- read_rds("data/federal_elections/municipality_level/final/federal_muni_unharm.rds") |>
+df <- gerda_read_election_source("data/federal_elections/municipality_level/final/federal_muni_unharm.rds") |>
   as_tibble() |>
   # remove population & area that were used for weighting multi mail-in districts
   dplyr::select(-c(pop, area)) |>
@@ -245,6 +247,11 @@ not_merged <- df_cw %>%
   distinct()
 not_merged
 # now, there is no unsuccessful merge.
+
+gerda_audit_mapping(
+  df |> filter(election_year < 2021), df_cw |> filter(election_year < 2021),
+  "id", "ags_21", "federal_muni_21_historical", target_codes = cw$ags_21,
+  allow_zero_weight_sum = TRUE)
 
 # Hard stop: every source row must hand out exactly 100% of its votes ---------
 # `ags_crosswalks.csv` is a FORWARD map: pop_cw is the share of the SOURCE unit that ends
@@ -481,6 +488,14 @@ df25 <- df %>% # one row per 2025 AGS, votes already in counts
     pop_cw = pop_w_25_21,
     area_cw = area_w_25_21
   )
+
+gerda_audit_mapping(df |> filter(election_year == 2025), df25, "id", "ags_21",
+                    "federal_muni_21_backward", target_codes = cw$ags_21)
+gerda_audit_mapping(
+  df |> filter(election_year == 2021),
+  df |> filter(election_year == 2021) |> mutate(ags_21 = ags),
+  "id", "ags_21", "federal_muni_21_identity", weight = NULL, target_codes = cw$ags_21)
+stopifnot(all(df$election_year < 2021 | df$election_year %in% c(2021, 2025)))
 
 # HARD STOP: an AGS the chain cannot place is silently deleted from the output
 # together with all of its votes.

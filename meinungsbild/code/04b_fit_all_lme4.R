@@ -59,6 +59,8 @@ pred_kreis <- poststrat |>
   mutate(male = as.integer(male), wkr_nr = NA_character_)
 
 # WKR-level poststrat
+source(file.path(here::here(), "code", "shared", "harmonization_audit.R"))
+gerda_require_join_coverage(poststrat, wkr_cw, "county_code", "meinungsbild_poststrat_wkr")
 poststrat_wkr <- poststrat |>
   inner_join(wkr_cw, by = "county_code", relationship = "many-to-many") |>
   mutate(N_wkr = N * pct_area) |>

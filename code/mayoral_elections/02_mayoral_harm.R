@@ -39,11 +39,13 @@ gc()
 conflicts_prefer(dplyr::filter)
 
 options(scipen = 999)
+source("code/shared/harmonization_audit.R")
+source("code/shared/mayoral_mapping.R")
 
 
 # 1. Load data -------------------------------------------------------------
 
-df <- read_rds("data/mayoral_elections/final/mayoral_unharm.rds") |>
+df <- gerda_read_election_source("data/mayoral_elections/final/mayoral_unharm.rds") |>
   as_tibble()
 
 cat("Loaded mayoral_unharm:", nrow(df), "rows\n")
@@ -77,9 +79,21 @@ if (nrow(df_excluded) > 0) {
 # 2022 that deleted the real Hauptwahl (CSU 637/1,669) and kept a spurious
 # Stichwahl row instead (audit 2026-07, M31/F100).
 n_before <- nrow(df)
-df <- df |> distinct(ags, election_date, election_type, round, .keep_all = TRUE)
+df <- df |> distinct()
+df$.source_id <- seq_len(nrow(df))
+df$ags_original <- df$ags
+# A flagged shared AGS represents distinct historical elections. Keep both;
+# the explicit aggregation below decides how their common target is represented.
+source_keys <- c("ags", "election_date", "election_type", "round")
+shared_key <- ifelse(df$flag_shared_ags %in% TRUE, df$ags_name, "")
+stopifnot(!anyDuplicated(paste(gerda_key(df, source_keys), shared_key, sep = "\r")))
+gerda_audit_write(df_excluded |> select(ags, election_date, election_type, round) |>
+  mutate(reason = "Election of a county or supra-municipal body"), "mayoral_21", "out_of_scope")
+df <- gerda_exclude_eisenach_duplicates(df)
+df <- gerda_exclude_documented(df, gerda_mayoral_exceptions(),
+  c("ags", "election_date", "round", "election_type"), "mayoral_21")
 if (nrow(df) < n_before) {
-  cat("Removed", n_before - nrow(df), "duplicate rows\n")
+  cat("Removed", n_before - nrow(df), "duplicate or documented excluded rows\n")
 }
 
 same_date_rounds <- df |>
@@ -125,58 +139,6 @@ cat("Post-2020 rows (identity mapping):", sum(is.na(df$cw_year)), "\n")
 
 
 # 4. Handle post-2020 data (identity mapping) ------------------------------
-
-# AGS codes that legitimately cannot be mapped to 2021 boundaries, or whose
-# defect is owned by a Stage 1 script. The project convention is a HARD STOP on
-# unmatched / invalid AGS — this allowlist exists only so that already-diagnosed
-# cases do not block the pipeline while their upstream fixes land. Anything not
-# listed here is an error. Remove entries as the upstream fixes arrive.
-# (audit 2026-07, M29 + M31/F103/F185 — 191 rows / 96 AGS were dropped silently
-# and 13 invalid ags_21 codes were emitted.)
-unmatched_allowlist <- c(
-  # (a) PERMANENT — Bayern Gemeinden dissolved in the 1970s territorial reform
-  #     and re-established later; their pre-1990 elections carry codes that do
-  #     not exist in ANY crosswalk year from 1990 onwards. 33 rows.
-  "09187186", "09374170", "09674223", "09771176", "09777183",
-  # (b) Bayern LANDRAT elections mis-typed as Bürgermeisterwahl in Stage 1
-  #     (Landkreis AGS 09KKK000, not municipalities). 120 unmatched rows plus
-  #     10 post-2020 rows. Remove once 01_mayoral_unharm.R classifies untitled
-  #     Landkreis rows as Landratswahl (they are then filtered in section 2).
-  "09172000", "09173000", "09174000", "09175000", "09176000", "09177000",
-  "09178000", "09179000", "09180000", "09181000", "09182000", "09183000",
-  "09184000", "09185000", "09186000", "09187000", "09188000", "09189000",
-  "09190000", "09272000", "09273000", "09274000", "09275000", "09276000",
-  "09277000", "09278000", "09371000", "09372000", "09373000", "09375000",
-  "09376000", "09377000", "09471000", "09472000", "09473000", "09474000",
-  "09475000", "09476000", "09477000", "09478000", "09571000", "09572000",
-  "09573000", "09574000", "09575000", "09576000", "09671000", "09672000",
-  "09673000", "09674000", "09675000", "09676000", "09677000", "09679000",
-  "09771000", "09774000", "09776000", "09777000", "09778000", "09779000",
-  "09780000",
-  #     ... and two Landkreise that leak only through the post-2020 identity
-  #     path (2022/2024 Landratswahlen), never through the crosswalk:
-  "09773000", "09775000",
-  # (c) Niedersachsen 2013: AGS wrong at source (post-2013 codes on 2013 rows).
-  "03153022", "03153023", "03154403", "03155024", "03256403", "03350007",
-  "03353403", "03355401", "03451020", "03455008", "03456404", "03461401",
-  # (d) Region Hannover / Aachen: a county-level body and a defunct city code,
-  #     both wrong at source.
-  "03241000",  # NI: Region Hannover (not a municipality)
-  "05313000",  # NRW: Aachen, defunct since 21.10.2009 (true 05334002)
-  # (e) Schleswig-Holstein 2025: wrong / stale codes at source.
-  "01055019",  # true Heiligenhafen is 01055021
-  "01059027",  # true Glücksburg is 01059113
-  "01059033",  # stale pre-merger Handewitt, true 01059183
-  # (f) Sachsen-Anhalt: the election year falls in a crosswalk gap for these
-  #     historical Gemeinden (merged away before / re-coded after the lookup
-  #     year); 15 rows, would need a nearest-available-year crosswalk.
-  "15082241", "15083025", "15151011", "15151015", "15154003", "15159001",
-  "15159010", "15159029", "15159030", "15370045", "15370058", "15370070",
-  "15370111", "15370113", "15370116",
-  # (g) Thüringen: Eisenach's 2018 election is recorded under its post-2021
-  #     code 16063105 (kreisfrei 16056000 until the 2021 Kreisreform).
-  "16063105"
-)
 
 # All valid 2021 municipality codes. The identity rule below copies `ags`
 # verbatim, so without this check any AGS created AFTER 2021 (or simply wrong
@@ -238,25 +200,7 @@ if (sum(df_post2020$flag_post2021_backmap) > 0) {
   ))
 }
 
-# Post-2020 rows keep whatever AGS the source gave them, so this is the only
-# place an invalid 2021 code can enter the output.
-invalid_post2020 <- df_post2020 |> filter(!(ags_21 %in% ags_2021_universe))
-if (nrow(invalid_post2020) > 0) {
-  cat("\nags_21 codes outside the 2021 municipality universe:\n")
-  print(as.data.frame(
-    invalid_post2020 |> count(ags, ags_name, state, election_year) |> arrange(ags)
-  ))
-  unexpected_ags21 <- setdiff(unique(invalid_post2020$ags_21), unmatched_allowlist)
-  if (length(unexpected_ags21) > 0) {
-    stop("Post-2020 rows carry ags_21 codes that do not exist in 2021 and are ",
-         "not allowlisted: ", paste(unexpected_ags21, collapse = ", "),
-         ". Fix the AGS at source (Stage 1), extend the back-map, or add a ",
-         "documented entry to `unmatched_allowlist`.")
-  }
-  warning(sprintf(
-    "%d post-2020 rows carry an ags_21 outside the 2021 universe; all are on the documented allowlist.",
-    nrow(invalid_post2020)))
-}
+# The final shared audit rejects every target outside the 2021 universe.
 
 df_pre2021 <- df |> filter(!is.na(cw_year))
 
@@ -332,26 +276,9 @@ if (nrow(not_merged_naive) > 0) {
   cat("Fixed via year+1 fallback:", nrow(df_fixed_plus1), "rows\n")
   cat("Still unmatched:", nrow(df_final_unmatched), "rows\n")
 
-  if (nrow(df_final_unmatched) > 0) {
-    still_unmatched_summary <- df_final_unmatched |>
-      select(ags, ags_name, state, election_year) |>
-      distinct() |>
-      arrange(ags, election_year)
-    cat("\nUnmatched AGS codes (no 2021 mapping, will be dropped):\n")
-    print(as.data.frame(still_unmatched_summary))
+  recovered <- gerda_recover_mayoral_mapping(df_final_unmatched, cw)
+  df_cw <- bind_rows(df_cw, recovered)
 
-    unexpected <- setdiff(unique(df_final_unmatched$ags), unmatched_allowlist)
-    if (length(unexpected) > 0) {
-      stop("Unmatched AGS with no crosswalk mapping and no allowlist entry: ",
-           paste(unexpected, collapse = ", "),
-           ". Fix the AGS at source (Stage 1) or add a documented entry to ",
-           "`unmatched_allowlist` — AGS must never be dropped silently.")
-    }
-    warning(sprintf(
-      paste("%d rows (%d AGS) have no 2021 mapping and are dropped;",
-            "all are on the documented allowlist in 02_mayoral_harm.R."),
-      nrow(df_final_unmatched), n_distinct(df_final_unmatched$ags)))
-  }
 } else {
   df_cw <- df_cw_naive
   df_final_unmatched <- df_cw_naive[0, ]
@@ -369,7 +296,7 @@ df_cw <- df_cw |>
 # 7. Combine pre-2021 and post-2020 data -----------------------------------
 
 # Ensure consistent columns before binding
-common_cols <- c("ags", "ags_name", "state", "state_name",
+common_cols <- c(".source_id", "ags_original", "flag_shared_ags", "crosswalk_year", "mapping_method", "ags", "ags_name", "state", "state_name",
                  "election_year", "election_date", "election_type", "round",
                  "eligible_voters", "number_voters", "valid_votes",
                  "invalid_votes", "turnout", "winner_party",
@@ -394,12 +321,8 @@ df_all <- bind_rows(
 
 cat("\nTotal rows before aggregation:", nrow(df_all), "\n")
 
-# Drop rows with no ags_21 mapping
-n_dropped <- sum(is.na(df_all$ags_21))
-cat("Dropping", n_dropped, "rows with no ags_21 mapping\n")
-df_all <- df_all |> filter(!is.na(ags_21))
-
-cat("Total rows after dropping unmatched:", nrow(df_all), "\n")
+gerda_audit_mapping(df, df_all, ".source_id", "ags_21", "mayoral_21",
+                    target_codes = ags_2021_universe)
 
 
 # 8. Aggregation -----------------------------------------------------------
@@ -426,8 +349,9 @@ df_counts <- df_all |>
       ~ if (all(is.na(.x))) NA_real_ else sum(.x * pop_cw, na.rm = TRUE)
     ),
     .groups = "drop"
-  ) |>
-  mutate(across(all_of(count_cols), ~ round(.x, digits = 0)))
+  )
+gerda_audit_totals(df, df_counts, "election_date", count_cols, "mayoral_21")
+df_counts <- df_counts |> mutate(across(all_of(count_cols), ~ round(.x, digits = 0)))
 
 # 8b. Pick categorical variables AND the winner metrics from the dominant
 # predecessor. winner_votes carries the same pop_cw weight as the aggregated
@@ -462,6 +386,7 @@ df_flags <- df_all |>
   summarise(
     flag_unsuccessful_naive_merge = max(flag_unsuccessful_naive_merge, na.rm = TRUE),
     flag_pre_1990 = max(flag_pre_1990, na.rm = TRUE),
+    flag_shared_ags = any(flag_shared_ags %in% TRUE),
     # TRUE if ANY predecessor's round was annulled / superseded (Bayern only)
     flag_superseded = any(flag_superseded, na.rm = TRUE),
     # TRUE where predecessors of this 2021 municipality had different winners —
@@ -531,7 +456,7 @@ df_harm <- df_harm |>
     turnout, winner_party, winner_votes, winner_voteshare,
     flag_unsuccessful_naive_merge, flag_pre_1990, flag_aggregated,
     flag_turnout_above_1, flag_voteshare_above_1, flag_pct_only,
-    flag_superseded, flag_multi_winner,
+    flag_superseded, flag_multi_winner, flag_shared_ags,
     n_predecessors
   ) |>
   arrange(ags, election_date, round)

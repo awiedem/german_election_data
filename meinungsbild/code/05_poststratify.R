@@ -51,6 +51,8 @@ wkr_cw <- read_csv(
 
 # Build WKR-level poststrat table:
 # For each WKR × demographic cell, weight = Kreis cell N × area share
+source(file.path(here::here(), "code", "shared", "harmonization_audit.R"))
+gerda_require_join_coverage(poststrat, wkr_cw, "county_code", "meinungsbild_poststrat_wkr")
 poststrat_wkr <- poststrat |>
   inner_join(wkr_cw, by = "county_code", relationship = "many-to-many") |>
   mutate(N_wkr = N * pct_area) |>

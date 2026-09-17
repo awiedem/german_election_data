@@ -13,6 +13,8 @@ rm(list = ls())
 
 conflict_prefer("filter", "dplyr")
 
+source("code/shared/harmonization_audit.R")
+
 options(scipen = 999)
 
 pacman::p_load(
@@ -26,7 +28,7 @@ pacman::p_load(
 
 cat("Loading unharmonized county election data...\n")
 
-df <- read_rds("data/county_elections/final/county_elec_unharm.rds") |>
+df <- gerda_read_election_source("data/county_elections/final/county_elec_unharm.rds") |>
   as_tibble() |>
   filter(election_year >= 1990) |>
   mutate(
@@ -84,8 +86,18 @@ if (n_na_vv > 0) {
                 nrow(no_weight),
                 paste(sprintf("%s/%d", no_weight$ags, no_weight$election_year),
                       collapse = ", ")))
-    df <- df |>
-      anti_join(no_weight |> select(ags, election_year), by = c("ags", "election_year"))
+    stopifnot(all(vapply(no_weight[party_vars], function(v) all(is.na(v) | v == 0), logical(1))))
+    empty_exceptions <- tibble(
+      ags = c("03355049", "06433012"), election_year = c(1991, 2021),
+      reason = "Source row has no counts or party results",
+      evidence = "county_elec_unharm: all electoral fields missing/zero")
+    stopifnot(all(gerda_key(no_weight, c("ags", "election_year")) %in%
+                    gerda_key(empty_exceptions, c("ags", "election_year"))))
+    # Only exclude records proved empty in THIS run. A repaired source row
+    # must survive even if the other historical empty record remains empty.
+    empty_exceptions <- empty_exceptions |>
+      semi_join(no_weight |> select(ags, election_year), by = c("ags", "election_year"))
+    df <- gerda_exclude_documented(df, empty_exceptions, c("ags", "election_year"), "county_elections_21_empty")
   }
   df <- df |>
     mutate(valid_votes = case_when(
@@ -298,18 +310,7 @@ if (nrow(still_unmatched) > 0) {
 
   df_already_matched <- df_cw |> filter(!is.na(ags_21))
   unmatched_keys <- still_unmatched |> select(ags, election_year) |> distinct()
-  cw_available <- cw_muni |> select(ags, election_year) |> distinct() |>
-    rename(cw_year = election_year)
-
-  best_cw_year <- unmatched_keys |>
-    left_join(cw_available, by = "ags", relationship = "many-to-many") |>
-    filter(!is.na(cw_year)) |>
-    mutate(year_dist = abs(cw_year - election_year) +
-             ifelse(cw_year < election_year, 0.001, 0)) |>
-    group_by(ags, election_year) |>
-    slice_min(year_dist, n = 1, with_ties = FALSE) |>
-    ungroup() |>
-    select(ags, election_year, cw_year)
+  best_cw_year <- gerda_nearest_crosswalk_year(unmatched_keys, cw_muni, "ags_21", "county_elections_muni_21")
 
   still_unmatched <- still_unmatched |>
     select(-ags_21, -pop_cw, -area_cw) |>
@@ -340,6 +341,10 @@ if (nrow(still_unmatched2) > 0) {
     df_cw <- bind_rows(df_cw |> filter(!is.na(ags_21)), still_unmatched2)
   }
 }
+
+gerda_audit_mapping(df_muni, df_cw, c("ags", "election_year"), "ags_21",
+                    "county_elections_muni_21", target_codes = cw_muni$ags_21,
+                    counts = c("eligible_voters", "number_voters", "valid_votes", "invalid_votes", party_vars))
 
 # Report remaining failures — these should NOT exist after all corrections
 not_merged_final_muni <- df_cw |>
@@ -493,6 +498,11 @@ if (nrow(still_unmatched_cty) > 0) {
     df_cty_cw <- bind_rows(df_cty_cw |> filter(!is.na(county_code_21)), still_unmatched_cty)
   }
 }
+
+gerda_audit_mapping(df_cty, df_cty_cw, c("ags", "election_year"), "county_code_21",
+                    "county_elections_county_21", target_codes = cw_cty$county_code_21,
+                    target_width = 5L,
+                    counts = c("eligible_voters", "number_voters", "valid_votes", "invalid_votes", party_vars))
 
 not_merged_cty_final <- df_cty_cw |> filter(is.na(county_code_21))
 if (nrow(not_merged_cty_final) > 0) {

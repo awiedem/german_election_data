@@ -8,6 +8,8 @@ conflict_prefer("filter", "dplyr")
 
 # Disallow scientific notation: leads to errors when loading data
 options(scipen = 999)
+source("code/shared/harmonization_audit.R")
+source("code/shared/state_mapping.R")
 
 pacman::p_load(
   "tidyverse",
@@ -19,7 +21,14 @@ pacman::p_load(
 
 cat("Loading unharmonized state election data...\n")
 
-df <- read_rds("data/state_elections/final/state_unharm.rds") |>
+state_source_all <- gerda_read_election_source("data/state_elections/final/state_unharm.rds")
+gerda_audit_write(
+  state_source_all |> filter(election_year < 1990) |>
+    select(ags, election_year, state, eligible_voters, number_voters, valid_votes) |>
+    mutate(reason = "Before annual crosswalk coverage (1990)",
+           source = "BBSR crosswalk coverage"),
+  "state_harm_23", "out_of_scope")
+df <- state_source_all |>
   as_tibble() |>
   filter(election_year >= 1990) |>
   mutate(
@@ -42,6 +51,7 @@ metadata_cols <- c("ags", "county", "election_year", "state", "election_date",
                    "flag_naive_turnout_above_1", "flag_no_valid_votes",
                    "flag_briefwahl_only")
 party_vars <- setdiff(names(df), metadata_cols)
+df <- gerda_state_exclusions(df, party_vars, "state_harm_23")
 
 cat("Party variables found:", paste(party_vars, collapse = ", "), "\n")
 
@@ -77,6 +87,9 @@ df <- df |>
   mutate(
     across(all_of(party_vars), ~ .x * valid_votes)
   )
+
+# Preserve the original code before any correction or city aggregation.
+df$ags_original <- df$ags
 
 # Handle Berlin, Hamburg districts and known problematic AGS codes -----------
 # This should be done before crosswalk merge
@@ -127,6 +140,8 @@ df <- df |>
     )
   )
 
+source_lineage <- df |> select(ags_original, ags, election_year, state) |> distinct()
+
 # NA-preserving sum: returns NA when ALL inputs are NA (sum(NA, na.rm=TRUE) → 0 in base R)
 sum_na <- function(x) {
   if (all(is.na(x))) return(NA_real_)
@@ -134,7 +149,13 @@ sum_na <- function(x) {
 }
 
 # After correcting AGS codes, aggregate any duplicates
-df <- df |>
+duplicate_keys <- duplicated(df[c("ags", "election_year", "state")]) |
+  duplicated(df[c("ags", "election_year", "state")], fromLast = TRUE)
+df_singletons <- df[!duplicate_keys, ] |>
+  select(ags, election_year, state, eligible_voters, number_voters, valid_votes,
+         invalid_votes, all_of(party_vars), any_of(c("election_date", "county")),
+         flag_vv_placeholder)
+df <- df[duplicate_keys, ] |>
   group_by(ags, election_year, state) |>
   summarise(
     across(
@@ -145,6 +166,7 @@ df <- df |>
     flag_vv_placeholder = max(flag_vv_placeholder),
     .groups = "drop"
   ) |>
+  bind_rows(df_singletons) |>
   arrange(ags, election_year)
 
 glimpse(df)
@@ -216,9 +238,16 @@ cw <- cw |>
 glimpse(cw)
 table(cw$election_year)
 
+# The RLP historical source contains the merged Obergeckler code.
+cw <- gerda_add_geckler_backmap(cw, "ags_23",
+  df$election_year[df$ags == "07232503"])
+
 # Merge crosswalks with election data ---------------------------------------
 
 cat("Merging crosswalks with election data...\n")
+
+cw <- gerda_collapse_crosswalk(cw |>
+  select(ags, election_year, ags_23, pop_cw, area_cw))
 
 df_cw_naive <- df |>
   left_join_check_obs(cw, by = c("ags", "election_year"))
@@ -240,7 +269,9 @@ if (nrow(not_merged_naive) > 0) {
 df_cw <- df_cw_naive |>
   mutate(
     id = paste0(ags, "_", election_year),
-    flag_unsuccessful_naive_merge = ifelse(id %in% not_merged_naive$id, 1, 0)
+    flag_unsuccessful_naive_merge = ifelse(id %in% not_merged_naive$id, 1, 0),
+    crosswalk_year = ifelse(!is.na(ags_23), election_year, NA_real_),
+    mapping_method = ifelse(!is.na(ags_23), "exact_year", "unmatched")
   )
 
 # For observations that didn't merge, try using year - 1 for crosswalk
@@ -260,7 +291,9 @@ if (nrow(df_unmatched) > 0) {
       cw |> select(ags, election_year, ags_23, pop_cw, area_cw) |>
         rename(year_cw = election_year),
       by = c("ags", "year_cw")
-    )
+    ) |>
+    mutate(crosswalk_year = ifelse(!is.na(ags_23), year_cw, NA_real_),
+           mapping_method = ifelse(!is.na(ags_23), "previous_year", "unmatched"))
 }
 
 df_cw <- bind_rows(df_matched, df_unmatched)
@@ -274,18 +307,7 @@ if (nrow(still_unmatched) > 0) {
   df_already_matched <- df_cw |> filter(!is.na(ags_23))
 
   unmatched_keys <- still_unmatched |> select(ags, election_year) |> distinct()
-  cw_available <- cw |> select(ags, election_year) |> distinct() |>
-    rename(cw_year = election_year)
-
-  best_cw_year <- unmatched_keys |>
-    left_join(cw_available, by = "ags", relationship = "many-to-many") |>
-    filter(!is.na(cw_year)) |>
-    mutate(year_dist = abs(cw_year - election_year) +
-             ifelse(cw_year < election_year, 0.001, 0)) |>
-    group_by(ags, election_year) |>
-    slice_min(year_dist, n = 1, with_ties = FALSE) |>
-    ungroup() |>
-    select(ags, election_year, cw_year)
+  best_cw_year <- gerda_nearest_crosswalk_year(unmatched_keys, cw, "ags_23", "state_harm_23")
 
   still_unmatched <- still_unmatched |>
     select(-ags_23, -pop_cw, -area_cw) |>
@@ -295,6 +317,8 @@ if (nrow(still_unmatched) > 0) {
         rename(cw_year = election_year),
       by = c("ags", "cw_year")
     ) |>
+    mutate(crosswalk_year = cw_year,
+           mapping_method = ifelse(!is.na(ags_23), "nearest_year", "unmatched")) |>
     select(-cw_year)
 
   n_recovered <- sum(!is.na(still_unmatched$ags_23))
@@ -313,6 +337,8 @@ if (nrow(still_unmatched2) > 0) {
     still_unmatched2$ags_23[self_map] <- still_unmatched2$ags[self_map]
     still_unmatched2$pop_cw[self_map] <- 1
     still_unmatched2$area_cw[self_map] <- 1
+    still_unmatched2$crosswalk_year[self_map] <- NA_real_
+    still_unmatched2$mapping_method[self_map] <- "target_identity"
     df_cw <- bind_rows(df_cw |> filter(!is.na(ags_23)), still_unmatched2)
   }
 }
@@ -331,38 +357,21 @@ if (nrow(not_merged_final) > 0) {
 }
 
 
-# Filter out unmatched rows before harmonization
-df_cw <- df_cw |> filter(!is.na(ags_23))
-
-# Hard stop: every source row must hand out exactly 100% of its votes ---------
-# `ags_1990_to_2023_crosswalk.rds` is a FORWARD map: pop_cw is the share of the
-# SOURCE unit that ends up in each target, so it must sum to 1 within
-# (ags, election_year). Relabelling a forward weight as a backward one -- the
-# defect fixed in 02_federal_muni_harm_21.R and 02_municipal_harm.R in 2026-07
-# -- shows up here as a source row handing out 200%, 400% or more.
-w_chk <- df_cw |>
-  group_by(ags, election_year) |>
-  summarise(w = sum(pop_cw, na.rm = TRUE),
-            valid_votes = first(valid_votes),
-            placeholder = max(flag_vv_placeholder), .groups = "drop") |>
-  filter(abs(w - 1) > 0.01) |>
-  mutate(votes_at_risk = ifelse(placeholder > 0, 0, coalesce(valid_votes, 0)) *
-           abs(w - 1))
-# A group that carries no votes cannot fabricate any. 35 Bavarian gemeindefreie
-# Gebiete (09xxx444 and neighbours) sit at weight sums of up to 20 in
-# ags_crosswalks for every vintage 1990-2020 -- a latent defect of the same
-# class as the one repaired in the 2023->2025 artefacts in commit e27c4c1c,
-# harmless only because these territories have no electorate. Keep them visible,
-# but stop the run the moment a bad weight touches a real vote.
-if (nrow(w_chk) > 0) {
-  print(as.data.frame(w_chk |> arrange(desc(votes_at_risk), desc(abs(w - 1)))),
-        max = 2000)
-  cat("source rows whose crosswalk weights do not sum to 1:", nrow(w_chk),
-      "| of these carrying votes:", sum(w_chk$votes_at_risk > 0),
-      "| votes at risk:", round(sum(w_chk$votes_at_risk)), "\n")
-}
-stopifnot(sum(w_chk$votes_at_risk) < 0.5)
-cat("[OK] no source row fabricates or loses votes through its crosswalk weights\n")
+# Validate against the complete pre-join input, before any filtering.
+df_cw <- df_cw |>
+  mutate(
+    source_boundary_year = ifelse(ags == "07232503", 2025L, NA_integer_),
+    mapping_method = ifelse(ags == "07232503" & !is.na(ags_23),
+                           "documented_geckler_backmap", mapping_method)
+  )
+gerda_audit_mapping(df, df_cw, c("ags", "election_year", "state"),
+                    "ags_23", "state_harm_23", target_codes = unique(cw$ags_23))
+gerda_audit_write(
+  source_lineage |> left_join(
+    df_cw |> select(ags, election_year, state, ags_23, crosswalk_year,
+                    mapping_method, source_boundary_year, pop_cw),
+    by = c("ags", "election_year", "state"), relationship = "many-to-many"),
+  "state_harm_23", "provenance")
 
 # Harmonize ----------------------------------------------------------------
 
@@ -376,21 +385,21 @@ wsum_na <- function(x, w) {
 }
 
 # Harmonize vote counts with weighted sum
-votes <- df_cw |>
-  group_by(ags_23, election_year) |>
-  summarise(
-    across(
-      c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
-      ~ wsum_na(.x, pop_cw)
-    ),
-    .groups = "drop"
-  ) |>
-  mutate(
-    across(
-      c(eligible_voters, number_voters, valid_votes, invalid_votes, all_of(party_vars)),
-      ~ round(.x, digits = 0)
-    )
-  )
+votes <- gerda_weighted_counts(
+  df_cw, c("ags_23", "election_year"),
+  c("eligible_voters", "number_voters", "valid_votes", "invalid_votes", party_vars),
+  "pop_cw")
+
+# Historical state-border transfers can move counts between present-day states.
+# Check each source row above and national totals by election year here.
+gerda_audit_totals(
+  df, votes |> mutate(state = substr(ags_23, 1, 2)),
+  "election_year",
+  c("eligible_voters", "number_voters", "valid_votes", "invalid_votes", party_vars),
+  "state_harm_23")
+votes <- votes |>
+  mutate(across(c(eligible_voters, number_voters, valid_votes, invalid_votes,
+                  all_of(party_vars)), ~ round(.x, digits = 0)))
 
 glimpse(votes)
 

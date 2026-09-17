@@ -6,6 +6,8 @@
 rm(list = ls())
 
 # Disallow scientific notation: leads to errors when loading data
+source("code/shared/harmonization_audit.R")
+
 options(scipen = 999)
 pacman::p_load(
   "tidyverse",
@@ -38,7 +40,7 @@ cw_info_ever_merged_ags_25 <- cw %>%
 
 # Read unharmonized election data -----------------------------------------
 
-df <- read_rds("data/federal_elections/municipality_level/final/federal_muni_unharm.rds") |>
+df <- gerda_read_election_source("data/federal_elections/municipality_level/final/federal_muni_unharm.rds") |>
   as_tibble() |>
   # remove population & area that were used for weighting multi mail-in districts
   dplyr::select(-c(pop, area)) |>
@@ -65,6 +67,8 @@ glimpse(df)
 glimpse(cw)
 
 # bind with crosswalks
+cw <- gerda_collapse_crosswalk(cw)
+
 df_naive_merge <- df |>
   left_join_check_obs(cw, by = c("ags", "election_year" = "year")) |>
   arrange(ags, election_year)
@@ -219,6 +223,11 @@ not_merged <- df_cw %>%
 not_merged
 # now, there is no unsuccessful merge.
 
+gerda_audit_mapping(
+  df |> filter(election_year < 2025), df_cw |> filter(election_year < 2025),
+  "id", "ags_25", "federal_muni_25_historical", target_codes = cw$ags_25,
+  allow_zero_weight_sum = TRUE)
+
 # Hard stop: every source row must hand out exactly 100% of its votes ---------
 # `ags_1990_to_2025_crosswalk.rds` is a FORWARD map: pop_cw is the share of the SOURCE unit that ends
 # up in each target, so it must sum to 1 within one source row. Grouped on `id`
@@ -283,6 +292,12 @@ ggplot(agg_df, aes(x = election_year, y = value, color = variable)) +
   scale_color_brewer(palette = "Set1", name = "") +
   facet_wrap(~variable, scales = "free_y")
 
+
+gerda_audit_mapping(
+  df |> filter(election_year == 2025),
+  df |> filter(election_year == 2025) |> mutate(ags_25 = ags),
+  "id", "ags_25", "federal_muni_25_identity", weight = NULL, target_codes = cw$ags_25)
+stopifnot(all(df$election_year <= 2025))
 
 # Harmonize ---------------------------------------------------------------
 

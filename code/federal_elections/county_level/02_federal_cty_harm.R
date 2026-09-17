@@ -6,6 +6,8 @@
 rm(list = ls())
 
 # Disallow scientific notation: leads to errors when loading data
+source("code/shared/harmonization_audit.R")
+
 options(scipen = 999)
 
 # conflict: prefer filter from dplyr
@@ -15,7 +17,8 @@ conflict_prefer("year", "lubridate")
 
 # Read crosswalk files ----------------------------------------------------
 cw <- fread("data/crosswalks/final/cty_crosswalks.csv") |>
-  mutate(county_code = pad_zero_conditional(county_code, 4))
+  mutate(county_code = pad_zero_conditional(county_code, 4),
+         county_code_21 = pad_zero_conditional(county_code_21, 4))
 
 glimpse(cw)
 
@@ -42,9 +45,23 @@ cw |>
 
 # Read unharmonized election data -----------------------------------------
 
-df <- read_rds("data/federal_elections/county_level/final/federal_cty_unharm.rds") |>
+df <- gerda_read_election_source("data/federal_elections/county_level/final/federal_cty_unharm.rds", keys = c("ags", "year")) |>
   mutate(election_year = year) |>
   filter(election_year >= 1990)
+
+# These are explicitly flagged state-level postal totals, not counties. The
+# source supplies no county allocation; retain them in the unharmonized data
+# and report their excluded counts instead of inventing a distribution.
+postal_exceptions <- tibble(
+  ags = c("12999", "13999", "14999", "15999", "12999", "13999"),
+  election_year = c(1994, 1994, 1994, 1994, 1998, 1998),
+  reason = "Postal votes without a county assignment in the source",
+  evidence = "01_federal_cty_unharm.R: flag_briefwahl_agg; official Kreis workbook")
+postal_keys <- gerda_key(postal_exceptions, c("ags", "election_year"))
+stopifnot(all(df$flag_briefwahl_agg[gerda_key(df, c("ags", "election_year")) %in% postal_keys] == 1L))
+df <- gerda_exclude_documented(df, postal_exceptions, c("ags", "election_year"), "federal_county_21")
+# This flag identifies the excluded state totals and remains in the source file.
+df <- df |> select(-flag_briefwahl_agg)
 
 # Verify that there are no duplicates in the election data
 df |>
@@ -132,6 +149,16 @@ not_merged <- df_cw %>%
   distinct()
 not_merged
 # now, there is no unsuccessful merge.
+
+gerda_audit_mapping(
+  df |> filter(election_year < 2021), df_cw |> filter(election_year < 2021),
+  "id", "county_code_21", "federal_county_21", target_codes = cw$county_code_21,
+  target_width = 5L)
+gerda_audit_mapping(
+  df |> filter(election_year >= 2021),
+  df |> filter(election_year >= 2021) |> mutate(county_code_21 = ags),
+  "id", "county_code_21", "federal_county_21_identity", weight = NULL,
+  target_codes = cw$county_code_21, target_width = 5L)
 
 # Flag the cases where we had to change the ags
 df_cw <- df_cw |>
@@ -260,8 +287,8 @@ ags_area_pop <- bind_rows(ags21, ags25)
 
 # Continue transformation
 df_harm <- df_harm |>
-  # Remove rows that have no voting data
-  filter(eligible_voters != 0 & number_voters != 0) %>%
+  # Keep mapped counties even when turnout inputs are zero or missing.
+  # Filtering on those inputs could discard independently known vote counts.
   left_join_check_obs(ags_area_pop, by = c("county_code" = "ags", "election_year")) |>
   mutate(
     area = ifelse(!is.na(area.x), area.x, area.y),
@@ -397,7 +424,7 @@ insp_harm <- df_harm |>
   filter(!(var %in% c("far_right", "far_left", "far_left_wLinke", "cdu_csu")))
 
 
-inspect_unharm <- read_rds("data/federal_elections/county_level/final/federal_cty_unharm.rds") 
+inspect_unharm <- gerda_read_election_source("data/federal_elections/county_level/final/federal_cty_unharm.rds", keys = c("ags", "year"))
 
 # inspect
 names(inspect_unharm)

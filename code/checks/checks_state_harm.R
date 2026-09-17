@@ -43,9 +43,11 @@ get_party_vars <- function(df) {
     "state", "state_name", "eligible_voters", "number_voters", "valid_votes",
     "turnout", "flag_unsuccessful_naive_merge", "flag_total_votes_incongruent",
     "total_vote_share", "area_ags", "population_ags", "employees_ags",
-    "pop_density_ags", "cdu_csu"
+    "pop_density_ags", "cdu_csu", "invalid_votes",
+    "perc_total_votes_incongruence", "ags_name_23", "ags_name_25",
+    "far_right", "far_left", "far_left_w_linke"
   )
-  party_vars <- setdiff(all_names, non_party)
+  party_vars <- setdiff(all_names, c(non_party, grep("^flag_", all_names, value = TRUE)))
   return(party_vars)
 }
 
@@ -134,24 +136,19 @@ check_coverage <- function(df, name, expected_elections, expected_states,
     ok <- FALSE
   }
 
-  # No Hamburg (state "02")
-  has_hamburg <- "02" %in% df$state
-  if (has_hamburg) {
-    fail(sprintf("%s: contains Hamburg (state '02') — should not be present", name))
-    ok <- FALSE
-  }
-
   if (ok) pass(sprintf("%s coverage as expected", name))
   cat("\n")
 }
 
-# Expected state-year combos: 15 states × ~3-4 elections each = 55 combos
-# (after adding BW/SA/BE/MV 2021 + BB/SN/TH 2024 + HE 2008 + SH 2017 + RLP 2021).
-# unharm covers 2008-2024: 18 state-year combos across 15 states.
-check_coverage(h21, "state_harm_21", 55, 15, 38000, "2006-2024")
-check_coverage(h23, "state_harm_23", 55, 15, 38000, "2006-2024")
-check_coverage(h25, "state_harm_25", 55, 15, 38000, "2006-2024")
-if (!is.null(unharm)) check_coverage(unharm, "state_2224_unharm", 18, 15, 12000, "2008-2024")
+# Coverage follows the current >=1990 source, including Hamburg. The old
+# fixed 55-election / 15-state expectation described a superseded release.
+expected_source <- read_rds("data/state_elections/final/state_unharm.rds") |>
+  filter(election_year >= 1990) |> distinct(state, election_year)
+for (name in c("state_harm_21", "state_harm_23", "state_harm_25")) {
+  df <- get(c(state_harm_21="h21",state_harm_23="h23",state_harm_25="h25")[[name]])
+  check_coverage(df, name, nrow(expected_source), n_distinct(expected_source$state), 1, ">=1990 source coverage")
+  stopifnot(setequal(paste(df$state, df$election_year), paste(expected_source$state, expected_source$election_year)))
+}
 
 # State-by-year cross-tabulation for harm_21
 cat("State-by-year cross-tabulation (state_harm_21):\n")
@@ -196,14 +193,7 @@ check_ags <- function(df, name) {
     ok <- FALSE
   }
 
-  # No Hamburg prefix "02"
-  has_02 <- any(substr(df$ags, 1, 2) == "02", na.rm = TRUE)
-  if (has_02) {
-    fail(sprintf("%s: contains AGS with Hamburg prefix '02'", name))
-    ok <- FALSE
-  }
-
-  if (ok) pass(sprintf("%s: AGS valid (all 8-char, prefix matches state, no Hamburg)", name))
+  if (ok) pass(sprintf("%s: AGS valid (all 8-char, prefix matches state)", name))
   cat("\n")
 }
 
@@ -363,14 +353,14 @@ check_turnout <- function(df, name) {
   # Turnout > 1
   n_over1 <- sum(df$turnout > 1, na.rm = TRUE)
   if (n_over1 > 0) {
-    # A small number of rows with turnout slightly > 1 can arise from source
-    # data issues (e.g., SH 2022, SN 2024 mail-in allocation). Treat as
-    # WARNING if <= 20 rows, FAIL if more.
-    if (n_over1 <= 20) {
-      warn(sprintf("%s: %d rows with turnout > 1 (source data issue)", name, n_over1))
-    } else {
-      fail(sprintf("%s: %d rows with turnout > 1", name, n_over1))
-    }
+    # The output deliberately retains and flags these source/allocation
+    # anomalies. An unflagged value is a failure; flagged values stay visible
+    # as warnings, without an arbitrary threshold on the number of rows.
+    flagged <- if ("flag_harm_turnout_above_1" %in% names(df))
+      df$flag_harm_turnout_above_1 %in% 1L else rep(FALSE, nrow(df))
+    unflagged <- sum(!is.na(df$turnout) & df$turnout > 1 & !flagged)
+    if (unflagged > 0) fail(sprintf("%s: %d unflagged turnout values > 1", name, unflagged))
+    warn(sprintf("%s: %d flagged source/allocation turnout values > 1", name, n_over1 - unflagged))
     print(df |> filter(turnout > 1) |>
             select(ags, election_year, state, turnout) |>
             head(10))
@@ -396,6 +386,11 @@ check_turnout(h21, "state_harm_21")
 check_turnout(h23, "state_harm_23")
 check_turnout(h25, "state_harm_25")
 if (!is.null(unharm)) check_turnout(unharm, "state_2224_unharm")
+
+# Exact input-to-output accounting is required before comparisons between
+# boundary targets; common omissions are invisible to those comparisons.
+source("code/checks/check_harmonization_accounting.R")
+for (target in c("21", "23", "25")) gerda_check_state_accounting(target)
 
 # ==============================================================================
 # CHECK 5: CROSS-DATASET CONSISTENCY
@@ -440,7 +435,7 @@ compare_aggregate_votes <- function(df1, name1, df2, name2) {
 
   cat(sprintf("  Max percentage difference in valid_votes: %.3f%%\n", max_diff))
   cat("  (Note: some difference expected — different harmonization targets use\n")
-  cat("   different crosswalks, so vote totals may differ by a few percent)\n")
+  cat("   different state borders; differences still require explanation)\n")
 
   if (n_over10 > 0) {
     fail(sprintf("%s vs %s: %d state-years with >10%% valid_votes difference",
@@ -512,7 +507,7 @@ compare_party_votes <- function(df1, name1, df2, name2, parties) {
   result_df <- tibble(party = names(results), max_pct_diff = unlist(results))
   cat("  Max percentage difference in vote counts by party:\n")
   print(result_df)
-  cat("  (Note: differences arise from different crosswalk targets, not data loss)\n")
+  cat("  (Note: output-to-output agreement alone cannot establish completeness)\n")
 
   worst <- max(result_df$max_pct_diff, na.rm = TRUE)
   if (worst > 10) {
@@ -552,19 +547,22 @@ check_cdu_csu <- function(df, name) {
   }
 
   # CSU should be NA outside Bayern
-  non_bayern <- df |> filter(state != "09")
+  # MV's original 1990 LW90-GEM workbook, row 4, has separate CDU,
+  # CSU and DSU columns. Preserve those labels rather than asserting that
+  # the CSU column must be zero everywhere outside Bavaria.
+  non_bayern <- df |> filter(state != "09", !(state == "13" & election_year == 1990))
   csu_outside <- sum(!is.na(non_bayern$csu) & non_bayern$csu != 0, na.rm = TRUE)
   if (csu_outside > 0) {
     fail(sprintf("%s: %d non-Bayern rows with non-zero CSU", name, csu_outside))
     ok <- FALSE
   } else {
-    cat("  CSU is NA/0 outside Bayern: OK\n")
+    cat("  CSU is NA/0 outside Bayern, except the documented MV 1990 source column: OK\n")
   }
 
-  # cdu_csu == CDU (non-Bayern) or CSU (Bayern) within rounding tolerance
+  # The documented combined column sums the separately retained CDU and CSU shares.
   df_check <- df |>
     mutate(
-      expected_cdu_csu = if_else(state == "09", csu, cdu),
+      expected_cdu_csu = coalesce(cdu, 0) + coalesce(csu, 0),
       cdu_csu_diff = abs(cdu_csu - expected_cdu_csu)
     ) |>
     filter(!is.na(cdu_csu_diff))
@@ -1096,8 +1094,8 @@ check_wahlleiter <- function(df, name, ref) {
   agg <- df |>
     group_by(state, election_year) |>
     summarise(
-      ev_data = sum(eligible_voters, na.rm = TRUE),
-      vv_data = sum(valid_votes, na.rm = TRUE),
+      ev_data = if (all(is.na(eligible_voters))) NA_real_ else sum(eligible_voters, na.rm = TRUE),
+      vv_data = if (all(is.na(valid_votes))) NA_real_ else sum(valid_votes, na.rm = TRUE),
       .groups = "drop"
     )
 
@@ -1130,6 +1128,11 @@ check_wahlleiter <- function(df, name, ref) {
                         format(r$vv_data, big.mark = ","), "NA", "NA")
     }
     cat(sprintf("  %s   | %d | %s | %s\n", r$state, r$election_year, ev_str, vv_str))
+  }
+
+  if (anyNA(comp$ev_data) || anyNA(comp$vv_data)) {
+    warn(sprintf("%s: %d EV and %d VV reference comparisons unavailable (source totals missing, not zero)",
+                 name, sum(is.na(comp$ev_data)), sum(is.na(comp$vv_data))))
   }
 
   # Evaluate: PASS < 1%, WARN 1-5%, FAIL > 5%
@@ -1326,9 +1329,9 @@ check_other_column <- function(df, name) {
     return(invisible(NULL))
   }
 
-  party_cols <- intersect(c("cdu", "csu", "spd", "gruene", "grune", "fdp",
-                            "linke_pds", "afd", "other"),
-                          names(df))
+  # Minor parties have their own columns. Omitting them made a fully
+  # enumerated election look incomplete whenever residual `other` was zero.
+  party_cols <- get_party_vars(df)
 
   other_summary <- df |>
     filter(!is.na(valid_votes), valid_votes > 0) |>
@@ -1477,13 +1480,11 @@ cat(sprintf("  state_2224_unharm: %d rows x %d cols, %d elections, %d states\n",
 
 cat(sprintf("\nResults: %d PASS, %d WARNING, %d FAIL\n", n_pass, n_warn, n_fail))
 
-cat("\nKnown issues documented:\n")
-cat("  - 4 Thuringia municipalities with NA turnout: 16063033, 16074082, 16075087, 16075105\n")
-cat("  - Covariate gaps: harm_21 has NA covariates for 2022-2024 elections;\n")
-cat("    harm_25 has NA covariates for 2024 elections\n")
-cat("  - Column naming: state_2224_unharm uses 'grune' (not 'gruene')\n")
-cat("  - state_harm_23 lacks 'bsw' column (only covers through 2023)\n")
+cat("\nSee the individual warnings above for current data limitations.\n")
 
 cat("\n=", strrep("=", 70), "\n")
 cat("END OF CHECKS\n")
 cat("=", strrep("=", 70), "\n")
+
+# A quality report containing failures must not return a successful exit code.
+if (n_fail > 0) stop(sprintf("State quality audit found %d failure(s); see report above", n_fail))

@@ -1,4 +1,4 @@
-kommunalwahlen_merge[grepl("\.", kommunalwahlen_merge$AGS_8dig),]
+kommunalwahlen_merge[grepl("\\.", kommunalwahlen_merge$AGS_8dig),]
 
 
 non_digit_matrix <- grepl("[^0-9]", as.matrix(kommunalwahlen_merge$AGS_8dig))
@@ -27,7 +27,7 @@ ags_prefix <- "01"  # Replace with your desired two-digit prefix
 filtered_df <- kommunalwahlen_merge[kommunalwahlen_merge$Bundesland == bundesland_filter, ]
 
 # Further filter rows where AGS_8dig starts with the specified two-digit string
-final_df <- filtered_df[!grep(paste0("^", ags_prefix), filtered_df$AGS_8dig), ]
+final_df <- filtered_df[!grepl(paste0("^", ags_prefix), filtered_df$AGS_8dig), ]
 
 table(nchar(filtered_df$AGS_8dig))
 

@@ -20,6 +20,7 @@
 
 ## Clear Everything
 rm(list = ls())
+source("code/shared/harmonization_audit.R")
 
 ## Set English Locale
 Sys.setlocale("LC_TIME", "en_US.UTF-8")
@@ -951,6 +952,7 @@ sh22_gem_weights <- sh22_regular |>
   ungroup()
 
 # Distribute Amt-level Briefwahl proportionally
+gerda_require_join_coverage(sh22_amt_brief, sh22_gem_weights, "amterschlussel", "state_recent_sh22_amt_brief")
 sh22_brief_alloc <- sh22_gem_weights |>
   inner_join(sh22_amt_brief, by = "amterschlussel", suffix = c("_gem", "_brief")) |>
   mutate(
@@ -1655,6 +1657,7 @@ if (nrow(bb24_no_gem) > 0) {
     ungroup()
 
   # Allocate
+  gerda_require_join_coverage(bb24_amt_brief, bb24_gem_weights, "amt_id", "state_recent_bb24_amt_brief")
   bb24_alloc <- bb24_gem_weights |>
     inner_join(bb24_amt_brief, by = "amt_id", suffix = c("_gem", "_brief")) |>
     mutate(
@@ -2693,6 +2696,7 @@ mv21_weights <- mv21_munis |>
   select(ags, amt_code, weight)
 
 # Allocate Briefwahl votes to municipalities
+gerda_require_join_coverage(mv21_brief_matched, mv21_weights, "amt_code", "state_recent_mv21_brief_matched")
 mv21_brief_alloc <- mv21_brief_matched |>
   filter(!is.na(amt_code)) |>
   select(amt_code, brief_voters = ...5, brief_valid = ...7,
@@ -2991,6 +2995,7 @@ sh17_gem_weights <- sh17_regular |>
   ungroup()
 
 # Distribute Amt-level Briefwahl proportionally
+gerda_require_join_coverage(sh17_amt_brief, sh17_gem_weights, "amterschlussel", "state_recent_sh17_amt_brief")
 sh17_brief_alloc <- sh17_gem_weights |>
   inner_join(sh17_amt_brief, by = "amterschlussel", suffix = c("_gem", "_brief")) |>
   mutate(
@@ -3110,6 +3115,7 @@ sh17_data <- sh17_data |>
   )
 
 # Check unmatched
+gerda_require_mapped(sh17_data, "ags", "state_recent_sh_2017")
 sh17_unmatched <- sh17_data |> filter(is.na(ags))
 if (nrow(sh17_unmatched) > 0) {
   cat("SH 2017 unmatched municipalities:", nrow(sh17_unmatched), "\n")

@@ -5,6 +5,8 @@
 # April 2026
 
 rm(list = ls())
+source("code/shared/harmonization_audit.R")
+
 options(scipen = 999)
 
 pacman::p_load("tidyverse", "data.table", "haschaR")
@@ -13,7 +15,7 @@ conflict_prefer("filter", "dplyr")
 
 # --- 1. Read data -----------------------------------------------------------
 
-df <- read_rds("data/european_elections/final/european_muni_unharm.rds") |>
+df <- gerda_read_election_source("data/european_elections/final/european_muni_unharm.rds") |>
   as_tibble()
 
 cw <- fread("data/crosswalks/final/ags_crosswalks.csv") |>
@@ -66,7 +68,7 @@ df <- df |>
     state = first(state),
     state_name = first(state_name),
     election_date = first(election_date),
-    across(all_of(all_numeric_cols), ~ sum(.x, na.rm = TRUE)),
+    across(all_of(all_numeric_cols), ~ if (all(is.na(.x))) NA_real_ else sum(.x, na.rm = TRUE)),
     .groups = "drop"
   )
 
@@ -183,22 +185,21 @@ if (nrow(still_unmatched) > 0) {
     # Jahnatal (SN): 2 predecessors
     "14522275", "14522450", 3.52 / (3.52 + 1.31),
     "14522275", "14522620", 1.31 / (3.52 + 1.31),
-    # Uder (TH): 11 predecessors (pop_cw from 2023->2025 crosswalk)
-    "16061119", "16061007", 0.0853,
-    "16061119", "16061028", 0.0134,
-    "16061119", "16061065", 0.0503,
-    "16061119", "16061067", 0.116,
-    "16061119", "16061068", 0.0492,
-    "16061119", "16061077", 0.0356,
-    "16061119", "16061084", 0.0231,
-    "16061119", "16061091", 0.0473,
-    "16061119", "16061096", 0.0552,
-    "16061119", "16061097", 0.434,
-    "16061119", "16061111", 0.0911,
     # Berga-Wuenschendorf (TH): 2 predecessors
     "16076094", "16076004", 0.537,
     "16076094", "16076084", 0.463
   )
+
+  # Uder's handwritten rounded weights summed to 1.0005. Derive the
+  # backward allocation from the stored 2023 populations, before the merger.
+  uder <- read_rds("data/crosswalks/final/crosswalk_ags_2023_to_2025.rds") |>
+    filter(ags_25 == "16061119", year == 2023)
+  stopifnot(nrow(uder) == 11L, !anyDuplicated(uder$ags),
+            all(uder$ags %in% cw$ags_21), all(uder$pop_cw == 1),
+            all(is.finite(uder$population)), all(uder$population > 0))
+  merger_cw <- bind_rows(merger_cw, uder |>
+    transmute(ags_21 = ags, ags = ags_25,
+              pop_cw = population / sum(population)))
 
   # Apply merger mapping for any remaining unmatched that are in merger_cw
   df_still_fail <- df_fallback |>
@@ -228,17 +229,17 @@ if (nrow(still_unmatched) > 0) {
 
 cat("\nAfter all corrections:", nrow(df_ok), "rows\n")
 
-# Flag unsuccessful naive merges
+# The flag describes the first lookup, not whether the municipality merged.
+failed_keys <- gerda_key(unmatched, c("ags", "election_year"))
 df_ok <- df_ok |>
-  mutate(
-    flag_unsuccessful_naive_merge = as.integer(
-      is.na(pop_cw) | (ags != ags_21 & !(state == "11"))
-    )
-  )
+  mutate(flag_unsuccessful_naive_merge = as.integer(
+    gerda_key(df_ok, c("ags", "election_year")) %in% failed_keys))
 
-# For identity codes, pop_cw should already be 1. Double check:
-df_ok <- df_ok |>
-  mutate(pop_cw = ifelse(is.na(pop_cw), 1, pop_cw))
+# Identity rows already have an explicit weight of one. Missing crosswalk
+# weights are errors, never evidence that the municipality was unchanged.
+gerda_audit_mapping(df, df_ok, c("ags", "election_year"), "ags_21",
+                    "european_muni_21", target_codes = cw$ags_21,
+                    counts = all_numeric_cols)
 
 
 # --- 7. Weighted aggregation by (ags_21, election_year) ---------------------
@@ -248,12 +249,15 @@ df_harm <- df_ok |>
   summarise(
     across(
       all_of(all_numeric_cols),
-      ~ round(sum(.x * pop_cw, na.rm = TRUE), 0)
+      ~ if (all(is.na(.x))) NA_real_ else sum(.x * pop_cw, na.rm = TRUE)
     ),
     flag_unsuccessful_naive_merge = max(flag_unsuccessful_naive_merge, na.rm = TRUE),
     n_predecessors = n(),
     .groups = "drop"
   )
+
+gerda_audit_totals(df, df_harm, "election_year", all_numeric_cols, "european_muni_21")
+df_harm <- df_harm |> mutate(across(all_of(all_numeric_cols), round))
 
 cat("Harmonized rows:", nrow(df_harm), "\n")
 

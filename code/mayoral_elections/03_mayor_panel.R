@@ -38,6 +38,8 @@ conflict_prefer("first", "dplyr")
 
 setwd(here::here())
 options(scipen = 999)
+source("code/shared/harmonization_audit.R")
+source("code/shared/mayoral_mapping.R")
 
 # Helper function to pad AGS codes
 pad_zero_conditional <- function(x, n, pad = "0") {
@@ -912,6 +914,14 @@ cw <- cw_full |>
   slice_max(pop_cw, n = 1, with_ties = FALSE) |>
   ungroup()
 
+# The person panel contains one decisive round, so round/type are absent.
+# Project the reviewed exception list to its exact AGS/date keys.
+exceptions <- gerda_mayoral_exceptions() |>
+  select(ags, election_date, reason, evidence) |> distinct()
+panel <- gerda_exclude_documented(panel, exceptions, c("ags", "election_date"), "mayor_panel_21")
+panel$.source_id <- seq_len(nrow(panel))
+panel_source <- panel
+
 # Assign crosswalk lookup year
 panel <- panel |>
   mutate(
@@ -966,15 +976,10 @@ if (nrow(unmatched) > 0) {
   }
 } # else all matched
 
-panel <- bind_rows(panel_pre2021, panel_post2020) |>
+unresolved <- panel_pre2021 |> filter(is.na(ags_21))
+recovered <- gerda_recover_mayoral_mapping(unresolved, cw_full)
+panel <- bind_rows(panel_pre2021 |> filter(!is.na(ags_21)), recovered, panel_post2020) |>
   select(-cw_year)
-
-n_no_ags21 <- sum(is.na(panel$ags_21))
-cat("Rows without ags_21:", n_no_ags21, "\n")
-if (n_no_ags21 > 0) {
-  cat("Dropping", n_no_ags21, "rows without ags_21 mapping\n")
-  panel <- panel |> filter(!is.na(ags_21))
-}
 
 
 # --- Validate ags_21 against the 2021 municipality universe -----------------
@@ -1023,34 +1028,10 @@ panel <- panel |>
   mutate(ags_21 = coalesce(ags_pre, ags_21)) |>
   select(-ags_pre)
 
-# Known-invalid ags_21 codes. All are wrong at SOURCE and owned by the Stage 1
-# scripts; they are listed here so that any NEW invalid code is a hard error
-# instead of a silently bogus row. Remove entries as the Stage 1 fixes land.
-ags21_known_invalid <- c(
-  "01055019",  # SH: wrong code at source for Heiligenhafen (true 01055021)
-  "01059027",  # SH: wrong code at source for Glücksburg    (true 01059113)
-  "01059033",  # SH: stale pre-merger Handewitt             (true 01059183)
-  "03241000",  # NI: Region Hannover — county-level body, not a municipality
-  "05313000"   # NRW: Aachen, defunct since 21.10.2009      (true 05334002)
-)
-
-invalid_ags21 <- panel |> filter(!(ags_21 %in% ags_2021_universe))
-if (nrow(invalid_ags21) > 0) {
-  cat("\nags_21 codes outside the 2021 municipality universe:\n")
-  print(as.data.frame(
-    invalid_ags21 |> count(ags, ags_21, state, election_year) |> arrange(ags_21)
-  ))
-  unexpected <- setdiff(unique(invalid_ags21$ags_21), ags21_known_invalid)
-  if (length(unexpected) > 0) {
-    stop("ags_21 codes that do not exist in 2021 and are not allowlisted: ",
-         paste(unexpected, collapse = ", "),
-         ". Fix the AGS at source (Stage 1), add a back-map, or add a ",
-         "documented entry to ags21_known_invalid.")
-  }
-  warning(sprintf(
-    "%d rows carry an ags_21 outside the 2021 universe; all are on the documented allowlist.",
-    nrow(invalid_ags21)))
-}
+# Reject every missing or invalid target, including previously allowlisted codes.
+gerda_audit_mapping(panel_source, panel, ".source_id", "ags_21", "mayor_panel_21",
+                    weight = NULL, counts = character(), target_codes = ags_2021_universe)
+panel <- panel |> select(-.source_id, -any_of(c("pop_cw", "crosswalk_year", "mapping_method")))
 
 
 # Recompute term_number after crosswalk may have dropped some rows

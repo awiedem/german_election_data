@@ -23,6 +23,8 @@ for (pkg in packages) {
 setwd(here())
 
 raw_path <- "data/state_elections/raw/Landtagswahlen"
+source("code/shared/state_mapping.R")
+source("code/shared/harmonization_audit.R")
 
 ## Meta columns (non-party) present in every row ----------------------------
 meta_cols <- c(
@@ -620,6 +622,7 @@ for (yr in names(st_dates)) {
   } else {
     ## ---- 1990-2016: Wahlbezirk-level, single sheet ----
     raw <- read_excel(fpath, sheet = 1, col_names = FALSE, col_types = "text")
+    raw <- gerda_fix_st_2011_burg(raw, yr)
     cnames <- names(raw)
 
     ## Helper: safe numeric
@@ -3062,17 +3065,17 @@ for (yr in names(mv_dates)) {
           }
         }
         if (nrow(amt_match) == 0) {
-          cat(sprintf("  WARNING: MV 2011 Brief '%s' unmatched\n", bname))
-          next
+          gerda_require_mapped(data.frame(ags = NA_character_, name = bname),
+                               "ags", "state_raw_mv_2011_postal")
         }
         ## Find member municipalities of this Amt
         members <- gem_to_amt[gem_to_amt$amt_vb == amt_match$amt_vb[1] &
                               gem_to_amt$amt_kreis == amt_match$amt_kreis[1], ]
         rl_idx <- which(real_rows$ags %in% members$gem_ags)
-        if (length(rl_idx) == 0) next
+        if (length(rl_idx) == 0) stop("MV 2011 postal total has no recipient municipalities: ", bname)
         ev <- real_rows$eligible_voters[rl_idx]
         ev_sum <- sum(ev, na.rm = TRUE)
-        if (ev_sum == 0) next
+        if (ev_sum == 0) stop("MV 2011 postal total has no usable recipient weights: ", bname)
         weights <- ev / ev_sum
         weights[is.na(weights)] <- 0
         for (vc in vote_cols) {
@@ -3335,6 +3338,7 @@ for (yr in names(mv_dates)) {
         }
       }
 
+      gerda_require_mapped(mv_munis, "ref_ags", paste0("state_raw_mv_", sub_yr))
       mv_munis <- mv_munis |> filter(!is.na(ref_ags)) |> mutate(ags = ref_ags)
       cat("  MV", sub_yr, "matched:", nrow(mv_munis), "municipalities\n")
 
@@ -3424,6 +3428,9 @@ for (yr in names(mv_dates)) {
         mutate(weight = ev / sum(ev, na.rm = TRUE)) |>
         ungroup() |>
         select(ags, amt_code, weight)
+
+      gerda_require_mapped(mv_brief, "amt_code", paste0("state_raw_mv_postal_", sub_yr))
+      gerda_require_join_coverage(mv_brief, mv_weights, "amt_code", paste0("state_raw_mv_postal_", sub_yr))
 
       ## Allocate Briefwahl votes
       brief_num_cols <- cnames[5:min(32, length(cnames))]
@@ -4484,6 +4491,7 @@ for (yr in sl_xlsx_years) {
   result$other_n <- pmax(valid_v - mapped_sum, 0, na.rm = TRUE)
 
   # Drop rows with no AGS (shouldn't happen)
+  gerda_require_mapped(result, "ags", paste0("state_raw_result_", unique(result$state), "_", unique(result$election_year)))
   result <- result |> filter(!is.na(ags))
 
   # Shares
@@ -7059,6 +7067,7 @@ for (yr in rp_target_years) {
   party_names_seen <- unique(party_names_seen)
   result$other_n <- pmax(yr_valid - mapped_sum, 0, na.rm = TRUE)
 
+  gerda_require_mapped(result, "ags", paste0("state_raw_result_", unique(result$state), "_", unique(result$election_year)))
   result <- result |> filter(!is.na(ags))
 
   ## --- Convert to vote shares ---
@@ -7167,6 +7176,7 @@ for (ci_str in names(rp_parties)) {
 party_names_seen <- unique(party_names_seen)
 result$other_n <- pmax(valid_v - mapped_sum, 0, na.rm = TRUE)
 
+gerda_require_mapped(result, "ags", paste0("state_raw_result_", unique(result$state), "_", unique(result$election_year)))
 result <- result |> filter(!is.na(ags))
 
 ## --- Convert to vote shares ---

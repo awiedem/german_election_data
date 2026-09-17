@@ -7,6 +7,8 @@ rm(list = ls())
 conflicts_prefer(dplyr::filter)
 
 # Disallow scientific notation: leads to errors when loading data
+source("code/shared/harmonization_audit.R")
+
 options(scipen = 999)
 
 # Set working directory if running 01_municipal_unharm.R before this
@@ -117,7 +119,7 @@ cw |>
 
 # Merge with unharmonized election data -----------------------------------
 
-df <- readr::read_rds("data/municipal_elections/final/municipal_unharm.rds") |>
+df <- gerda_read_election_source("data/municipal_elections/final/municipal_unharm.rds") |>
   mutate(election_year = as.numeric(election_year)) |>
   # Years before 1990 have no crosswalk, EXCEPT Rheinland-Pfalz: the StaLA
   # Sonderauswertung reports its 1969-1989 Gemeinderatswahlen on 2025
@@ -157,6 +159,8 @@ dupl <- df |>
 # Merge w/ cw -------------------------------------------------------------
 
 # bind with crosswalks
+cw <- gerda_collapse_crosswalk(cw)
+
 df_naive_merge <- df |>
   left_join_check_obs(cw |> select(-ags_name), by = c("ags", "election_year" = "year")) |>
   arrange(ags, election_year)
@@ -418,6 +422,14 @@ glimpse(df_cw)
 # Stadtoldendorf 22,270, 03354407 Lüchow (Wendland) 36,809, 03359409
 # Oldendorf-Himmelpforten 27,942 = 87,021 double-counted votes in 2021). They
 # must be removed at source, NOT allowlisted here.
+gerda_audit_mapping(
+  df |> filter(election_year < 2025), df_cw |> filter(election_year < 2025),
+  "id", "ags_25", "municipal_25_historical", target_codes = cw$ags_25)
+gerda_audit_mapping(
+  df |> filter(election_year >= 2025),
+  df |> filter(election_year >= 2025) |> mutate(ags_25 = ags),
+  "id", "ags_25", "municipal_25_identity", weight = NULL, target_codes = cw$ags_25)
+
 allowed_unmatched <- character(0) # (ags, election_year) ids allowed to fail
 not_merged <- df_cw %>%
   filter(election_year < 2025) %>%

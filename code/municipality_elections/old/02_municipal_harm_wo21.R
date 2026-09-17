@@ -9,6 +9,7 @@ conflicts_prefer(dplyr::filter)
 
 # Disallow scientific notation: leads to errors when loading data
 options(scipen = 999)
+source("code/shared/harmonization_audit.R")
 
 # Set working directory if running 01_municipal_unharm.R before this
 setwd(here::here())
@@ -345,6 +346,12 @@ table(df_cw$flag_unsuccessful_naive_merge, useNA = "ifany")
 glimpse(df_cw)
 
 
+
+# Legacy code must not silently overwrite the maintained dataset after a
+# crosswalk miss. Use the current boundary-specific entry points for rebuilds.
+gerda_audit_mapping(df, df_cw |> mutate(ags_21 = pad_zero_conditional(ags_21, 7)),
+                    "id", "ags_21", "legacy_municipal",
+                    target_codes = pad_zero_conditional(cw$ags_21, 7))
 
 # Harmonize ---------------------------------------------------------------
 
