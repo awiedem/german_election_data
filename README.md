@@ -129,7 +129,8 @@ Key functions: `load_gerda_web()` (download by name), `gerda_data_list()` (catal
 
 The [`mcp_server`](mcp_server/README.md) directory contains a read-only MCP
 service for agent access to the 2025-harmonized federal municipality dataset.
-The public endpoint is `https://mcp.german-elections.com/mcp`.
+The public endpoint is `https://mcp.german-elections.com/mcp`, and the official
+MCP Registry identifier is `com.german-elections/gerda`.
 
 ### Direct download (without the R package)
 

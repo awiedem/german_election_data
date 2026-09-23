@@ -1,0 +1,13 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.german-elections/gerda",
+  "title": "GERDA German Election Data",
+  "description": "Read-only German federal election results for municipalities, with harmonized geography.",
+  "version": "0.1.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.german-elections.com/mcp"
+    }
+  ]
+}

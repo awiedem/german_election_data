@@ -9,7 +9,8 @@ municipality lookup, bounded result queries, and citation-aware downloads.
 The public endpoint is `https://mcp.german-elections.com/mcp`. This is an
 experimental service with no availability guarantee. The federal-data reuse
 terms are published in [`DATA_REUSE_STATEMENT.md`](DATA_REUSE_STATEMENT.md), and
-the catalog exposes the license status to clients.
+the catalog exposes the license status to clients. The official MCP Registry
+lists the service as `com.german-elections/gerda`.
 
 ## Tools
 
