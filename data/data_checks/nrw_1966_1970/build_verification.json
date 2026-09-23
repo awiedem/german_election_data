@@ -1,0 +1,20 @@
+{
+  "affected_rows": 185,
+  "affected_excel_cells_checked": 6845,
+  "unchanged_csv_and_excel_rows_including_header": 149168,
+  "unrelated_excel_members_identical": true,
+  "files": {
+    "data/state_elections/final/state_unharm.csv": {
+      "baseline_sha256": "c6230f678044d0b437b65a0f415510c4666135e9c0c04b0368aa883275d0aa2f",
+      "repaired_sha256": "74db1496e4deb9dc1f7e238ee892dbf2ad072239e7cd86efcd59e5bfd072bc20"
+    },
+    "data/state_elections/final/state_unharm.rds": {
+      "baseline_sha256": "b812d7cd3c1da294f4d0c2813e116dcba863e84ca7ad1dd599e170a71b345b17",
+      "repaired_sha256": "0073e5f240f7d1547fc24063c9c2f7365b587ba793025b0ba333e6d96f60c5a6"
+    },
+    "data/state_elections/final/state_unharm.xlsx": {
+      "baseline_sha256": "aad1b066062f3a7d5654db0eded6ec5b51744e1f55a69e4e1d7bdfbc4bcee999",
+      "repaired_sha256": "73eafc51ade1700925f43e1569315c3d1f4b5ebea05d7143b2a963869b11a760"
+    }
+  }
+}

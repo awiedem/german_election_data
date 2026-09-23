@@ -4877,18 +4877,8 @@ nrw_pre75_dates <- c("1947" = "1947-04-20", "1950" = "1950-06-18", "1954" = "195
 if (file.exists(nrw_pre75_path)) {
   nrw_pre75 <- read.csv(nrw_pre75_path, colClasses = "character")
 
-  ## OCR corrections: left-page extraction failed for these rows,
-  ## putting WB(ohne) into NV and WB(mit) into IV; fix from source PDFs
-  fix_schl <- nrw_pre75$name == "Kreis Schleiden" & nrw_pre75$election_year == "1966"
-  if (any(fix_schl)) {
-    nrw_pre75[fix_schl, c("eligible_voters","number_voters","invalid_votes")] <-
-      list("40212", "34474", "774")
-  }
-  fix_bott <- nrw_pre75$name == "Bottrop" & nrw_pre75$election_year == "1970"
-  if (any(fix_bott)) {
-    nrw_pre75[fix_bott, c("eligible_voters","number_voters","invalid_votes")] <-
-      list("71776", "58078", "307")
-  }
+  ## 1966/1970 use the verified derived transcription below.
+  nrw_pre75 <- nrw_pre75[!nrw_pre75$election_year %in% c("1966", "1970"), ]
 
   nrw_pre75_party_map <- c(
     cdu = "cdu", spd = "spd", fdp = "fdp",
@@ -4954,6 +4944,10 @@ if (file.exists(nrw_pre75_path)) {
     nrw_results[[ocr_yr]] <- result
   }
 }
+
+## Source-verified Table 2 totals, including postal votes; no OCR estimates.
+source("code/state_elections/nrw_verified.R")
+nrw_results <- c(nrw_results, gerda_nrw_verified_results())
 
 ## ---------- XLSX: 1975-2022 (municipality level) ----------
 for (yr in names(nrw_dates)) {
@@ -7220,7 +7214,7 @@ cat(sprintf("Flagged %d rows with valid_votes == 0\n", sum(state_unharm$flag_no_
 
 # Flag (but keep) Briefwahl-only entities: eligible_voters=0 but votes>0
 # These are real municipalities with mail-in vote misallocation or source gaps
-# (e.g., BB 1990, SH 1983 garbled PDF, NRW 1966 major cities)
+# (e.g., BB 1990, SH 1983 garbled PDF)
 state_unharm$flag_briefwahl_only <- ifelse(
   !is.na(state_unharm$eligible_voters) & state_unharm$eligible_voters == 0 &
   !is.na(state_unharm$valid_votes) & state_unharm$valid_votes > 0, 1L, 0L

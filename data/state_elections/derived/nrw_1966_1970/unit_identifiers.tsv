@@ -1,0 +1,186 @@
+election_year	ags	name	type	lfd_nr	geographic_level	code_type
+1966	05001000	Aachen	krfr	35	county_free_city	synthetic_year_specific
+1966	05002000	Bielefeld	krfr	61	county_free_city	synthetic_year_specific
+1966	05003000	Bocholt	krfr	44	county_free_city	synthetic_year_specific
+1966	05004000	Bochum	krfr	76	county_free_city	synthetic_year_specific
+1966	05005000	Bonn	krfr	25	county_free_city	synthetic_year_specific
+1966	05006000	Bottrop	krfr	45	county_free_city	synthetic_year_specific
+1966	05007000	Castrop-Rauxel	krfr	77	county_free_city	synthetic_year_specific
+1966	05008000	Dortmund	krfr	78	county_free_city	synthetic_year_specific
+1966	05009000	Duisburg	krfr	2	county_free_city	synthetic_year_specific
+1966	05010000	Düsseldorf	krfr	1	county_free_city	synthetic_year_specific
+1966	05011000	Ennepe-Ruhr-Kreis	kreis	92	county	synthetic_year_specific
+1966	05012000	Essen	krfr	3	county_free_city	synthetic_year_specific
+1966	05013000	Gelsenkirchen	krfr	46	county_free_city	synthetic_year_specific
+1966	05014000	Gladbeck	krfr	47	county_free_city	synthetic_year_specific
+1966	05015000	Hagen	krfr	79	county_free_city	synthetic_year_specific
+1966	05016000	Hamm	krfr	80	county_free_city	synthetic_year_specific
+1966	05017000	Herford	krfr	62	county_free_city	synthetic_year_specific
+1966	05018000	Herne	krfr	81	county_free_city	synthetic_year_specific
+1966	05019000	Iserlohn	krfr	82	county_free_city	synthetic_year_specific
+1966	05020000	Krefeld	krfr	4	county_free_city	synthetic_year_specific
+1966	05021000	Kreis Aachen	kreis	36	county	synthetic_year_specific
+1966	05022000	Kreis Ahaus	kreis	50	county	synthetic_year_specific
+1966	05023000	Kreis Altena	kreis	89	county	synthetic_year_specific
+1966	05024000	Kreis Arnsberg	kreis	90	county	synthetic_year_specific
+1966	05025000	Kreis Beckum	kreis	51	county	synthetic_year_specific
+1966	05026000	Kreis Bergheim (Erft)	kreis	27	county	synthetic_year_specific
+1966	05027000	Kreis Bielefeld	kreis	63	county	synthetic_year_specific
+1966	05028000	Kreis Bonn	kreis	28	county	synthetic_year_specific
+1966	05029000	Kreis Borken	kreis	52	county	synthetic_year_specific
+1966	05030000	Kreis Brilon	kreis	91	county	synthetic_year_specific
+1966	05031000	Kreis Büren	kreis	64	county	synthetic_year_specific
+1966	05032000	Kreis Coesfeld	kreis	53	county	synthetic_year_specific
+1966	05033000	Kreis Detmold	kreis	65	county	synthetic_year_specific
+1966	05034000	Kreis Dinslaken	kreis	15	county	synthetic_year_specific
+1966	05035000	Kreis Düren	kreis	37	county	synthetic_year_specific
+1966	05036000	Kreis Düsseldorf-Mettmann	kreis	16	county	synthetic_year_specific
+1966	05037000	Kreis Erkelenz	kreis	38	county	synthetic_year_specific
+1966	05038000	Kreis Euskirchen	kreis	29	county	synthetic_year_specific
+1966	05039000	Kreis Geldern	kreis	17	county	synthetic_year_specific
+1966	05040000	Kreis Grevenbroich	kreis	18	county	synthetic_year_specific
+1966	05041000	Kreis Halle (Westf.)	kreis	66	county	synthetic_year_specific
+1966	05042000	Kreis Herford	kreis	67	county	synthetic_year_specific
+1966	05043000	Kreis Höxter	kreis	68	county	synthetic_year_specific
+1966	05044000	Kreis Iserlohn	kreis	93	county	synthetic_year_specific
+1966	05045000	Kreis Jülich	kreis	39	county	synthetic_year_specific
+1966	05046000	Kreis Kempen-Krefeld	kreis	19	county	synthetic_year_specific
+1966	05047000	Kreis Kleve	kreis	20	county	synthetic_year_specific
+1966	05048000	Kreis Köln	kreis	30	county	synthetic_year_specific
+1966	05049000	Kreis Lemgo	kreis	69	county	synthetic_year_specific
+1966	05050000	Kreis Lippstadt	kreis	94	county	synthetic_year_specific
+1966	05051000	Kreis Lübbecke	kreis	70	county	synthetic_year_specific
+1966	05052000	Kreis Lüdinghausen	kreis	54	county	synthetic_year_specific
+1966	05053000	Kreis Meschede	kreis	95	county	synthetic_year_specific
+1966	05054000	Kreis Minden	kreis	71	county	synthetic_year_specific
+1966	05055000	Kreis Moers	kreis	21	county	synthetic_year_specific
+1966	05056000	Kreis Monschau	kreis	40	county	synthetic_year_specific
+1966	05057000	Kreis Münster	kreis	55	county	synthetic_year_specific
+1966	05058000	Kreis Olpe	kreis	96	county	synthetic_year_specific
+1966	05059000	Kreis Paderborn	kreis	72	county	synthetic_year_specific
+1966	05060000	Kreis Recklinghausen	kreis	56	county	synthetic_year_specific
+1966	05061000	Kreis Rees	kreis	22	county	synthetic_year_specific
+1966	05062000	Kreis Schleiden	kreis	41	county	synthetic_year_specific
+1966	05063000	Kreis Siegen	kreis	97	county	synthetic_year_specific
+1966	05064000	Kreis Soest	kreis	98	county	synthetic_year_specific
+1966	05065000	Kreis Steinfurt	kreis	57	county	synthetic_year_specific
+1966	05066000	Kreis Tecklenburg	kreis	58	county	synthetic_year_specific
+1966	05067000	Kreis Unna	kreis	99	county	synthetic_year_specific
+1966	05068000	Kreis Warburg	kreis	73	county	synthetic_year_specific
+1966	05069000	Kreis Warendorf	kreis	59	county	synthetic_year_specific
+1966	05070000	Kreis Wiedenbrück	kreis	74	county	synthetic_year_specific
+1966	05071000	Kreis Wittgenstein	kreis	100	county	synthetic_year_specific
+1966	05072000	Köln	krfr	26	county_free_city	synthetic_year_specific
+1966	05073000	Leverkusen	krfr	5	county_free_city	synthetic_year_specific
+1966	05074000	Lüdenscheid	krfr	83	county_free_city	synthetic_year_specific
+1966	05075000	Lünen	krfr	84	county_free_city	synthetic_year_specific
+1966	05076000	Mönchengladbach	krfr	6	county_free_city	synthetic_year_specific
+1966	05077000	Mülheim a.d. Ruhr	krfr	7	county_free_city	synthetic_year_specific
+1966	05078000	Münster	krfr	48	county_free_city	synthetic_year_specific
+1966	05079000	Neuss	krfr	8	county_free_city	synthetic_year_specific
+1966	05080000	Oberbergischer Kreis	kreis	31	county	synthetic_year_specific
+1966	05081000	Oberhausen	krfr	9	county_free_city	synthetic_year_specific
+1966	05082000	Recklinghausen	krfr	49	county_free_city	synthetic_year_specific
+1966	05083000	Remscheid	krfr	10	county_free_city	synthetic_year_specific
+1966	05084000	Rhein-Wupper-Kreis	kreis	23	county	synthetic_year_specific
+1966	05085000	Rheinisch-Bergischer Kreis	kreis	32	county	synthetic_year_specific
+1966	05086000	Rheydt	krfr	11	county_free_city	synthetic_year_specific
+1966	05087000	Selfkantkreis Geilenkirchen-Heinsberg	kreis	42	county	synthetic_year_specific
+1966	05088000	Siegen	krfr	85	county_free_city	synthetic_year_specific
+1966	05089000	Siegkreis	kreis	33	county	synthetic_year_specific
+1966	05090000	Solingen	krfr	12	county_free_city	synthetic_year_specific
+1966	05091000	Viersen	krfr	13	county_free_city	synthetic_year_specific
+1966	05092000	Wanne-Eickel	krfr	86	county_free_city	synthetic_year_specific
+1966	05093000	Wattenscheid	krfr	87	county_free_city	synthetic_year_specific
+1966	05094000	Witten	krfr	88	county_free_city	synthetic_year_specific
+1966	05095000	Wuppertal	krfr	14	county_free_city	synthetic_year_specific
+1970	05001000	Aachen	krfr	37	county_free_city	synthetic_year_specific
+1970	05002000	Bielefeld	krfr	67	county_free_city	synthetic_year_specific
+1970	05003000	Bocholt	krfr	48	county_free_city	synthetic_year_specific
+1970	05004000	Bochum	krfr	83	county_free_city	synthetic_year_specific
+1970	05005000	Bonn	krfr	26	county_free_city	synthetic_year_specific
+1970	05006000	Bottrop	krfr	49	county_free_city	synthetic_year_specific
+1970	05007000	Castrop-Rauxel	krfr	84	county_free_city	synthetic_year_specific
+1970	05008000	Dortmund	krfr	85	county_free_city	synthetic_year_specific
+1970	05009000	Duisburg	krfr	2	county_free_city	synthetic_year_specific
+1970	05010000	Düsseldorf	krfr	1	county_free_city	synthetic_year_specific
+1970	05011000	Ennepe-Ruhr-Kreis	kreis	96	county	synthetic_year_specific
+1970	05012000	Essen	krfr	3	county_free_city	synthetic_year_specific
+1970	05013000	Gelsenkirchen	krfr	50	county_free_city	synthetic_year_specific
+1970	05014000	Gladbeck	krfr	51	county_free_city	synthetic_year_specific
+1970	05015000	Hagen	krfr	86	county_free_city	synthetic_year_specific
+1970	05016000	Hamm	krfr	87	county_free_city	synthetic_year_specific
+1970	05017000	Herne	krfr	88	county_free_city	synthetic_year_specific
+1970	05018000	Iserlohn	krfr	89	county_free_city	synthetic_year_specific
+1970	05019000	Krefeld	krfr	4	county_free_city	synthetic_year_specific
+1970	05020000	Kreis Aachen	kreis	38	county	synthetic_year_specific
+1970	05021000	Kreis Ahaus	kreis	54	county	synthetic_year_specific
+1970	05022000	Kreis Arnsberg	kreis	94	county	synthetic_year_specific
+1970	05023000	Kreis Beckum	kreis	55	county	synthetic_year_specific
+1970	05024000	Kreis Bergheim (Erft)	kreis	28	county	synthetic_year_specific
+1970	05025000	Kreis Bielefeld	kreis	68	county	synthetic_year_specific
+1970	05026000	Kreis Borken	kreis	56	county	synthetic_year_specific
+1970	05027000	Kreis Brilon	kreis	95	county	synthetic_year_specific
+1970	05028000	Kreis Büren	kreis	69	county	synthetic_year_specific
+1970	05029000	Kreis Coesfeld	kreis	57	county	synthetic_year_specific
+1970	05030000	Kreis Detmold	kreis	70	county	synthetic_year_specific
+1970	05031000	Kreis Dinslaken	kreis	14	county	synthetic_year_specific
+1970	05032000	Kreis Düren	kreis	39	county	synthetic_year_specific
+1970	05033000	Kreis Düsseldorf-Mettmann	kreis	15	county	synthetic_year_specific
+1970	05034000	Kreis Erkelenz	kreis	40	county	synthetic_year_specific
+1970	05035000	Kreis Euskirchen	kreis	29	county	synthetic_year_specific
+1970	05036000	Kreis Geldern	kreis	16	county	synthetic_year_specific
+1970	05037000	Kreis Grevenbroich	kreis	17	county	synthetic_year_specific
+1970	05038000	Kreis Halle (Westf.)	kreis	71	county	synthetic_year_specific
+1970	05039000	Kreis Herford	kreis	72	county	synthetic_year_specific
+1970	05040000	Kreis Höxter	kreis	73	county	synthetic_year_specific
+1970	05041000	Kreis Iserlohn	kreis	97	county	synthetic_year_specific
+1970	05042000	Kreis Jülich	kreis	41	county	synthetic_year_specific
+1970	05043000	Kreis Kempen-Krefeld	kreis	18	county	synthetic_year_specific
+1970	05044000	Kreis Kleve	kreis	19	county	synthetic_year_specific
+1970	05045000	Kreis Köln	kreis	30	county	synthetic_year_specific
+1970	05046000	Kreis Lemgo	kreis	74	county	synthetic_year_specific
+1970	05047000	Kreis Lippstadt	kreis	98	county	synthetic_year_specific
+1970	05048000	Kreis Lübbecke	kreis	75	county	synthetic_year_specific
+1970	05049000	Kreis Lüdenscheid	kreis	99	county	synthetic_year_specific
+1970	05050000	Kreis Lüdinghausen	kreis	58	county	synthetic_year_specific
+1970	05051000	Kreis Meschede	kreis	100	county	synthetic_year_specific
+1970	05052000	Kreis Minden	kreis	76	county	synthetic_year_specific
+1970	05053000	Kreis Moers	kreis	20	county	synthetic_year_specific
+1970	05054000	Kreis Monschau	kreis	42	county	synthetic_year_specific
+1970	05055000	Kreis Münster	kreis	59	county	synthetic_year_specific
+1970	05056000	Kreis Olpe	kreis	101	county	synthetic_year_specific
+1970	05057000	Kreis Paderborn	kreis	77	county	synthetic_year_specific
+1970	05058000	Kreis Recklinghausen	kreis	60	county	synthetic_year_specific
+1970	05059000	Kreis Rees	kreis	21	county	synthetic_year_specific
+1970	05060000	Kreis Schleiden	kreis	43	county	synthetic_year_specific
+1970	05061000	Kreis Siegen	kreis	102	county	synthetic_year_specific
+1970	05062000	Kreis Soest	kreis	103	county	synthetic_year_specific
+1970	05063000	Kreis Steinfurt	kreis	61	county	synthetic_year_specific
+1970	05064000	Kreis Tecklenburg	kreis	62	county	synthetic_year_specific
+1970	05065000	Kreis Unna	kreis	104	county	synthetic_year_specific
+1970	05066000	Kreis Warburg	kreis	78	county	synthetic_year_specific
+1970	05067000	Kreis Warendorf	kreis	63	county	synthetic_year_specific
+1970	05068000	Kreis Wiedenbrück	kreis	79	county	synthetic_year_specific
+1970	05069000	Kreis Wittgenstein	kreis	105	county	synthetic_year_specific
+1970	05070000	Köln	krfr	27	county_free_city	synthetic_year_specific
+1970	05071000	Leverkusen	krfr	5	county_free_city	synthetic_year_specific
+1970	05072000	Lünen	krfr	90	county_free_city	synthetic_year_specific
+1970	05073000	Mönchengladbach	krfr	6	county_free_city	synthetic_year_specific
+1970	05074000	Mülheim a.d. Ruhr	krfr	7	county_free_city	synthetic_year_specific
+1970	05075000	Münster	krfr	52	county_free_city	synthetic_year_specific
+1970	05076000	Neuss	krfr	8	county_free_city	synthetic_year_specific
+1970	05077000	Oberbergischer Kreis	kreis	31	county	synthetic_year_specific
+1970	05078000	Oberhausen	krfr	9	county_free_city	synthetic_year_specific
+1970	05079000	Recklinghausen	krfr	53	county_free_city	synthetic_year_specific
+1970	05080000	Remscheid	krfr	10	county_free_city	synthetic_year_specific
+1970	05081000	Rhein-Sieg-Kreis	kreis	33	county	synthetic_year_specific
+1970	05082000	Rhein-Wupper-Kreis	kreis	22	county	synthetic_year_specific
+1970	05083000	Rheinisch-Bergischer Kreis	kreis	32	county	synthetic_year_specific
+1970	05084000	Rheydt	krfr	11	county_free_city	synthetic_year_specific
+1970	05085000	Selfkantkreis Geilenkirchen-Heinsberg	kreis	44	county	synthetic_year_specific
+1970	05086000	Solingen	krfr	12	county_free_city	synthetic_year_specific
+1970	05087000	Wanne-Eickel	krfr	91	county_free_city	synthetic_year_specific
+1970	05088000	Wattenscheid	krfr	92	county_free_city	synthetic_year_specific
+1970	05089000	Witten	krfr	93	county_free_city	synthetic_year_specific
+1970	05090000	Wuppertal	krfr	13	county_free_city	synthetic_year_specific

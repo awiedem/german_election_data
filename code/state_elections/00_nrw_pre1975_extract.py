@@ -11,7 +11,8 @@ Approach:
   4. Assign Lfd. Nr. sequentially from known geographic unit list.
   5. Parse values using count/percentage alternation pattern.
 
-Output: data/state_elections/raw/Landtagswahlen/Nordrhein-Westfalen/nrw_pre1975_kreis.csv
+1966/1970: source-verified transcription (see 00_nrw_1966_1970_verified.py).
+Legacy OCR output: data/state_elections/derived/nrw_pre1975_ocr.csv (never raw).
 """
 
 import os, re, csv, sys
@@ -23,7 +24,7 @@ import pandas as pd
 
 HERE = Path(__file__).resolve().parent
 RAW_DIR = HERE.parent.parent / "data" / "state_elections" / "raw" / "Landtagswahlen" / "Nordrhein-Westfalen"
-OUT_PATH = RAW_DIR / "nrw_pre1975_kreis.csv"
+OUT_PATH = HERE.parent.parent / "data/state_elections/derived/nrw_pre1975_ocr.csv"
 
 # ══════════════════════════════════════════════════════════════════
 # Geographic units — ordered exactly as they appear in Table 2.
@@ -368,8 +369,8 @@ ELECTIONS = {
         "col_defs": COLS_RIGHT_1966,
         "geo_lookup": GEO_LOOKUP_1966,
         "known_totals": {
-            "valid_votes": 8842942,
-            "cdu": 3786688, "spd": 4378865, "fdp": 657055,
+            "valid_votes": 8542493,
+            "cdu": 3653184, "spd": 4226604, "fdp": 633765,
         },
     },
     1970: {
@@ -385,9 +386,9 @@ ELECTIONS = {
         "parties": ["spd", "cdu", "fdp", "zentrum", "uap", "dkp", "npd"],
         "geo_lookup": GEO_LOOKUP_1970,
         "known_totals": {
-            "valid_votes": 8588041,
-            "spd": 3956882, "cdu": 3977164, "fdp": 473280,
-            "zentrum": 8588, "dkp": 77292, "npd": 93927,
+            "valid_votes": 8677827,
+            "spd": 3996808, "cdu": 4020186, "fdp": 478420,
+            "zentrum": 9902, "uap": 1504, "dkp": 76964, "npd": 94043,
         },
     },
 }
@@ -1457,6 +1458,13 @@ def extract_year_courier(year):
 # ══════════════════════════════════════════════════════════════════
 
 def extract_year(year):
+    # The heuristic OCR route must never regenerate the repaired elections.
+    if year in (1966, 1970):
+        from importlib import import_module
+        verified = import_module("00_nrw_1966_1970_verified")
+        rows, _ = verified.load_verified()
+        return [r for r in rows if r["election_year"] == year and r["type"] != "agg"]
+
     cfg = ELECTIONS[year]
     pdf_path = RAW_DIR / cfg["pdf"]
     parties = cfg["parties"]
@@ -1566,6 +1574,7 @@ def main():
     clean = [{k: v for k, v in r.items() if not k.startswith("_")} for r in all_records]
 
     print(f"\nWriting {len(clean)} records to {OUT_PATH}")
+    OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(OUT_PATH, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
         w.writeheader()
