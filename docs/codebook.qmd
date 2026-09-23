@@ -310,7 +310,7 @@ ever ran is preserved as its own column (352 party columns).
 
 ## Municipality level
 
-**Files:** `state_unharm` (149,353 x 365), `state_harm_21` (82,689 x 376),
+**Files:** `state_unharm` (149,401 x 366), `state_harm_21` (82,689 x 376),
 `state_harm_23` (82,596 x 376), `state_harm_25` (82,466 x 376) in
 `data/state_elections/final/`.
 
@@ -319,7 +319,7 @@ year and all begin in 1990.
 
 | Variable | Type | Description |
 | :------------------------------ | :-------- | :---------------------------------------------------- |
-| `flag_briefwahl_only` | integer | 1 where `eligible_voters == 0` and `valid_votes > 0` — a mail-in district rather than a municipality. Chiefly Brandenburg 1990, Schleswig-Holstein 1983, and Nordrhein-Westfalen 1966 major cities. |
+| `flag_briefwahl_only` | integer | Legacy diagnostic for zero reported electorate with positive votes before cleanup. It can also indicate missing or corrupt source fields and does not establish postal-district status. |
 | `flag_no_valid_votes` | integer | 1 where the row reports no valid votes. |
 | `flag_naive_turnout_above_1` | integer | 1 where uncapped turnout exceeded 1. |
 | `flag_harm_turnout_above_1` | integer | As above, after harmonization (harmonized files). |
@@ -327,6 +327,15 @@ year and all begin in 1990.
 | `total_vote_share` | numeric | Sum of all party shares; a diagnostic that should be ~1. |
 | `einzelbewerber`, `einzelbewerber_1`, `einzelbewerber_2`, `einzelbewerber_innen` | numeric | Independent candidates. The source lists them under several distinct labels which are deliberately not merged, because in some state-years they identify different individuals. Sum them if you want a single independents series. |
 | `area_ags`, `population_ags`, `employees_ags`, `pop_density_ags` | numeric | Municipality covariates joined in from `ags_area_pop_emp` (harmonized files). See the covariates section. |
+
+**Schleswig-Holstein 1983.** The 1,128 municipal records contain in-person
+voters and votes only; `eligible_voters` is the full electorate. Postal votes
+cannot be assigned to municipalities in the source, so `turnout` is `NA`.
+Party shares use in-person `valid_votes` and cannot reproduce the all-ballot
+statewide result. `llsh` denotes Linke Liste Schleswig-Holstein, separate from
+`einzelbewerber` and `linke_pds`. Wiedenborstel has no separate result; its
+electorate voted in Hennstedt. The reviewed transcription and source controls
+are documented in `data/state_elections/derived/sh_1983/README.md`.
 
 **Zero-vote recoding.** A party that received zero votes across *all*
 municipalities in a state-year is recoded from 0 to `NA`, so that "did not

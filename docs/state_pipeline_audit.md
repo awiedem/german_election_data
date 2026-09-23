@@ -160,26 +160,32 @@ Reference implementation: `code/federal_elections/municipality_level/` (00, 01, 
 
 ---
 
-## Change 6: SH 1983 OCR Re-extraction
+## Change 6: SH 1983 OCR repair
 
-**Status:** DEFERRED — see investigation notes below
+**Status:** FIXED on 2026-09-23; municipal postal-vote limitation remains.
 
-**Problem:** 136/1079 municipalities have `number_voters=0, eligible_voters=0` due to left-page matching failure in `00_sh_1983_extract.py`. Right-page extraction (party votes) works fine.
+The March investigation was incomplete: both participation and party columns
+were affected. The old release had 1,079 rows, 135 missing electorate/voter
+counts, and 253 rows with more valid votes than voters. Flensburg's 49,407
+in-person voters became 9,407; DKP/DGL cells were also shifted.
 
-**Root cause:** The PDF text layer is heavily garbled on many left pages. The script uses "100,0" percentage markers as anchors to find data rows, but many markers are unrecognizable OCR artifacts (e.g., "1C'O,C:", ":>c,c.", "co,o" on page 71).
+The reviewed Table 6 transcription now has 1,128 records. Fresh 400-dpi OCR,
+the old text layer and visual checks recover all counts. Every row satisfies
+voters = valid + invalid and valid = sum of party counts. Statewide totals,
+county electorate, the 1983 municipality code set and 7,959 printed percentages
+also reconcile. The former raw CSV remains unchanged and is no longer an input.
 
-**Investigation (March 2026):** Three approaches attempted:
-1. **y-position anchoring** (use right-page row positions): Failed because y-offsets between left/right pages vary by -23px to +10px across page pairs, making position matching unreliable.
-2. **Row-scanning** (find all data rows, match by order): Found too many rows (includes Kreis aggregate rows), causing worse order misalignment (553→474→840 OK varies).
-3. **Broader marker regex**: Caught non-"100,0" values from other columns, introducing false positives.
+The source excludes postal votes from municipal results. Retain the full
+electorate and reported in-person counts, but leave overall turnout missing.
+Do not allocate postal totals proportionally. The combined final column is
+split into independents and LLSH using the explicit county rule on source p. 4.
 
-All three approaches degraded the baseline (412 OK / 531 BAD). The original code is the best achievable with the current text-layer quality.
+The focused rebuild adds 49 records and the `llsh` column. All 148,273 unrelated
+rows and all seven later SH elections are unchanged. Harmonized files contain
+no SH 1983 observations and are unchanged.
 
-**Impact:** 135/1079 municipalities lack EV/NV → turnout=NA. Party vote shares are unaffected (right-page extraction works). Statewide coverage: 87.5% of VV recovered.
-
-**File:** `code/state_elections/00_sh_1983_extract.py`
-
-**Possible future approach:** True OCR re-extraction using Tesseract on high-DPI rasters (bypassing the broken text layer entirely). This would require significant effort and is deferred.
+**Implementation and evidence:** `code/state_elections/sh_1983_verified.R`,
+`data/state_elections/derived/sh_1983/README.md`, and `code/checks/check_sh_1983*`.
 
 ---
 
@@ -273,7 +279,7 @@ When an AGS code doesn't exist as a *source* in the crosswalk but IS a valid *ta
 ### Known limitations (documented, no fix possible)
 - **BY Gesamtstimmen**: valid_votes = Erst+Zweit combined (both count for proportional allocation in Bavaria). Identity: valid+invalid = voters×2 for 1950+
 - **HE 1958/62**: number_voters/invalid_votes not reported in source for non-kreisfreie municipalities
-- **SH 1983**: 135 municipalities lack EV/NV due to garbled PDF text layer
+- **SH 1983**: OCR counts repaired (Change 6); municipal postal votes remain unavailable, so overall turnout is missing.
 - **BB 1990/94**: Briefwahl misallocation artifacts (up to 10× VV/NV ratio in 1994)
 - **NRW 1947-1970**: County-level only (synthetic AGS `050xx000`), cannot be harmonized. 1947/1950 extracted at Wahlkreis level (150 WK) then aggregated to ~84 Kreise. 1947 has minor scan-read residuals (CDU+4, FDP-1, KPD+2, Z-5 vs official statewide totals). No turnout data for any pre-1975 year (only valid_votes and party counts). The source PDF (`Nordrhein-Westfalen_1947_Landtagswahl.pdf`) contains three elections in interleaved rows (a=1947, b=1949 Bundestag, c=1950 Landtag) — row identification by party presence pattern (1947 has no DP/RSF; 1949 has RSF; 1950 has DP)
 - **BY 1994-2013**: eligible_voters not available in Stimmabgabe source files
@@ -300,7 +306,7 @@ When an AGS code doesn't exist as a *source* in the crosswalk but IS a valid *ta
 
 1. **State unharm (`01b_state_unharm_raw.R`):**
    - `filter(is.na(valid_votes) | valid_votes > 0)` → new flag column `flag_no_valid_votes` (1 = gemeindefreie Gebiete / uninhabited areas with VV=0). Rows kept.
-   - MV/ST Briefwahl-only entity removal → new flag column `flag_briefwahl_only` (1 = EV=0 but VV>0, e.g., BB 1990 mail-in misallocation, SH 1983 garbled PDF, NRW 1966 major cities missing EV).
+   - MV/ST Briefwahl-only entity removal → new flag column `flag_briefwahl_only` (1 = EV=0 but VV>0, e.g., BB 1990 mail-in misallocation, NRW 1966 major cities missing EV).
 
 2. **Federal county unharm (`01_federal_cty_unharm.R`):**
    - `filter(!grepl("999$", ags) | eligible_voters > 0 | ...)` → new flag column `flag_briefwahl_agg` (1 = fake county codes like 12999/13999 used for unattributable mail-in votes in 1994/1998). Rows kept.

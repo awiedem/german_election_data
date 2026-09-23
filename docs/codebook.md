@@ -1,6 +1,5 @@
 # GERDA Codebook
-
-2026-08-19
+2026-09-23
 
 # About this codebook
 
@@ -266,11 +265,11 @@ Unlike the other federal files, vote shares here are proportions of
 row per constituency, ballot and party — which is usually easier to work
 with than 93 party columns:
 
-| Variable     | Type      | Description                |
-|:-------------|:----------|:---------------------------|
-| `party`      | character | Normalized party name.     |
-| `votes`      | numeric   | Votes cast for that party. |
-| `vote_share` | numeric   | `votes / valid_votes`.     |
+| Variable | Type | Description |
+|:---|:---|:---|
+| `party` | character | Normalized party name. |
+| `votes` | numeric | Votes cast for that party. |
+| `vote_share` | numeric | `votes / valid_votes`. |
 
 `federal_wkr_2021_on_2025` recomputes the 2021 result on the 2025
 constituency boundaries, so that the 2021 and 2025 elections can be
@@ -297,7 +296,7 @@ columns).
 
 ## Municipality level
 
-**Files:** `state_unharm` (149,353 x 365), `state_harm_21` (82,689 x
+**Files:** `state_unharm` (149,401 x 366), `state_harm_21` (82,689 x
 376), `state_harm_23` (82,596 x 376), `state_harm_25` (82,466 x 376) in
 `data/state_elections/final/`.
 
@@ -306,7 +305,7 @@ boundary year and all begin in 1990.
 
 | Variable | Type | Description |
 |:---|:---|:---|
-| `flag_briefwahl_only` | integer | 1 where `eligible_voters == 0` and `valid_votes > 0` — a mail-in district rather than a municipality. Chiefly Brandenburg 1990, Schleswig-Holstein 1983, and Nordrhein-Westfalen 1966 major cities. |
+| `flag_briefwahl_only` | integer | Legacy diagnostic for zero reported electorate with positive votes before cleanup. It can also indicate missing or corrupt source fields and does not establish postal-district status. |
 | `flag_no_valid_votes` | integer | 1 where the row reports no valid votes. |
 | `flag_naive_turnout_above_1` | integer | 1 where uncapped turnout exceeded 1. |
 | `flag_harm_turnout_above_1` | integer | As above, after harmonization (harmonized files). |
@@ -314,6 +313,16 @@ boundary year and all begin in 1990.
 | `total_vote_share` | numeric | Sum of all party shares; a diagnostic that should be ~1. |
 | `einzelbewerber`, `einzelbewerber_1`, `einzelbewerber_2`, `einzelbewerber_innen` | numeric | Independent candidates. The source lists them under several distinct labels which are deliberately not merged, because in some state-years they identify different individuals. Sum them if you want a single independents series. |
 | `area_ags`, `population_ags`, `employees_ags`, `pop_density_ags` | numeric | Municipality covariates joined in from `ags_area_pop_emp` (harmonized files). See the covariates section. |
+
+**Schleswig-Holstein 1983.** The 1,128 municipal records contain
+in-person voters and votes only; `eligible_voters` is the full
+electorate. Postal votes cannot be assigned to municipalities in the
+source, so `turnout` is `NA`. Party shares use in-person `valid_votes`
+and cannot reproduce the all-ballot statewide result. `llsh` denotes
+Linke Liste Schleswig-Holstein, separate from `einzelbewerber` and
+`linke_pds`. Wiedenborstel has no separate result; its electorate voted
+in Hennstedt. The reviewed transcription and source controls are
+documented in `data/state_elections/derived/sh_1983/README.md`.
 
 **Zero-vote recoding.** A party that received zero votes across *all*
 municipalities in a state-year is recoded from 0 to `NA`, so that “did
@@ -613,10 +622,10 @@ Direct elections of municipal mayors (Bürgermeister /
 Oberbürgermeister), 1945–2026, covering 13 states. Head-of-county
 elections are published separately — see the Landrat section.
 
-**Files:** `mayoral_unharm` (55,597 x 18), `mayoral_harm` (52,088 x 26),
-`mayoral_candidates` (113,562 x 47), `mayor_panel` (45,363 x 34),
-`mayor_panel_harm` (45,331 x 35), `mayor_panel_annual` (281,446 x 30),
-`mayor_panel_annual_harm` (281,216 x 31) in
+**Files:** `mayoral_unharm` (55,588 x 18), `mayoral_harm` (52,074 x 25),
+`mayoral_candidates` (113,561 x 46), `mayor_panel` (41,993 x 31),
+`mayor_panel_harm` (41,946 x 32), `mayor_panel_annual` (253,437 x 27),
+`mayor_panel_annual_harm` (253,168 x 28) in
 `data/mayoral_elections/final/`.
 
 Hessen is a complete series from the introduction of direct mayoral
@@ -648,7 +657,6 @@ One row per municipality, election and round.
 |:---|:---|:---|
 | `election_type` | character | `Bürgermeisterwahl`, `Oberbürgermeisterwahl`, `VG-Bürgermeisterwahl` (Verbandsgemeinde), or `SG-Bürgermeisterwahl` (Samtgemeinde). |
 | `round` | character | `"hauptwahl"` (first round) or `"stichwahl"` (runoff). |
-| `flag_shared_ags` | logical | Distinct historical municipalities share the AGS in the source. Use `ags_name` as part of the unharmonized election key for these rows. In `mayoral_harm`, TRUE if any contributing predecessor has this flag. |
 | `winner_party` | character | Party or nominating list of the winner. This is the formal Wahlvorschlagsträger, **not** the winner’s party membership: candidates affiliated with a party frequently run as Einzelbewerber in local elections and are recorded with a blank party. Do not “correct” these against secondary sources. |
 | `winner_votes` | numeric | Votes for the winner. `NA` where the source reports shares only, or where the winner was not the first-listed Wahlvorschlag in a winner-only source. |
 | `winner_voteshare` | numeric | Winner’s share of valid votes (0–1). |
@@ -789,12 +797,16 @@ municipality that merged appears once, pointing at its successor with
 weight 1. A municipality that split appears once per successor, with
 weights summing to 1.
 
-> [!NOTE]
+<div>
+
+> **Note**
 >
 > When chaining crosswalks across several target years, verify that the
 > resulting weights still sum to 1 per source `(code, year)`.
 > Un-rescaled chained weights silently inflate or deflate harmonized
 > vote counts.
+
+</div>
 
 # Covariates
 

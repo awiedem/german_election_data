@@ -5239,8 +5239,8 @@
     "source": "data/state_elections/final/state_harm_25.csv"
   },
   "data/state_elections/final/state_unharm": {
-    "rows": 149352,
-    "columns": 365,
+    "rows": 149401,
+    "columns": 366,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
@@ -5478,6 +5478,7 @@
       "linke_pds",
       "liste_d",
       "lkr",
+      "llsh",
       "lobbyisten_fuer_kinder",
       "lupe",
       "lvp",
@@ -5598,11 +5599,11 @@
       "other",
       "cdu_csu"
     ],
-    "source_sha256": "c6230f678044d0b437b65a0f415510c4666135e9c0c04b0368aa883275d0aa2f",
-    "rds_sha256": "b812d7cd3c1da294f4d0c2813e116dcba863e84ca7ad1dd599e170a71b345b17",
+    "source_sha256": "cb12911e8c63914a310788faaa0564ed2f4ea7745de7738bdacdb4d712a42261",
+    "rds_sha256": "601fa88a031d23cff6c3923060826e8856773520152b56c1ffbeaa2a5cdd57e4",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "aad1b066062f3a7d5654db0eded6ec5b51744e1f55a69e4e1d7bdfbc4bcee999",
-    "bytes": 28721313,
+    "xlsx_sha256": "890898e6e6d8a5d3a9bec41df20c9615e2260634c75e27f6da2da64b931ac79d",
+    "bytes": 28697400,
     "source": "data/state_elections/final/state_unharm.csv"
   }
 }

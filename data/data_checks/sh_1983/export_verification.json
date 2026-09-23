@@ -1,0 +1,13 @@
+{
+  "sh_rows": 1128,
+  "excel_cells_checked": 27072,
+  "total_rows": 149401,
+  "columns": 366,
+  "source_and_export_hashes": {
+    "csv": "cb12911e8c63914a310788faaa0564ed2f4ea7745de7738bdacdb4d712a42261",
+    "rds": "601fa88a031d23cff6c3923060826e8856773520152b56c1ffbeaa2a5cdd57e4",
+    "xlsx": "890898e6e6d8a5d3a9bec41df20c9615e2260634c75e27f6da2da64b931ac79d"
+  },
+  "missing_turnout_preserved": true,
+  "identifiers_stored_as_text": true
+}

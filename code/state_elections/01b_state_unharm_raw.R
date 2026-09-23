@@ -14,7 +14,7 @@
 #### Setup ####
 rm(list = ls())
 
-packages <- c("readxl", "xml2", "here", "janitor", "tidyverse", "data.table")
+packages <- c("readxl", "xml2", "here", "janitor", "tidyverse", "data.table", "digest")
 for (pkg in packages) {
   if (!requireNamespace(pkg, quietly = TRUE)) install.packages(pkg)
   library(pkg, character.only = TRUE)
@@ -6091,7 +6091,7 @@ cat("Bremen total:", nrow(all_states[["hb"]]), "rows\n\n")
 ####  Schleswig-Holstein (SH, state 01)  — 8 elections: 1983-2022         ####
 ###############################################################################
 ##
-## All files are at Wahlbezirk (ballot district) level → aggregate to municipality.
+## Files from 1996 onward are at Wahlbezirk (ballot district) level → aggregate to municipality.
 ## The "Statistische Kennziffer" (col 1) encodes: digits 1-2 = Kreis within SH,
 ## digits 3-5 = Gemeinde, digits 6-8 = Wahlbezirk. Standard 8-digit AGS =
 ## "01" + 3-digit Kreis (zero-padded) + 3-digit Gemeinde.
@@ -6102,6 +6102,7 @@ cat("Bremen total:", nrow(all_states[["hb"]]), "rows\n\n")
 ##  - 2000, 2005, 2009: XLS with NO header rows. Data starts at row 1.
 ##       Column positions known from Infodat documentation.
 ##  - 1996: XLSX, no header rows. Only Erststimmen (no Zweitstimmen split).
+##  - 1983: Verified municipality transcription; single vote, no postal votes.
 ##
 ## NOTE: 2012 codes are sometimes 7 digits (missing leading 0 for kreisfreie
 ## Städte). Left-padded to 8 digits before processing.
@@ -6413,61 +6414,16 @@ for (i in 1:nrow(agg_muni96)) {
 }
 cat(sprintf(" %d munis, EV=%.0f\n", nrow(agg_muni96), sum(agg_muni96$eligible)))
 
-## ---- 1983: text-layer-extracted CSV (see 00_sh_1983_extract.py) ----
+## ---- 1983: verified source transcription, in-person votes only ----
 cat("SH 1983 ...")
-ocr83 <- read.csv(file.path(sh_raw_path, "sh_1983_extracted.csv"),
-                  colClasses = "character")
-
-## Map OCR column names to standard party names
-sh83_party_map <- c(
-  cdu = "cdu", spd = "spd", fdp = "fdp", ssw = "ssw",
-  dkp = "dkp", dgl = "dgl", gruene = "gruene",
-  fp = "fp", fsu = "fsu", einzelbewerber = "einzelbewerber"
-)
-
-result83 <- tibble(
-  ags             = ocr83$ags,
-  eligible_voters = as.numeric(ocr83$eligible_voters),
-  number_voters   = as.numeric(ocr83$number_voters),
-  invalid_votes   = as.numeric(ocr83$invalid_votes),
-  valid_votes     = as.numeric(ocr83$valid_votes)
-)
-
-for (ocr_col in names(sh83_party_map)) {
-  std_name <- sh83_party_map[[ocr_col]]
-  votes <- as.numeric(ocr83[[ocr_col]])
-  votes[is.na(votes)] <- 0
-  result83[[paste0(std_name, "_n")]] <- votes
-  result83[[std_name]] <- votes / result83$valid_votes
-}
-
-mapped_n_cols <- paste0(unique(sh83_party_map), "_n")
-mapped_n_cols <- mapped_n_cols[mapped_n_cols %in% names(result83)]
-result83 <- result83 |>
-  mutate(
-    other_n = valid_votes - rowSums(across(all_of(mapped_n_cols)), na.rm = TRUE),
-    other_n = pmax(other_n, 0, na.rm = TRUE),
-    other   = other_n / valid_votes
-  )
-
-result83 <- result83 |>
-  mutate(
-    election_year = 1983L,
-    state = "01",
-    election_date = as.Date("1983-03-13"),
-    turnout = number_voters / eligible_voters,
-    cdu_csu = cdu
-  ) |>
-  select(-ends_with("_n"))
-
-## Drop records with 0 valid votes (OCR artifacts)
-result83 <- result83 |> filter(valid_votes > 0)
-
-for (i in 1:nrow(result83)) {
+source(here::here("code/state_elections/sh_1983_verified.R"))
+result83 <- gerda_sh_1983_verified()
+for (i in seq_len(nrow(result83))) {
   r <- result83[i, ]
   sh_results[[paste0("1983_", r$ags)]] <- r
 }
-cat(sprintf(" %d munis, VV=%.0f\n", nrow(result83), sum(result83$valid_votes)))
+cat(sprintf(" %d munis, VV=%.0f (in-person only; turnout unavailable)\n",
+            nrow(result83), sum(result83$valid_votes)))
 
 all_states[["sh"]] <- standardise(bind_rows(sh_results))
 cat("Schleswig-Holstein total:", nrow(all_states[["sh"]]), "rows\n\n")
@@ -7220,7 +7176,7 @@ cat(sprintf("Flagged %d rows with valid_votes == 0\n", sum(state_unharm$flag_no_
 
 # Flag (but keep) Briefwahl-only entities: eligible_voters=0 but votes>0
 # These are real municipalities with mail-in vote misallocation or source gaps
-# (e.g., BB 1990, SH 1983 garbled PDF, NRW 1966 major cities)
+# (e.g., BB 1990, NRW 1966 major cities)
 state_unharm$flag_briefwahl_only <- ifelse(
   !is.na(state_unharm$eligible_voters) & state_unharm$eligible_voters == 0 &
   !is.na(state_unharm$valid_votes) & state_unharm$valid_votes > 0, 1L, 0L

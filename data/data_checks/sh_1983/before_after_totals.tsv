@@ -1,0 +1,5 @@
+field	before	after	before_missing	after_missing
+eligible_voters	1743522	1965881	135	0
+number_voters	1286010	1506849	135	0
+valid_votes	1450346	1502477	0	0
+invalid_votes	3602	4372	0	0

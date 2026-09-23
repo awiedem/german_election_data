@@ -1,0 +1,136 @@
+{
+  "election_date": "1983-03-13",
+  "rows": 1128,
+  "scope": "In-person votes only; full electorate. No municipality-level postal allocation or overall turnout.",
+  "sources": [
+    {
+      "path": "data/state_elections/raw/Landtagswahlen/Schleswig-Holstein/Schleswig-Holstein_1983_Landtagswahl.pdf",
+      "sha256": "c8bcb1d7a0b1090048a0f321a4d23c96e5036f29ba36f9fb453f8331dce140ed",
+      "use": "Election counts and printed codes"
+    },
+    {
+      "path": "data/federal_elections/municipality_level/raw/BTW83/BTW83_Erststimmen_Gemeinden.txt",
+      "sha256": "04a02e92a0ca20ae9b4424fed4dd1617884784360705b9c81ec8fbd61f1703d1",
+      "use": "Identifier/name cross-check only; no federal election counts used"
+    },
+    {
+      "path": "data/federal_elections/municipality_level/raw/BTW83/BTW83_Leitband.txt",
+      "sha256": "65a672a9cfd4f114e418cdf7add5447b448726543cb0cfeb9efadc9cfa70a326",
+      "use": "Identifier/name cross-check only; no federal election counts used"
+    }
+  ],
+  "files": {
+    "cell_evidence.tsv": "b3e4c754f3dc610d3e5057a4a6bf20a23073296554cc19191408380dcc3c0364",
+    "identifier_checks.tsv": "059053dee62c3840cee62798704aaa51e6a94d797dc15e1a720ad2ebcd7ffe75",
+    "percentage_checks.tsv": "a7aa50797e5a773aaa7a93d4c666aacb020866721d18018a3b00e2c0bfa386b5",
+    "table6_transcription.tsv": "8cd6fe1ebf47a52686fce0f811e7abb5d6488bc3d8a187c9ebe58b2fc62665d2"
+  },
+  "in_person_totals": {
+    "eligible_voters": 1965881,
+    "without_certificate": 1789979,
+    "with_certificate": 175902,
+    "number_voters": 1506849,
+    "invalid_votes": 4372,
+    "valid_votes": 1502477,
+    "cdu": 729026,
+    "spd": 669816,
+    "fdp": 31993,
+    "ssw": 19869,
+    "dkp": 1888,
+    "dgl": 1300,
+    "gruene": 48100,
+    "fp": 333,
+    "fsu": 8,
+    "einzelbewerber_llsh": 144
+  },
+  "postal_totals": {
+    "number_voters": 160445,
+    "invalid_votes": 450,
+    "valid_votes": 159995,
+    "cdu": 85531,
+    "spd": 56816,
+    "fdp": 3839,
+    "ssw": 1938,
+    "dkp": 311,
+    "dgl": 206,
+    "gruene": 11258,
+    "fp": 76,
+    "fsu": 0,
+    "einzelbewerber_llsh": 20
+  },
+  "overall_totals": {
+    "number_voters": 1667294,
+    "invalid_votes": 4822,
+    "valid_votes": 1662472,
+    "cdu": 814557,
+    "spd": 726632,
+    "fdp": 35832,
+    "ssw": 21807,
+    "dkp": 2199,
+    "dgl": 1506,
+    "gruene": 59358,
+    "fp": 409,
+    "fsu": 8,
+    "einzelbewerber_llsh": 164
+  },
+  "county_electorate": {
+    "01": 67205,
+    "02": 182285,
+    "03": 170851,
+    "04": 63110,
+    "51": 101600,
+    "53": 118398,
+    "54": 119843,
+    "55": 142064,
+    "56": 194847,
+    "57": 90141,
+    "58": 185606,
+    "59": 132090,
+    "60": 153930,
+    "61": 99625,
+    "62": 144286
+  },
+  "county_rows": {
+    "01": 1,
+    "02": 1,
+    "03": 1,
+    "04": 1,
+    "51": 117,
+    "53": 132,
+    "54": 137,
+    "55": 39,
+    "56": 49,
+    "57": 86,
+    "58": 166,
+    "59": 136,
+    "60": 94,
+    "61": 113,
+    "62": 55
+  },
+  "independent_counties": [
+    "01",
+    "54"
+  ],
+  "in_person_independents": 50,
+  "in_person_llsh": 94,
+  "overall_independents": 56,
+  "overall_llsh": 108,
+  "source_pages": {
+    "notes": 4,
+    "overall": 5,
+    "participation": 12,
+    "party_votes": 13,
+    "county_electorate": 14,
+    "municipalities": [
+      18,
+      117
+    ]
+  },
+  "validation": {
+    "count_cells": 18048,
+    "visual_count_cells": 180,
+    "visual_identifiers": 33,
+    "percentage_checks": 7959,
+    "visual_percentage_checks": 145
+  }
+}

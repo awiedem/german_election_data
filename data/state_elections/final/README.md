@@ -74,7 +74,7 @@ All individual party vote shares (e.g., `spd`, `cdu`, `gruene`, `fdp`, `linke_pd
 | Nordrhein-Westfalen | 05 | 1947--2022 | 1975--2022 | 1947--1970 county-level only |
 | Berlin | 11 | 1990--2023 | 1990--2023 | City-state (1 row/election) |
 | Bremen | 04 | 1946--2023 | 1991--2023 | City-state (2 rows: Stadt Bremen + Bremerhaven) |
-| Schleswig-Holstein | 01 | 1983--2022 | 1996--2022 | 1983 OCR-digitized |
+| Schleswig-Holstein | 01 | 1983--2022 | 1996--2022 | 1983: in-person votes only; turnout unavailable |
 | Bayern | 09 | 1946--2023 | 1990--2023 | Reports Gesamtstimmen (Erst+Zweit combined) |
 | Rheinland-Pfalz | 07 | 1979--2021 | 1991--2021 | 1979--2016 Landesstimmen only (no turnout data) |
 
@@ -101,7 +101,7 @@ Bayern reports combined Erst+Zweitstimme ("Gesamtstimmen") because both ballots 
 ### Other known issues
 
 - **HE 1958/62**: `number_voters`/`invalid_votes` not reported for non-kreisfreie municipalities (recoded to NA)
-- **SH 1983**: 135 of 1,079 municipalities lack eligible_voters/number_voters (garbled PDF text layer)
+- **SH 1983**: All 1,128 municipal result records have verified electorate and in-person counts. Postal votes cannot be assigned to municipalities, so `turnout` is `NA`; party shares exclude postal voting. `llsh` is separate from `einzelbewerber` and `linke_pds`. Wiedenborstel voted in Hennstedt and has no separate row. See [source controls and repair](../derived/sh_1983/README.md).
 - **BY 1994--2013**: `eligible_voters` NA (not in Stimmabgabe source files)
 - **BB 1990/94**: Briefwahl misallocation artifacts in OCR-extracted data
 - **NRW 1947--1970**: County-level only (synthetic AGS `050xx000`), present in unharm but cannot be harmonized. 1947/1950 were visually read from scanned PDFs at Wahlkreis level (150 WK) then aggregated to ~84 Kreise. No turnout data (only valid\_votes and party counts). 1947 parties: CDU, SPD, FDP, KPD, Zentrum, DRP, RWVP, Unabhängige. 1950 adds DP, RSF, SRP, CSAB. Minor scan-read residuals for 1947 (CDU+4, FDP-1, KPD+2, Z-5 vs official totals)
