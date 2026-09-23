@@ -119,13 +119,16 @@ county rows under that presentation.
 ## Pipeline and validation
 
 `00_nrw_1966_1970_verified.py` checks hashes, row coverage, integer values,
-identities, subtotal reconciliation and identifier mapping, then writes only
+identities, subtotal reconciliation, exact source pages and each identifier
+against the hashed legacy CSV's name/type ordering, then writes only
 under `derived/` and `data_checks/`. The old extractor routes these two years
 through the checked transcription. Its remaining legacy OCR output was moved
 outside `raw/`; older years were not re-extracted or claimed newly validated.
 
 `01b_state_unharm_raw.R` excludes these years from the legacy CSV and uses
-`nrw_verified.R`. Shares remain party votes divided by valid votes. The focused
+`nrw_verified.R`, which also compares every intermediate source field and
+identifier against the checked transcription and map before calculating shares.
+Shares remain party votes divided by valid votes. The focused
 rebuild uses the same helper to replace the 185 affected rows in the baseline
 release, preserving all other rows, column types, row order and identifiers.
 
@@ -165,6 +168,7 @@ Rscript --vanilla code/checks/rebuild_nrw_1966_1970.R "$BASELINE"
 Rscript --vanilla code/checks/check_nrw_parser.R "$BASELINE"
 python3 code/export_excel.py --only state_unharm --force
 python3 code/checks/check_nrw_exports.py "$BASELINE"
+python3 code/checks/test_nrw_verified.py
 ```
 
 For a full data build, run the ordinary `01b_state_unharm_raw.R` after generating
@@ -173,3 +177,33 @@ when integrating concurrent changes, use the full parser or a baseline that
 already includes those changes, rather than overwriting them with an older
 release snapshot. Only this checkout's `state_unharm.{csv,rds,xlsx}` and its
 Excel manifest entry are regenerated here.
+
+## Follow-up audit
+
+The 23 September 2026 follow-up audit re-read all 18 Table 2 page images,
+including party headers, total/postal row labels, geographic subtotals and the
+Siegen footnote. No further count or district-assignment errors were found.
+The rebuilt CSV, RDS and existing Excel export retain their original repair
+hashes. The 800 arithmetic checks, full affected-row CSV/RDS comparison and
+6,845 populated Excel-cell comparisons pass.
+
+The audit did reproduce validation gaps using disposable copies:
+
+- The Python builder accepted swapped Aachen/Bielefeld synthetic IDs. It now
+  checks each year/name/type/ID against the original hashed identifier source.
+  It also checks the map's geographic-level and code-type labels.
+- A wrong PDF filename and a false page pair (126/127) passed the old relative
+  page-number check. The validator now requires the exact PDF and page pair
+  for each printed row number.
+- The R loader accepted counts or IDs assigned to a different district if
+  the per-row arithmetic still balanced. It now compares all source fields
+  and identifiers with the checked transcription and map.
+- The parser regression check compared only the rows returned by the parser.
+  It now requires the complete, unique 185-record key set and the expected
+  columns, so omitted or duplicated districts cannot pass unnoticed.
+
+Eight regression tests cover valid inputs and these rejected corruptions in
+the Python builder and R loader. The parser comparison also passes; separate
+fault-injection runs reject a missing district, a duplicate district and a
+missing NPD column. Raw sources and the repaired release values are
+unchanged by this audit.

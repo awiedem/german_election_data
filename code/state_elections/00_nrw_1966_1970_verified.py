@@ -24,6 +24,11 @@ STATE_TOTALS = {
 }
 REGION_TOTALS = {1966: [24, 34, 43, 60, 75, 101],
                  1970: [23, 34, 45, 64, 80, 106]}
+PAGE_RANGES = {
+    1966: [(1, 26, 26), (27, 52, 28), (53, 78, 30), (79, 103, 32)],
+    1970: [(1, 25, 26), (26, 47, 28), (48, 66, 30),
+           (67, 82, 32), (83, 111, 34)],
+}
 
 
 def require(condition, message):
@@ -68,7 +73,12 @@ def load_verified():
             require(r["type"] in ("krfr", "kreis", "agg") and r["source_row"] == "a",
                     f"Wrong row semantics: {year} {nr}")
             require(0 < r["number_voters"] <= r["eligible_voters"], f"Turnout: {year} {nr}")
-            require(r["pdf_right"] == r["pdf_left"] + 1 and
+            left = next(page for first, last, page in PAGE_RANGES[year]
+                        if first <= nr <= last)
+            require(r["source_pdf"] == f"Nordrhein-Westfalen_{year}_Landtagswahl.pdf",
+                    f"Source PDF: {year} {nr}")
+            require(r["pdf_left"] == left and
+                    r["pdf_right"] == r["pdf_left"] + 1 and
                     r["printed_left"] == r["pdf_left"] - 2 and
                     r["printed_right"] == r["pdf_right"] - 2,
                     f"Page reference: {year} {nr}")
@@ -101,15 +111,19 @@ def load_verified():
     return rows, diagnostics
 
 
-def build(source_root):
-    sources = json.loads((DERIVED / "sources.json").read_text())
-    for source in sources.values():
-        path = source_root / source["file"]
-        require(hashlib.sha256(path.read_bytes()).hexdigest() == source["sha256"],
-                f"Source hash mismatch (possibly an LFS pointer): {path}")
-    rows, diagnostics = load_verified()
+def load_units(rows, legacy_path):
     # Preserve the published IDs, which followed the legacy CSV's name order,
     # not the printed table order. Never renumber units during a count repair.
+    with legacy_path.open(encoding="utf-8", newline="") as stream:
+        legacy = list(csv.DictReader(stream))
+    published_ids = {}
+    for year, size in [(1966, 95), (1970, 90)]:
+        entries = [r for r in legacy if r["election_year"] == str(year)]
+        require(len(entries) == size, f"Legacy identifier coverage: {year}")
+        for number, entry in enumerate(entries, 1):
+            key = year, entry["name"], entry["type"]
+            require(key not in published_ids, f"Duplicate legacy unit: {key}")
+            published_ids[key] = f"050{number:02d}000"
     with (DERIVED / "unit_identifiers.tsv").open(encoding="utf-8") as stream:
         identifiers = list(csv.DictReader(stream, delimiter="\t"))
     source_units = {(r["election_year"], r["lfd_nr"]): r for r in rows if r["type"] != "agg"}
@@ -123,7 +137,24 @@ def build(source_root):
         row = source_units[key]
         require((row["name"], row["type"]) == (identifier["name"], identifier["type"]),
                 f"Identifier/source unit mismatch: {key}")
+        require(identifier["ags"] == published_ids.get((key[0], row["name"], row["type"])),
+                f"Published identifier changed: {key} {row['name']}")
+        require(identifier["geographic_level"] ==
+                {"krfr": "county_free_city", "kreis": "county"}[row["type"]] and
+                identifier["code_type"] == "synthetic_year_specific",
+                f"Identifier semantics: {key}")
         units.append(dict(ags=identifier["ags"], **row))
+    return sorted(units, key=lambda r: (r["election_year"], r["ags"]))
+
+
+def build(source_root):
+    sources = json.loads((DERIVED / "sources.json").read_text())
+    for source in sources.values():
+        path = source_root / source["file"]
+        require(hashlib.sha256(path.read_bytes()).hexdigest() == source["sha256"],
+                f"Source hash mismatch (possibly an LFS pointer): {path}")
+    rows, diagnostics = load_verified()
+    units = load_units(rows, source_root / sources["legacy_identifiers"]["file"])
     write_table(DERIVED / "nrw_1966_1970_kreis.csv", units)
     write_table(CHECKS / "source_reconciliation.tsv", diagnostics, "\t")
     print(f"Validated {len(rows)} source rows, {len(units)} units, "

@@ -23,9 +23,14 @@ b <- run_nrw('code/state_elections/01b_state_unharm_raw.R')
 keep <- function(x) x[!x$election_year%in%c(1966,1970),]
 stopifnot(identical(keep(a),keep(b)))
 new <- readRDS('data/state_elections/final/state_unharm.rds')
-key <- function(x) paste(x$election_year,x$ags)
+key <- function(x) paste(x$state,x$election_year,x$ags)
 affected <- b$election_year%in%c(1966,1970)
 b <- b[affected,]
+expected <- new[new$state == "05" & new$election_year %in% c(1966,1970),]
+stopifnot(nrow(b) == 185L, nrow(expected) == 185L,
+          !anyDuplicated(key(b)), !anyDuplicated(key(expected)),
+          setequal(key(b), key(expected)),
+          all(intersect(names(a), names(new)) %in% names(b)))
 z <- new[match(key(b),key(new)),]
 # Final cleanup drops globally empty party columns; they must contain no votes.
 for (k in setdiff(names(b),names(z))) stopifnot(all(is.na(b[[k]]) | b[[k]]==0))

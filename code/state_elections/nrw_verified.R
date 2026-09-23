@@ -1,8 +1,26 @@
 # Source-verified county / county-free-city results, including postal votes.
 # Synthetic IDs are year-specific row identifiers, not official municipal AGS.
 gerda_nrw_verified_results <- function(path =
-    "data/state_elections/derived/nrw_1966_1970/nrw_1966_1970_kreis.csv") {
+    "data/state_elections/derived/nrw_1966_1970/nrw_1966_1970_kreis.csv",
+    reference_dir = "data/state_elections/derived/nrw_1966_1970") {
   x <- read.csv(path, colClasses = "character", check.names = FALSE)
+  # Do not let a stale or misassigned intermediate bypass the checked inputs.
+  transcription <- read.delim(file.path(reference_dir, "table2_transcription.tsv"),
+                               colClasses = "character", check.names = FALSE)
+  identifiers <- read.delim(file.path(reference_dir, "unit_identifiers.tsv"),
+                             colClasses = "character", check.names = FALSE)
+  reference <- transcription[transcription$type != "agg", ]
+  source_key <- function(d) paste(d$election_year, d$lfd_nr, sep = "/")
+  stopifnot(nrow(reference) == 185L, nrow(identifiers) == 185L,
+            !anyDuplicated(source_key(x)), !anyDuplicated(source_key(reference)),
+            !anyDuplicated(source_key(identifiers)),
+            setequal(source_key(x), source_key(reference)),
+            setequal(source_key(x), source_key(identifiers)))
+  matched <- match(source_key(x), source_key(reference))
+  for (field in names(reference)) {
+    stopifnot(identical(x[[field]], reference[[field]][matched]))
+  }
+  stopifnot(identical(x$ags, identifiers$ags[match(source_key(x), source_key(identifiers))]))
   parties <- c("cdu", "spd", "fdp", "zentrum", "uap", "fsu", "dkp", "npd")
   counts <- c("eligible_voters", "number_voters", "invalid_votes", "valid_votes", parties)
   stopifnot(nrow(x) == 185L, setequal(unique(x$election_year), c("1966", "1970")),
