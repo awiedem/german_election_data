@@ -4487,11 +4487,11 @@
       "total_vote_share",
       "perc_total_votes_incongruence"
     ],
-    "source_sha256": "0f20912252af9a89f2de3dd4228ad481b607db52323b1087052a19cf9330e5d6",
-    "rds_sha256": "516e8f3fa203174ab806ccbeb50b8a055464f03f789012d5c5c98e48dde6d36d",
+    "source_sha256": "52ff9972c3b3257fa140a5e625cd3db930737eb8976cbe5ecb1470086a7f4fb2",
+    "rds_sha256": "b80058cfbbf071eb295fe49c4cb4c65ff256b7d53f24803a12c942bb2b3630a9",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "7c369444ffc394bcba94c614647e0e3b33bb947953aa9ca4facf2309e435e515",
-    "bytes": 22501151,
+    "xlsx_sha256": "a2e3c7566687f1bb5ad9d3e51e5253d0818cb28bf6822ba82a994e88c156cd5d",
+    "bytes": 22428830,
     "source": "data/state_elections/final/state_harm_21.csv"
   },
   "data/state_elections/final/state_harm_23": {
@@ -4859,11 +4859,11 @@
       "total_vote_share",
       "perc_total_votes_incongruence"
     ],
-    "source_sha256": "229234b7b110f562ca9634bf6f5d059207ef5618b6d194164d12417ef61174a4",
-    "rds_sha256": "d7e2b50ae1fc421a6fe04204cb6416c47b97c427760b538df11c3ea7e0263a80",
+    "source_sha256": "77f83d64313f19d8cd94c234bc93b2746ee9ac873be8e10683b0b9ea9439206b",
+    "rds_sha256": "a4e675c1b444a21bfa5b3307ad49d938f4e967530631b474106886e3f8292f87",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "abf7cb7c7219b5993a014e6f7cd44fe8a8583755d0a7fc2dfa69be9c9aec1d9c",
-    "bytes": 22629298,
+    "xlsx_sha256": "cdd712362ddd3c9b61d699a3993cf872c55408903746af5db6a99fbadf0186b3",
+    "bytes": 22560035,
     "source": "data/state_elections/final/state_harm_23.csv"
   },
   "data/state_elections/final/state_harm_25": {
@@ -5231,11 +5231,11 @@
       "total_vote_share",
       "perc_total_votes_incongruence"
     ],
-    "source_sha256": "566e066bd506ca11b4e8fd4e709499e70beecce8f927b1c4e40bd6e6051b71ef",
-    "rds_sha256": "146ead3008575d6ac5c00443a0f38613e98e89fcdd9274b93badb9cb1cfed41b",
+    "source_sha256": "39dc204568887028f83aed091287cd86c8bb02d68bdf464f43a7a3e36883c55f",
+    "rds_sha256": "55cf695beed30298c5f2835b0c6c3e1064e431d6b73a2ba09779266a4b61087d",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "e10dea805fc19a5f6143754cd1d72ca8e5b7964959cf8103a61f7313dbfc9f91",
-    "bytes": 22713944,
+    "xlsx_sha256": "e773d275dc177fbbbd5e03ceef5c7360cf90e3989bb48ad308d2df1bf07db416",
+    "bytes": 22648287,
     "source": "data/state_elections/final/state_harm_25.csv"
   },
   "data/state_elections/final/state_unharm": {
@@ -5598,11 +5598,11 @@
       "other",
       "cdu_csu"
     ],
-    "source_sha256": "c6230f678044d0b437b65a0f415510c4666135e9c0c04b0368aa883275d0aa2f",
-    "rds_sha256": "b812d7cd3c1da294f4d0c2813e116dcba863e84ca7ad1dd599e170a71b345b17",
+    "source_sha256": "7316b9afe07f0f50a2becf0de6ecc615be246de4222b0251addb4a1acb2ee019",
+    "rds_sha256": "e9a2665661c1ead699c19b41d096ff5e5a4c499582e85eb666af5201ae6642f6",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "aad1b066062f3a7d5654db0eded6ec5b51744e1f55a69e4e1d7bdfbc4bcee999",
-    "bytes": 28721313,
+    "xlsx_sha256": "f9050fce6e4c34defe18383ff6d4524758a53011a9399009bc03a1b3877b9eab",
+    "bytes": 28646875,
     "source": "data/state_elections/final/state_unharm.csv"
   }
 }

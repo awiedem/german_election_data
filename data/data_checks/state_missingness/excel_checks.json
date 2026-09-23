@@ -1,0 +1,66 @@
+[
+  {
+    "dataset": "data/state_elections/final/state_unharm",
+    "rows": 149352,
+    "populated_cells": 4004647,
+    "sampled_rows": [
+      1,
+      2,
+      3,
+      4,
+      74677,
+      149353
+    ],
+    "invalid_votes_checked": 149352,
+    "invalid_votes_missing": 22295,
+    "invalid_votes_zero": 3134
+  },
+  {
+    "dataset": "data/state_elections/final/state_harm_21",
+    "rows": 82527,
+    "populated_cells": 2973846,
+    "sampled_rows": [
+      1,
+      2,
+      3,
+      4,
+      41264,
+      82528
+    ],
+    "invalid_votes_checked": 82527,
+    "invalid_votes_missing": 13861,
+    "invalid_votes_zero": 1494
+  },
+  {
+    "dataset": "data/state_elections/final/state_harm_23",
+    "rows": 82436,
+    "populated_cells": 2993732,
+    "sampled_rows": [
+      1,
+      2,
+      3,
+      4,
+      41219,
+      82437
+    ],
+    "invalid_votes_checked": 82436,
+    "invalid_votes_missing": 13861,
+    "invalid_votes_zero": 1485
+  },
+  {
+    "dataset": "data/state_elections/final/state_harm_25",
+    "rows": 82301,
+    "populated_cells": 3016416,
+    "sampled_rows": [
+      1,
+      2,
+      3,
+      4,
+      41151,
+      82302
+    ],
+    "invalid_votes_checked": 82301,
+    "invalid_votes_missing": 13855,
+    "invalid_votes_zero": 1472
+  }
+]

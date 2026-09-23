@@ -1,5 +1,11 @@
 # GERDA: German Election Database
 
+For share denominators, vote units, missing values and federal 2021 result
+versions, see the [codebook](docs/codebook.md#denominators-and-result-versions).
+State-election [coverage, completeness and column schemas](data/state_elections/metadata/README.md)
+identify available elections and fields; NRW 1966/1970 and SH 1983 retain
+unresolved extraction limitations.
+
 ## Table of Contents
 
 - [Overview](#overview)

@@ -79,13 +79,42 @@ These columns appear, with the same meaning, in every election-result dataset.
 Any of these may be `NA` where the source does not report them; the dataset
 sections and the usage notes name the specific state-years affected.
 
+## Denominators and result versions
+
+Shares are proportions, but the denominator is part of the dataset contract:
+
+| File family | Recover party counts with | Vote unit |
+| :--- | :--- | :--- |
+| Federal county and municipality share files | `share * number_voters` | Selected second-vote party count; denominator includes voters casting invalid votes |
+| Federal constituency share files | `share * valid_votes` | Votes for the selected `stimme` |
+| State municipality share files | `share * valid_votes` | Party/list votes; Bayern uses Gesamtstimmen, Hamburg/Bremen multi-vote totals where applicable |
+| State constituency share files | `share * valid_votes` | Votes for the selected `stimme` |
+
+For known positive denominators, a federal county/municipality share can be
+converted to a valid-vote share by `share * number_voters / valid_votes`.
+This changes the denominator only; it does not align result versions.
+Do not add turnout, count columns, flags, covariates or overlapping derived
+shares to individual party shares. A sum of federal county/municipality party
+shares need not be 1 because the denominator includes invalid votes.
+
+**Federal 2021 has two result versions.** In `federal_cty_unharm`,
+`sum(spd * number_voters)` gives 11,955,434: the
+[original certified result](https://www.bundeswahlleiterin.de/en/dam/jcr/5d304be8-7412-4442-972a-e4dfd9e55ce9/20211020_niederschrift_3bwa.pdf).
+In `federal_wkr_unharm`, selecting `zweitstimme` and summing
+`spd * valid_votes` gives 11,901,558: the
+[result incorporating the February 2024 Berlin repeat election](https://www.bundeswahlleiterin.de/bundestagswahlen/2021/ergebnisse/bund-99.html).
+These are not interchangeable releases. Boundary harmonization does not
+synchronize election-result versions; retain the file version when comparing
+geographies. This update preserves both reported series.
+
 ## Party columns
 
 Party results are stored one column per party, named in snake_case
 (`cdu`, `spd`, `gruene`, `linke_pds`, `afd`, `fdp`, `freie_waehler`, ...).
-Party labels are normalized across states and years by a shared
-`normalise_party()` mapping so that the same political party carries the same
-column name everywhere.
+Party labels are normalized within pipelines. Aliases can differ across files
+(e.g. `rep` and `die_republikaner_rep`); column names alone do not establish
+party identity. Do not merge distinct regional lists or similarly named voter
+groups without reviewing the source.
 
 Values are **vote shares as proportions (0--1)**, not percentages. The
 denominator differs by pipeline and is stated in each dataset section — most use
@@ -96,11 +125,11 @@ Recurring aggregate columns:
 | Variable | Type | Description |
 | :------------------------------ | :-------- | :---------------------------------------------------- |
 | `other` | numeric | Combined share of all parties not carried as their own column. Typically computed as a residual, floored at zero. |
-| `cdu_csu` | numeric | Combined CDU/CSU share. CDU and CSU never compete in the same state, so this is the union of the two and is the column to use for cross-state comparison. |
+| `cdu_csu` | numeric | Derived CDU plus CSU share where both are recorded, otherwise the available component. Exclude it when summing individual party columns. The official MV 1990 source lists CSU and DSU separately; DSU is not part of this aggregate. |
 | `far_right` | numeric | Combined share of parties classified as far right. |
 | `far_left` | numeric | Combined share of parties classified as far left, **excluding** Die Linke/PDS. |
 | `far_left_w_linke` | numeric | As `far_left`, but including Die Linke/PDS. |
-| `total_vote_share` | numeric | Sum of all party shares in the row. A diagnostic: it should be ~1. |
+| `total_vote_share` | numeric | Pipeline-specific party-share diagnostic. In state harmonized files it excludes `other` and derived aggregates, so a residual can leave it below 1. |
 | `waehlergruppen` | numeric | Combined share of local voter groups (municipal and county elections). |
 | `einzelbewerber` | numeric | Combined share of independent candidates (municipal and county elections). |
 
@@ -182,7 +211,7 @@ recorded and the flag tells you how to interpret it. Values are 1/0 or
 | `flag_harm_turnout_above_1` | As above, arising after harmonization. |
 | `flag_turnout_above_1` | European-elections equivalent; turnout was capped at 1. |
 | `flag_no_valid_votes` | The row reports no valid votes. |
-| `flag_briefwahl_only` | A "municipality" that is really a mail-in voting district: `eligible_voters == 0` but `valid_votes > 0`. |
+| `flag_briefwahl_only` | Legacy diagnostic for zero electorate with positive votes before cleanup. In the state pipeline this also captures missing/corrupt fields; it does not establish postal-district status. Consult the dataset-specific notes. |
 | `flag_briefwahl_agg` | A county-level mail-in aggregate row (`ags` ending `999`, `eligible_voters == 0`), present only in 1994 and 1998. Filter these out for balanced panels. |
 | `flag_total_votes_incongruent` | The summed party votes do not match `valid_votes`. |
 | `flag_other_party_residual` | The `other` column was derived as a residual rather than reported. |
@@ -191,7 +220,7 @@ recorded and the flag tells you how to interpret it. Values are 1/0 or
 # Federal elections
 
 Bundestag results. Municipality level 1980--2025, county level 1953--2025,
-constituency level 1990--2025. Vote shares in the municipality- and county-level
+constituency level 2002--2025. Vote shares in the municipality- and county-level
 files are proportions of **`number_voters`**, following the original GERDA
 convention; the Wahlkreis files use `valid_votes`.
 
@@ -305,21 +334,21 @@ carries the identifier, turnout and party blocks (47 party columns) plus
 # State elections
 
 Landtagswahlen. Municipality level 1946--2026, constituency level as a separate
-set of files. Vote shares are proportions of `valid_votes`. Every party that
-ever ran is preserved as its own column (352 party columns).
+set of files. Vote shares are proportions of `valid_votes`. Individual source party categories are retained in separate columns.
 
 ## Municipality level
 
-**Files:** `state_unharm` (149,353 x 365), `state_harm_21` (82,689 x 376),
-`state_harm_23` (82,596 x 376), `state_harm_25` (82,466 x 376) in
-`data/state_elections/final/`.
+**Files:** `state_unharm`, `state_harm_21`, `state_harm_23`, and
+`state_harm_25` in `data/state_elections/final/`. The generated
+`data/state_elections/metadata/election_completeness.csv` lists actual elections,
+reporting geography and field completeness for each file.
 
 Shared blocks apply. The three harmonized files differ only in target boundary
 year and all begin in 1990.
 
 | Variable | Type | Description |
 | :------------------------------ | :-------- | :---------------------------------------------------- |
-| `flag_briefwahl_only` | integer | 1 where `eligible_voters == 0` and `valid_votes > 0` — a mail-in district rather than a municipality. Chiefly Brandenburg 1990, Schleswig-Holstein 1983, and Nordrhein-Westfalen 1966 major cities. |
+| `flag_briefwahl_only` | int/num | Legacy arithmetic flag: electorate was zero while valid votes were positive before electorate/voters/turnout were set to `NA`. It includes source gaps and extraction errors (notably SH 1983 and NRW 1966/1970), so it does not prove that a row is a postal district. Values are 0/1, never party shares. |
 | `flag_no_valid_votes` | integer | 1 where the row reports no valid votes. |
 | `flag_naive_turnout_above_1` | integer | 1 where uncapped turnout exceeded 1. |
 | `flag_harm_turnout_above_1` | integer | As above, after harmonization (harmonized files). |
@@ -328,11 +357,69 @@ year and all begin in 1990.
 | `einzelbewerber`, `einzelbewerber_1`, `einzelbewerber_2`, `einzelbewerber_innen` | numeric | Independent candidates. The source lists them under several distinct labels which are deliberately not merged, because in some state-years they identify different individuals. Sum them if you want a single independents series. |
 | `area_ags`, `population_ags`, `employees_ags`, `pop_density_ags` | numeric | Municipality covariates joined in from `ags_area_pop_emp` (harmonized files). See the covariates section. |
 
-**Zero-vote recoding.** A party that received zero votes across *all*
+**Zero-vote recoding in harmonized files.** A party that received zero votes across *all*
 municipalities in a state-year is recoded from 0 to `NA`, so that "did not
 participate" is distinguishable from "ran and got no votes". This is a
 state-year-wide rule, unlike the per-municipality rule used for municipal
 elections.
+
+## Missingness, source quality and column selection
+
+`NA` (empty in CSV/Excel) means unavailable; an observed zero is distinct.
+`sum(x, na.rm = TRUE)` returns zero for an entirely missing vector. For totals
+of known observations use the helper below and report the number observed.
+A partial sum is not a statewide total, and turnout requires voters and
+eligible voters for the same set of units.
+
+```r
+sum_known <- function(x) if (all(is.na(x))) NA_real_ else sum(x, na.rm = TRUE)
+known <- sum(!is.na(x))
+total_known <- sum_known(x)
+```
+
+- **RP 1979--2016:** valid party/list counts are available; electorate,
+  voters, invalid votes and turnout are unavailable. Unknown invalid counts
+  remain `NA` through aggregation and export.
+- **HE 1958/1962:** voter and invalid counts are absent for most municipalities;
+  the known cities cannot supply statewide turnout. The source has state
+  totals, but they do not fill missing municipality values.
+- **BY 1994--2013:** eligible counts are missing; voter counts are complete
+  (2,056 municipality observations per election).
+- **NRW 1966/1970:** unresolved extraction corruption affects participation
+  and vote counts. These are county/county-free-city units with synthetic AGS,
+  not municipalities. Avoid turnout and statewide count reconstruction until
+  source reconciliation is complete.
+- **SH 1983:** 135 of 1,079 rows lack participation fields. Among the 944 rows
+  with both voter and valid-vote counts, valid votes sum to 1,329,758 versus
+  1,286,010 voters; 253 rows have more valid votes than voters. This is not
+  explained by missing coverage alone. Party shares are not independently
+  validated, and the legacy postal flag does not identify the cause.
+- **MV 1990:** the municipality source covers in-person voting. Its CSU and
+  DSU entries are separate, as in the [official state result](https://www.laiv-mv.de/static/LAIV/Wahlen/Dateien/Dokumente/Landtagswahlen/Ergebnisseite/LW%201990%20Erst-Zweitstimmen.pdf).
+  Preserve both; differences from the complete state totals reflect coverage.
+
+`data/state_elections/metadata/source_limitations.csv` supplies a narrow
+warning list keyed by dataset, state and year. Its `flag_source_unreliable`
+can be joined for filtering without changing the election-file schema. A
+missing warning is not evidence that an election has passed a source audit.
+The completeness table measures recorded fields, not their correctness.
+
+Current municipality coverage begins in **BW 1956, TH 1994 and NI 1974**;
+min/max years do not promise an uninterrupted election series. TH 1990 is
+available at constituency level. See the generated completeness table for
+actual elections and the state-data README for additional coverage limits.
+
+Use the generated `column_schema.csv` to select the columns for the file at
+hand. For example, with the repository's `state_unharm` loaded:
+
+```r
+schema <- read.csv("data/state_elections/metadata/column_schema.csv")
+party_cols <- subset(schema, dataset == "state_unharm" &
+  role %in% c("party_share", "residual_share"))$column
+party_data <- state_unharm[party_cols]
+# This excludes cdu_csu, flags, participation, turnout and covariates.
+# Keep NA visible: a sum of known categories does not prove full coverage.
+```
 
 ## Constituency level
 
@@ -346,9 +433,9 @@ and long shapes as the federal Wahlkreis files, with `stimme`, `wkr_nr`,
 `flag_naive_turnout_above_1`. The long file carries `party`, `votes` and
 `vote_share`.
 
-| Variable | Type | Description |
-|:---|:---|:---|
-| `flag_wkr_boundaries_recomputed` | integer | 1 where the constituency figures were back-cast by the statistical office onto a *later* election's Wahlkreiseinteilung, so they are not on the boundaries in force on election day. Hessen 2013 (106 of 110 rows) and Baden-Württemberg 2001 (11 of 70 rows) — see below. 0 everywhere else, including every other state-year. |
+| Integer flag | Description |
+| :--- | :--- |
+| `flag_wkr_boundaries_recomputed` | 1 where the constituency figures were back-cast by the statistical office onto a *later* election's Wahlkreiseinteilung, so they are not on the boundaries in force on election day. Hessen 2013 (106 of 110 rows) and Baden-Württemberg 2001 (11 of 70 rows) — see below. 0 everywhere else, including every other state-year. |
 
 **`wkr_name` is per election year, not per constituency number.** States
 renumber and rename their Wahlkreise, so the same `wkr_nr` can be a different
@@ -356,6 +443,17 @@ constituency in a different year: Brandenburg's WK 11 is *Oranienburg I* in
 1990, *Havelland I* in 1994 and 1999, and *Uckermark I* from 2004 onwards.
 Always key on `(state, election_year, wkr_nr)`; never join constituencies
 across years on the number alone.
+
+**Select one party-result ballot per constituency.** Use
+`stimme %in% c("zweitstimme", "einzelstimme")` for the party/list result.
+Filtering only `zweitstimme` drops single-vote BW elections through 2021,
+Saarland and earlier NRW constituency elections. Bremen currently uses the
+`zweitstimme` label. Assert one selected row per `(state, election_date, wkr_nr)`
+in the wide file before aggregating participation; combining first and second
+ballots doubles the same voters. The long files repeat participation across
+parties as well. Keep constituency IDs as strings, including Berlin's `01-01`.
+`state_unharm` has no `stimme` column: it already selects the party/list result
+or the state's combined-vote convention.
 
 **Hessen 2013 sits on the 2018 constituency boundaries.** The only published
 constituency figures for the 2013 Landtagswahl are the comparison columns of
