@@ -157,8 +157,9 @@ implementation is identical before and after these documentation edits.
 
 The website and R-package changes are in isolated local checkouts, on
 `codex/missingness-documentation` in each repository. Shared working files were
-not edited. Website commits: `dcf6f0d` and audit correction `fc577fb`; package
-commits: `fada313` and audit correction `0e1fee6`.
+not edited. Website commits: `dcf6f0d`, audit correction `fc577fb`, and release-note
+documentation `0e2d95e`; package commits: `fada313`, audit correction `0e1fee6`,
+and development NEWS clarification `2264e3d`.
 The website changes cover `usage_notes.md`, `election-data.md` and
 an update-log draft with `published: false`; its Jekyll build passed (existing
 Sass deprecation warnings only), and the draft is absent from the built log.
@@ -170,6 +171,10 @@ were skipped by the suite. The network-dependent schema suite could not download
 sandbox: three tests skipped and its rename-notice test failed two assertions
 because no successful download occurred. No loader behavior was changed to
 address that unrelated test limitation.
+
+The repository README links directly to this audit and the unresolved source
+limitations. The unpublished website update also records the schema correction
+and imputed-weight caveat; package NEWS records the caveat for package users.
 
 The integration coordinator must combine this work with the separately reviewed
 NRW and BW changes, then rebuild the shared final files once:
