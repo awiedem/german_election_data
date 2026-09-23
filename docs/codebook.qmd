@@ -66,15 +66,16 @@ which shared blocks apply.
 
 ## Turnout block
 
-These columns appear, with the same meaning, in every election-result dataset.
+These columns describe participation and vote totals. Source availability, vote
+units and harmonization conventions vary by dataset.
 
 | Variable | Type | Description |
 | :------------------------------ | :-------- | :---------------------------------------------------- |
 | `eligible_voters` | numeric | Number of eligible voters (Wahlberechtigte). |
 | `number_voters` | numeric | Number of voters (Wähler), including those casting invalid ballots. |
-| `valid_votes` | numeric | Number of valid votes (gültige Stimmen). In multi-vote systems this counts cast *votes*, not ballots — see "Multi-vote systems" below. |
+| `valid_votes` | numeric | Number of valid votes (gültige Stimmen), subject to the imputed-weight exception below. In multi-vote systems this counts cast *votes*, not ballots — see "Multi-vote systems" below. |
 | `invalid_votes` | numeric | Number of invalid votes (ungültige Stimmen). |
-| `turnout` | numeric | `number_voters / eligible_voters`, a proportion in 0--1. Where mail-in allocation pushes the naive ratio above 1 it is capped, and a flag records that it was capped. |
+| `turnout` | numeric | `number_voters / eligible_voters`. Treatment of ratios above 1 varies by pipeline; flags record those cases. State municipality files retain finite ratios up to 1.5 and replace larger or non-finite ratios with `NA`. |
 
 Any of these may be `NA` where the source does not report them; the dataset
 sections and the usage notes name the specific state-years affected.
@@ -83,12 +84,21 @@ sections and the usage notes name the specific state-years affected.
 
 Shares are proportions, but the denominator is part of the dataset contract:
 
-| File family | Recover party counts with | Vote unit |
+| File family | Share-to-count calculation | Vote unit |
 | :--- | :--- | :--- |
 | Federal county and municipality share files | `share * number_voters` | Selected second-vote party count; denominator includes voters casting invalid votes |
 | Federal constituency share files | `share * valid_votes` | Votes for the selected `stimme` |
 | State municipality share files | `share * valid_votes` | Party/list votes; Bayern uses Gesamtstimmen, Hamburg/Bremen multi-vote totals where applicable |
 | State constituency share files | `share * valid_votes` | Votes for the selected `stimme` |
+
+**Imputed denominators and rounding.** State harmonization fills missing
+`valid_votes` with positive voter counts, then positive eligible counts, then
+a unit weight. For example, Bremen 1991/1995 uses voter counts because the
+source provides party percentages without valid-vote totals. Multiplying
+these shares by `valid_votes` yields weighted proxy counts, not observed
+party votes. Harmonized counts are rounded to integers, so the share
+round-trip can also introduce small differences. Completeness metadata
+counts nonmissing stored values, including these proxies.
 
 For known positive denominators, a federal county/municipality share can be
 converted to a valid-vote share by `share * number_voters / valid_votes`.
@@ -201,20 +211,20 @@ Several German elections give each voter more than one vote, which changes what
 
 ## Flag columns
 
-Flags are diagnostics, never silent corrections: the underlying value is left as
-recorded and the flag tells you how to interpret it. Values are 1/0 or
-`TRUE`/`FALSE`.
+Flags record conditions detected by the pipeline. Some accompany cleanup,
+such as setting unusable participation values to `NA` or capping turnout;
+consult the dataset-specific definition. Values are 1/0 or `TRUE`/`FALSE`.
 
 | Variable | Description |
-| :------------------------------ | :-------------------------------------------------------------- |
-| `flag_naive_turnout_above_1` | The uncapped `number_voters / eligible_voters` exceeded 1, generally a mail-in allocation rounding artifact. |
+| :---------------------------------------- | :------------------------------------------------------------ |
+| `flag_naive_turnout_above_1` | The finite `number_voters / eligible_voters` exceeded 1 before cleanup; this can reflect allocation effects or source problems. |
 | `flag_harm_turnout_above_1` | As above, arising after harmonization. |
 | `flag_turnout_above_1` | European-elections equivalent; turnout was capped at 1. |
 | `flag_no_valid_votes` | The row reports no valid votes. |
 | `flag_briefwahl_only` | Legacy diagnostic for zero electorate with positive votes before cleanup. In the state pipeline this also captures missing/corrupt fields; it does not establish postal-district status. Consult the dataset-specific notes. |
 | `flag_briefwahl_agg` | A county-level mail-in aggregate row (`ags` ending `999`, `eligible_voters == 0`), present only in 1994 and 1998. Filter these out for balanced panels. |
 | `flag_total_votes_incongruent` | The summed party votes do not match `valid_votes`. |
-| `flag_other_party_residual` | The `other` column was derived as a residual rather than reported. |
+| `flag_other_party_residual` | In state harmonized files, the sum of individual party shares excluding `other` differs from 1 by more than 0.001. |
 | `flag_unsuccessful_naive_merge`, `flag_aggregated` | See the harmonization block above. |
 
 # Federal elections
@@ -343,8 +353,11 @@ set of files. Vote shares are proportions of `valid_votes`. Individual source pa
 `data/state_elections/metadata/election_completeness.csv` lists actual elections,
 reporting geography and field completeness for each file.
 
-Shared blocks apply. The three harmonized files differ only in target boundary
-year and all begin in 1990.
+Shared blocks apply. The three harmonized files target different boundary
+years and all begin in 1990. Their municipality-name column is `ags_name_21`
+in `state_harm_21` and `ags_name` in `state_harm_23`/`state_harm_25`.
+The source flags `flag_briefwahl_only`, `flag_no_valid_votes` and
+`flag_naive_turnout_above_1` are present only in `state_unharm`.
 
 | Variable | Type | Description |
 | :------------------------------ | :-------- | :---------------------------------------------------- |
@@ -352,8 +365,8 @@ year and all begin in 1990.
 | `flag_no_valid_votes` | integer | 1 where the row reports no valid votes. |
 | `flag_naive_turnout_above_1` | integer | 1 where uncapped turnout exceeded 1. |
 | `flag_harm_turnout_above_1` | integer | As above, after harmonization (harmonized files). |
-| `flag_other_party_residual` | integer | 1 where `other` was computed as a residual rather than reported by the source. |
-| `total_vote_share` | numeric | Sum of all party shares; a diagnostic that should be ~1. |
+| `flag_other_party_residual` | integer | In harmonized files, 1 where `total_vote_share` is below 0.999 or above 1.001. `other` is computed as a residual in every row; this flag records the discrepancy threshold. |
+| `total_vote_share` | numeric | In harmonized files, sum of individual party shares excluding `other` and derived aggregates, rounded to eight decimals. A residual can leave it below 1. |
 | `einzelbewerber`, `einzelbewerber_1`, `einzelbewerber_2`, `einzelbewerber_innen` | numeric | Independent candidates. The source lists them under several distinct labels which are deliberately not merged, because in some state-years they identify different individuals. Sum them if you want a single independents series. |
 | `area_ags`, `population_ags`, `employees_ags`, `pop_density_ags` | numeric | Municipality covariates joined in from `ags_area_pop_emp` (harmonized files). See the covariates section. |
 

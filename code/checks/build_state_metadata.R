@@ -6,7 +6,7 @@ dir.create(out, recursive = TRUE, showWarnings = FALSE)
 stems <- c("state_unharm", "state_harm_21", "state_harm_23", "state_harm_25")
 counts <- c("eligible_voters", "number_voters", "valid_votes", "invalid_votes")
 identifiers <- c("ags", "county", "state", "state_name", "election_year",
-                 "election_date", "ags_name_21", "ags_name_23", "ags_name_25")
+                 "election_date", "ags_name", "ags_name_21", "ags_name_23", "ags_name_25")
 derived <- c("cdu_csu", "far_right", "far_left", "far_left_w_linke")
 diagnostics <- c("total_vote_share", "perc_total_votes_incongruence",
                  "perc_total_votes_incogruence")
@@ -22,6 +22,10 @@ for (nm in stems) {
     ifelse(cols %in% covariates, "covariate",
     ifelse(cols %in% derived, "derived_share",
     ifelse(cols == "other", "residual_share", "party_share")))))))
+  share_cols <- cols[role %in% c("party_share", "residual_share", "derived_share")]
+  nonnumeric <- share_cols[!vapply(x[share_cols], is.numeric, logical(1))]
+  if (length(nonnumeric)) stop("Unclassified nonnumeric columns in ", nm, ": ",
+                               paste(nonnumeric, collapse = ", "))
   schema[[nm]] <- data.frame(dataset = nm, column = cols, role = role,
     denominator = ifelse(role %in% c("party_share", "residual_share", "derived_share"),
                          "valid_votes", ifelse(role == "turnout", "eligible_voters", "")))

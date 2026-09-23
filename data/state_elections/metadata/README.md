@@ -8,11 +8,15 @@ add no columns to the election files and are not a new package dataset.
   `derived_share`, identifiers, counts, turnout, diagnostics and covariates
   from party sums. This is a column schema, not a cross-file party identity map.
 - `election_completeness.csv`: actual elections present, reporting geography,
-  row counts, known/zero observations and sums of known counts. An entirely
+  row counts, nonmissing/zero stored values and sums of nonmissing counts.
+  The `_known` suffix means nonmissing in the export, not source-observed. An entirely
   missing field has an empty sum, not zero. A partial sum is not a state total.
-  Even complete observed fields may contain extraction errors; completeness
-  does not establish source validity. Harmonized counts can be fractional,
-  and historical Bremen `valid_votes` can be an imputed weighting proxy.
+  Even complete fields may contain extraction errors; completeness
+  does not establish source validity. Unharmonized counts can be fractional
+  after postal allocation; harmonized counts are rounded to integers. Missing
+  `valid_votes` in harmonization is filled with positive voters, then positive
+  electorate, then a unit weight. These proxies count as nonmissing here; in
+  particular, Bremen 1991/1995 totals are voter-based weights, not valid votes.
 - `source_limitations.csv`: a narrow, manually reviewed warning list. Join on
   `(dataset, state, election_year)` while reading `state` as character. The
   optional `flag_source_unreliable = 1` identifies the listed unresolved

@@ -75,8 +75,8 @@ Rscript --vanilla code/state_elections/01b_state_unharm_raw.R
 Rscript --vanilla -e 'library(conflicted); source("code/state_elections/02b_state_harm_21.R")'
 Rscript --vanilla -e 'library(conflicted); source("code/state_elections/04_state_harm_23.R")'
 Rscript --vanilla -e 'library(conflicted); source("code/state_elections/05_state_harm_25.R")'
-Rscript --vanilla code/checks/check_state_missingness.R
 Rscript --vanilla code/checks/build_state_metadata.R
+Rscript --vanilla code/checks/check_state_missingness.R
 python3 code/export_excel.py --only state_unharm state_harm_21 state_harm_23 state_harm_25
 python3 code/checks/check_state_excel_missingness.py
 quarto render docs/codebook.qmd --to pdf
@@ -111,18 +111,62 @@ that it is a zero-electorate/positive-vote diagnostic, not proof of postal
 district status. The generated column schema explicitly separates party shares,
 `other`, derived shares, counts, identifiers, diagnostics and covariates.
 
+## Follow-up audit and corrections
+
+The follow-up audit found one functional metadata bug: `ags_name` was classified
+as `party_share` in the 2023/2025 schemas. Both rows now have the `identifier`
+role and no denominator. The generator rejects nonnumeric share columns, and
+the regression checker verifies column coverage, order and municipality-name
+roles against each RDS. Election CSV/RDS/XLSX values were not changed by this
+audit.
+
+The documentation now also corrects:
+
+- **Imputed denominators:** harmonization can store voter/electorate/unit weights
+  in `valid_votes`. Bremen 1991/1995 therefore yields proxy party counts, not
+  observed votes. Integer rounding changes its source percentages slightly;
+  the former claim of exact preservation was incorrect. The codebook, data
+  notes, website and package help now agree on this exception.
+- **Completeness:** `_known` counts nonmissing stored values, including proxies.
+  Unharmonized allocated counts can be fractional; harmonized counts are rounded.
+- **Flags and columns:** state turnout is not capped at one, source flags are
+  absent from the harmonized files, and `flag_other_party_residual` tests
+  `total_vote_share` outside [0.999, 1.001]. That total excludes `other` and
+  derived aggregates. Stale or nonexistent column names were removed.
+- **Coverage:** top-level state coverage and final-file row counts now match
+  the four current exports. The unsupported claim that several states have
+  zero difference from the former API series was removed.
+
+The source checks now require the complete HE municipality key sets (excluding
+the two intentionally removed aggregate codes), preventing missing rows from
+passing vacuously. All 1,080 MV 1990 invalid counts are compared individually
+with the source workbook, including seven source-reported zeros. Isolated
+mutation checks confirmed rejection of a zero replaced by NA, a dropped HE
+municipality, and the former `ags_name` misclassification.
+
+All 1,493 CSV/RDS column comparisons and the baseline comparison passed again.
+A separate elementwise check found zero numeric differences outside
+`invalid_votes` in all four datasets.
+The Excel checks passed for all four workbooks, including all 396,616 invalid-vote
+cells/blanks; all 302 raw input hashes remain unchanged. The codebook was
+regenerated and its changed PDF pages visually reviewed. The website built
+locally, its draft note remained unpublished, and the package loader's parsed
+implementation is identical before and after these documentation edits.
+
 ## Cross-repository changes and integration
 
 The website and R-package changes are in isolated local checkouts, on
 `codex/missingness-documentation` in each repository. Shared working files were
-not edited. Website commit: `dcf6f0d`; package commit: `fada313`.
+not edited. Website commits: `dcf6f0d` and audit correction `fc577fb`; package
+commits: `fada313` and audit correction `0e1fee6`.
 The website changes cover `usage_notes.md`, `election-data.md` and
 an update-log draft with `published: false`; its Jekyll build passed (existing
 Sass deprecation warnings only), and the draft is absent from the built log.
 The package changes cover the loader's roxygen help, regenerated `.Rd`, README,
 vignette and a development NEWS entry. Loader implementation and package version
-are unchanged. Roxygen/Rd checks and 26 local parameter-validation assertions
-passed. The network-dependent schema suite could not download data in the
+are unchanged. Roxygen/Rd checks pass. The follow-up audit ran 22 local
+parameter-validation assertions successfully; three network-dependent tests
+were skipped by the suite. The network-dependent schema suite could not download data in the
 sandbox: three tests skipped and its rename-notice test failed two assertions
 because no successful download occurred. No loader behavior was changed to
 address that unrelated test limitation.

@@ -39,8 +39,11 @@ for (yr in c(1958L, 1962L)) {
       known <- x[!is.na(x)]
       if (length(known)) sum(known) else NA_real_
     }, numeric(1))
+    # The parser removes these county aggregates, not municipality observations.
+    expected <- expected[!names(expected) %in% c("06439000", "06535000")]
     matched <- expected[match(observed$ags, names(expected))]
-    stopifnot(all(observed$ags %in% names(expected)),
+    stopifnot(!anyDuplicated(observed$ags),
+              setequal(observed$ags, names(expected)),
               identical(is.na(observed[[field]]), is.na(unname(matched))),
               isTRUE(all.equal(unname(matched), observed[[field]],
                                check.attributes = FALSE, tolerance = 1e-10)))
@@ -68,8 +71,8 @@ for (yr in rp_years) {
                 sum(rp$valid_votes[rp$election_year == yr], na.rm = TRUE)) < 1e-7)
 }
 
-# The fix is not a blanket zero -> NA transformation. Genuine reported zeros
-# and negative values clamped to zero must continue to exist.
+# Known invalid counts remain nonnegative. Source-reported zeros are checked
+# individually against the MV workbook below.
 stopifnot(any(s$invalid_votes == 0, na.rm = TRUE),
           !any(s$invalid_votes < 0, na.rm = TRUE))
 # Guard against tempting but incorrect party/source and multi-vote changes.
@@ -79,6 +82,12 @@ mv_raw <- readxl::read_excel(file.path(raw_path, "Mecklenburg-Vorpommern",
   col_names = FALSE, .name_repair = "minimal")
 stopifnot(mv_raw[[13]][4] == "CSU", mv_raw[[15]][4] == "DSU")
 mv_rows <- !is.na(mv_raw[[2]]) & grepl("^13[0-9]{6}$", mv_raw[[2]])
+mv_ags <- as.character(mv_raw[[2]][mv_rows])
+mv_invalid <- as.numeric(mv_raw[[6]][mv_rows])
+stopifnot(mv_raw[[6]][4] == "ungültig", !anyDuplicated(mv_ags),
+          !anyDuplicated(mv$ags), setequal(mv_ags, mv$ags),
+          sum(mv_invalid == 0) == 7L,
+          identical(mv_invalid, mv$invalid_votes[match(mv_ags, mv$ags)]))
 stopifnot(sum(as.numeric(mv_raw[[13]][mv_rows]), na.rm = TRUE) == 9663,
           sum(as.numeric(mv_raw[[15]][mv_rows]), na.rm = TRUE) == 6499)
 stopifnot(abs(sum(mv$csu * mv$valid_votes, na.rm = TRUE) - 9663) < 1e-7,
@@ -96,8 +105,16 @@ stopifnot(nrow(sh) == 1079L, sum(is.na(sh$eligible_voters)) == 135L,
 
 comparisons <- changes <- list()
 baseline <- commandArgs(trailingOnly = TRUE)
+schema <- read.csv("data/state_elections/metadata/column_schema.csv")
 for (nm in stems) {
   x <- datasets[[nm]]
+  definitions <- schema[schema$dataset == nm, ]
+  stopifnot(!anyDuplicated(definitions$column),
+            identical(definitions$column, names(x)))
+  share_cols <- definitions$column[definitions$role %in%
+                                    c("party_share", "residual_share", "derived_share")]
+  stopifnot(all(vapply(x[share_cols], is.numeric, logical(1))),
+            all(definitions$role[grepl("^ags_name", definitions$column)] == "identifier"))
   csv <- data.table::fread(paste0("data/state_elections/final/", nm, ".csv"),
     colClasses = list(character = intersect(c("ags", "state", "county"), names(x))),
     na.strings = c("", "NA"), data.table = FALSE)
