@@ -1,0 +1,52 @@
+{
+  "base_commit": "2b1e5f85d130f08d7fcb8734c6b677b0c0c9dd06",
+  "source_files": [
+    {
+      "path": "data/state_elections/raw/Landtagswahlen/Baden-Württemberg/2011 & früher/Gemeindetabelle_LW1952.xlsx",
+      "sha256": "837b892f72e07a5f949d6123d6d128487db0aa2466abefc502d62bdf0fbbea9d",
+      "bytes": 309854
+    },
+    {
+      "path": "data/state_elections/raw/Landtagswahlen/Baden-Württemberg/2011 & früher/README BW LTW vor 2011.docx",
+      "sha256": "7e0a9389d368e8fddb4c7364c02a2cf1642e8dbf179eff5752606734e7dbc55c",
+      "bytes": 141190
+    },
+    {
+      "url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423520001.pdf",
+      "sha256": "8db36faf0da564d9b3eb24ba4adaab8fcbb722b0cfb5d8965999bc0f0bde3ccf",
+      "bytes": 3118263,
+      "retrieved": "2026-09-23"
+    }
+  ],
+  "read_only_inputs_matching_head": 655,
+  "comparison_note": "Git LFS pointer checkout CRLF is normalized to LF; actual source bytes are not changed.",
+  "baseline_pipeline_matches_published_rds": true,
+  "published_rds_sha256": "b812d7cd3c1da294f4d0c2813e116dcba863e84ca7ad1dd599e170a71b345b17",
+  "validation_checks_passed": 402,
+  "pre_existing_rows_unchanged": 149352,
+  "added_rows": 1111,
+  "final_rows": 150463,
+  "final_columns": 367,
+  "elections": 205,
+  "state_years": 204,
+  "source_geography_date": "1979-01-01",
+  "unmodified_harmonized_exports": [
+    "data/state_elections/final/state_harm.rds",
+    "data/state_elections/final/state_harm.csv",
+    "data/state_elections/final/state_harm.xlsx",
+    "data/state_elections/final/state_harm_21.rds",
+    "data/state_elections/final/state_harm_21.csv",
+    "data/state_elections/final/state_harm_21.xlsx",
+    "data/state_elections/final/state_harm_23.rds",
+    "data/state_elections/final/state_harm_23.csv",
+    "data/state_elections/final/state_harm_23.xlsx",
+    "data/state_elections/final/state_harm_25.rds",
+    "data/state_elections/final/state_harm_25.csv",
+    "data/state_elections/final/state_harm_25.xlsx"
+  ],
+  "output_sha256": {
+    "csv": "b86ce53cdacb5c8d7d494f9e7d7f137a04c83466e9a2b3b09b2a8764473e931f",
+    "rds": "43619e32755b8ef82cfec19207111e16e57298840ab5ee5ecf6bf7271df18045",
+    "xlsx": "28df9208247e1c8003532d542b5d0b13327927f6e72bd31221b1d71c73519146"
+  }
+}

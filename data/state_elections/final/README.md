@@ -66,7 +66,7 @@ All individual party vote shares (e.g., `spd`, `cdu`, `gruene`, `fdp`, `linke_pd
 | Sachsen | 14 | 1990--2024 | 1990--2024 | |
 | Brandenburg | 12 | 1990--2024 | 1990--2024 | 1990/1994 OCR-digitized |
 | Mecklenburg-Vorpommern | 13 | 1990--2021 | 1990--2021 | |
-| Baden-Württemberg | 08 | 1952--2021 | 1992--2021 | |
+| Baden-Württemberg | 08 | 1952--2026 | 1992--2026 | 1952 constituent assembly: 1,111 units on 1979 boundaries; electorate/turnout NA. See [source note](../../../docs/sources/bw_1952.md). |
 | Hessen | 06 | 1946--2023 | 1991--2023 | |
 | Saarland | 10 | 1970--2022 | 1990--2022 | 1970/1975 OCR-digitized |
 | Hamburg | 02 | 1966--2025 | 1991--2025 | City-state (1 row/election); 5-vote system since 2011 |

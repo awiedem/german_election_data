@@ -5239,8 +5239,8 @@
     "source": "data/state_elections/final/state_harm_25.csv"
   },
   "data/state_elections/final/state_unharm": {
-    "rows": 149352,
-    "columns": 365,
+    "rows": 150463,
+    "columns": 367,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
@@ -5349,6 +5349,7 @@
       "dfp",
       "dfu",
       "dg",
+      "dg_bhe",
       "dg_oder_dvp",
       "dgg",
       "dgl",
@@ -5573,6 +5574,7 @@
       "unabhangige",
       "ungueltig",
       "uspd",
+      "uwg",
       "v_p_m_v",
       "v_partei3",
       "verjuengungsforschung",
@@ -5598,11 +5600,11 @@
       "other",
       "cdu_csu"
     ],
-    "source_sha256": "c6230f678044d0b437b65a0f415510c4666135e9c0c04b0368aa883275d0aa2f",
-    "rds_sha256": "b812d7cd3c1da294f4d0c2813e116dcba863e84ca7ad1dd599e170a71b345b17",
+    "source_sha256": "b86ce53cdacb5c8d7d494f9e7d7f137a04c83466e9a2b3b09b2a8764473e931f",
+    "rds_sha256": "43619e32755b8ef82cfec19207111e16e57298840ab5ee5ecf6bf7271df18045",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "aad1b066062f3a7d5654db0eded6ec5b51744e1f55a69e4e1d7bdfbc4bcee999",
-    "bytes": 28721313,
+    "xlsx_sha256": "28df9208247e1c8003532d542b5d0b13327927f6e72bd31221b1d71c73519146",
+    "bytes": 28894868,
     "source": "data/state_elections/final/state_unharm.csv"
   }
 }
