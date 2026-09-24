@@ -1,0 +1,9 @@
+election_year	field	before	after	rows
+1966	eligible_voters	8317508	11292041	95
+1966	number_voters	1677036	8641646	95
+1966	valid_votes	11018351	8542493	95
+1966	invalid_votes	4793706	99153	95
+1970	eligible_voters	10040496	11890609	90
+1970	number_voters	1790680	8739772	90
+1970	valid_votes	8570866	8677827	90
+1970	invalid_votes	5170015	61945	90

@@ -1,0 +1,61 @@
+{
+  "1966": {
+    "file": "Nordrhein-Westfalen_1966_Landtagswahl.pdf",
+    "sha256": "6b8c65b01a83391c790fc377d2efd080ea5503b6fa241cc6813a54971f8afda8",
+    "table": 2,
+    "physical_pages": [
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33
+    ],
+    "printed_pages": [
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31
+    ]
+  },
+  "1970": {
+    "file": "Nordrhein-Westfalen_1970_Landtagswahl.pdf",
+    "sha256": "a7e9dde393ec4f9ce032d27cd5e9e695825abbd08b2415aef8b5d8068f4aed0b",
+    "table": 2,
+    "physical_pages": [
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35
+    ],
+    "printed_pages": [
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33
+    ]
+  },
+  "legacy_identifiers": {
+    "file": "nrw_pre1975_kreis.csv",
+    "sha256": "3f07b9a312bdf1f6a5bb55b938ecfe279d41bfdab93b8c999e49d3f6000057cd",
+    "purpose": "Existing year/name/type ordering defines published synthetic AGS. Election counts are not reused."
+  }
+}

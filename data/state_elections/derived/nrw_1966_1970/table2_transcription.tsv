@@ -1,0 +1,215 @@
+election_year	lfd_nr	name	type	region	source_pdf	pdf_left	pdf_right	printed_left	printed_right	source_row	eligible_voters	number_voters	invalid_votes	valid_votes	cdu	spd	fdp	zentrum	uap	fsu	dkp	npd
+1966	1	Düsseldorf	krfr	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	485697	347196	3705	343491	137682	176326	29483	0	0	0	0	0
+1966	2	Duisburg	krfr	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	335984	242027	1780	240247	77795	147324	13694	0	1434	0	0	0
+1966	3	Essen	krfr	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	515930	379879	2566	377313	138372	215988	22324	0	629	0	0	0
+1966	4	Krefeld	krfr	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	156599	114086	1187	112899	48909	54478	9512	0	0	0	0	0
+1966	5	Leverkusen	krfr	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	68902	49580	476	49104	19322	26290	3492	0	0	0	0	0
+1966	6	Mönchengladbach	krfr	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	104803	75531	894	74637	42249	28069	4319	0	0	0	0	0
+1966	7	Mülheim a.d. Ruhr	krfr	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	136819	102700	922	101778	31797	59931	9134	0	0	916	0	0
+1966	8	Neuss	krfr	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	70421	53102	568	52534	26607	22222	3705	0	0	0	0	0
+1966	9	Oberhausen	krfr	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	173591	131998	967	131031	48166	76535	6330	0	0	0	0	0
+1966	10	Remscheid	krfr	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	91943	63898	607	63291	22627	33899	6193	0	0	572	0	0
+1966	11	Rheydt	krfr	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	68172	48818	587	48231	22623	21223	4385	0	0	0	0	0
+1966	12	Solingen	krfr	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	126515	91454	1000	90454	30927	47132	11450	0	0	945	0	0
+1966	13	Viersen	krfr	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	30124	22969	413	22556	11876	9179	1501	0	0	0	0	0
+1966	14	Wuppertal	krfr	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	306254	213948	1678	212270	73923	114377	22323	0	0	1647	0	0
+1966	15	Kreis Dinslaken	kreis	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	85277	64920	579	64341	20129	39879	4333	0	0	0	0	0
+1966	16	Kreis Düsseldorf-Mettmann	kreis	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	238757	181710	2005	179705	70165	93773	15767	0	0	0	0	0
+1966	17	Kreis Geldern	kreis	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	53297	45767	740	45027	30551	12091	2385	0	0	0	0	0
+1966	18	Kreis Grevenbroich	kreis	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	131700	101734	1452	100282	53276	39253	7135	618	0	0	0	0
+1966	19	Kreis Kempen-Krefeld	kreis	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	147304	116800	1931	114869	60835	45340	8694	0	0	0	0	0
+1966	20	Kreis Kleve	kreis	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	62724	53176	843	52333	32712	16187	3044	390	0	0	0	0
+1966	21	Kreis Moers	kreis	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	222528	171708	1893	169815	61212	97971	10632	0	0	0	0	0
+1966	22	Kreis Rees	kreis	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	69911	57007	650	56357	27477	23011	5869	0	0	0	0	0
+1966	23	Rhein-Wupper-Kreis	kreis	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	143318	107848	1354	106494	44328	50585	11581	0	0	0	0	0
+1966	24	Reg.-Bez. Düsseldorf	agg	Düsseldorf	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	3826570	2837856	28797	2809059	1133560	1451063	217285	1008	2063	4080	0	0
+1966	25	Bonn	krfr	Köln	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	91537	60271	682	59589	30386	22563	6640	0	0	0	0	0
+1966	26	Köln	krfr	Köln	Nordrhein-Westfalen_1966_Landtagswahl.pdf	26	27	24	25	a	587897	390616	3236	387380	157446	203660	25575	0	253	446	0	0
+1966	27	Kreis Bergheim (Erft)	kreis	Köln	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	73725	59070	920	58150	26066	29157	2927	0	0	0	0	0
+1966	28	Kreis Bonn	kreis	Köln	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	147129	108171	1784	106387	58018	38071	10298	0	0	0	0	0
+1966	29	Kreis Euskirchen	kreis	Köln	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	74124	57386	1190	56196	29907	22051	4238	0	0	0	0	0
+1966	30	Kreis Köln	kreis	Köln	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	150772	115474	1392	114082	51182	54387	8139	0	0	374	0	0
+1966	31	Oberbergischer Kreis	kreis	Köln	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	97546	72865	922	71943	30240	31742	9961	0	0	0	0	0
+1966	32	Rheinisch-Bergischer Kreis	kreis	Köln	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	159802	120889	1657	119232	59752	49920	9560	0	0	0	0	0
+1966	33	Siegkreis	kreis	Köln	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	179473	132601	1896	130705	68688	51840	10177	0	0	0	0	0
+1966	34	Reg.-Bez. Köln	agg	Köln	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	1562005	1117343	13679	1103664	511685	503391	87515	0	253	820	0	0
+1966	35	Aachen	krfr	Aachen	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	118302	84507	901	83606	41087	36402	6117	0	0	0	0	0
+1966	36	Kreis Aachen	kreis	Aachen	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	179856	145367	2286	143081	66443	68762	7876	0	0	0	0	0
+1966	37	Kreis Düren	kreis	Aachen	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	102183	76774	1262	75512	40278	30948	4286	0	0	0	0	0
+1966	38	Kreis Erkelenz	kreis	Aachen	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	58462	47746	968	46778	25851	17863	3064	0	0	0	0	0
+1966	39	Kreis Jülich	kreis	Aachen	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	47745	41554	807	40747	21392	16682	2673	0	0	0	0	0
+1966	40	Kreis Monschau	kreis	Aachen	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	19373	16649	354	16295	11381	3668	1246	0	0	0	0	0
+1966	41	Kreis Schleiden	kreis	Aachen	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	42123	34474	774	33700	23113	7782	2805	0	0	0	0	0
+1966	42	Selfkantkreis Geilenkirchen-Heinsberg	kreis	Aachen	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	82795	69827	1844	67983	42491	22350	3142	0	0	0	0	0
+1966	43	Reg.-Bez. Aachen	agg	Aachen	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	650839	516898	9196	507702	272036	204457	31209	0	0	0	0	0
+1966	44	Bocholt	krfr	Münster	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	30343	24523	205	24318	13259	10230	829	0	0	0	0	0
+1966	45	Bottrop	krfr	Münster	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	75724	60249	494	59755	21740	36195	1820	0	0	0	0	0
+1966	46	Gelsenkirchen	krfr	Münster	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	258972	194691	1271	193420	59238	124074	8109	726	0	1273	0	0
+1966	47	Gladbeck	krfr	Münster	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	57335	45968	334	45634	16157	27507	1970	0	0	0	0	0
+1966	48	Münster	krfr	Münster	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	124629	95948	878	95070	49939	36393	8738	0	0	0	0	0
+1966	49	Recklinghausen	krfr	Münster	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	90170	71236	599	70637	25515	40692	4044	386	0	0	0	0
+1966	50	Kreis Ahaus	kreis	Münster	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	68557	59432	700	58732	41119	14739	2874	0	0	0	0	0
+1966	51	Kreis Beckum	kreis	Münster	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	105664	88192	951	87241	46958	35656	4319	308	0	0	0	0
+1966	52	Kreis Borken	kreis	Münster	Nordrhein-Westfalen_1966_Landtagswahl.pdf	28	29	26	27	a	54518	47626	771	46855	33919	10537	2399	0	0	0	0	0
+1966	53	Kreis Coesfeld	kreis	Münster	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	55777	48035	482	47553	31533	11876	1939	2205	0	0	0	0
+1966	54	Kreis Lüdinghausen	kreis	Münster	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	87615	74459	772	73687	43624	27293	2770	0	0	0	0	0
+1966	55	Kreis Münster	kreis	Münster	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	67108	55812	512	55300	33103	16813	2945	2439	0	0	0	0
+1966	56	Kreis Recklinghausen	kreis	Münster	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	222271	183523	1950	181573	72807	98593	8420	1753	0	0	0	0
+1966	57	Kreis Steinfurt	kreis	Münster	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	110936	93709	1041	92668	55810	30403	5412	1043	0	0	0	0
+1966	58	Kreis Tecklenburg	kreis	Münster	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	84042	66114	1073	65041	30846	27401	5695	1099	0	0	0	0
+1966	59	Kreis Warendorf	kreis	Münster	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	40574	35160	373	34787	22522	9215	1746	1304	0	0	0	0
+1966	60	Reg.-Bez. Münster	agg	Münster	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	1534235	1244677	12406	1232271	598089	557617	64029	11263	0	1273	0	0
+1966	61	Bielefeld	krfr	Detmold	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	126516	98677	1438	97239	33303	52683	11253	0	0	0	0	0
+1966	62	Herford	krfr	Detmold	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	40576	30832	416	30416	12352	15395	2669	0	0	0	0	0
+1966	63	Kreis Bielefeld	kreis	Detmold	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	98718	81199	1296	79903	28328	44223	7352	0	0	0	0	0
+1966	64	Kreis Büren	kreis	Detmold	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	37961	32024	485	31539	20952	8116	1358	1113	0	0	0	0
+1966	65	Kreis Detmold	kreis	Detmold	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	102324	80479	1401	79078	25099	41718	12261	0	0	0	0	0
+1966	66	Kreis Halle (Westf.)	kreis	Detmold	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	43665	34226	548	33678	13633	16095	3950	0	0	0	0	0
+1966	67	Kreis Herford	kreis	Detmold	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	121869	98418	2047	96371	31992	55477	8902	0	0	0	0	0
+1966	68	Kreis Höxter	kreis	Detmold	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	65340	52185	689	51496	31786	15377	4333	0	0	0	0	0
+1966	69	Kreis Lemgo	kreis	Detmold	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	102007	82071	1298	80773	24992	44571	11210	0	0	0	0	0
+1966	70	Kreis Lübbecke	kreis	Detmold	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	61200	46857	591	46266	21335	20538	4393	0	0	0	0	0
+1966	71	Kreis Minden	kreis	Detmold	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	139787	106980	1699	105281	35169	56435	13677	0	0	0	0	0
+1966	72	Kreis Paderborn	kreis	Detmold	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	88991	70795	791	70004	45163	20088	4753	0	0	0	0	0
+1966	73	Kreis Warburg	kreis	Detmold	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	29727	24212	401	23811	15133	6156	2108	414	0	0	0	0
+1966	74	Kreis Wiedenbrück	kreis	Detmold	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	106559	87270	784	86486	49137	30097	7252	0	0	0	0	0
+1966	75	Reg.-Bez. Detmold	agg	Detmold	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	1165240	926225	13884	912341	388374	426969	95471	1527	0	0	0	0
+1966	76	Bochum	krfr	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	252076	198022	1683	196339	61705	123919	10401	0	314	0	0	0
+1966	77	Castrop-Rauxel	krfr	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	58548	46461	402	46059	15808	28604	1647	0	0	0	0	0
+1966	78	Dortmund	krfr	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	30	31	28	29	a	464329	356557	3021	353536	114689	217024	19410	0	0	2413	0	0
+1966	79	Hagen	krfr	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	142738	104335	1047	103288	35492	57747	10049	0	0	0	0	0
+1966	80	Hamm	krfr	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	51426	39124	433	38691	17541	18331	2819	0	0	0	0	0
+1966	81	Herne	krfr	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	78042	61397	551	60846	19726	38289	2831	0	0	0	0	0
+1966	82	Iserlohn	krfr	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	40464	29944	249	29695	10682	15191	3615	0	0	207	0	0
+1966	83	Lüdenscheid	krfr	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	42706	30743	421	30322	10979	15380	3963	0	0	0	0	0
+1966	84	Lünen	krfr	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	50563	40457	377	40080	13992	23922	1875	0	0	291	0	0
+1966	85	Siegen	krfr	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	33407	23721	296	23425	9443	11580	2402	0	0	0	0	0
+1966	86	Wanne-Eickel	krfr	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	72734	56076	505	55571	17118	36329	2124	0	0	0	0	0
+1966	87	Wattenscheid	krfr	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	58087	46210	382	45828	14408	29410	2010	0	0	0	0	0
+1966	88	Witten	krfr	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	70902	57075	584	56491	16483	35840	4168	0	0	0	0	0
+1966	89	Kreis Altena	kreis	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	119258	90149	1124	89025	31512	46735	10778	0	0	0	0	0
+1966	90	Kreis Arnsberg	kreis	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	91064	76016	812	75204	40836	29588	3932	848	0	0	0	0
+1966	91	Kreis Brilon	kreis	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	49052	41245	743	40502	24430	13492	1875	705	0	0	0	0
+1966	92	Ennepe-Ruhr-Kreis	kreis	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	186847	148759	1809	146950	46733	85953	13719	0	545	0	0	0
+1966	93	Kreis Iserlohn	kreis	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	134645	106596	1157	105439	45326	52144	7469	0	0	500	0	0
+1966	94	Kreis Lippstadt	kreis	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	64560	53205	479	52726	27868	21120	2908	830	0	0	0	0
+1966	95	Kreis Meschede	kreis	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	51633	43538	548	42990	28100	12451	2439	0	0	0	0	0
+1966	96	Kreis Olpe	kreis	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	64457	54545	665	53880	35146	16697	2037	0	0	0	0	0
+1966	97	Kreis Siegen	kreis	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	117730	87671	1043	86628	32838	45701	8089	0	0	0	0	0
+1966	98	Kreis Soest	kreis	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	70777	55705	766	54939	27544	20469	6926	0	0	0	0	0
+1966	99	Kreis Unna	kreis	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	157872	129754	1846	127908	43292	75898	8718	0	0	0	0	0
+1966	100	Kreis Wittgenstein	kreis	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	29235	21342	248	21094	7749	11293	2052	0	0	0	0	0
+1966	101	Reg.-Bez. Arnsberg	agg	Arnsberg	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	2553152	1998647	21191	1977456	749440	1083107	138256	2383	859	3411	0	0
+1966	102	Nordrhein-Westfalen	agg	Nordrhein-Westfalen	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	11292041	8641646	99153	8542493	3653184	4226604	633765	16181	3175	9584	0	0
+1966	103	darunter Landkreise	agg	Nordrhein-Westfalen	Nordrhein-Westfalen_1966_Landtagswahl.pdf	32	33	30	31	a	5602264	4456820	61398	4395422	2101821	1936271	340842	15069	545	874	0	0
+1970	1	Düsseldorf	krfr	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	477614	335687	1575	334112	147112	153772	23698	955	0	0	4445	4130
+1970	2	Duisburg	krfr	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	330602	227140	1034	226106	79006	131647	10812	0	250	0	2746	1645
+1970	3	Essen	krfr	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	524735	367779	1540	366239	140474	197937	19582	0	323	0	4889	3034
+1970	4	Krefeld	krfr	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	163126	113557	540	113017	54979	49546	6546	0	0	0	688	1258
+1970	5	Leverkusen	krfr	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	73399	52991	279	52712	20538	27209	3846	0	0	0	431	688
+1970	6	Mönchengladbach	krfr	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	107480	69943	400	69543	42547	22962	2727	0	0	0	493	814
+1970	7	Mülheim a.d. Ruhr	krfr	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	142227	102963	514	102449	34774	57411	8175	0	0	0	1131	958
+1970	8	Neuss	krfr	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	75131	53570	306	53264	30164	19079	2760	128	0	0	433	700
+1970	9	Oberhausen	krfr	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	177949	123848	539	123309	48317	67702	4923	0	0	0	1276	1091
+1970	10	Remscheid	krfr	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	94066	62900	293	62607	26022	30017	4565	0	0	0	1305	698
+1970	11	Rheydt	krfr	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	71285	46497	374	46123	24738	17201	3251	0	0	0	417	516
+1970	12	Solingen	krfr	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	127170	88415	481	87934	36040	41323	7707	0	0	0	2027	837
+1970	13	Wuppertal	krfr	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	305149	207334	787	206547	86099	100816	14530	0	0	0	2879	2223
+1970	14	Kreis Dinslaken	kreis	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	94753	67706	408	67298	22666	39143	4031	0	0	0	595	863
+1970	15	Kreis Düsseldorf-Mettmann	kreis	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	266033	197797	1289	196508	86907	91774	13412	0	2	0	1940	2473
+1970	16	Kreis Geldern	kreis	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	57262	45712	509	45203	32249	11100	1406	0	0	0	84	364
+1970	17	Kreis Grevenbroich	kreis	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	172914	122214	899	121315	67286	44563	6694	932	0	0	654	1186
+1970	18	Kreis Kempen-Krefeld	kreis	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	176435	125290	1194	124096	73697	43330	5087	0	0	0	678	1304
+1970	19	Kreis Kleve	kreis	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	68103	52677	622	52055	34293	14688	2167	195	0	0	133	579
+1970	20	Kreis Moers	kreis	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	239809	176216	1184	175032	67641	95361	8277	0	190	0	1204	2359
+1970	21	Kreis Rees	kreis	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	77237	59551	826	58725	29803	23966	4266	0	0	0	173	517
+1970	22	Rhein-Wupper-Kreis	kreis	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	163021	119463	936	118527	54789	52488	8834	0	0	0	1060	1356
+1970	23	Reg.-Bez. Düsseldorf	agg	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	3985500	2819250	16529	2802721	1240141	1333035	167296	2210	765	0	29681	29593
+1970	24	davon Krfr. Städte (D)	agg	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	2669933	1852624	8662	1843962	770810	916622	113122	1083	573	0	23160	18592
+1970	25	davon Kreise (D)	agg	Düsseldorf	Nordrhein-Westfalen_1970_Landtagswahl.pdf	26	27	24	25	a	1315567	966626	7867	958759	469331	416413	54174	1127	192	0	6521	11001
+1970	26	Bonn	krfr	Köln	Nordrhein-Westfalen_1970_Landtagswahl.pdf	28	29	26	27	a	199144	143095	778	142317	78632	48735	13324	0	0	0	802	824
+1970	27	Köln	krfr	Köln	Nordrhein-Westfalen_1970_Landtagswahl.pdf	28	29	26	27	a	593955	381891	1691	380200	151674	190606	30502	105	0	0	3552	3761
+1970	28	Kreis Bergheim (Erft)	kreis	Köln	Nordrhein-Westfalen_1970_Landtagswahl.pdf	28	29	26	27	a	82564	64444	707	63737	27732	32812	2282	0	0	0	300	611
+1970	29	Kreis Euskirchen	kreis	Köln	Nordrhein-Westfalen_1970_Landtagswahl.pdf	28	29	26	27	a	84857	61790	786	61004	33543	22852	3441	216	0	0	251	701
+1970	30	Kreis Köln	kreis	Köln	Nordrhein-Westfalen_1970_Landtagswahl.pdf	28	29	26	27	a	171797	129284	1103	128181	57219	59652	9386	0	0	0	832	1092
+1970	31	Oberbergischer Kreis	kreis	Köln	Nordrhein-Westfalen_1970_Landtagswahl.pdf	28	29	26	27	a	104175	74620	583	74037	35289	32191	5216	0	0	0	407	934
+1970	32	Rheinisch-Bergischer Kreis	kreis	Köln	Nordrhein-Westfalen_1970_Landtagswahl.pdf	28	29	26	27	a	180386	132916	1058	131858	64942	55031	9707	0	0	0	729	1449
+1970	33	Rhein-Sieg-Kreis	kreis	Köln	Nordrhein-Westfalen_1970_Landtagswahl.pdf	28	29	26	27	a	261507	190085	1672	188413	104581	70569	10489	1	0	0	786	1987
+1970	34	Reg.-Bez. Köln	agg	Köln	Nordrhein-Westfalen_1970_Landtagswahl.pdf	28	29	26	27	a	1678385	1178125	8378	1169747	553612	512448	84347	322	0	0	7659	11359
+1970	35	davon Krfr. Städte (K)	agg	Köln	Nordrhein-Westfalen_1970_Landtagswahl.pdf	28	29	26	27	a	793099	524986	2469	522517	230306	239341	43826	105	0	0	4354	4585
+1970	36	davon Kreise (K)	agg	Köln	Nordrhein-Westfalen_1970_Landtagswahl.pdf	28	29	26	27	a	885286	653139	5909	647230	323306	273107	40521	217	0	0	3305	6774
+1970	37	Aachen	krfr	Aachen	Nordrhein-Westfalen_1970_Landtagswahl.pdf	28	29	26	27	a	121198	83009	404	82605	43602	32731	4597	102	0	0	644	929
+1970	38	Kreis Aachen	kreis	Aachen	Nordrhein-Westfalen_1970_Landtagswahl.pdf	28	29	26	27	a	192978	152039	1722	150317	75584	66425	5202	268	0	0	1337	1501
+1970	39	Kreis Düren	kreis	Aachen	Nordrhein-Westfalen_1970_Landtagswahl.pdf	28	29	26	27	a	109676	81231	892	80339	45803	30812	2798	0	0	0	506	420
+1970	40	Kreis Erkelenz	kreis	Aachen	Nordrhein-Westfalen_1970_Landtagswahl.pdf	28	29	26	27	a	64045	49674	698	48976	30106	16264	1768	0	0	0	206	632
+1970	41	Kreis Jülich	kreis	Aachen	Nordrhein-Westfalen_1970_Landtagswahl.pdf	28	29	26	27	a	52091	43933	593	43340	24934	16528	1661	0	0	0	217	0
+1970	42	Kreis Monschau	kreis	Aachen	Nordrhein-Westfalen_1970_Landtagswahl.pdf	28	29	26	27	a	21547	17873	277	17596	12748	3629	959	102	0	0	43	115
+1970	43	Kreis Schleiden	kreis	Aachen	Nordrhein-Westfalen_1970_Landtagswahl.pdf	28	29	26	27	a	44691	35527	476	35051	24410	7558	2469	167	0	0	78	369
+1970	44	Selfkantkreis Geilenkirchen-Heinsberg	kreis	Aachen	Nordrhein-Westfalen_1970_Landtagswahl.pdf	28	29	26	27	a	90238	72921	1094	71827	48828	20393	1673	0	0	0	290	643
+1970	45	Reg.-Bez. Aachen	agg	Aachen	Nordrhein-Westfalen_1970_Landtagswahl.pdf	28	29	26	27	a	696464	536207	6156	530051	306015	194340	21127	639	0	0	3321	4609
+1970	46	davon Krfr. Städte (AC)	agg	Aachen	Nordrhein-Westfalen_1970_Landtagswahl.pdf	28	29	26	27	a	121198	83009	404	82605	43602	32731	4597	102	0	0	644	929
+1970	47	davon Kreise (AC)	agg	Aachen	Nordrhein-Westfalen_1970_Landtagswahl.pdf	28	29	26	27	a	575266	453198	5752	447446	262413	161609	16530	537	0	0	2677	3680
+1970	48	Bocholt	krfr	Münster	Nordrhein-Westfalen_1970_Landtagswahl.pdf	30	31	28	29	a	32921	24922	147	24775	14331	9698	553	0	0	0	74	119
+1970	49	Bottrop	krfr	Münster	Nordrhein-Westfalen_1970_Landtagswahl.pdf	30	31	28	29	a	78079	58078	307	57771	21614	31527	1753	0	0	0	2252	625
+1970	50	Gelsenkirchen	krfr	Münster	Nordrhein-Westfalen_1970_Landtagswahl.pdf	30	31	28	29	a	257450	178460	961	177499	60739	104065	6693	598	0	0	3620	1784
+1970	51	Gladbeck	krfr	Münster	Nordrhein-Westfalen_1970_Landtagswahl.pdf	30	31	28	29	a	60412	46679	249	46430	17237	25908	2294	0	0	0	991	0
+1970	52	Münster	krfr	Münster	Nordrhein-Westfalen_1970_Landtagswahl.pdf	30	31	28	29	a	130236	100322	441	99881	52244	38857	7189	0	0	0	505	1086
+1970	53	Recklinghausen	krfr	Münster	Nordrhein-Westfalen_1970_Landtagswahl.pdf	30	31	28	29	a	93176	70953	393	70560	27846	37445	3547	0	0	0	852	870
+1970	54	Kreis Ahaus	kreis	Münster	Nordrhein-Westfalen_1970_Landtagswahl.pdf	30	31	28	29	a	74113	61267	510	60757	44120	14017	1441	517	0	0	234	428
+1970	55	Kreis Beckum	kreis	Münster	Nordrhein-Westfalen_1970_Landtagswahl.pdf	30	31	28	29	a	110915	86974	661	86313	49680	33039	2399	0	0	0	714	481
+1970	56	Kreis Borken	kreis	Münster	Nordrhein-Westfalen_1970_Landtagswahl.pdf	30	31	28	29	a	60092	49383	453	48930	36468	10895	1162	0	0	0	85	320
+1970	57	Kreis Coesfeld	kreis	Münster	Nordrhein-Westfalen_1970_Landtagswahl.pdf	30	31	28	29	a	61379	50233	410	49823	33919	12965	1389	1065	0	0	136	349
+1970	58	Kreis Lüdinghausen	kreis	Münster	Nordrhein-Westfalen_1970_Landtagswahl.pdf	30	31	28	29	a	96019	76262	570	75692	47007	25924	1693	0	0	0	386	682
+1970	59	Kreis Münster	kreis	Münster	Nordrhein-Westfalen_1970_Landtagswahl.pdf	30	31	28	29	a	77414	62278	434	61844	37976	19760	2584	871	0	0	133	520
+1970	60	Kreis Recklinghausen	kreis	Münster	Nordrhein-Westfalen_1970_Landtagswahl.pdf	30	31	28	29	a	242913	187644	1566	186078	80518	94277	6641	982	0	0	1775	1885
+1970	61	Kreis Steinfurt	kreis	Münster	Nordrhein-Westfalen_1970_Landtagswahl.pdf	30	31	28	29	a	120350	96418	725	95693	60726	30055	2888	1075	0	0	229	720
+1970	62	Kreis Tecklenburg	kreis	Münster	Nordrhein-Westfalen_1970_Landtagswahl.pdf	30	31	28	29	a	90726	69596	647	68949	36282	28134	3451	0	0	0	224	858
+1970	63	Kreis Warendorf	kreis	Münster	Nordrhein-Westfalen_1970_Landtagswahl.pdf	30	31	28	29	a	45378	37285	262	37023	25285	9926	1667	0	0	0	145	0
+1970	64	Reg.-Bez. Münster	agg	Münster	Nordrhein-Westfalen_1970_Landtagswahl.pdf	30	31	28	29	a	1631573	1256754	8736	1248018	645992	526492	47344	5108	0	0	12355	10727
+1970	65	davon Krfr. Städte (MS)	agg	Münster	Nordrhein-Westfalen_1970_Landtagswahl.pdf	30	31	28	29	a	652274	479414	2498	476916	194011	247500	22029	598	0	0	8294	4484
+1970	66	davon Kreise (MS)	agg	Münster	Nordrhein-Westfalen_1970_Landtagswahl.pdf	30	31	28	29	a	979299	777340	6238	771102	451981	278992	25315	4510	0	0	4061	6243
+1970	67	Bielefeld	krfr	Detmold	Nordrhein-Westfalen_1970_Landtagswahl.pdf	32	33	30	31	a	126049	94109	762	93347	37990	47296	6871	0	0	0	687	503
+1970	68	Kreis Bielefeld	kreis	Detmold	Nordrhein-Westfalen_1970_Landtagswahl.pdf	32	33	30	31	a	113261	87188	789	86399	37084	43212	4796	0	0	0	410	897
+1970	69	Kreis Büren	kreis	Detmold	Nordrhein-Westfalen_1970_Landtagswahl.pdf	32	33	30	31	a	40924	32523	301	32222	23939	6871	498	446	0	0	68	400
+1970	70	Kreis Detmold	kreis	Detmold	Nordrhein-Westfalen_1970_Landtagswahl.pdf	32	33	30	31	a	113917	86933	833	86100	33620	43178	7124	0	0	0	546	1632
+1970	71	Kreis Halle (Westf.)	kreis	Detmold	Nordrhein-Westfalen_1970_Landtagswahl.pdf	32	33	30	31	a	46839	36068	354	35714	16374	16501	2096	0	0	0	85	658
+1970	72	Kreis Herford	kreis	Detmold	Nordrhein-Westfalen_1970_Landtagswahl.pdf	32	33	30	31	a	169769	134515	1782	132733	53283	69521	6745	0	0	0	802	2382
+1970	73	Kreis Höxter	kreis	Detmold	Nordrhein-Westfalen_1970_Landtagswahl.pdf	32	33	30	31	a	65474	52509	450	52059	35987	13830	1437	0	0	0	174	631
+1970	74	Kreis Lemgo	kreis	Detmold	Nordrhein-Westfalen_1970_Landtagswahl.pdf	32	33	30	31	a	112116	87290	705	86585	34710	42819	6524	0	0	0	544	1988
+1970	75	Kreis Lübbecke	kreis	Detmold	Nordrhein-Westfalen_1970_Landtagswahl.pdf	32	33	30	31	a	65006	48121	469	47652	23786	20354	2202	0	0	0	218	1092
+1970	76	Kreis Minden	kreis	Detmold	Nordrhein-Westfalen_1970_Landtagswahl.pdf	32	33	30	31	a	145881	112377	1188	111189	41668	56666	10390	0	0	0	754	1711
+1970	77	Kreis Paderborn	kreis	Detmold	Nordrhein-Westfalen_1970_Landtagswahl.pdf	32	33	30	31	a	93543	69329	199	69130	48768	17192	2346	0	0	0	196	628
+1970	78	Kreis Warburg	kreis	Detmold	Nordrhein-Westfalen_1970_Landtagswahl.pdf	32	33	30	31	a	31505	24862	227	24635	17888	5481	776	167	0	0	59	264
+1970	79	Kreis Wiedenbrück	kreis	Detmold	Nordrhein-Westfalen_1970_Landtagswahl.pdf	32	33	30	31	a	110823	84395	216	84179	51231	28232	4022	0	0	0	228	466
+1970	80	Reg.-Bez. Detmold	agg	Detmold	Nordrhein-Westfalen_1970_Landtagswahl.pdf	32	33	30	31	a	1235107	950219	8275	941944	456328	411153	55827	613	0	0	4771	13252
+1970	81	davon Krfr. Städte (DT)	agg	Detmold	Nordrhein-Westfalen_1970_Landtagswahl.pdf	32	33	30	31	a	126049	94109	762	93347	37990	47296	6871	0	0	0	687	503
+1970	82	davon Kreise (DT)	agg	Detmold	Nordrhein-Westfalen_1970_Landtagswahl.pdf	32	33	30	31	a	1109058	856110	7513	848597	418338	363857	48956	613	0	0	4084	12749
+1970	83	Bochum	krfr	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	257335	192926	941	191985	65551	112291	9707	0	211	0	2133	2092
+1970	84	Castrop-Rauxel	krfr	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	60458	46345	267	46078	17006	26372	1544	0	0	0	668	488
+1970	85	Dortmund	krfr	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	477552	354754	1965	352789	119061	208079	17243	0	317	0	4370	3719
+1970	86	Hagen	krfr	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	146277	105518	661	104857	40425	52780	8484	0	1	0	1543	1624
+1970	87	Hamm	krfr	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	62848	46732	319	46413	22799	20714	2114	0	0	0	239	547
+1970	88	Herne	krfr	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	77870	56687	294	56393	19966	32378	2411	0	0	0	1082	556
+1970	89	Iserlohn	krfr	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	41207	29735	203	29532	12751	14304	1789	0	0	0	178	510
+1970	90	Lünen	krfr	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	53086	40660	268	40392	15216	23000	1276	0	31	0	472	397
+1970	91	Wanne-Eickel	krfr	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	72153	52857	298	52559	17828	31158	1801	0	0	0	1137	635
+1970	92	Wattenscheid	krfr	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	60248	43851	477	43374	15976	24718	1803	0	0	0	877	0
+1970	93	Witten	krfr	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	72352	55298	316	54982	17371	33357	2979	0	0	0	520	755
+1970	94	Kreis Arnsberg	kreis	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	97541	77997	533	77464	43782	29459	3315	0	0	0	229	679
+1970	95	Kreis Brilon	kreis	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	52637	41729	497	41232	27198	12239	1176	0	0	0	142	477
+1970	96	Ennepe-Ruhr-Kreis	kreis	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	190108	144311	1253	143058	51490	78644	9285	0	174	0	1735	1730
+1970	97	Kreis Iserlohn	kreis	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	141155	105117	825	104292	47453	50450	4561	0	0	0	500	1328
+1970	98	Kreis Lippstadt	kreis	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	69616	54301	503	53798	30577	20060	2001	470	0	0	184	506
+1970	99	Kreis Lüdenscheid	kreis	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	170094	123563	897	122666	49420	60445	9944	0	5	0	710	2142
+1970	100	Kreis Meschede	kreis	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	46035	37497	308	37189	24657	10774	1314	0	0	0	96	348
+1970	101	Kreis Olpe	kreis	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	79680	64499	513	63986	44626	17369	1264	0	0	0	234	493
+1970	102	Kreis Siegen	kreis	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	163312	115363	729	114634	48666	56596	6933	0	0	0	580	1859
+1970	103	Kreis Soest	kreis	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	81288	61192	509	60683	34235	20617	3927	540	0	0	215	1149
+1970	104	Kreis Unna	kreis	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	159261	126136	1113	125023	43125	72398	6256	0	0	0	1234	2010
+1970	105	Kreis Wittgenstein	kreis	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	31467	22149	182	21967	8919	11138	1352	0	0	0	99	459
+1970	106	Reg.-Bez. Arnsberg	agg	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	2663580	1999217	13871	1985346	818098	1019340	102479	1010	739	0	19177	24503
+1970	107	davon Krfr. Städte (AR)	agg	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	1381386	1025363	6009	1019354	363950	579151	51151	0	560	0	13219	11323
+1970	108	davon Kreise (AR)	agg	Arnsberg	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	1282194	973854	7862	965992	454148	440189	51328	1010	179	0	5958	13180
+1970	109	Nordrhein-Westfalen	agg	Nordrhein-Westfalen	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	11890609	8739772	61945	8677827	4020186	3996808	478420	9902	1504	0	76964	94043
+1970	110	davon Krfr. Städte (NRW)	agg	Nordrhein-Westfalen	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	5743939	4059505	20804	4038701	1640669	2062641	241596	1888	1133	0	50358	40416
+1970	111	davon Kreise (NRW)	agg	Nordrhein-Westfalen	Nordrhein-Westfalen_1970_Landtagswahl.pdf	34	35	32	33	a	6146670	4680267	41141	4639126	2379517	1934167	236824	8014	371	0	26606	53627
