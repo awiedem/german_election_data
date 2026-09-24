@@ -3575,7 +3575,7 @@ cat("Mecklenburg-Vorpommern total:", nrow(all_states[["mv"]]), "rows\n\n")
 ###############################################################################
 ####                     BADEN-WÜRTTEMBERG (08)                             ####
 ###############################################################################
-## 16 elections: 1956-2021
+## 1952 constituent assembly plus 1956-2021 compilation (and 2026 below)
 ## Source: Single XLSX compilation file with one sheet per election year
 ## Three format variants:
 ##   A (1956-1972, 1980): One row per muni, party cols alternate Anzahl/%.
@@ -3631,7 +3631,13 @@ bw_clean_party <- function(x) {
 ## Map raw party names to standard names (all parties kept)
 bw_map_party <- function(pname) normalise_party(pname)
 
-bw_results <- list()
+# 1952 is a separate constituent-assembly workbook on 1979 geography.
+# Its restricted electorate is retained in derived provenance, not in turnout.
+source("code/state_elections/parse_bw_1952.R")
+bw_1952 <- read_bw_1952(raw_path)
+write_bw_1952_provenance(bw_1952)
+bw_results <- list("1952" = bw_1952$data)
+cat("  BW 1952:", nrow(bw_1952$data), "municipalities on 1979-01-01 boundaries; electorate/turnout NA\n")
 
 for (yr in names(bw_dates)) {
   cat("BW", yr, "...")
