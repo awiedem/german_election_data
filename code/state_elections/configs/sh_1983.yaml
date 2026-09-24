@@ -1,9 +1,9 @@
 election: "Schleswig-Holstein 1983 Landtagswahl"
-vote_type: "Zweitstimmen"
+vote_type: "Einzelstimme"
 
 pdf_path: "data/state_elections/raw/Landtagswahlen/Schleswig-Holstein/Schleswig-Holstein_1983_Landtagswahl.pdf"
-output_csv: "data/state_elections/raw/Landtagswahlen/Schleswig-Holstein/sh_1983_extracted.csv"
-responses_dir: "data/state_elections/raw/Landtagswahlen/Schleswig-Holstein/sh_1983_vision_responses"
+output_csv: "data/state_elections/derived/sh_1983/ocr_candidates.csv"
+responses_dir: "data/state_elections/derived/sh_1983/vision_responses"
 
 # Table 6: municipality results. Left page (even) has metadata, right page (odd) has vote columns.
 # Pages 18-116. Each municipality has 2 rows (absolute + percentage).
@@ -21,9 +21,9 @@ party_columns:
   gruene: "GR"
   fp: "FP"
   fsu: "FSU"
-  einzelbewerber: "Einzelbewerber"
+  einzelbewerber_llsh: "Einzelbewerber"
 
-csv_party_columns: [cdu, spd, fdp, ssw, dkp, dgl, gruene, fp, fsu, einzelbewerber]
+csv_party_columns: [cdu, spd, fdp, ssw, dkp, dgl, gruene, fp, fsu, einzelbewerber_llsh]
 vote_mode: "abs"  # right page returns absolute vote counts directly
 
 # SH 1983: left page has NR (Kreis+Gemeinde code), NAME, Wahlberechtigte (3 cols), Wähler (2 cols), ungültige
@@ -65,23 +65,24 @@ right_prompt: |
   "-" = 0, empty = 0.
 
   Return {n} JSON objects: [{{"gueltige": int, "cdu": int, "spd": int, "fdp": int, "ssw": int,
-  "dkp": int, "dgl": int, "gruene": int, "fp": int, "fsu": int, "einzelbewerber": int}}, ...]
+  "dkp": int, "dgl": int, "gruene": int, "fp": int, "fsu": int, "einzelbewerber_llsh": int}}, ...]
   JSON only.
 
 # AGS construction: "01" + KK (3-digit padded) + GGG → 8-digit AGS
 # e.g., NR "51 001" → AGS "01051001"
 ags_prefix: "01"
-ags_from_nr: true  # construct AGS from NR field: "01" + nr.zfill(5) padded to 8 digits
+ags_from_nr: true  # "01" + three-digit county + three-digit municipality
 
 # No kreisfreie Städte aggregation needed (they appear as single rows)
 valid_kreise: ["01001", "01002", "01003", "01004",
-               "01051", "01052", "01053", "01054", "01055", "01056",
+               "01051", "01053", "01054", "01055", "01056",
                "01057", "01058", "01059", "01060", "01061", "01062"]
 
-# Official totals (INSGESAMT from PDF p.13, includes Briefwahl)
+# Validation totals: ZUSAMMEN from PDF p.13, excludes Briefwahl
 # Urnenwahl = ZUSAMMEN row: valid=1,502,477
 # Briefwahl: valid=159,995
-# Since we add Briefwahl separately in R code, validate against Urnenwahl only
+# Municipality results exclude postal votes. Never allocate the state total to municipalities.
+# This config generates candidates only; production uses the verified transcription.
 official_totals:
   valid_votes: 1502477
   cdu: 729026
@@ -93,4 +94,4 @@ official_totals:
   gruene: 48100
   fp: 333
   fsu: 8
-  einzelbewerber: 144
+  einzelbewerber_llsh: 144

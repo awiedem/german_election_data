@@ -1,0 +1,77 @@
+{
+  "release_date": "2026-09-24",
+  "original_main": "76705bf",
+  "state_unharm_rows": 150512,
+  "state_unharm_columns": 368,
+  "unrelated_rows_checked": 148088,
+  "source_checks": {
+    "sh_municipalities": 1128,
+    "sh_printed_percentages": 7959,
+    "nrw_tests": 8,
+    "bw_checks": 398,
+    "csv_rds_columns": 1496,
+    "raw_hashes_unchanged": 302
+  },
+  "exports": [
+    {
+      "path": "data/state_elections/final/state_unharm.csv",
+      "bytes": "89792013",
+      "sha256": "31e1a94d39209c8c8633cfd1bb677d9e0afea742971b59e419e8413a9a569e97"
+    },
+    {
+      "path": "data/state_elections/final/state_unharm.rds",
+      "bytes": "13097512",
+      "sha256": "8df5b7662a8a0883b7061207c76c3c2eb34080280e172ad0dba0822763314ff8"
+    },
+    {
+      "path": "data/state_elections/final/state_unharm.xlsx",
+      "bytes": "28809749",
+      "sha256": "fdabbeabe2b357dd7739978560b95cd9d59efb7d7962665821c3804eeeec5c98"
+    },
+    {
+      "path": "data/state_elections/final/state_harm_21.csv",
+      "bytes": "60059432",
+      "sha256": "52ff9972c3b3257fa140a5e625cd3db930737eb8976cbe5ecb1470086a7f4fb2"
+    },
+    {
+      "path": "data/state_elections/final/state_harm_21.rds",
+      "bytes": "10688991",
+      "sha256": "b80058cfbbf071eb295fe49c4cb4c65ff256b7d53f24803a12c942bb2b3630a9"
+    },
+    {
+      "path": "data/state_elections/final/state_harm_21.xlsx",
+      "bytes": "22428830",
+      "sha256": "a2e3c7566687f1bb5ad9d3e51e5253d0818cb28bf6822ba82a994e88c156cd5d"
+    },
+    {
+      "path": "data/state_elections/final/state_harm_23.csv",
+      "bytes": "60184415",
+      "sha256": "77f83d64313f19d8cd94c234bc93b2746ee9ac873be8e10683b0b9ea9439206b"
+    },
+    {
+      "path": "data/state_elections/final/state_harm_23.rds",
+      "bytes": "10716395",
+      "sha256": "a4e675c1b444a21bfa5b3307ad49d938f4e967530631b474106886e3f8292f87"
+    },
+    {
+      "path": "data/state_elections/final/state_harm_23.xlsx",
+      "bytes": "22560035",
+      "sha256": "cdd712362ddd3c9b61d699a3993cf872c55408903746af5db6a99fbadf0186b3"
+    },
+    {
+      "path": "data/state_elections/final/state_harm_25.csv",
+      "bytes": "60240886",
+      "sha256": "39dc204568887028f83aed091287cd86c8bb02d68bdf464f43a7a3e36883c55f"
+    },
+    {
+      "path": "data/state_elections/final/state_harm_25.rds",
+      "bytes": "10716965",
+      "sha256": "55cf695beed30298c5f2835b0c6c3e1064e431d6b73a2ba09779266a4b61087d"
+    },
+    {
+      "path": "data/state_elections/final/state_harm_25.xlsx",
+      "bytes": "22648287",
+      "sha256": "e773d275dc177fbbbd5e03ceef5c7360cf90e3989bb48ad308d2df1bf07db416"
+    }
+  ]
+}

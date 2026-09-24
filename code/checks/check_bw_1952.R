@@ -59,7 +59,7 @@ check("csv_schema_and_rows", identical(names(csv), names(out)) && nrow(csv) == n
 for (field in names(out)) {
   a <- csv[[field]]; b <- out[[field]]
   if (inherits(b, "Date")) { a <- as.character(a); b <- as.character(b) }
-  check(paste0("csv_rds_", field), identical(is.na(a), is.na(b)) &&
+  check(paste0("csv_rds_", field), identical(unname(is.na(a)), unname(is.na(b))) &&
           isTRUE(all.equal(a, b, check.attributes = FALSE, tolerance = 1e-12)))
 }
 

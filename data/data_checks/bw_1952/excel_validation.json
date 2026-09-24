@@ -1,18 +1,18 @@
 {
   "general_export_validation": {
     "dataset": "data/state_elections/final/state_unharm",
-    "rows": 150463,
-    "populated_cells": 4051384,
+    "rows": 150512,
+    "populated_cells": 4030732,
     "sampled_rows": [
       1,
       2,
       3,
       4,
-      75232,
-      150464
+      75257,
+      150513
     ]
   },
   "bw_1952_rows_checked": 1111,
-  "bw_1952_columns_checked": 367,
+  "bw_1952_columns_checked": 368,
   "passed": true
 }

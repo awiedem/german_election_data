@@ -21,7 +21,9 @@ add no columns to the election files and are not a new package dataset.
   `(dataset, state, election_year)` while reading `state` as character. The
   optional `flag_source_unreliable = 1` identifies the listed unresolved
   extractions; absence from this table is **not** a clean bill of health.
-  NRW source repairs must update this list only after reconciliation.
+  A listed value of 0 describes a coverage restriction without classifying the
+  recovered counts as corrupt. NRW 1966/1970 was removed after source reconciliation.
+  BW 1952 is labelled `municipality_1979_boundaries` in the completeness table.
 
 Regenerate the first two tables with
 `Rscript --vanilla code/checks/build_state_metadata.R`. All three tables refer

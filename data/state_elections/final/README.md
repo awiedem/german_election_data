@@ -4,7 +4,7 @@
 
 ### Unharmonized (original municipal boundaries)
 
-- **`state_unharm.rds/.csv`** -- Municipality-level state election results from official state statistics offices. Covers all 16 German states, 1946--2026 (availability varies by state). 149,352 rows (all individual party columns preserved). Produced by `code/state_elections/01b_state_unharm_raw.R`.
+- **`state_unharm.rds/.csv`** -- Municipality-level state election results from official state statistics offices. Covers all 16 German states, 1946--2026 (availability varies by state). 150,512 rows (all individual party columns preserved). Produced by `code/state_elections/01b_state_unharm_raw.R`.
 
 ### Harmonized (fixed administrative boundaries)
 
@@ -59,7 +59,7 @@ Use the explicit [column schema and example](../metadata/README.md), rather than
 ### Harmonized files additionally include
 `state_name`, `flag_unsuccessful_naive_merge`, `flag_other_party_residual`, `perc_total_votes_incongruence`, `total_vote_share`, `far_right`, `far_left`, `far_left_w_linke`, `flag_harm_turnout_above_1`, and area/population covariates. Municipality names are in `ags_name_21` for 2021 boundaries and `ags_name` for 2023/2025 boundaries. `total_vote_share` excludes `other` and derived aggregates; `flag_other_party_residual` is 1 when it falls outside [0.999, 1.001]. The three source flags (`flag_briefwahl_only`, `flag_no_valid_votes`, `flag_naive_turnout_above_1`) are present only in `state_unharm`.
 
-`flag_briefwahl_only` retains its legacy name and values for compatibility. It flags zero electorate with positive valid votes before participation fields are neutralized. It also captures missing/corrupt participation, and does **not** establish that a row is an actual postal district. The separate [source limitation table](../metadata/source_limitations.csv) identifies unresolved NRW 1966/1970 and SH 1983 extractions.
+`flag_briefwahl_only` retains its legacy name and values for compatibility. It flags zero electorate with positive valid votes before participation fields are neutralized. It also captures missing/corrupt participation, and does **not** establish that a row is an actual postal district. The separate [source limitation table](../metadata/source_limitations.csv) documents remaining coverage restrictions after the NRW and SH source repairs.
 
 ## State coverage
 
@@ -70,7 +70,7 @@ Use the explicit [column schema and example](../metadata/README.md), rather than
 | Sachsen | 14 | 1990--2024 | 1990--2024 | |
 | Brandenburg | 12 | 1990--2024 | 1990--2024 | 1990/1994 OCR-digitized |
 | Mecklenburg-Vorpommern | 13 | 1990--2021 | 1990--2021 | |
-| Baden-Württemberg | 08 | 1956--2026 | 1992--2026 | Municipality 1952 not yet included |
+| Baden-Württemberg | 08 | 1952--2026 | 1992--2026 | 1952 constituent assembly on 1979 boundaries; electorate and turnout unavailable |
 | Hessen | 06 | 1946--2023 | 1991--2023 | |
 | Saarland | 10 | 1970--2022 | 1990--2022 | 1970/1975 OCR-digitized |
 | Hamburg | 02 | 1966--2025 | 1991--2025 | City-state (1 row/election); 5-vote system since 2011 |
@@ -78,7 +78,7 @@ Use the explicit [column schema and example](../metadata/README.md), rather than
 | Nordrhein-Westfalen | 05 | 1947--2022 | 1990--2022 | 1947--1970 county-level only |
 | Berlin | 11 | 1990--2023 | 1990--2023 | City-state (1 row/election) |
 | Bremen | 04 | 1946--2023 | 1991--2023 | City-state (2 rows: Stadt Bremen + Bremerhaven) |
-| Schleswig-Holstein | 01 | 1983--2022 | 1996--2022 | 1983 OCR-digitized |
+| Schleswig-Holstein | 01 | 1983--2022 | 1996--2022 | 1983: in-person votes only; turnout unavailable |
 | Bayern | 09 | 1946--2023 | 1990--2023 | Reports Gesamtstimmen (Erst+Zweit combined) |
 | Rheinland-Pfalz | 07 | 1979--2021 | 1991--2021 | 1979--2016 Landesstimmen only (no turnout data) |
 
@@ -106,11 +106,13 @@ Bayern reports combined Erst+Zweitstimme ("Gesamtstimmen") because both ballots 
 
 ### Other known issues
 
+- **BW 1952**: Constituent-assembly results on 1 January 1979 municipal boundaries. Municipal electorate excludes unallocated certificate holders, so the full electorate and turnout are `NA`. The source retains a KPD +1 / SRP -1 discrepancy against official totals. See [source notes](../../../docs/sources/bw_1952.md).
+
 - **HE 1958/62**: `number_voters`/`invalid_votes` not reported for most municipalities (source omissions preserved as NA)
-- **SH 1983**: unresolved extraction problems. 135 of 1,079 rows lack participation fields; 253 rows have valid votes above voters. Even on the 944 paired rows, valid votes (1,329,758) exceed voters (1,286,010). Party shares have not been independently validated. Do not interpret the legacy postal flag as the cause.
+- **SH 1983**: Verified in-person results for all 1,128 municipal records. The source cannot assign postal votes to municipalities, so overall turnout is `NA`. `llsh` separates Linke Liste Schleswig-Holstein from independents. Wiedenborstel voted in Hennstedt and has no separate row. See [source controls](../derived/sh_1983/README.md).
 - **BY 1994--2013**: `eligible_voters` NA (not in Stimmabgabe source files), but `number_voters` is complete: 2,056 observations per election.
 - **BB 1990/94**: Briefwahl misallocation artifacts in OCR-extracted data
-- **NRW 1966/1970**: corrupt historical extraction affects participation and vote counts. Avoid turnout and statewide count reconstruction until repaired from sources. Bonn 1966, for example, currently has 2,809,059 valid votes against 84,031 eligible voters. These records are county units, not postal districts.
+- **NRW 1966/1970**: Counts and turnout reconcile with the source tables. Results describe counties and county-free cities with synthetic, election-specific AGS; these are not official municipal identifiers.
 - **MV 1990**: in-person-only municipality results; CSU and DSU are separate entries in both official municipality and statewide sources. `cdu_csu` combines CDU and CSU only.
 - **NRW 1947--1970**: County-level only (synthetic AGS `050xx000`), present in unharm but cannot be harmonized. 1947/1950 were visually read from scanned PDFs at Wahlkreis level (150 WK) then aggregated to ~84 Kreise. 1947/1950 lack turnout data (only valid\_votes and party counts). 1947 parties: CDU, SPD, FDP, KPD, Zentrum, DRP, RWVP, Unabhängige. 1950 adds DP, RSF, SRP, CSAB. Minor scan-read residuals for 1947 (CDU+4, FDP-1, KPD+2, Z-5 vs official totals)
 

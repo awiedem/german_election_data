@@ -361,7 +361,7 @@ The source flags `flag_briefwahl_only`, `flag_no_valid_votes` and
 
 | Variable | Type | Description |
 | :------------------------------ | :-------- | :---------------------------------------------------- |
-| `flag_briefwahl_only` | int/num | Legacy arithmetic flag: electorate was zero while valid votes were positive before electorate/voters/turnout were set to `NA`. It includes source gaps and extraction errors (notably SH 1983 and NRW 1966/1970), so it does not prove that a row is a postal district. Values are 0/1, never party shares. |
+| `flag_briefwahl_only` | int/num | Legacy arithmetic flag: electorate was zero while valid votes were positive before electorate/voters/turnout were set to `NA`. It includes source gaps and extraction errors, so it does not prove that a row is a postal district. Values are 0/1, never party shares. |
 | `flag_no_valid_votes` | integer | 1 where the row reports no valid votes. |
 | `flag_naive_turnout_above_1` | integer | 1 where uncapped turnout exceeded 1. |
 | `flag_harm_turnout_above_1` | integer | As above, after harmonization (harmonized files). |
@@ -369,6 +369,15 @@ The source flags `flag_briefwahl_only`, `flag_no_valid_votes` and
 | `total_vote_share` | numeric | In harmonized files, sum of individual party shares excluding `other` and derived aggregates, rounded to eight decimals. A residual can leave it below 1. |
 | `einzelbewerber`, `einzelbewerber_1`, `einzelbewerber_2`, `einzelbewerber_innen` | numeric | Independent candidates. The source lists them under several distinct labels which are deliberately not merged, because in some state-years they identify different individuals. Sum them if you want a single independents series. |
 | `area_ags`, `population_ags`, `employees_ags`, `pop_density_ags` | numeric | Municipality covariates joined in from `ags_area_pop_emp` (harmonized files). See the covariates section. |
+
+**Schleswig-Holstein 1983.** The 1,128 municipal records contain in-person
+voters and votes only; `eligible_voters` is the full electorate. Postal votes
+cannot be assigned to municipalities in the source, so `turnout` is `NA`.
+Party shares use in-person `valid_votes` and cannot reproduce the all-ballot
+statewide result. `llsh` denotes Linke Liste Schleswig-Holstein, separate from
+`einzelbewerber` and `linke_pds`. Wiedenborstel has no separate result; its
+electorate voted in Hennstedt. The reviewed transcription and source controls
+are documented in `data/state_elections/derived/sh_1983/README.md`.
 
 **Zero-vote recoding in harmonized files.** A party that received zero votes across *all*
 municipalities in a state-year is recoded from 0 to `NA`, so that "did not
@@ -398,15 +407,15 @@ total_known <- sum_known(x)
   totals, but they do not fill missing municipality values.
 - **BY 1994--2013:** eligible counts are missing; voter counts are complete
   (2,056 municipality observations per election).
-- **NRW 1966/1970:** unresolved extraction corruption affects participation
-  and vote counts. These are county/county-free-city units with synthetic AGS,
-  not municipalities. Avoid turnout and statewide count reconstruction until
-  source reconciliation is complete.
-- **SH 1983:** 135 of 1,079 rows lack participation fields. Among the 944 rows
-  with both voter and valid-vote counts, valid votes sum to 1,329,758 versus
-  1,286,010 voters; 253 rows have more valid votes than voters. This is not
-  explained by missing coverage alone. Party shares are not independently
-  validated, and the legacy postal flag does not identify the cause.
+- **NRW 1966/1970:** source-verified counts and turnout for counties and
+  county-free cities. Their synthetic AGS are specific to each election and
+  must not be treated as official municipality codes.
+- **SH 1983:** source-verified in-person results. Municipal postal votes and
+  overall turnout remain unavailable; see the detailed scope note above.
+- **BW 1952:** constituent-assembly results on 1 January 1979 municipal
+  boundaries. Full municipal electorate and turnout are unavailable because
+  the source excludes unallocated Wahlschein holders. Source totals preserve
+  KPD +1 / SRP -1 against official figures; see `docs/sources/bw_1952.md`.
 - **MV 1990:** the municipality source covers in-person voting. Its CSU and
   DSU entries are separate, as in the [official state result](https://www.laiv-mv.de/static/LAIV/Wahlen/Dateien/Dokumente/Landtagswahlen/Ergebnisseite/LW%201990%20Erst-Zweitstimmen.pdf).
   Preserve both; differences from the complete state totals reflect coverage.
@@ -417,7 +426,7 @@ can be joined for filtering without changing the election-file schema. A
 missing warning is not evidence that an election has passed a source audit.
 The completeness table measures recorded fields, not their correctness.
 
-Current municipality coverage begins in **BW 1956, TH 1994 and NI 1974**;
+Current municipality coverage begins in **BW 1952, TH 1994 and NI 1974**;
 min/max years do not promise an uninterrupted election series. TH 1990 is
 available at constituency level. See the generated completeness table for
 actual elections and the state-data README for additional coverage limits.

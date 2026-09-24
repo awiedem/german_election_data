@@ -1,19 +1,19 @@
 [
   {
     "dataset": "data/state_elections/final/state_unharm",
-    "rows": 149352,
-    "populated_cells": 4004647,
+    "rows": 150512,
+    "populated_cells": 4030732,
     "sampled_rows": [
       1,
       2,
       3,
       4,
-      74677,
-      149353
+      75257,
+      150513
     ],
-    "invalid_votes_checked": 149352,
-    "invalid_votes_missing": 22295,
-    "invalid_votes_zero": 3134
+    "invalid_votes_checked": 150512,
+    "invalid_votes_missing": 22292,
+    "invalid_votes_zero": 2853
   },
   {
     "dataset": "data/state_elections/final/state_harm_21",

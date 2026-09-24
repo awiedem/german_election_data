@@ -94,14 +94,15 @@ stopifnot(abs(sum(mv$csu * mv$valid_votes, na.rm = TRUE) - 9663) < 1e-7,
           abs(sum(mv$dsu * mv$valid_votes, na.rm = TRUE) - 6499) < 1e-7)
 by <- s[s$state == "09" & s$election_year %in% c(1994, 1998, 2003, 2008, 2013), ]
 stopifnot(all(is.na(by$eligible_voters)), all(!is.na(by$number_voters)))
-# Pin the documented unresolved SH extraction, without treating it as valid.
-# A source repair must deliberately update this check and the limitation table.
+# The coordinated SH source repair supersedes the former corruption fixture.
+source("code/state_elections/sh_1983_verified.R")
+expected_sh <- gerda_sh_1983_verified()
 sh <- s[s$state == "01" & s$election_year == 1983, ]
-paired <- !is.na(sh$number_voters) & !is.na(sh$valid_votes)
-stopifnot(nrow(sh) == 1079L, sum(is.na(sh$eligible_voters)) == 135L,
-          sum(paired) == 944L, sum(sh$valid_votes[paired]) == 1329758,
-          sum(sh$number_voters[paired]) == 1286010,
-          sum(sh$valid_votes[paired] > sh$number_voters[paired]) == 253L)
+stopifnot(nrow(sh) == 1128L, !anyDuplicated(sh$ags), setequal(sh$ags, expected_sh$ags),
+          all(is.na(sh$turnout)), all(sh$flag_briefwahl_only == 0))
+sh <- sh[match(expected_sh$ags, sh$ags), ]
+for (field in names(expected_sh)) stopifnot(isTRUE(all.equal(unname(sh[[field]]),
+  unname(expected_sh[[field]]), check.attributes = FALSE, tolerance = 1e-12)))
 
 comparisons <- changes <- list()
 baseline <- commandArgs(trailingOnly = TRUE)

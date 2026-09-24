@@ -34,6 +34,7 @@ for (nm in stems) {
     z <- data.frame(dataset = nm, state = d$state[1], election_year = d$election_year[1],
                     election_date = d$election_date[1], rows = nrow(d))
     z$geography <- if (nm != "state_unharm") "municipality_harmonized" else
+      if (d$state[1] == "08" && d$election_year[1] == 1952) "municipality_1979_boundaries" else
       if (d$state[1] == "05" && d$election_year[1] < 1975) "county_synthetic_ags" else
       if (d$state[1] %in% c("02", "04", "11")) "city_state_municipality" else "municipality"
     for (v in c(counts, "turnout")) {

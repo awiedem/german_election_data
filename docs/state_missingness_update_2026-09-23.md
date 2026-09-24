@@ -1,5 +1,8 @@
 # State-election missingness and documentation update, 23 September 2026
 
+> Integrated on 24 September 2026 with NRW, BW 1952 and SH repairs.
+> This document records the earlier branch snapshot; see [the combined release](releases/historical-state-2026-09-24.md) for current results and limitations.
+
 This is a prepared, unpublished update. It preserves the existing file names,
 column names, vote-share denominators, ballot units and result versions.
 

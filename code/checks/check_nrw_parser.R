@@ -6,7 +6,7 @@ base <- if (length(args)) args[[1]] else '.'
 run_nrw <- function(path) {
  text <- readLines(path, warn=FALSE)
  env <- new.env(parent=globalenv())
- helper_start <- grep('^normalise_party <- function',text)
+ helper_start <- grep('^meta_cols <- c',text)
  helper_end <- grep('^## Collector list:',text)-1
  stopifnot(length(helper_start)==1L, length(helper_end)==1L)
  eval(parse(text=text[helper_start:helper_end]),env)

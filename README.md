@@ -3,10 +3,11 @@
 For share denominators, vote units, missing values and federal 2021 result
 versions, see the [codebook](docs/codebook.md#denominators-and-result-versions).
 State-election [coverage, completeness and column schemas](data/state_elections/metadata/README.md)
-identify available elections and fields; NRW 1966/1970 and SH 1983 retain
-[unresolved extraction limitations](data/state_elections/metadata/source_limitations.csv).
+identify available elections and fields. Historical source repairs cover NRW 1966/1970
+and SH 1983; [source limitations](data/state_elections/metadata/source_limitations.csv)
+document the remaining coverage restrictions.
 The [September 2026 audit](docs/state_missingness_update_2026-09-23.md#follow-up-audit-and-corrections)
-records the corrections, validation results and remaining integration work.
+records the corrections and validation results; the [combined release](docs/releases/historical-state-2026-09-24.md) documents their integration.
 
 ## Table of Contents
 

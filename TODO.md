@@ -15,14 +15,14 @@ Cross-validation against `bundeslaendeR` (Stelzle) identifies six state × party
 | BB 1994 SPD | -3.76pp | -3.93pp | No |
 | BB 1990 SPD | -2.45pp | -2.45pp | No |
 | BB 1990 Grüne | +2.02pp | +2.02pp | No |
-| SH 1983 CDU | +1.65pp | +1.65pp | No |
+| SH 1983 CDU | +1.65pp | +1.65pp | Repaired 2026-09-23; compare in-person totals only |
 | NRW 1970 CDU | -1.20pp | -1.20pp | No |
 | BB 1990 CDU | -1.10pp | -1.10pp | No |
 | BB 1994 Linke/PDS | -1.03pp | <1pp | Yes |
 
 **Root causes by election:**
 - **BB 1990 / BB 1994**: Erststimmen/Zweitstimmen row disambiguation on dense right-page tables. No labels distinguish E% from Z% rows on the right page; neither position counting, Tesseract, nor vision models (GPT-5.4-mini, Gemini 2.5 Flash) reliably pick the correct row. Detailed problem analysis: `docs/ocr_extraction_problem.qmd`.
-- **SH 1983**: Municipality-level data in the source PDF excludes Briefwahl (mail-in) votes. Briefwahl totals are state-level only in Table 3. Partial fix applied via proportional state-level allocation — residual deviation is because CDU overperforms in Briefwahl.
+- **SH 1983**: Repaired from the source scan on 2026-09-23: 1,128 records and all in-person totals reconcile exactly. Municipality results exclude postal votes; no postal allocation is performed. Overall municipal turnout remains unavailable. See `data/state_elections/derived/sh_1983/README.md`.
 - **NRW 1970**: Scattered OCR digit errors across ~90 Kreise from Tesseract extraction of scanned PDF.
 
 **Tried and not working well enough:**
