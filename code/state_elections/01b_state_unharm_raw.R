@@ -1,4 +1,4 @@
-#### State Elections: Clean raw data (1990-2024) ####
+#### State Elections: Clean raw data (1946-2026) ####
 ## Builds state_unharm from raw files, replacing the DESTATIS API source.
 ##
 ## This script reads municipality-level raw election data for all 16 German
@@ -24,6 +24,7 @@ setwd(here())
 
 raw_path <- "data/state_elections/raw/Landtagswahlen"
 source("code/shared/state_mapping.R")
+source("code/shared/state_missingness.R")
 source("code/shared/harmonization_audit.R")
 
 ## Meta columns (non-party) present in every row ----------------------------
@@ -4084,10 +4085,10 @@ for (yr in names(he_dates)) {
       summarise(
         election_year = first(election_year), state = first(state),
         election_date = first(election_date),
-        eligible_voters = sum(eligible_voters, na.rm = TRUE),
-        number_voters   = sum(number_voters, na.rm = TRUE),
-        valid_votes     = sum(valid_votes, na.rm = TRUE),
-        invalid_votes   = sum(invalid_votes, na.rm = TRUE),
+        eligible_voters = gerda_sum_known(eligible_voters),
+        number_voters   = gerda_sum_known(number_voters),
+        valid_votes     = gerda_sum_known(valid_votes),
+        invalid_votes   = gerda_sum_known(invalid_votes),
         across(any_of(count_cols), ~ sum(.x, na.rm = TRUE)),
         .groups = "drop"
       )
@@ -7212,49 +7213,42 @@ if (any(he_agg_rows)) {
 
 # Flag (but keep) rows with valid_votes == 0 (gemeindefreie Gebiete, empty municipalities)
 # These are real administrative units with persistent AGS codes — needed for balanced panels
-# Note: valid_votes = NA is kept unflagged (e.g. HB pre-1999, RP 1979-2016 where only pcts available)
+# Note: valid_votes = NA is kept unflagged (e.g. HB pre-1999 percentages only).
 state_unharm$flag_no_valid_votes <- ifelse(
   !is.na(state_unharm$valid_votes) & state_unharm$valid_votes == 0, 1L, 0L
 )
 cat(sprintf("Flagged %d rows with valid_votes == 0\n", sum(state_unharm$flag_no_valid_votes)))
 
-# Flag (but keep) Briefwahl-only entities: eligible_voters=0 but votes>0
-# These are real municipalities with mail-in vote misallocation or source gaps
-# (e.g., BB 1990, SH 1983 garbled PDF, NRW 1966 major cities)
+# Legacy flag: eligible_voters=0 but valid_votes>0 before neutralization.
+# This arithmetic diagnostic does NOT identify actual postal districts. It also
+# catches missing/corrupt participation fields (SH 1983, NRW 1966/1970).
+# See data/state_elections/metadata/source_limitations.csv for known limitations.
 state_unharm$flag_briefwahl_only <- ifelse(
   !is.na(state_unharm$eligible_voters) & state_unharm$eligible_voters == 0 &
   !is.na(state_unharm$valid_votes) & state_unharm$valid_votes > 0, 1L, 0L
 )
 n_brief <- sum(state_unharm$flag_briefwahl_only)
 if (n_brief > 0) {
-  cat(sprintf("Flagged %d rows as Briefwahl-only entities (EV=0, VV>0)\n", n_brief))
-  # Neutralize Briefwahl-only rows: EV/NV are not meaningful (EV=0 is source artifact,
-  # e.g. MV Amt-level Briefwahl aggregates). VV and party columns are preserved so that
-  # vote shares remain correct after harmonization. na.rm=TRUE in harm scripts'
-  # weighted sum naturally skips NA EV/NV, preventing turnout inflation.
+  cat(sprintf("Flagged %d rows with zero electorate and positive votes (legacy flag)\n", n_brief))
+  # Participation is not interpretable on these zero-electorate rows.
+  # Preserve vote fields without asserting they are correct: historical source
+  # gaps/extraction errors and pooled postal rows need separate source review.
   idx_brief <- state_unharm$flag_briefwahl_only == 1
   state_unharm$eligible_voters[idx_brief] <- NA_real_
   state_unharm$number_voters[idx_brief] <- NA_real_
   state_unharm$turnout[idx_brief] <- NA_real_
-  cat(sprintf("Set EV/NV/turnout to NA for %d Briefwahl-only rows\n", sum(idx_brief)))
+  cat(sprintf("Set EV/NV/turnout to NA for %d zero-electorate/positive-vote rows\n", sum(idx_brief)))
 }
 
-# HE 1958/1962: number_voters not reported for non-kreisfreie municipalities
-# Source XLSX has empty Wähler column → recode 0 to NA (data unavailable, not zero)
-he_nv_fix <- state_unharm$state == "06" &
-  state_unharm$election_year %in% c(1958L, 1962L) &
-  !is.na(state_unharm$number_voters) & state_unharm$number_voters == 0
-if (any(he_nv_fix)) {
-  cat(sprintf("Recoding %d HE 1958/1962 number_voters from 0 to NA (source gap)\n", sum(he_nv_fix)))
-  state_unharm$number_voters[he_nv_fix] <- NA_real_
-  state_unharm$turnout[he_nv_fix] <- NA_real_
-}
+# HE 1958/1962 source omissions remain NA through pre-reform aggregation.
+# Do not infer missingness from zero: observed zeros must remain observed.
 
-# Clamp negative invalid_votes to 0 (Briefwahl allocation rounding artifacts)
+# Clamp known negative invalid_votes to 0 (Briefwahl allocation rounding artifacts).
+# Omitting na.rm preserves unknown counts; pmax(NA, 0, na.rm=TRUE) invents zero.
 n_neg_iv <- sum(state_unharm$invalid_votes < 0, na.rm = TRUE)
 if (n_neg_iv > 0) {
   cat(sprintf("Clamping %d rows with negative invalid_votes to 0\n", n_neg_iv))
-  state_unharm$invalid_votes <- pmax(state_unharm$invalid_votes, 0, na.rm = TRUE)
+  state_unharm$invalid_votes <- pmax(state_unharm$invalid_votes, 0)
 }
 
 # Flag turnout > 1 before capping (mirrors federal pipeline flag)
@@ -7278,14 +7272,14 @@ if (n_bad_turnout > 0) {
   cat(sprintf("Note: %d rows have NA turnout (non-finite or >150%%)\n", n_bad_turnout))
 }
 
-# CDU/CSU consistency: ensure cdu_csu = combined CDU+CSU family vote
-# Bayern uses CSU only; other states typically CDU only, but DSU (CSU sister)
-# ran in some East German states in 1990, so always sum both when present.
+# Derived cdu_csu = CDU + CSU where both are recorded; exclude it from party sums.
+# The official MV 1990 workbook and state result explicitly list CSU and DSU
+# separately. Preserve both source identities; DSU is not part of cdu_csu.
 state_unharm <- state_unharm |>
   mutate(
     cdu_csu = case_when(
       state == "09" ~ csu,                                        # Bavaria: CSU only
-      !is.na(cdu) & !is.na(csu) ~ cdu + csu,                     # Both present (e.g. MV 1990 DSU)
+      !is.na(cdu) & !is.na(csu) ~ cdu + csu,                     # Both present (MV 1990 CSU)
       !is.na(cdu)   ~ cdu,                                        # CDU only
       TRUE           ~ cdu_csu                                     # Fallback
     )

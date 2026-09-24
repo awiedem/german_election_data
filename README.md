@@ -1,5 +1,13 @@
 # GERDA: German Election Database
 
+For share denominators, vote units, missing values and federal 2021 result
+versions, see the [codebook](docs/codebook.md#denominators-and-result-versions).
+State-election [coverage, completeness and column schemas](data/state_elections/metadata/README.md)
+identify available elections and fields; NRW 1966/1970 and SH 1983 retain
+[unresolved extraction limitations](data/state_elections/metadata/source_limitations.csv).
+The [September 2026 audit](docs/state_missingness_update_2026-09-23.md#follow-up-audit-and-corrections)
+records the corrections, validation results and remaining integration work.
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -51,11 +59,11 @@ GERDA includes federal, state, municipal, European, mayoral, and county (Kreista
 | Local Elections           | Municipality         | 1990-2021        | No                | `municipal_unharm`           |
 | Local Elections           | Municipality         | 1990-2021        | Yes (2021)        | `municipal_harm`             |
 | Local Elections           | Municipality         | 1990-2021        | Yes (2025)        | `municipal_harm_25`          |
-| State Elections           | Municipality         | 1946-2024        | No                | `state_unharm`               |
+| State Elections           | Municipality         | 1946-2026        | No                | `state_unharm`               |
 | State Elections           | Municipality         | 2006-2019        | Yes (2021, legacy)| `state_harm`                 |
-| State Elections           | Municipality         | 2006-2024        | Yes (2021)        | `state_harm_21`              |
-| State Elections           | Municipality         | 2006-2023        | Yes (2023)        | `state_harm_23`              |
-| State Elections           | Municipality         | 2006-2024        | Yes (2025)        | `state_harm_25`              |
+| State Elections           | Municipality         | 1990-2026        | Yes (2021)        | `state_harm_21`              |
+| State Elections           | Municipality         | 1990-2026        | Yes (2023)        | `state_harm_23`              |
+| State Elections           | Municipality         | 1990-2026        | Yes (2025)        | `state_harm_25`              |
 | Federal Elections         | Municipality         | 1980-2025        | No                | `federal_muni_raw`           |
 | Federal Elections         | Municipality         | 1980-2025        | No                | `federal_muni_unharm`        |
 | Federal Elections         | Municipality         | 1990-2025        | Yes (2021)        | `federal_muni_harm_21`       |

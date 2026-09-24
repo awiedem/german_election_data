@@ -53,6 +53,18 @@ This folder contains scripts to check data quality and diagnose issues in the Ge
 
 ### State Elections
 
+- **`check_state_missingness.R`** checks Hessen 1958/1962 against the original
+  workbook, Rheinland-Pfalz source totals and missing participation, the separate
+  MV 1990 CSU/DSU entries, the documented SH 1983 limitation, and every CSV/RDS
+  column in the four current municipality datasets. Supply a directory holding
+  pre-change RDS files to verify that only unknown `invalid_votes` changed.
+- **`check_state_excel_missingness.py`** verifies workbook hashes, XML, styles,
+  row/cell counts and sampled values, plus every `invalid_votes` value and blank
+  against CSV in those four datasets.
+- **`build_state_metadata.R`** regenerates the actual election coverage,
+  field completeness and explicit column schema under
+  `data/state_elections/metadata/`. Run after all four RDS outputs are rebuilt.
+
 - **`checks_state_harm.R`**
   - Validates `state_harm_21`, `state_harm_23`, `state_harm_25`, and `state_2224_unharm`
   - 13 checks covering: coverage (states, years), turnout issues (NA, >1, =0), vote share deviations, party-specific issues (Bremen AfD, BSW, column naming), quality flags, and covariate gaps
@@ -99,4 +111,3 @@ Most check scripts save results to `data/data_checks/`:
 ## Old Scripts
 
 Deprecated or consolidated scripts are moved to the `old/` folder.
-
