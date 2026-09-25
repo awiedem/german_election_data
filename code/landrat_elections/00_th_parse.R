@@ -21,6 +21,9 @@
 #   Row 6: candidate-names header (cols 14, 16, 18, ... = "Name (Partei)")
 #   Row 8: Kreis-level summary (Satzart="K", Gemeinde-nr="000")
 #   Row 10+: per-Gemeinde rows (Satzart="G")
+# From 2018 on the candidate header takes TWO rows and everything below moves
+# down two: the party alone on row 6 ("AfD", "SPD", "Einzelbewerber"), the
+# name alone on row 7 ("Benninghaus, Thomas"), the K-row on row 10.
 #
 # Cols (positional):
 #   1=Stand (E/V/Z), 2=Satzart (K/G), 3=Kreis-nr, 4=Gemeinde-nr, 5=Stimmbezirksnr,
@@ -144,10 +147,24 @@ parse_th_sheet <- function(file, sheet) {
   }
   if (length(cand_cols) == 0) return(NULL)
 
+  # 2018+ layout: the name cell has no "(Partei)" suffix and the party sits in
+  # the same column one row up. Before this was read, candidate_party (and so
+  # winner_party) was NA for every 2018-2026 Thüringen election. In the older
+  # layout the cell above holds the column-group label "Von den gültigen
+  # Stimmen entfielen auf" (or nothing), which must never pass as a party.
+  party_hdr <- if (try_row > 1) as.character(d[try_row - 1, ]) else rep(NA_character_, ncol(d))
+
   candidates <- list()
   for (col_idx in cand_cols) {
     nm_raw <- hdr_row[col_idx]
     sp <- split_name_party(nm_raw)
+    if (is.na(sp$party)) {
+      pty <- str_squish(party_hdr[col_idx])
+      if (!is.na(pty) && grepl("entfielen", pty)) pty <- NA_character_
+      # Independents: keep Thüringen's own pre-2018 label, "(Einzelbewerber)".
+      if (!is.na(pty) && pty == "EB") pty <- "Einzelbewerber"
+      sp$party <- pty
+    }
     votes <- suppressWarnings(as.numeric(k_row[[col_idx]]))
     if (is.na(votes)) next
     candidates[[length(candidates) + 1]] <- tibble(
@@ -233,6 +250,15 @@ if (length(all_rows) == 0) {
 }
 
 th_data <- bind_rows(all_rows)
+
+# Every TLS header names a party ("Einzelbewerber" for independents), so an NA
+# here means a layout the header logic above does not know. Checked out here,
+# not inside parse_th_sheet(), whose errors the tryCatch above swallows.
+no_party <- th_data %>% filter(is.na(candidate_party))
+if (nrow(no_party) > 0) {
+  stop(sprintf("%d Thüringen candidate rows have no party: %s", nrow(no_party),
+               paste(unique(no_party$source_file), collapse = ", ")))
+}
 
 # ---------------------------------------------------------------------------
 # Correct election_date: the sheets carry only a report timestamp

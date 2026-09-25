@@ -216,13 +216,15 @@ spot_check <- function(label, ags_v, year, expected_party_pattern) {
 spot_check("Bayern LK Erding 2020", "09177000", 2020, "CSU")
 spot_check("NRW Kreis Kleve 2020", "05154000", 2020, "CDU")
 spot_check("Sachsen Mittelsachsen 2025", "14522000", 2025, "FW|CDU|Freie")
-# Thüringen 2018 winner_party often NA because TH source files don't always
-# list party in parens; this is a known data source limitation
-n_th_eichs <- l %>% filter(ags == "16061000", election_year == 2018) %>% nrow()
-check_warn(n_th_eichs > 0,
-           sprintf("TH LK Eichsfeld 2018: %d row(s) present (winner party NA in source)",
-                   n_th_eichs),
-           "TH LK Eichsfeld 2018: missing")
+# Thüringen 2018+ workbooks carry the party one header row above the name, not
+# in "Name (Partei)"; until September 2026 the parser missed it and every
+# 2018-2026 TH winner_party was NA. Winners checked on wahlen.thueringen.de.
+spot_check("TH LK Eichsfeld 2018", "16061000", 2018, "^CDU$")
+spot_check("TH LK Saalfeld-Rudolstadt 2026", "16073000", 2026, "^SPD$")
+n_th_na <- l %>% filter(state == "16", is.na(winner_party)) %>% nrow()
+check(n_th_na == 0,
+      "TH: every Landrat election has a winner_party",
+      sprintf("TH: %d Landrat election rows with NA winner_party", n_th_na))
 # Region Hannover ("Regionspräsident") is treated specially in the existing
 # NI parser. AGS may be 03241001 (Stadt) or 03241000 (Region) depending on
 # how the PDF labels it. Just verify Hannover/Region exists in some form.
