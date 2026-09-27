@@ -1,5 +1,5 @@
 # GERDA Codebook
-2026-09-24
+2026-09-25
 
 # About this codebook
 
@@ -348,18 +348,21 @@ boundary years and all begin in 1990. Their municipality-name column is
 `ags_name_21` in `state_harm_21` and `ags_name` in
 `state_harm_23`/`state_harm_25`. The source flags `flag_briefwahl_only`,
 `flag_no_valid_votes` and `flag_naive_turnout_above_1` are present only
-in `state_unharm`.
+in `state_unharm`; `flag_pooled` is present in all four files. In the harmonized files, four parties that the sources spell two ways are merged into one column — `pdh` (Partei der Humanisten) into `die_humanisten`, `freiewaehler` into `freie_wahler`, `tier_schutz_partei` into `tierschutz` and `volt_hamburg` into `volt` — while `state_unharm` keeps each source's own label.
 
 | Variable | Type | Description |
 |:---|:---|:---|
 | `flag_briefwahl_only` | int/num | Legacy arithmetic flag: electorate was zero while valid votes were positive before electorate/voters/turnout were set to `NA`. It includes source gaps and extraction errors, so it does not prove that a row is a postal district. Values are 0/1, never party shares. |
 | `flag_no_valid_votes` | integer | 1 where the row reports no valid votes. |
+| `flag_pooled` | integer | 1 where the source counted the municipality together with another one: a donor without counts of its own (all counts and shares `NA`) or the receiving municipality whose counts include it. Set where the source identifies the pooling (Rheinland-Pfalz 2026: 58 donors, 40 receivers, pairs in `data/state_elections/metadata/rp_2026_pooled_municipalities.csv`; Thüringen 2024: 4 donors, receiver not named by the source); 0 otherwise. In harmonized files 1 if any contributing source row is pooled. |
 | `flag_naive_turnout_above_1` | integer | 1 where uncapped turnout exceeded 1. |
 | `flag_harm_turnout_above_1` | integer | As above, after harmonization (harmonized files). |
 | `flag_other_party_residual` | integer | In harmonized files, 1 where `total_vote_share` is below 0.999 or above 1.001. `other` is computed as a residual in every row; this flag records the discrepancy threshold. |
 | `total_vote_share` | numeric | In harmonized files, sum of individual party shares excluding `other` and derived aggregates, rounded to eight decimals. A residual can leave it below 1. |
 | `einzelbewerber`, `einzelbewerber_1`, `einzelbewerber_2`, `einzelbewerber_innen` | numeric | Independent candidates. The source lists them under several distinct labels which are deliberately not merged, because in some state-years they identify different individuals. Sum them if you want a single independents series. |
-| `area_ags`, `population_ags`, `employees_ags`, `pop_density_ags` | numeric | Municipality covariates joined in from `ags_area_pop_emp` (harmonized files). See the covariates section. |
+| `ags_name_21` (`state_harm_21`), `ags_name` (`state_harm_23`/`_25`) | character | Name of the target-boundary municipality, from the crosswalk's target-name column (the name belongs to the target municipality, not to the election year); filled in every row. |
+| `area_ags`, `population_ags`, `employees_ags`, `pop_density_ags` | numeric | Municipality covariates for the election year (harmonized files), from `ags_area_pop_emp` (`state_harm_21`, 1990--2021) or `ags_area_pop_emp_2023` (`state_harm_23`/`_25`, 1990--2023); a later election carries the panel's last year (see `flag_covars_carried_forward`). `pop_density_ags` is inhabitants per km². `employees_ags` is `NA` before 1997 and in the panels' last years, hence in every carried row. See the covariates section. |
+| `flag_covars_carried_forward` | integer | Harmonized files: 1 where the election is later than the covariate panel's last year (2021 for `state_harm_21`, 2023 for `state_harm_23`/`_25`), so the covariates describe that year rather than the election year; 0 otherwise. Where municipalities merged into the target after the panel year (Thüringen 2024 in `state_harm_21`/`_23`), a carried row's covariates can describe less territory than its votes, so ratios such as eligible voters per inhabitant can exceed 1. |
 
 **Schleswig-Holstein 1983.** The 1,128 municipal records contain
 in-person voters and votes only; `eligible_voters` is the full
@@ -444,8 +447,8 @@ party_data <- state_unharm[party_cols]
 
 ## Constituency level
 
-**Files:** `ltw_wkr_unharm` (9,818 x 459), `ltw_wkr_unharm_long`
-(166,016 x 16) in `data/state_elections/final/`. 103 elections,
+**Files:** `ltw_wkr_unharm` (9,900 x 460), `ltw_wkr_unharm_long`
+(166,938 x 17) in `data/state_elections/final/`. 104 elections,
 1980–2026 (Saarland reaches back to 1980; all other states 1990 or
 later).
 
@@ -458,6 +461,7 @@ carries `party`, `votes` and `vote_share`.
 | Integer flag | Description |
 |:---|:---|
 | `flag_wkr_boundaries_recomputed` | 1 where the constituency figures were back-cast by the statistical office onto a *later* election’s Wahlkreiseinteilung, so they are not on the boundaries in force on election day. Hessen 2013 (106 of 110 rows) and Baden-Württemberg 2001 (11 of 70 rows) — see below. 0 everywhere else, including every other state-year. |
+| `flag_wkr_changed_since_prev` | Territory compared with the *same-numbered* Wahlkreis at the state’s previous Landtagswahl: 1 = re-cut, 0 = same territory, `NA` = not assessed. Assessed so far only for Sachsen-Anhalt 2026: 1 for WK 07 Haldensleben and WK 08 Wolmirstedt, 0 for the other 39 — see below. `NA` in every other state-year means *unknown*, not *unchanged*. |
 
 **`wkr_name` is per election year, not per constituency number.** States
 renumber and rename their Wahlkreise, so the same `wkr_nr` can be a
@@ -465,6 +469,16 @@ different constituency in a different year: Brandenburg’s WK 11 is
 *Oranienburg I* in 1990, *Havelland I* in 1994 and 1999, and *Uckermark
 I* from 2004 onwards. Always key on `(state, election_year, wkr_nr)`;
 never join constituencies across years on the number alone.
+
+**`wkr_nr` has one fixed width per state.** Constituency numbers are
+zero-padded the same way in every election year of a state: three digits
+in Niedersachsen, Nordrhein-Westfalen, Rheinland-Pfalz, Bayern, Saarland,
+Brandenburg and Thüringen, and two digits in the other states. Berlin
+uses Bezirk-Wahlkreis codes such as `01-01`. Releases before September
+2026 left some years unpadded in Schleswig-Holstein,
+Nordrhein-Westfalen, Sachsen and Sachsen-Anhalt, so the same number was
+`"1"` in one year and `"01"` in another, and Mecklenburg-Vorpommern
+unpadded in every year.
 
 **Select one party-result ballot per constituency.** Use
 `stimme %in% c("zweitstimme", "einzelstimme")` for the party/list
@@ -496,6 +510,20 @@ columns.** Eleven of the 70 Wahlkreise were recomputed there onto the
 other 59 stand on their own 2001 boundaries. Five fringe parties (2,806
 votes statewide, 0.1%) appear only as the source’s combined residual,
 which the dataset carries in the `sonstige` column.
+
+**Sachsen-Anhalt 2026: two Wahlkreise were re-cut.** All 41 Wahlkreise
+keep their 2021 numbers and names. The February 2025 amendment to the
+Landeswahlgesetz, however, moved the Gemeinde Niedere Börde (AGS
+15083390; 5,815 eligible voters in 2021, 5,525 in 2026) from WK 08
+Wolmirstedt to WK 07 Haldensleben. The rows for WK 07 and WK 08 carry
+`flag_wkr_changed_since_prev == 1`; the other 39 Wahlkreise are
+unchanged (flag 0). Their 2021 and 2026 rows compare like for like. That
+includes WK 35 Halle I, whose 9% smaller electorate reflects population
+change. To compare WK 07 or WK 08 across the two elections, add the WK
+07 and WK 08 figures together. For the list vote you can instead move
+Niedere Börde’s 2021 result in `state_unharm` from WK 08 to WK 07, which
+is what the Statistisches Landesamt’s own 2021-versus-2026 comparison
+does.
 
 Three further source caveats from the August 2026 additions: Bremen 2003
 and 2007 are the official *vorläufige* results (their Hefte publish no
@@ -819,7 +847,7 @@ results carry the `_hw` suffix and Stichwahl results the `_sw` suffix.
 | `election_date`, `election_date_sw` | Date | Hauptwahl and Stichwahl dates. `election_date_sw` is `NA` without a runoff. |
 | `has_stichwahl` | logical | Whether the cycle went to a runoff. |
 | `turnout`, `turnout_sw` | numeric | Turnout in each round. |
-| `candidate_name`, `candidate_last_name`, `candidate_first_name` | character | Candidate name. `NA` for Bayern (losing candidates are not named in the source) and for Thüringen, where §50 ThürKWO redacts them. |
+| `candidate_name`, `candidate_last_name`, `candidate_first_name` | character | Candidate name. `candidate_name` keeps the source string; the last/first parts have academic titles removed. `NA` for Bayern (losing candidates are not named in the source) and for Thüringen, where §50 ThürKWO redacts them. |
 | `candidate_party` | character | Nominating list — as with `winner_party`, the formal Wahlvorschlagsträger. |
 | `candidate_votes_hw`, `candidate_voteshare_hw`, `candidate_rank_hw`, `n_candidates_hw` | numeric | Hauptwahl votes, share, rank (1 = most votes), and field size. |
 | `candidate_votes_sw`, `candidate_voteshare_sw`, `candidate_rank_sw`, `n_candidates_sw` | numeric | The same for the Stichwahl; `NA` for candidates not in the runoff. |
@@ -899,16 +927,39 @@ heads of Städteregion Aachen and Regionalverband Saarbrücken),
 1945–2026, 11 states, 263 counties. Published separately from mayoral
 elections.
 
-**Files:** `landrat_unharm` (1,966 x 16), `landrat_candidates` (4,623 x
-32) in `data/landrat_elections/final/`. Hessen covers all 21 Landkreise
+**Files:** `landrat_unharm` (2,166 x 17), `landrat_candidates` (5,348 x
+33) in `data/landrat_elections/final/`. Hessen covers all 21 Landkreise
 from 1993 onward (HSL historical file).
 
 Columns are identical to the corresponding mayoral files —
 `landrat_unharm` matches `mayoral_unharm` minus `flag_superseded` (which
 is Bayern-mayoral only), and `landrat_candidates` matches
 `mayoral_candidates` minus `flag_superseded` and the
-predicted-characteristics block. `election_type` is `Landratswahl`
-throughout, and `ags` is the county’s 8-digit code.
+predicted-characteristics block. Both add `flag_elected_by_council`
+(below). `election_type` is `Landratswahl` throughout, and `ags` is the
+county’s 8-digit code.
+
+**Brandenburg Landräte elected by the Kreistag.** In Brandenburg the
+voters elect a Landrat only with more than half of the valid votes, and
+that majority must amount to at least 15 % of the eligible voters (§ 72
+Abs. 2 BbgKWahlG, applied to the Landrat by § 83). The same test applies
+in the runoff; if the runoff leader misses it, the voters have elected
+nobody and the Kreistag elects the Landrat.
+
+| Variable | Type | Description |
+|:---|:---|:---|
+| `flag_elected_by_council` | logical | `TRUE` on every row of a Brandenburg cycle whose decisive round missed the majority-plus-15 % rule, so the Kreistag elected the Landrat. In `landrat_candidates`, `is_winner` is `NA` for every candidate of such a cycle; in `landrat_unharm`, `winner_party`, `winner_votes` and `winner_voteshare` are `NA` on the failed Stichwahl row, while the Hauptwahl row keeps its round leader as usual. `FALSE` everywhere else. |
+
+Brandenburg is covered from its first direct elections (10 January
+2010) onward. Twelve cycles are flagged, 9 of them among the 14 first
+direct elections of 2010–2016; in each the runoff leader polled between
+11.2 % and 14.9 % of the electorate. The Kreistag then chose the runoff
+leader nine times (twice by lot, Barnim 2010 and Ostprignitz-Ruppin
+2018), the runoff loser twice (Elbe-Elster and Spree-Neiße 2010) and, in
+Uckermark 2010, Dietmar Schulze, who had not stood. Because it is not
+bound to the ballot, its choice is not recorded as a ballot winner;
+`data/landrat_elections/final/README.md` lists all twelve. Filter
+`flag_elected_by_council == FALSE` for Landräte chosen by the voters.
 
 Only Bayern reaches back to the 1950s. This is a matter of electoral law
 rather than data availability: most states introduced direct Landrat
@@ -967,7 +1018,7 @@ boundaries and generated alongside the crosswalks.
 | `area_ags` / `area_cty` | numeric | Area in km², from official Gemeindeverzeichnis files. |
 | `population_ags` / `population_cty` | numeric | Population in thousands. |
 | `employees_ags` / `employees_cty` | numeric | Employees subject to social-security contributions, in thousands. Available from 1997 onwards. |
-| `pop_density_ags` / `pop_density_cty` | numeric | Population density, derived from the population and area columns. |
+| `pop_density_ags` / `pop_density_cty` | numeric | Population density in inhabitants per km², derived from the population and area columns. |
 
 Shapefiles (VG250 municipality and county boundaries for 2000 and 2021)
 are published alongside these under `data/shapefiles/`.

@@ -42,6 +42,23 @@ df <- state_source_all |>
 glimpse(df)
 table(df$election_year)
 
+# One column per party in the harmonized files. state_unharm keeps each source's
+# own label, so the same party can sit in two columns there (no row has both):
+# PdH = Partei der Humanisten, the ST 2011/2016 FREIE WÄHLER and Tierschutzpartei
+# spellings, and Volt Hamburg 2020.
+party_merges <- c(pdh = "die_humanisten", freiewaehler = "freie_wahler",
+                  tier_schutz_partei = "tierschutz", volt_hamburg = "volt")
+for (from in names(party_merges)) {
+  to <- party_merges[[from]]
+  if (!from %in% names(df)) next
+  stopifnot(to %in% names(df), !any(!is.na(df[[from]]) & !is.na(df[[to]])))
+  df[[to]] <- dplyr::coalesce(df[[to]], df[[from]])
+  df[[from]] <- NULL
+}
+# Parties observed only in elections outside the harmonized range (BW 1952,
+# SH 1983): all-NA here, so kept out of the harmonized schema.
+df <- df |> select(-any_of(c("dg_bhe", "llsh", "uwg")))
+
 # Convert vote shares to vote counts ----------------------------------------
 
 # Identify party variables by excluding metadata columns
@@ -49,7 +66,7 @@ metadata_cols <- c("ags", "county", "election_year", "state", "election_date",
                    "eligible_voters", "number_voters", "valid_votes",
                    "invalid_votes", "turnout", "other", "cdu_csu",
                    "flag_naive_turnout_above_1", "flag_no_valid_votes",
-                   "flag_briefwahl_only")
+                   "flag_briefwahl_only", "flag_pooled")
 party_vars <- setdiff(names(df), metadata_cols)
 df <- gerda_state_exclusions(df, party_vars, "state_harm_25")
 
@@ -87,6 +104,18 @@ df <- df |>
   mutate(
     across(all_of(party_vars), ~ .x * valid_votes)
   )
+
+# The unit weight above only carries shares through the round trip. A
+# placeholder row has no shares either, so it must not hand a phantom valid vote
+# to its target -- before September 2026 three NI rows were published with
+# valid_votes = 1, other = 1 and cdu_csu = 0, and the 58 RP 2026 Ortsgemeinden
+# counted inside a neighbour (data/state_elections/metadata/
+# rp_2026_pooled_municipalities.csv) would have joined them.
+df <- df |>
+  mutate(valid_votes = ifelse(flag_vv_placeholder == 1, NA_real_, valid_votes))
+# ... which holds only while placeholder rows carry no shares. A future
+# percentage-only row without electorate would lose them here, so stop instead.
+stopifnot(all(rowSums(!is.na(as.data.frame(df)[df$flag_vv_placeholder == 1, party_vars, drop = FALSE])) == 0))
 
 # Preserve the original code before any correction or city aggregation.
 df$ags_original <- df$ags
@@ -151,7 +180,7 @@ duplicate_keys <- duplicated(df[c("ags", "election_year", "state")]) |
 df_singletons <- df[!duplicate_keys, ] |>
   select(ags, election_year, state, eligible_voters, number_voters, valid_votes,
          invalid_votes, all_of(party_vars), any_of(c("election_date", "county")),
-         flag_vv_placeholder)
+         flag_vv_placeholder, flag_pooled)
 df <- df[duplicate_keys, ] |>
   group_by(ags, election_year, state) |>
   summarise(
@@ -161,6 +190,7 @@ df <- df[duplicate_keys, ] |>
     ),
     across(any_of(c("election_date", "county")), first),
     flag_vv_placeholder = max(flag_vv_placeholder),
+    flag_pooled = max(flag_pooled),
     .groups = "drop"
   ) |>
   bind_rows(df_singletons) |>
@@ -399,6 +429,15 @@ votes <- votes |>
   mutate(across(c(eligible_voters, number_voters, valid_votes, invalid_votes,
                   all_of(party_vars)), ~ round(.x, digits = 0)))
 
+# flag_pooled on the target: 1 if any source row mapped onto it with positive
+# weight belongs to a pooled count unit (see 01b_state_unharm_raw.R)
+votes <- votes |>
+  left_join(df_cw |>
+              group_by(ags_25, election_year) |>
+              summarise(flag_pooled = as.integer(any(flag_pooled == 1 & pop_cw > 0, na.rm = TRUE)),
+                        .groups = "drop"),
+            by = c("ags_25", "election_year"))
+
 glimpse(votes)
 
 # Convert vote counts back to vote shares
@@ -411,9 +450,14 @@ df_harm <- votes %>%
     turnout = ifelse(is.finite(turnout), turnout, NA_real_),
     turnout = ifelse(!is.na(turnout) & turnout > 1.5, NA_real_, turnout),
     # Recompute derived columns after harmonization
-    other = pmax(1 - rowSums(across(all_of(party_vars)), na.rm = TRUE), 0),
-    cdu_csu = coalesce(cdu, 0) + coalesce(csu, 0)
+    # A row with no known party share (no valid votes) has no residual and no
+    # Union share either: NA, not other = 1 and cdu_csu = 0
+    n_party_known = rowSums(!is.na(across(all_of(party_vars)))),
+    other = ifelse(n_party_known == 0, NA_real_,
+                   pmax(1 - rowSums(across(all_of(party_vars)), na.rm = TRUE), 0)),
+    cdu_csu = ifelse(n_party_known == 0, NA_real_, coalesce(cdu, 0) + coalesce(csu, 0))
   ) |>
+  select(-n_party_known) |>
   rename(ags = ags_25) |>
   filter(!is.na(ags)) |>
   mutate(
@@ -530,6 +574,15 @@ df_harm <- df_harm |>
     perc_total_votes_incongruence = round(total_vote_share - 1, 6)
   )
 
+# The same for the bloc and diagnostic columns, which rowSums(na.rm = TRUE) would
+# otherwise publish as far_right = 0, total_vote_share = 0,
+# perc_total_votes_incongruence = -1 and flag_other_party_residual = 1 on a row
+# with no party share at all (the RP 2026 donors, NI 1990/2017, TH 2024).
+no_party_share <- rowSums(!is.na(as.data.frame(df_harm)[tvs_cols])) == 0
+df_harm[no_party_share, c("far_right", "far_left", "far_left_w_linke", "total_vote_share",
+                          "perc_total_votes_incongruence", "flag_other_party_residual")] <- NA
+cat("Rows with no party share (derived columns NA):", sum(no_party_share), "\n")
+
 glimpse(df_harm)
 
 
@@ -562,20 +615,41 @@ area_pop <- area_pop_23 |>
     ags_name_25 = first(ags_name_25),
     area_ags = sum(area_ags * coalesce(area_cw, 1), na.rm = TRUE),
     population_ags = sum(population_ags * coalesce(pop_cw, 1), na.rm = TRUE),
-    employees_ags = sum(employees_ags * coalesce(pop_cw, 1), na.rm = TRUE),
+    # NA when no constituent reports employees (none before 1997 or after
+    # 2021); sum(na.rm = TRUE) alone published those rows as 0.
+    employees_ags = if (all(is.na(employees_ags))) NA_real_ else
+      sum(employees_ags * coalesce(pop_cw, 1), na.rm = TRUE),
     .groups = "drop"
   ) |>
-  mutate(pop_density_ags = population_ags / area_ags)
+  # Inhabitants per km2, as in the covariate panel (population is in thousands)
+  mutate(pop_density_ags = population_ags * 1000 / area_ags)
 
 glimpse(area_pop)
 
+# The name is a property of the 2025 municipality, not of the election year:
+# every row takes the crosswalk's target name. Joined on (ags, year) from the
+# covariate panel, it was NA for every election after the panel's last year
+# (2023).
+ags_names_25 <- cw_23_25 |> distinct(ags_25, ags_name_25)
+stopifnot(!anyDuplicated(ags_names_25$ags_25))
+
+# Covariates describe the election year. Elections after the panel's last year
+# take that year's values, marked by flag_covars_carried_forward (the federal
+# and municipal files fill such years too, but without a flag).
+covars_last_year <- max(area_pop$year)
+
 df_final <- df_harm |>
-  left_join_check_obs(area_pop, by = c("ags" = "ags_25", "election_year" = "year")) |>
+  mutate(covars_year = pmin(election_year, covars_last_year)) |>
+  left_join_check_obs(area_pop, by = c("ags" = "ags_25", "covars_year" = "year")) |>
   mutate(
-    ags_name = ags_name_25
+    ags_name = ags_names_25$ags_name_25[match(ags, ags_names_25$ags_25)],
+    flag_covars_carried_forward = as.integer(election_year > covars_last_year)
   ) |>
   relocate(ags_name, .after = ags) |>
-  select(-ags_name_25)
+  select(-ags_name_25, -covars_year)
+stopifnot(!anyNA(df_final$ags_name))
+stopifnot(nrow(df_final) == nrow(df_harm), !anyNA(df_final$area_ags),
+          !anyNA(df_final$population_ags))
 
 glimpse(df_final)
 

@@ -320,15 +320,16 @@ This unified script processes all 16 German states (1946–2026), replacing the 
 - **Percentage-only data:** HB 1946–1995 (converted BIFF→XLSX with graphical headers) and HB 2011 (hardcoded from official Faltblatt PDF) only have vote share percentages — `valid_votes`/`invalid_votes` are NA.
 - **RP 1979–2016:** Added from Landeswahlleiter file (`LW_RLP_1979_2021.xlsx`), Landesstimmen only, no turnout metadata. 2021 retains separate source with full turnout data. Note: source data is missing 5–6 municipalities for 1979–2001 (founded after 1979), causing 0.07–0.31% shortfall vs official Landesergebnisse. From 2006 onward, deviations are ≤0.16%; 2011/2016 match exactly.
 - **HH 2025:** Added from Statistik Nord Landesliste Gesamtstimmen (`BUE2025_e01_Landesliste.xlsx`).
+- **ST 2026 / RP 2026 (September 2026):** ST from the StaLA Gemeinde CSV (endgültig, 22.09.2026; three rows per Gemeinde by `Wahllokal`, only the total is kept; postal votes are booked in each Gemeinde). RP from the Landeswahlleiter's `LW_2026_Endergebnis_Stimmbezirksebene.xlsx` (endgültig, 02.04.2026) -- **not** its CSV twin, whose 13-digit keys are in Excel scientific notation. Both reconcile exactly with the source's own Land row. RP 2026 lists 58 Ortsgemeinden counted inside a neighbour of the same Verbandsgemeinde; they are kept as published (NA counts on the donor, pooled unit on the receiver; pairs in `data/state_elections/metadata/rp_2026_pooled_municipalities.csv`).
 
-**Output:** `state_unharm.rds` / `state_unharm.csv` (~148,000 rows, ~450 columns, 16 states, ~70 election years)
+**Output:** `state_unharm.rds` / `state_unharm.csv` (153,030 rows, 369 columns, 16 states, ~70 election years; September 2026)
 
 ### 5.2 Harmonization to 2021
 
 **Script:** `code/state_elections/02b_state_harm_21.R`
 
-Harmonizes all state elections (1990–2025) to 2021 administrative boundaries using population-weighted crosswalks. Uses the weighted-sum-of-counts method (matching the federal pipeline):
-1. Imputes weight for rows with NA `valid_votes` (e.g., HB pre-1999 percentage-only data) from `number_voters` or `eligible_voters`
+Harmonizes all state elections (1990–2026) to 2021 administrative boundaries using population-weighted crosswalks. Uses the weighted-sum-of-counts method (matching the federal pipeline):
+1. Imputes weight for rows with NA `valid_votes` (e.g., HB pre-1999 percentage-only data) from `number_voters` or `eligible_voters` (a row with no electorate either gets a unit weight that only carries its -- also missing -- shares, and is reset to NA before aggregation, so it never adds a phantom valid vote; a row with no known party share gets `other` and `cdu_csu` NA, not 1 and 0)
 2. Converts shares to counts: `party_share × valid_votes`
 3. Applies weighted sum: `sum(counts × pop_cw)`
 4. Reconverts to shares: `counts / valid_votes`
@@ -340,7 +341,7 @@ Harmonizes all state elections (1990–2025) to 2021 administrative boundaries u
 
 **Derived columns:** `far_right`, `far_left`, `far_left_w_linke`, `total_vote_share`, `perc_total_votes_incogruence`, `flag_total_votes_incongruent`, `flag_unsuccessful_naive_merge`
 
-**Output:** `state_harm_21.rds` / `state_harm_21.csv` (~81,600 rows, ~462 columns)
+**Output:** `state_harm_21.rds` / `state_harm_21.csv` (85,046 rows, 374 columns)
 
 ### 5.3 Harmonization to 2023
 
@@ -348,7 +349,7 @@ Harmonizes all state elections (1990–2025) to 2021 administrative boundaries u
 
 Same method as `02b_state_harm_21.R`, targeting 2023 boundaries using `ags_1990_to_2023_crosswalk.rds`. Includes the same AGS corrections, fuzzy time matching, self-mapping, weight imputation, and derived columns.
 
-**Output:** `state_harm_23.rds` / `state_harm_23.csv` (~81,500 rows, ~462 columns)
+**Output:** `state_harm_23.rds` / `state_harm_23.csv` (84,955 rows, 374 columns)
 
 ### 5.4 Harmonization to 2025
 
@@ -356,7 +357,7 @@ Same method as `02b_state_harm_21.R`, targeting 2023 boundaries using `ags_1990_
 
 Same method, targeting 2025 boundaries using `ags_1990_to_2025_crosswalk.rds` (chained 1990→2021→2023→2025).
 
-**Output:** `state_harm_25.rds` / `state_harm_25.csv` (~81,400 rows, ~462 columns)
+**Output:** `state_harm_25.rds` / `state_harm_25.csv` (84,819 rows, 374 columns)
 
 ### 5.5 Data quality documentation
 
@@ -364,9 +365,9 @@ See `docs/state_pipeline_audit.md` for comprehensive documentation of known data
 
 ### 5.6 Constituency (Wahlkreis) level
 
-A separate pipeline, `code/state_elections_wahlkreis/`, builds Landtagswahl results at the constituency level — the geographic unit below the state and below the Kreis (Wahlkreis in most states, Stimmkreis in Bayern, Wahlbereich in Bremen). It follows the same numbered-stage pattern: per-state Stage-0 parsers (R for machine-readable sources; nine self-validating Python scripts for elections that exist only as clean text-layer report PDFs) emit long intermediates into `data/state_elections/processed/wahlkreis/`, and `01_ltw_wkr_unharm.R` binds them into `ltw_wkr_unharm{,_long}` in `data/state_elections/final/` (103 elections, 1980–2026, all 16 states, as of August 2026).
+A separate pipeline, `code/state_elections_wahlkreis/`, builds Landtagswahl results at the constituency level — the geographic unit below the state and below the Kreis (Wahlkreis in most states, Stimmkreis in Bayern, Wahlbereich in Bremen). It follows the same numbered-stage pattern: per-state Stage-0 parsers (R for machine-readable sources; nine self-validating Python scripts for elections that exist only as clean text-layer report PDFs) emit long intermediates into `data/state_elections/processed/wahlkreis/`, and `01_ltw_wkr_unharm.R` binds them into `ltw_wkr_unharm{,_long}` in `data/state_elections/final/` (104 elections, 1980–2026, all 16 states, as of September 2026).
 
-Every Stage-0 parser must reproduce its source's own printed statewide totals exactly by summing the extracted Wahlkreise, and `99_audit.R` (22 sections) re-checks the final files, including a cross-pipeline reconciliation against `state_unharm` — the check that found the pooled-Briefwahl defect described in section 5.5's audit doc. Wahlkreis boundaries are each election's own (no cross-time harmonization; `wkr_nr`/`wkr_name` are keyed per election year). Full pipeline documentation: `code/state_elections_wahlkreis/README.md`; per-election recoverability of the remaining gaps: `docs/ltw_wkr_recoverability.md`.
+Every Stage-0 parser must reproduce its source's own printed statewide totals exactly by summing the extracted Wahlkreise, and `99_audit.R` (23 sections) re-checks the final files, including a cross-pipeline reconciliation against `state_unharm` — the check that found the pooled-Briefwahl defect described in section 5.5's audit doc. Wahlkreis boundaries are each election's own (no cross-time harmonization; `wkr_nr`/`wkr_name` are keyed per election year). Full pipeline documentation: `code/state_elections_wahlkreis/README.md`; per-election recoverability of the remaining gaps: `docs/ltw_wkr_recoverability.md`.
 
 ---
 
@@ -700,7 +701,7 @@ European elections use `valid_votes` as the vote share denominator, like the sta
 |---|---|---|---|---|---|---|
 | **Raw data source** | Ballot-district CSVs/TXTs | County-level CSVs | GENESIS API | 16 state Excel/CSVs | State Excel/CSVs | Ballot-district CSVs |
 | **Geographic unit** | Municipality (8-digit AGS) | County (5-digit) | Municipality (8-digit AGS) | Municipality (8-digit AGS) | Municipality (8-digit AGS) | Municipality (8-digit AGS) |
-| **Time span** | 1980–2025 | 1953–2021 | 1946–2025 | 1990–2025 | Varies by state | 2009–2024 |
+| **Time span** | 1980–2025 | 1953–2021 | 1946–2026 | 1990–2026 | Varies by state | 2009–2024 |
 | **Vote share denominator** | `number_voters`† | `number_voters`† | `valid_votes` | `valid_votes` | N/A (candidate-level) | `valid_votes` |
 | **Turnout formula** | `number_voters / eligible_voters_orig` | `number_voters / eligible_voters` | `number_voters / eligible_voters` | `number_voters / eligible_voters` | N/A | `number_voters / eligible_voters` |
 | **Harm method** | Weighted sum of counts | Weighted sum of counts | Weighted mean of shares (02) / Weighted sum of counts (02b, 04, 05) | Hybrid: weighted sum (counts) + weighted mean (shares) | None | Weighted sum of counts |

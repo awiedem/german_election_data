@@ -24,6 +24,12 @@ add no columns to the election files and are not a new package dataset.
   A listed value of 0 describes a coverage restriction without classifying the
   recovered counts as corrupt. NRW 1966/1970 was removed after source reconciliation.
   BW 1952 is labelled `municipality_1979_boundaries` in the completeness table.
+- `rp_2026_pooled_municipalities.csv`: the 58 Rheinland-Pfalz Ortsgemeinden whose
+  2026 Landtagswahl ballots were counted inside a neighbouring Gemeinde of the same
+  Verbandsgemeinde (`donor_ags` → `receiver_ags`, with the legal ground as given by
+  the source). Donor rows carry NA counts and shares; receiver rows hold the pooled
+  unit, electorate included. Written by `01b_state_unharm_raw.R` from the source file.
+  The rows involved carry `flag_pooled = 1` in all four state files.
 
 Regenerate the first two tables with
 `Rscript --vanilla code/checks/build_state_metadata.R`. All three tables refer
