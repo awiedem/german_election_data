@@ -38,7 +38,7 @@ Per-state official sources only (each state's `README.md` has exact URLs):
 | Rheinland-Pfalz | Wahlkreis (52) | 1996–2026 | 1996–2026 (.xlsx) | few | pre-1996 not obtained |
 | Saarland | Wahlkreis (only 3) / Kreis | 1947–2022 | 2022 (.csv) | 1947–2022 (scans) | now **complete**; pre-1980 = Kreis-level scans; 1970–90 in one Sonderheft-172 compendium; only 3 large Wahlkreise |
 | Sachsen | Wahlkreis (60) | 1990, 1994, 1999, 2004–2024 | most + 1994 (HTML/Wayback, 49/60 WK), 1999 (.csv) | some | **complete**; 1994 reconstructed from Internet Archive (11 WK only in 1999-csv "1994" cols) |
-| Sachsen-Anhalt | Wahlkreis | 1990–2021 | most | some | **complete** |
+| Sachsen-Anhalt | Wahlkreis | 1990–2026 | most | some | **complete** |
 | Schleswig-Holstein | Wahlkreis (35) | 1954,1958, 1979–2022 | 2000 (9 HTML tables), 2005–2022 | 1954–1996 | 2000 added (StatLA HTML); still missing 1947,1950,1962,1967,1971,1975 |
 | Thüringen | Wahlkreis (44) | 1990–2024 | all (.xlsx) | — | **complete**, fully machine-readable |
 
