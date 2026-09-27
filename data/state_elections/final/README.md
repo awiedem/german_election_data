@@ -4,15 +4,15 @@
 
 ### Unharmonized (original municipal boundaries)
 
-- **`state_unharm.rds/.csv`** -- Municipality-level state election results from official state statistics offices. Covers all 16 German states, 1946--2026 (availability varies by state). 150,512 rows (all individual party columns preserved). Produced by `code/state_elections/01b_state_unharm_raw.R`.
+- **`state_unharm.rds/.csv`** -- Municipality-level state election results from official state statistics offices. Covers all 16 German states, 1946--2026 (availability varies by state). 153,030 rows (all individual party columns preserved). Produced by `code/state_elections/01b_state_unharm_raw.R`.
 
 ### Harmonized (fixed administrative boundaries)
 
 All harmonized files use population-weighted crosswalks to map results onto fixed municipal boundaries, enabling comparison across time. Coverage: 1990--2026.
 
-- **`state_harm_21.rds/.csv`** -- Harmonized to 2021 municipal boundaries. Produced by `code/state_elections/02b_state_harm_21.R`. 82,527 rows.
-- **`state_harm_23.rds/.csv`** -- Harmonized to 2023 municipal boundaries. Produced by `code/state_elections/04_state_harm_23.R`. 82,436 rows.
-- **`state_harm_25.rds/.csv`** -- Harmonized to 2025 municipal boundaries. Produced by `code/state_elections/05_state_harm_25.R`. 82,301 rows.
+- **`state_harm_21.rds/.csv`** -- Harmonized to 2021 municipal boundaries. Produced by `code/state_elections/02b_state_harm_21.R`. 85,046 rows.
+- **`state_harm_23.rds/.csv`** -- Harmonized to 2023 municipal boundaries. Produced by `code/state_elections/04_state_harm_23.R`. 84,955 rows.
+- **`state_harm_25.rds/.csv`** -- Harmonized to 2025 municipal boundaries. Produced by `code/state_elections/05_state_harm_25.R`. 84,819 rows.
 
 ## Archive: `_old_regionalstatistik/`
 
@@ -57,16 +57,18 @@ Shares use `valid_votes` as denominator. All individual party vote shares (e.g.,
 Use the explicit [column schema and example](../metadata/README.md), rather than selecting every numeric column. `state_unharm` has no `stimme` column. For constituency party results, select `zweitstimme` or `einzelstimme` and check one row per constituency/election before adding participation.
 
 ### Harmonized files additionally include
-`state_name`, `flag_unsuccessful_naive_merge`, `flag_other_party_residual`, `perc_total_votes_incongruence`, `total_vote_share`, `far_right`, `far_left`, `far_left_w_linke`, `flag_harm_turnout_above_1`, and area/population covariates. Municipality names are in `ags_name_21` for 2021 boundaries and `ags_name` for 2023/2025 boundaries. `total_vote_share` excludes `other` and derived aggregates; `flag_other_party_residual` is 1 when it falls outside [0.999, 1.001]. The three source flags (`flag_briefwahl_only`, `flag_no_valid_votes`, `flag_naive_turnout_above_1`) are present only in `state_unharm`.
+`state_name`, `flag_unsuccessful_naive_merge`, `flag_other_party_residual`, `perc_total_votes_incongruence`, `total_vote_share`, `far_right`, `far_left`, `far_left_w_linke`, `flag_harm_turnout_above_1`, and area/population covariates. Municipality names are in `ags_name_21` for 2021 boundaries and `ags_name` for 2023/2025 boundaries. `total_vote_share` excludes `other` and derived aggregates; `flag_other_party_residual` is 1 when it falls outside [0.999, 1.001]. The three source flags (`flag_briefwahl_only`, `flag_no_valid_votes`, `flag_naive_turnout_above_1`) are present only in `state_unharm`; `flag_pooled` (1 = the source counted the municipality together with another one — see the RP 2026 note below) is in all four files. In the harmonized files, four parties that the sources spell two ways are merged into one column — `pdh` (Partei der Humanisten) into `die_humanisten`, `freiewaehler` into `freie_wahler`, `tier_schutz_partei` into `tierschutz` and `volt_hamburg` into `volt` — while `state_unharm` keeps each source's own label.
 
 `flag_briefwahl_only` retains its legacy name and values for compatibility. It flags zero electorate with positive valid votes before participation fields are neutralized. It also captures missing/corrupt participation, and does **not** establish that a row is an actual postal district. The separate [source limitation table](../metadata/source_limitations.csv) documents remaining coverage restrictions after the NRW and SH source repairs.
+
+Municipality names (`ags_name_21` in `state_harm_21`, `ags_name` in `state_harm_23`/`_25`) are those of the target-boundary municipality, taken from the crosswalk's target-name column, and are filled in every row. The area/population covariates describe the election year; elections after the covariate panel's last year carry that year's values and have `flag_covars_carried_forward` = 1 (see [Known data limitations](#known-data-limitations)).
 
 ## State coverage
 
 | State | Code | Unharm years | Harm years | Notes |
 |-------|------|-------------|------------|-------|
 | Thüringen | 16 | 1994--2024 | 1994--2024 | 1990 available at constituency level only |
-| Sachsen-Anhalt | 15 | 1990--2021 | 1990--2021 | |
+| Sachsen-Anhalt | 15 | 1990--2026 | 1990--2026 | |
 | Sachsen | 14 | 1990--2024 | 1990--2024 | |
 | Brandenburg | 12 | 1990--2024 | 1990--2024 | 1990/1994 OCR-digitized |
 | Mecklenburg-Vorpommern | 13 | 1990--2021 | 1990--2021 | |
@@ -80,23 +82,31 @@ Use the explicit [column schema and example](../metadata/README.md), rather than
 | Bremen | 04 | 1946--2023 | 1991--2023 | City-state (2 rows: Stadt Bremen + Bremerhaven) |
 | Schleswig-Holstein | 01 | 1983--2022 | 1996--2022 | 1983: in-person votes only; turnout unavailable |
 | Bayern | 09 | 1946--2023 | 1990--2023 | Reports Gesamtstimmen (Erst+Zweit combined) |
-| Rheinland-Pfalz | 07 | 1979--2021 | 1991--2021 | 1979--2016 Landesstimmen only (no turnout data) |
+| Rheinland-Pfalz | 07 | 1979--2026 | 1991--2026 | 1979--2016 Landesstimmen only (no turnout data); 2026: 58 small Gemeinden counted inside a neighbour |
 
 Ranges are not promises of continuous coverage. [Election completeness](../metadata/election_completeness.csv) lists actual elections, geography, observed/zero counts and sums of known values. `NA` remains missing (empty in CSV/Excel); summing an all-missing field with `na.rm=TRUE` must not be interpreted as zero. Partial sums do not give statewide turnout.
 
 ## Known data limitations
 
+### Covariates carried forward for recent elections
+
+`area_ags`, `population_ags`, `employees_ags` and `pop_density_ags` describe the election year, taken from the municipality covariate panels in `data/covars_municipality/final/`: `ags_area_pop_emp.rds` (1990--2021) for `state_harm_21` and `ags_area_pop_emp_2023.rds` (1990--2023) for `state_harm_23`/`_25`. A later election carries the panel's last year (2021 or 2023) and has `flag_covars_carried_forward` = 1: in `state_harm_21` every election from 2022 on, in `state_harm_23`/`_25` Hamburg 2025 and the 2024 and 2026 elections. No newer year is in the repository: the latest Destatis Gemeindeverzeichnis (`AuszugGV4QAktuell_2024.xlsx`, Gebietsstand 31.12.2024) still reports population and area as of 31.12.2023, which is also what the federal files use for the 2025 Bundestagswahl (unflagged there).
+
+- `employees_ags` stays `NA` in carried rows and before 1997: the panels have no employment figures for 1990--1996 or for their last years (2021 in `ags_area_pop_emp`; 2022--2023, and part of 2021, in `ags_area_pop_emp_2023`).
+- Where municipalities merged after the file's boundary year, a later election's votes for the merged unit sit under the surviving code and the absorbed municipality has no row, while the carried covariates describe the surviving municipality's own boundary-year territory. The absorbed municipalities hold at most 1.05 % of a state's population (Thüringen 2024 in `state_harm_21`; 0.65 % in `state_harm_23`).
+- `pop_density_ags` is inhabitants per km² in all three files. Until September 2026 `state_harm_25` published it in thousands of inhabitants per km², and published missing employee counts as 0.
+
 ### Missing absolute vote counts (percentages only)
 
 - **Bremen 1946--1995**: Raw data only contains vote share percentages at Ortsteil level (column headers stored as graphical objects in Excel). `valid_votes` and `invalid_votes` are NA in `state_unharm`. For the included 1991/1995 elections, harmonized files use `number_voters` as a proxy for `valid_votes`. Multiplication by this proxy does not recover observed party counts. Integer rounding causes small changes to the source percentages.
 - **Bremen 2011**: Per-party percentages hardcoded from Statistisches Landesamt Faltblatt PDF (wahlen-bremen.de was offline). Absolute Stimmen available from Amtsblatt for metadata (EV, voters, invalid, valid Gesamtstimmen).
-- **Rheinland-Pfalz 1979--2016**: Source file (`LW_RLP_1979_2021.xlsx`) has Landesstimmen party counts and Gesamtsumme, but no eligible_voters/number_voters/invalid_votes. `valid_votes` is available (Gesamtsumme LS). Turnout data only available for 2021.
+- **Rheinland-Pfalz 1979--2016**: Source file (`LW_RLP_1979_2021.xlsx`) has Landesstimmen party counts and Gesamtsumme, but no eligible_voters/number_voters/invalid_votes. `valid_votes` is available (Gesamtsumme LS). Turnout data only available for 2021 and 2026.
 
 ### Rheinland-Pfalz: source data deviations from official Landesergebnisse
 
 The Wahlleiter's Excel maps all results to current (2021-era) municipality boundaries. For elections 1979--2001, 5--6 municipalities are missing because they were founded after 1979 (Langweiler, Trimbs, Hatzenport, Urbar, Leienkaul; plus Dierfeld is absent from all years). This causes the municipal-level sums to fall 0.07--0.31% below official Landesergebnisse. The shortfall disproportionately affects CDU (~-0.3pp) vs SPD (~+0.3pp) for 1979--1991, consistent with small rural CDU-leaning municipalities being underrepresented.
 
-From 2006 onward (all 2,299 municipalities present, only Dierfeld missing), deviations are <=0.16%, and 2011/2016 match the official totals exactly. For 2021, 19 municipalities were merged into neighbors due to low voter counts (Zusammenlegungen) — these municipalities are not listed separately.
+From 2006 onward (all 2,299 municipalities present, only Dierfeld missing), deviations are <=0.16%, and 2011/2016 match the official totals exactly. For 2021, 19 municipalities were merged into neighbors due to low voter counts (Zusammenlegungen) — these municipalities are not listed separately. For 2026 the source lists them: 58 Ortsgemeinden (§ 57 II LWO, § 10 III LWahlG) whose ballots were counted in one of 40 neighbouring Gemeinden of the same Verbandsgemeinde. They are kept as published -- donor rows have NA counts and shares, the receiving row holds the pooled unit including the donors' electorate -- and the pairs are listed in [`rp_2026_pooled_municipalities.csv`](../metadata/rp_2026_pooled_municipalities.csv). Use the 2026 CSV twin of the source file with care: it writes the 13-digit keys in scientific notation; GERDA reads the XLSX.
 
 This is a source data limitation, not a pipeline issue.
 

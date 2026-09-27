@@ -1,66 +1,66 @@
 [
   {
     "dataset": "data/state_elections/final/state_unharm",
-    "rows": 150512,
-    "populated_cells": 4030732,
+    "rows": 153030,
+    "populated_cells": 4248536,
     "sampled_rows": [
       1,
       2,
       3,
       4,
-      75257,
-      150513
+      76516,
+      153031
     ],
-    "invalid_votes_checked": 150512,
-    "invalid_votes_missing": 22292,
-    "invalid_votes_zero": 2853
+    "invalid_votes_checked": 153030,
+    "invalid_votes_missing": 22354,
+    "invalid_votes_zero": 3119
   },
   {
     "dataset": "data/state_elections/final/state_harm_21",
-    "rows": 82527,
-    "populated_cells": 2973846,
+    "rows": 85046,
+    "populated_cells": 3263701,
     "sampled_rows": [
       1,
       2,
       3,
       4,
-      41264,
-      82528
+      42524,
+      85047
     ],
-    "invalid_votes_checked": 82527,
-    "invalid_votes_missing": 13861,
-    "invalid_votes_zero": 1494
+    "invalid_votes_checked": 85046,
+    "invalid_votes_missing": 13923,
+    "invalid_votes_zero": 1760
   },
   {
     "dataset": "data/state_elections/final/state_harm_23",
-    "rows": 82436,
-    "populated_cells": 2993732,
+    "rows": 84955,
+    "populated_cells": 3263537,
     "sampled_rows": [
       1,
       2,
       3,
       4,
-      41219,
-      82437
+      42478,
+      84956
     ],
-    "invalid_votes_checked": 82436,
-    "invalid_votes_missing": 13861,
-    "invalid_votes_zero": 1485
+    "invalid_votes_checked": 84955,
+    "invalid_votes_missing": 13923,
+    "invalid_votes_zero": 1751
   },
   {
     "dataset": "data/state_elections/final/state_harm_25",
-    "rows": 82301,
-    "populated_cells": 3016416,
+    "rows": 84819,
+    "populated_cells": 3258188,
     "sampled_rows": [
       1,
       2,
       3,
       4,
-      41151,
-      82302
+      42410,
+      84820
     ],
-    "invalid_votes_checked": 82301,
-    "invalid_votes_missing": 13855,
-    "invalid_votes_zero": 1472
+    "invalid_votes_checked": 84819,
+    "invalid_votes_missing": 13917,
+    "invalid_votes_zero": 1738
   }
 ]

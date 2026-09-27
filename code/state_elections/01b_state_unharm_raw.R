@@ -387,6 +387,20 @@ for (yr in names(th_dates)) {
     }
   }
 
+  ## --- Gemeinden without any count of their own ---
+  ## A few tiny Gemeinden have no Wahlbezirk of their own -- their voters vote in
+  ## a neighbour's -- and the source leaves the whole row empty (TH 2024:
+  ## Gerstengrund, Scheiditz, Quaschwitz, Solkwitz). sum(na.rm = TRUE) below
+  ## would publish that as an electorate of 0, so these rows are set back to NA
+  ## and flagged as pooled. Party cells are NOT switched to NA in general: the
+  ## source writes "-" for zero, which get_num() reads as NA.
+  th_no_data <- result |>
+    group_by(ags) |>
+    summarise(no_data = all(is.na(eligible_voters) & is.na(number_voters) &
+                              is.na(valid_votes)), .groups = "drop") |>
+    filter(no_data) |>
+    pull(ags)
+
   ## --- Aggregate duplicate AGS (kreisfreie Städte split across Wahlkreise) ---
   result <- result |>
     select(-wkr) |>
@@ -402,6 +416,14 @@ for (yr in names(th_dates)) {
       across(all_of(count_cols), ~ sum(.x, na.rm = TRUE)),
       .groups = "drop"
     )
+  if (length(th_no_data) > 0) {
+    blank <- result$ags %in% th_no_data
+    for (cl in c("eligible_voters", "number_voters", "valid_votes", "invalid_votes", count_cols))
+      result[[cl]][blank] <- NA_real_
+    cat("  TH", yr, ": no counts of their own (counted in a neighbour's Wahlbezirk):",
+        paste(th_no_data, collapse = ", "), "\n")
+  }
+  result$flag_pooled <- as.integer(result$ags %in% th_no_data)
 
   ## --- Convert counts to shares ---
   result <- result |>
@@ -518,12 +540,14 @@ allocate_pooled_counts <- function(gem, pool, cols, label = "", members = NULL) 
 ##   2021:      Gemeinde-level (sheet "Gemeinden"), skip 7 header rows.
 ##              AGS in col1, eligible=col4, voters=col8.
 ##              Filter "Insgesamt" rows with 8-digit AGS. Zweitstimmen at cols 30+.
+##   2026:      Gemeinde-level CSV (endgültiges Ergebnis, Stand 22.09.2026),
+##              three rows per Gemeinde keyed by Wahllokal -- keep the total.
 ## All years: aggregate Wahlbezirk → Gemeinde by AGS (sum counts).
 
 st_dates <- c(
   "1990" = "1990-10-14", "1994" = "1994-06-26", "1998" = "1998-04-26",
   "2002" = "2002-04-21", "2006" = "2006-03-26", "2011" = "2011-03-20",
-  "2016" = "2016-03-13", "2021" = "2021-06-06"
+  "2016" = "2016-03-13", "2021" = "2021-06-06", "2026" = "2026-09-06"
 )
 
 st_results <- list()
@@ -534,7 +558,94 @@ for (yr in names(st_dates)) {
   fpath <- here(raw_path, "Sachsen-Anhalt",
                 paste0("Sachsen-Anhalt_", yr, "_Landtagswahl.xlsx"))
 
-  if (yr == "2021") {
+  if (yr == "2026") {
+    ## ---- 2026: Gemeinde-level CSV ----
+    ## Source: Ergebnisse_Gemeinden_LT_2026.csv, wahlergebnisse.sachsen-anhalt.de
+    ## (Datensatzbeschreibung saved next to it). UTF-8, ";", one row per
+    ## Gemeinde x Wahllokal: U = Urnenwahl, B = Briefwahl, "" = total. Only the
+    ## total rows are kept -- summing all three double-counts. U + B == total for
+    ## every cell, and the 218 totals sum exactly to the Land row of the
+    ## Land/Kreis/Wahlkreis file. Postal votes are counted in each Gemeinde (all
+    ## 511 Briefwahlbezirke of the Wahlbezirk file carry an 8-digit AGS), so
+    ## nothing is pooled above Gemeinde level. Columns are addressed by header
+    ## code, not by position: A = Wahlberechtigte, B = Wähler, E/F = ungültige/
+    ## gültige Zweitstimmen, Fnn.<Kurzbezeichnung> = Zweitstimmen per party.
+    raw26 <- fread(here(raw_path, "Sachsen-Anhalt",
+                        "Sachsen-Anhalt_2026_Landtagswahl_Gemeinden.csv"),
+                   sep = ";", encoding = "UTF-8", colClasses = "character",
+                   na.strings = NULL)
+    hdr26 <- names(raw26)
+    col26 <- function(code) {
+      idx <- which(sub("\\..*$", "", hdr26) == code)
+      stopifnot(length(idx) == 1)
+      hdr26[idx]
+    }
+    df <- raw26[raw26[[3]] == "GEM" & raw26[[6]] == ""]
+    stopifnot(hdr26[3] == "Satzart", hdr26[6] == "Wahllokal",
+              all(df[[1]] == "E"),                       # endgültiges Ergebnis
+              nrow(df) == uniqueN(df[[4]]), all(grepl("^15\\d{6}$", df[[4]])))
+    safe_num <- function(x) as.numeric(na_if(trimws(x), ""))
+
+    party_hdr <- grep("^F[0-9]{2}\\.", hdr26, value = TRUE)
+    party_votes <- list()
+    for (h in party_hdr) {
+      std_name <- normalise_party(sub("^F[0-9]{2}\\.", "", h))
+      v <- safe_num(df[[h]])
+      if (std_name %in% names(party_votes)) {
+        existing <- party_votes[[std_name]]
+        existing[is.na(existing)] <- 0
+        v[is.na(v)] <- 0
+        party_votes[[std_name]] <- existing + v
+      } else {
+        party_votes[[std_name]] <- v
+      }
+    }
+
+    result <- tibble(
+      ags            = as.character(df[[4]]),
+      election_year  = as.integer(2026),
+      state          = "15",
+      election_date  = as.Date(st_dates["2026"]),
+      eligible_voters = safe_num(df[[col26("A")]]),
+      number_voters  = safe_num(df[[col26("B")]]),
+      invalid_votes  = safe_num(df[[col26("E")]]),
+      valid_votes    = safe_num(df[[col26("F")]])
+    )
+    stopifnot(all(result$valid_votes + result$invalid_votes == result$number_voters))
+
+    for (std_name in names(party_votes)) {
+      result[[paste0(std_name, "_n")]] <- party_votes[[std_name]]
+    }
+
+    ## Other = valid - sum(all named party counts); every list is named, so 0
+    mapped_sum <- rep(0, nrow(result))
+    for (std_name in names(party_votes)) {
+      v <- party_votes[[std_name]]; v[is.na(v)] <- 0
+      mapped_sum <- mapped_sum + v
+    }
+    stopifnot(all(mapped_sum == result$valid_votes))
+    ## Reconcile with the Land row of the Land/Kreis/Wahlkreis file, so a re-issued
+    ## file whose total rows are keyed differently cannot pass as zero Gemeinden
+    st26_land <- fread(here("data", "state_elections", "raw", "Landtagswahlen_Wahlkreis",
+                            "Sachsen-Anhalt", "ST_2026_Landtagswahl_Wahlkreis.csv"),
+                       sep = ";", encoding = "UTF-8", colClasses = "character",
+                       na.strings = NULL)
+    st26_land <- st26_land[st26_land[[3]] == "LAN" & st26_land[[6]] == ""]
+    stopifnot(nrow(result) == 218, nrow(st26_land) == 1,
+              sum(result$eligible_voters) == safe_num(st26_land[[col26("A")]]),
+              sum(result$number_voters) == safe_num(st26_land[[col26("B")]]),
+              sum(result$valid_votes) == safe_num(st26_land[[col26("F")]]))
+    result$other_n <- pmax(result$valid_votes - mapped_sum, 0, na.rm = TRUE)
+
+    ## Convert counts to shares
+    result <- result |> mutate(turnout = number_voters / eligible_voters)
+    for (std_name in c(names(party_votes), "other")) {
+      result[[std_name]] <- result[[paste0(std_name, "_n")]] / result$valid_votes
+    }
+    result$cdu_csu <- result$cdu
+    result <- result |> select(-ends_with("_n"))
+
+  } else if (yr == "2021") {
     ## ---- 2021: Gemeinde-level, sheet "Gemeinden" ----
     ## Read with headers to get party names from row 5
     raw_full <- read_excel(fpath, sheet = "Gemeinden", col_names = FALSE,
@@ -7147,6 +7258,143 @@ result <- result |> select(-ends_with("_n"))
 cat("  RP 2021:", nrow(result), "munis\n")
 rp_results[["2021"]] <- result
 
+## ---------- 2026 from LW_2026_Endergebnis_Stimmbezirksebene.xlsx ----------
+## Endgültiges Ergebnis (Landeswahlausschuss 02.04.2026), wahlen.rlp.de. Same
+## 13-digit key as 2021: Bezirk(1) WK(2) Kreis(3) VG(2) Gemeinde(3) Stadtteil(2),
+## AGS = "07" + Kreis + Gemeinde. Use the XLSX, NOT the CSV twin published next
+## to it: the CSV writes every key of 11+ digits in Excel scientific notation
+## ("1,01132E+12"), which destroys the VG and Gemeinde digits.
+## Gemeinde units are Stimmbezirkskennzeichen GD (Ortsgemeinde), VF
+## (verbandsfreie Gemeinde) and KS (kreisfreie Stadt), each once, GUW = G
+## (Urne + Brief). Together they sum exactly to the Land row, postal votes
+## included.
+##
+## POOLED MUNICIPALITIES: 58 small Ortsgemeinden have no counts of their own
+## (§ 57 II LWO, § 10 III LWahlG -- too few voters to count separately). Their
+## electorate and ballots are booked inside a neighbouring Gemeinde of the same
+## Verbandsgemeinde (40 receivers, flagged "+" in "Zusammenlegung Aufnahme").
+## They are KEPT AS PUBLISHED: donor rows carry NA counts, receiving rows carry
+## the pooled unit. A donor has no electorate in the source, so any split would
+## need an outside population series. The donor -> receiver map is written to
+## data/state_elections/metadata/rp_2026_pooled_municipalities.csv.
+
+rp26_xlsx <- file.path(rp_raw_path, "LW_2026_Endergebnis_Stimmbezirksebene.xlsx")
+rp26_hdr  <- as.character(unlist(read_excel(rp26_xlsx, sheet = 1, col_names = FALSE,
+                                            skip = 2, n_max = 1, .name_repair = "minimal")))
+rp26_hdr  <- trimws(gsub("\\s+", " ", rp26_hdr))
+## Data from row 4: the key columns are then purely numeric, so readxl keeps the
+## full 13-digit integers (a text first row would turn the column into text).
+rp26_raw  <- read_excel(rp26_xlsx, sheet = 1, col_names = FALSE, skip = 3,
+                        .name_repair = "minimal")
+stopifnot(ncol(rp26_raw) == length(rp26_hdr), is.numeric(rp26_raw[[1]]))
+rp26_col  <- function(label) {
+  idx <- which(rp26_hdr == label)
+  if (length(idx) != 1) stop("RP 2026: expected one column '", label, "'")
+  idx
+}
+
+rp26_key  <- sprintf("%013.0f", rp26_raw[[1]])
+rp26_kz   <- as.character(rp26_raw[[3]])
+rp26_guw  <- as.character(rp26_raw[[5]])
+rp26_rows <- which(rp26_guw == "G" & rp26_kz %in% c("GD", "VF", "KS"))
+rp26_land <- which(rp26_guw == "G" & rp26_kz == "LD")
+stopifnot(length(rp26_land) == 1)
+
+rp26 <- rp26_raw[rp26_rows, ]
+rp26_ags <- paste0("07", substr(rp26_key[rp26_rows], 4, 6),
+                   substr(rp26_key[rp26_rows], 9, 11))
+stopifnot(!anyDuplicated(rp26_ags), all(grepl("^07\\d{6}$", rp26_ags)))
+
+## Landesstimmen block: "ungültige/gültige Landesstimmen", then party/percent
+## pairs up to the fixed-width tail. Lists that stood only in some Wahlkreise
+## (Bastian Ruhl, Team Todenhöfer, Yunus Emre, Die PARTEI) have an empty
+## Landesstimme column and are skipped.
+rp26_inv_col   <- rp26_col("ungültige Landesstimmen")
+rp26_valid_col <- rp26_col("gültige Landesstimmen")
+rp26_party_cols <- which(seq_along(rp26_hdr) > rp26_valid_col + 1 &
+                         !is.na(rp26_hdr) & rp26_hdr != "NA" &
+                         !grepl("Prozent$|^Berechnung|^Zusammenlegung", rp26_hdr))
+rp26_party_cols <- rp26_party_cols[!is.na(rp_safe_num(unlist(rp26_raw[rp26_land, rp26_party_cols])))]
+cat("  RP 2026: Landesstimme lists:", paste(rp26_hdr[rp26_party_cols], collapse = ", "), "\n")
+
+rp26_abgabe <- rp_safe_num(rp26[[rp26_col("Zusammenlegung Abgabe Identifikationsschlüssel")]])
+rp26_donor  <- !is.na(rp26_abgabe)
+
+result <- tibble(
+  ags             = rp26_ags,
+  election_year   = 2026L,
+  state           = "07",
+  election_date   = as.Date("2026-03-22"),
+  eligible_voters = rp_safe_num(rp26[[rp26_col("A")]]),
+  number_voters   = rp_safe_num(rp26[[rp26_col("B")]]),
+  valid_votes     = rp_safe_num(rp26[[rp26_valid_col]]),
+  invalid_votes   = rp_safe_num(rp26[[rp26_inv_col]])
+)
+## Donors are empty in the source; everyone else is fully reported
+stopifnot(all(is.na(result$eligible_voters[rp26_donor])),
+          all(is.na(result$number_voters[rp26_donor])),
+          !anyNA(result$eligible_voters[!rp26_donor]),
+          !anyNA(result$valid_votes[!rp26_donor]),
+          all(result$valid_votes[!rp26_donor] + result$invalid_votes[!rp26_donor] ==
+                result$number_voters[!rp26_donor]))
+
+mapped_sum <- rep(0, nrow(result))
+party_names_seen <- c()
+for (ci in rp26_party_cols) {
+  std <- normalise_party(rp26_hdr[ci])
+  v   <- rp_safe_num(rp26[[ci]])
+  v[is.na(v) & !rp26_donor] <- 0          # blank = no votes, except for donors
+  col_n <- paste0(std, "_n")
+  result[[col_n]] <- if (col_n %in% names(result)) result[[col_n]] + v else v
+  mapped_sum <- mapped_sum + ifelse(is.na(v), 0, v)
+  party_names_seen <- c(party_names_seen, std)
+}
+party_names_seen <- unique(party_names_seen)
+stopifnot(all(mapped_sum[!rp26_donor] == result$valid_votes[!rp26_donor]))
+result$other_n <- ifelse(rp26_donor, NA_real_, result$valid_votes - mapped_sum)
+
+## Reconcile against the file's own Land row
+rp26_land_vals <- sapply(c(rp26_col("A"), rp26_col("B"), rp26_valid_col),
+                         function(ci) rp_safe_num(rp26_raw[[ci]][rp26_land]))
+stopifnot(all(c(sum(result$eligible_voters, na.rm = TRUE),
+                sum(result$number_voters, na.rm = TRUE),
+                sum(result$valid_votes, na.rm = TRUE)) == rp26_land_vals))
+
+## Donor -> receiver map. The "Abgabe" key names the receiving Stimmbezirk
+## (13-digit key + 5-digit Stimmbezirk-Id) and is stored as a double, which
+## still holds the leading 13 digits exactly.
+rp26_recv_key <- substr(sprintf("%018.0f", rp26_abgabe[rp26_donor]), 1, 11)
+rp26_pool <- tibble(
+  election_year  = 2026L,
+  donor_ags      = rp26_ags[rp26_donor],
+  donor_name     = as.character(rp26[[4]][rp26_donor]),
+  receiver_ags   = paste0("07", substr(rp26_recv_key, 4, 6), substr(rp26_recv_key, 9, 11)),
+  reason         = as.character(rp26[[rp26_col("Zusammenlegung Grund")]][rp26_donor])
+)
+rp26_pool$receiver_name <- as.character(rp26[[4]])[match(rp26_pool$receiver_ags, rp26_ags)]
+rp26_flagged <- rp26_ags[as.character(rp26[[rp26_col("Zusammenlegung Aufnahme")]]) %in% "+"]
+stopifnot(!anyNA(rp26_pool$receiver_name),
+          setequal(unique(rp26_pool$receiver_ags), rp26_flagged),
+          all(substr(rp26_pool$donor_ags, 1, 5) == substr(rp26_pool$receiver_ags, 1, 5)))
+fwrite(rp26_pool |> relocate(receiver_name, .after = receiver_ags),
+       "data/state_elections/metadata/rp_2026_pooled_municipalities.csv")
+cat(sprintf("  RP 2026: %d donor municipalities pooled into %d receivers (%s eligible)\n",
+            nrow(rp26_pool), length(rp26_flagged),
+            format(sum(result$eligible_voters[result$ags %in% rp26_flagged]), big.mark = ",")))
+result$flag_pooled <- as.integer(result$ags %in% c(rp26_pool$donor_ags, rp26_flagged))
+
+gerda_require_mapped(result, "ags", "state_raw_result_07_2026")
+
+result <- result |> mutate(turnout = ifelse(eligible_voters > 0, number_voters / eligible_voters, NA_real_))
+for (std_name in c(party_names_seen, "other")) {
+  result[[std_name]] <- result[[paste0(std_name, "_n")]] / result$valid_votes
+}
+result$cdu_csu <- result$cdu
+result <- result |> select(-ends_with("_n"))
+
+cat("  RP 2026:", nrow(result), "munis\n")
+rp_results[["2026"]] <- result
+
 all_states[["rp"]] <- standardise(bind_rows(rp_results))
 cat("Rheinland-Pfalz total:", nrow(all_states[["rp"]]), "rows\n\n")
 
@@ -7165,6 +7413,31 @@ if (any(he_agg_rows)) {
   cat(sprintf("Removing %d HE county-aggregate rows (AGS 06439000, 06535000)\n",
               sum(he_agg_rows)))
   state_unharm <- state_unharm[!he_agg_rows, ]
+}
+
+# flag_pooled: 1 = the row belongs to a unit whose counts the source pooled across
+# municipalities -- a donor without counts of its own (all counts NA) or the
+# receiver whose counts include it. Set where the source identifies the pooling:
+# RP 2026 (58 donors, 40 receivers; pairs in
+# data/state_elections/metadata/rp_2026_pooled_municipalities.csv) and TH 2024
+# (4 donors; the source does not name the receiving Gemeinde). 0 elsewhere.
+state_unharm$flag_pooled <- ifelse(is.na(state_unharm$flag_pooled), 0L,
+                                   as.integer(state_unharm$flag_pooled))
+
+# Rows with valid votes but every recorded party share exactly 0: the party
+# columns were not recovered (BB 1994 OCR, 23 Gemeinden, e.g. Fürstenwalde), not
+# a municipality where nobody voted for a named party. Left as 0 they publish
+# other = 1 and cdu_csu = 0; the shares are unknown, so NA.
+share_cols_all <- setdiff(names(state_unharm), c(meta_cols, "other", "cdu_csu",
+                                                 grep("^flag_", names(state_unharm), value = TRUE)))
+share_mat <- as.data.frame(state_unharm)[share_cols_all]
+no_party <- !is.na(state_unharm$valid_votes) & state_unharm$valid_votes > 0 &
+  rowSums(!is.na(share_mat)) > 0 & rowSums(share_mat, na.rm = TRUE) == 0
+if (any(no_party)) {
+  cat(sprintf("Party shares not recovered (all 0 with valid votes > 0), set to NA: %d rows (%s)\n",
+              sum(no_party), paste(unique(paste(state_unharm$state[no_party],
+                                               state_unharm$election_year[no_party])), collapse = ", ")))
+  for (cl in c(share_cols_all, "other", "cdu_csu")) state_unharm[[cl]][no_party] <- NA_real_
 }
 
 # Flag (but keep) rows with valid_votes == 0 (gemeindefreie Gebiete, empty municipalities)
@@ -7256,7 +7529,7 @@ state_unharm <- state_unharm |>
 
 # Drop always-zero party columns (party existed in raw data but never had votes)
 party_cols_all <- setdiff(names(state_unharm), c(meta_cols, "other", "cdu_csu",
-  "flag_naive_turnout_above_1", "flag_no_valid_votes", "flag_briefwahl_only"))
+  "flag_naive_turnout_above_1", "flag_no_valid_votes", "flag_briefwahl_only", "flag_pooled"))
 always_zero <- sapply(party_cols_all, function(col) {
   all(state_unharm[[col]] == 0 | is.na(state_unharm[[col]]), na.rm = FALSE)
 })
