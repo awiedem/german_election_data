@@ -90,6 +90,7 @@ Shares are proportions, but the denominator is part of the dataset contract:
 | Federal constituency share files | `share * valid_votes` | Votes for the selected `stimme` |
 | State municipality share files | `share * valid_votes` | Party/list votes; Bayern uses Gesamtstimmen, Hamburg/Bremen multi-vote totals where applicable |
 | State constituency share files | `share * valid_votes` | Votes for the selected `stimme` |
+| European municipality share files | `share * valid_votes` | Party votes (one vote per voter) |
 
 **Imputed denominators and rounding.** State harmonization fills missing
 `valid_votes` with positive voter counts, then positive eligible counts, then
@@ -128,7 +129,7 @@ groups without reviewing the source.
 
 Values are **vote shares as proportions (0--1)**, not percentages. The
 denominator differs by pipeline and is stated in each dataset section — most use
-`valid_votes`, the federal and European municipality files use `number_voters`.
+`valid_votes`, the federal municipality- and county-level files use `number_voters`.
 
 Recurring aggregate columns:
 
@@ -694,12 +695,12 @@ councils those reforms abolished are not included.
 # European elections
 
 European Parliament elections, 2009--2024, at municipality level. Vote shares
-are proportions of **`number_voters`**, matching the federal municipality
-convention, so party shares sum to roughly `valid_votes / number_voters` rather
-than to 1.
+are proportions of **`valid_votes`**, as in the state and municipal files.
+Releases before September 2026 used `number_voters`; multiply such an older
+share by `number_voters / valid_votes` to convert it.
 
-**Files:** `european_muni_unharm` (44,722 x 87), `european_muni_harm`
-(42,986 x 90) in `data/european_elections/final/`.
+**Files:** `european_muni_unharm` (44,730 x 87), `european_muni_harm`
+(42,994 x 90) in `data/european_elections/final/`.
 
 Shared blocks apply, with 71 party columns.
 
@@ -709,7 +710,7 @@ Shared blocks apply, with 71 party columns.
 | `voters_w_sperrvermerk` | numeric | Eligible voters with Sperrvermerk (A2) — EU citizens. |
 | `voters_par24_2` | numeric | Voters registered under § 24(2) EuWO (A3) — Germans abroad. |
 | `voters_w_wahlschein` | numeric | Voters with a Wahlschein (absentee ballot certificate, B1). |
-| `flag_turnout_above_1` | integer | 1 where turnout exceeded 1 before capping (mail-in allocation rounding). |
+| `flag_turnout_above_1` | integer | 1 where turnout exceeded 1 before capping (allocated mail-in voters can exceed a small municipality's electorate). |
 | `flag_aggregated`, `n_predecessors` | integer | Harmonization bookkeeping — see the shared block. |
 
 Zero handling here follows the *zero preserved* pattern: a 0 means the source
@@ -718,8 +719,23 @@ reported no votes, and parties that did not run in a given year are also 0.
 Berlin appears as 14 Bezirke rows per year in the unharmonized file and as a
 single row (AGS `11000000`) in the harmonized one. Mail-in votes from shared
 districts are allocated proportionally by eligible voters within each
-`(county, BWBez)` group. Crosswalk year mapping: 2009→2009, 2014→2014,
-2019→2019, 2024→2020.
+`(county, BWBez)` group. In Niedersachsen most of these are Samtgemeinde-level
+Briefwahl districts. Releases before September 2026 dropped them, losing
+48,000--163,000 valid votes per election (Niedersachsen turnout 2024: 61.5%
+instead of 64.1%), and also dropped the gemeindefreie Bezirke Lohheide
+(`03351501`) and Osterheide (`03358501`). A joint mail-in district is shared
+with every municipality of its group, including a lead municipality that also
+has postal districts of its own (some Verwaltungsgemeinschaften in Thüringen);
+earlier releases gave it to the other members only, which pushed some of them
+above 100% turnout. Crosswalk year mapping: 2009→2009, 2014→2014, 2019→2019,
+2024→2020.
+
+Each state's eligible voters, voters, valid and invalid votes add up exactly to
+the ballot-district source file, and party shares sum to exactly 1 in every
+row. Allocated voter counts are whole numbers. Allocated party votes are the
+municipality's allocated valid votes split in the pool's party proportions and
+are not rounded, so in municipalities that receive shared mail-in votes
+`share * valid_votes` is not a whole number.
 
 # Mayoral elections
 

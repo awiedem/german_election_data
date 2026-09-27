@@ -1960,7 +1960,7 @@
     "source": "data/crosswalks/final/cty_crosswalks.csv"
   },
   "data/european_elections/final/european_muni_harm": {
-    "rows": 42986,
+    "rows": 42994,
     "columns": 90,
     "sheets": 1,
     "percentage_columns": [
@@ -2037,15 +2037,15 @@
       "volt",
       "x50plus"
     ],
-    "source_sha256": "9c39b05aee2e24e42356721c13aad5dadd1b2ff4d838140f4c78ad6b29b9441a",
-    "rds_sha256": "5866e25dc7a441c960fa736bfe19c98c9cb603322e4a9efff196fcffb99c4ae2",
+    "source_sha256": "5e129a45d5010fa4383ee8463570f3e27cd5c262c2969392597302c9261dd96c",
+    "rds_sha256": "5da13d0af46bcd0914f8be0bf965e72359174b486b6208f1ff767f2b9fc89c7c",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "82bee91a4c8e9983d90846b7de7fc6a3fafcbef9bc4f3ed7a75725b920367e17",
-    "bytes": 20326589,
+    "xlsx_sha256": "d40f7a3a19d64c45c53eec0e3a232b7f217db1c83edd251e67c6e905874f0a2e",
+    "bytes": 23516705,
     "source": "data/european_elections/final/european_muni_harm.csv"
   },
   "data/european_elections/final/european_muni_unharm": {
-    "rows": 44722,
+    "rows": 44730,
     "columns": 87,
     "sheets": 1,
     "percentage_columns": [
@@ -2122,11 +2122,11 @@
       "volt",
       "x50plus"
     ],
-    "source_sha256": "0dba9701bba7244efa72ff6d3825296d4ae4699fb68ce14616c9d75ebb676a7c",
-    "rds_sha256": "5798d09d7370b6d994ea06dfdac4fbbca1bab7ae8718110599424b3696b78367",
+    "source_sha256": "7869fa4d9a88520c8dcc56623cb75fca9aab0b4b6a8498c6d7592cbd1f2d731e",
+    "rds_sha256": "63bf9716e9f351c8ce715aae04b340d5de83240c06e4c63509b83ea3c7dd16f1",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "0ece224c2bc533b71a9994f0a5d7f21d090b70028f33d43d7be153c3bde20068",
-    "bytes": 20556029,
+    "xlsx_sha256": "c363e7d6eb1fff8cdaff9af25dc7e6ca83a2ea515d7895d737960a9402780be4",
+    "bytes": 23948330,
     "source": "data/european_elections/final/european_muni_unharm.csv"
   },
   "data/federal_elections/county_level/final/federal_cty_harm": {

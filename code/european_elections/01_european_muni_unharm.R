@@ -284,6 +284,50 @@ ew_configs <- list(
 )
 
 
+# --- 1b. Mail-in allocation ---------------------------------------------------
+
+# Largest-remainder rounding: whole numbers, each within 1 of its target, that
+# add up to exactly `total`.
+round_to_total <- function(target, total) {
+  out <- floor(target + 1e-9)
+  left <- round(total - sum(out))
+  stopifnot(left >= 0, left <= length(out))
+  top <- order(target - out, target, decreasing = TRUE)[seq_len(left)]
+  out[top] <- out[top] + 1
+  out
+}
+
+# Splits one pooled mail-in district (`pool`: named vector of its counts) over
+# the municipalities that vote in it, by their eligible-voter weights `w`.
+# Counts stay whole numbers and add up to exactly the pool's. Invalid votes and
+# Wahlschein voters follow the allocated voters, so voters = valid + invalid in
+# every municipality. Party votes are the allocated valid votes split in the
+# pool's party proportions and are not rounded: rounding each party on its own
+# made party votes miss valid_votes, so vote shares did not sum to 1.
+allocate_pool <- function(w, pool, party_cols) {
+  out <- matrix(0, length(w), length(pool), dimnames = list(NULL, names(pool)))
+  for (v in c("eligible_voters", "voters_wo_sperrvermerk",
+              "voters_w_sperrvermerk", "voters_par24_2", "number_voters")) {
+    out[, v] <- round_to_total(w * pool[[v]], pool[[v]])
+  }
+  voters <- out[, "number_voters"]
+  for (v in c("invalid_votes", "voters_w_wahlschein")) {
+    target <- if (pool[["number_voters"]] > 0) {
+      voters * pool[[v]] / pool[["number_voters"]]
+    } else {
+      w * pool[[v]]
+    }
+    out[, v] <- round_to_total(target, pool[[v]])
+  }
+  out[, "valid_votes"] <- voters - out[, "invalid_votes"]
+  if (pool[["valid_votes"]] > 0) {
+    out[, party_cols] <- outer(out[, "valid_votes"], pool[party_cols]) /
+      pool[["valid_votes"]]
+  }
+  out
+}
+
+
 # --- 2. Processing function ---------------------------------------------------
 
 process_ew_year <- function(cfg) {
@@ -312,6 +356,13 @@ process_ew_year <- function(cfg) {
   }
 
   # 2c: Standardize meta column names
+  # valid_votes is the vote-share denominator. rename(any_of()) would skip a
+  # header that changed, and the valid-vote column would then be read as a party.
+  needed <- c(cfg$elig_col, cfg$voters_col, cfg$invalid_col, cfg$valid_col)
+  if (!all(needed %in% names(df))) {
+    stop(cfg$year, ": missing columns ",
+         paste(setdiff(needed, names(df)), collapse = ", "), call. = FALSE)
+  }
   # Rename year-specific voter column names to common names
   rename_map <- c(
     "eligible_voters"        = cfg$elig_col,
@@ -356,6 +407,27 @@ process_ew_year <- function(cfg) {
   df <- df |>
     mutate(across(all_of(numeric_cols), ~ as.numeric(gsub("\\.", "", as.character(.x)))))
 
+  # The aggregation below sums with na.rm = TRUE, which would turn a missing
+  # valid-vote count into 0; stop instead.
+  if (anyNA(df$valid_votes)) {
+    stop(cfg$year, ": ", sum(is.na(df$valid_votes)),
+         " ballot districts lack valid_votes", call. = FALSE)
+  }
+  # Mail-in allocation (section 6) needs a count in every cell and, for vote
+  # shares to sum to 1, party votes adding up to valid votes and valid +
+  # invalid to voters. A blank party cell is a party not on that ballot
+  # (CSU in 11 Rheinland-Pfalz districts in 2019): 0 votes.
+  if (anyNA(select(df, all_of(vote_meta_cols)))) {
+    stop(cfg$year, ": missing turnout counts in ballot districts", call. = FALSE)
+  }
+  df <- df |> mutate(across(all_of(party_cols), ~ replace_na(.x, 0)))
+  n_bad <- sum(rowSums(select(df, all_of(party_cols))) != df$valid_votes |
+                 df$valid_votes + df$invalid_votes != df$number_voters)
+  if (n_bad > 0) {
+    stop(cfg$year, ": ", n_bad, " ballot districts where party votes do not ",
+         "sum to valid votes or valid + invalid != voters", call. = FALSE)
+  }
+
   # 2g: Remap BA=6→0 and BA=8→0 (Sonderwahlbezirke → polling station equivalent)
   n_ba6 <- sum(df$BA == 6, na.rm = TRUE)
   n_ba8 <- sum(df$BA == 8, na.rm = TRUE)
@@ -364,16 +436,23 @@ process_ew_year <- function(cfg) {
   }
   df <- df |> mutate(BA = ifelse(BA %in% c(6, 8), 0L, as.integer(BA)))
 
-  # 2h: Remove NI Samtgemeinde aggregate rows (Gemeinde suffix >= 400)
-  n_sg <- sum(df$Land == "03" & as.integer(df$Gemeinde) >= 400, na.rm = TRUE)
-  if (n_sg > 0) {
-    cat("Removing", n_sg, "NI Samtgemeinde aggregate rows\n")
-    df <- df |> filter(!(Land == "03" & as.integer(Gemeinde) >= 400))
-  }
+  # 2h: Keep every Niedersachsen row. Every row of the file is one ballot
+  # district, so none is an aggregate. NI codes with Gemeinde suffix >= 400
+  # are Briefwahl districts of a Samtgemeinde (or of a Kreis-wide pool:
+  # 9xx, and 999 in 2014, BA=5, no electorate) that section 6 allocates to
+  # the municipalities with the same (county, BWBez), and the gemeindefreie
+  # Bezirke Lohheide (03351501) and Osterheide (03358501), which are real
+  # municipalities. Dropping these rows until September 2026 deleted every
+  # NI postal vote counted at Samtgemeinde level (163,216 valid votes in 2024).
+
+  # Raw totals per state, for the reconciliation check after section 7
+  raw_totals <- df |>
+    mutate(party_votes = rowSums(across(all_of(party_cols)))) |>
+    group_by(state = Land) |>
+    summarise(across(all_of(c(vote_meta_cols, "party_votes")), sum), .groups = "drop")
 
   # 2i: Distribute Gem=999 dummy rows (Sonderwahlbezirke without real municipality)
   # Remap their BA to 5 so they get distributed proportionally across real
-
   # municipalities in the same (county, BWBez) group via the Briefwahl logic
   n_gem999 <- sum(df$Gemeinde == "999" & df$BA == 0, na.rm = TRUE)
   if (n_gem999 > 0) {
@@ -386,38 +465,67 @@ process_ew_year <- function(cfg) {
     group_by(ags, county, BWBez, BA) |>
     summarise(across(all_of(numeric_cols), \(x) sum(x, na.rm = TRUE)), .groups = "drop")
 
-  # --- 4. Identify municipality types ---
+  # --- 4. Separate joint mail-in pools from each municipality's own rows ---
+  # All municipalities of a Kreis that form a joint Briefwahlvorstand carry the
+  # same 2-digit Briefwahlzugehörigkeit (BWBez); 0/00 means none (Hinweise zur
+  # Wahlbezirksstatistik). So a Briefwahl row (BA=5) with a nonzero BWBez
+  # belongs to that joint board whichever code it is booked on: usually the
+  # board's own 9xx/999 code, but in some Thüringen Verwaltungsgemeinschaften
+  # (2014, 2024) and in Sachsen 14628 (2009) also the lead municipality's,
+  # while the board's votes come from lead and members alike (postal voters
+  # match the Wahlschein holders, A2, of the whole group, not of one side).
+  # Such rows are pooled and allocated over every municipality with polling
+  # stations under the same (county, BWBez); a key with a single municipality
+  # hands it all of its votes. Briefwahl rows under BWBez 0/00 stay with
+  # their municipality.
+  df_agg <- df_agg |> mutate(pooled = BA == 5 & !BWBez %in% c("0", "00"))
   ags_with_ba0 <- df_agg |> filter(BA == 0) |> pull(ags) |> unique()
-  ags_with_ba5 <- df_agg |> filter(BA == 5) |> pull(ags) |> unique()
-  mailin_only_ags <- setdiff(ags_with_ba5, ags_with_ba0)
-  real_no_mailin <- setdiff(ags_with_ba0, ags_with_ba5)
 
-  cat("Real municipalities:", length(ags_with_ba0), "\n")
-  cat("  with own mail-in:", length(intersect(ags_with_ba0, ags_with_ba5)), "\n")
-  cat("  without own mail-in:", length(real_no_mailin), "\n")
-  cat("Mail-in-only AGS (to distribute):", length(mailin_only_ags), "\n")
+  # Outside a joint board, Briefwahl must be booked on a real municipality
+  stray <- df_agg |>
+    filter(BA == 5, !pooled, !ags %in% ags_with_ba0,
+           number_voters > 0 | eligible_voters > 0)
+  if (nrow(stray) > 0) {
+    stop(cfg$year, ": Briefwahl without a joint board on codes with no ",
+         "polling stations: ", paste(unique(stray$ags), collapse = ", "),
+         call. = FALSE)
+  }
 
-  # --- 5. Municipalities with own mail-in: sum all BA types ---
-  df_own_mailin <- df_agg |>
-    filter(ags %in% intersect(ags_with_ba0, ags_with_ba5)) |>
+  # --- 5. Own rows: polling stations and Briefwahl under BWBez 0/00 ---
+  df_own <- df_agg |>
+    filter(!pooled, ags %in% ags_with_ba0) |>
     group_by(ags, county) |>
     summarise(across(all_of(numeric_cols), \(x) sum(x, na.rm = TRUE)), .groups = "drop")
 
-  # --- 6. Municipalities without own mail-in: allocate from Amt-level ---
-  # 6a: Get polling station totals
-  df_no_mailin <- df_agg |>
-    filter(ags %in% real_no_mailin & BA == 0) |>
-    group_by(ags, county, BWBez) |>
-    summarise(across(all_of(numeric_cols), \(x) sum(x, na.rm = TRUE)), .groups = "drop")
-
-  # 6b: Get Amt-level mail-in totals
+  # --- 6. Allocate the joint mail-in pools ---
+  # 6a: Pool totals per (county, BWBez)
   df_mailin <- df_agg |>
-    filter(ags %in% mailin_only_ags & BA == 5) |>
+    filter(pooled) |>
     group_by(county, BWBez) |>
     summarise(across(all_of(numeric_cols), \(x) sum(x, na.rm = TRUE)), .groups = "drop")
 
+  # 6b: Municipalities voting in each pool, with their eligible voters there
+  df_recv <- df_agg |>
+    filter(BA == 0) |>
+    semi_join(df_mailin, by = c("county", "BWBez")) |>
+    group_by(ags, county, BWBez) |>
+    summarise(eligible_voters = sum(eligible_voters, na.rm = TRUE), .groups = "drop")
+
+  cat("Real municipalities:", length(ags_with_ba0), "\n")
+  cat("Mail-in pools:", nrow(df_mailin), "| municipalities receiving from one:",
+      n_distinct(df_recv$ags), "\n")
+
+  # Every pool needs a municipality to go to; otherwise its votes would be lost
+  orphans <- anti_join(df_mailin, df_recv, by = c("county", "BWBez"))
+  if (nrow(orphans) > 0) {
+    stop(cfg$year, ": ", nrow(orphans), " mail-in pools (",
+         sum(orphans$number_voters), " voters) have no municipality with ",
+         "polling stations in their (county, BWBez): ",
+         paste(orphans$county, orphans$BWBez, collapse = ", "), call. = FALSE)
+  }
+
   # 6c: Calculate eligible-voter weights within each (county, BWBez) group
-  df_no_mailin <- df_no_mailin |>
+  df_recv <- df_recv |>
     group_by(county, BWBez) |>
     mutate(
       group_elig = sum(eligible_voters, na.rm = TRUE),
@@ -429,25 +537,23 @@ process_ew_year <- function(cfg) {
     ) |>
     ungroup()
 
-  # 6d: Distribute mail-in votes
-  mailin_long <- df_mailin |>
-    pivot_longer(cols = all_of(numeric_cols), names_to = "var", values_to = "mailin_value")
+  # 6d: Distribute mail-in votes (allocate_pool(), section 1b)
+  recv_key <- paste(df_recv$county, df_recv$BWBez)
+  pool_key <- paste(df_mailin$county, df_mailin$BWBez)
+  counts <- matrix(0, nrow(df_recv), length(numeric_cols),
+                   dimnames = list(NULL, numeric_cols))
+  for (k in seq_along(pool_key)) {
+    i <- which(recv_key == pool_key[k])
+    counts[i, ] <- allocate_pool(df_recv$elig_weight[i],
+                                 unlist(df_mailin[k, numeric_cols]), party_cols)
+  }
+  df_allocated <- bind_cols(df_recv |> select(ags, county), as_tibble(counts))
 
-  df_no_mailin_long <- df_no_mailin |>
-    pivot_longer(cols = all_of(numeric_cols), names_to = "var", values_to = "ags_value") |>
-    left_join(mailin_long, by = c("county", "BWBez", "var")) |>
-    mutate(
-      weighted_mailin = round(coalesce(mailin_value, 0) * elig_weight, 0),
-      final_value = ags_value + weighted_mailin
-    )
-
-  # 6e: Pivot back to wide
-  df_allocated <- df_no_mailin_long |>
-    select(ags, county, var, final_value) |>
-    pivot_wider(names_from = var, values_from = final_value)
-
-  # --- 7. Combine all municipalities ---
-  df_muni <- bind_rows(df_own_mailin, df_allocated) |> arrange(ags)
+  # --- 7. Combine: own rows plus allocated mail-in, one row per municipality ---
+  df_muni <- bind_rows(df_own, df_allocated) |>
+    group_by(ags, county) |>
+    summarise(across(all_of(numeric_cols), sum), .groups = "drop") |>
+    arrange(ags)
 
   # Remove uninhabited areas (eligible_voters=0, number_voters=0)
   n_zero <- sum(df_muni$eligible_voters == 0 & df_muni$number_voters == 0, na.rm = TRUE)
@@ -455,6 +561,27 @@ process_ew_year <- function(cfg) {
     cat("Removing", n_zero, "zero-voter municipalities (gemeindefreie Gebiete)\n")
     df_muni <- df_muni |> filter(!(eligible_voters == 0 & number_voters == 0))
   }
+
+  # Reconcile every state with the raw file. Aggregation and mail-in
+  # allocation move votes between municipalities of a state but must neither
+  # create nor lose any; the removed zero-voter rows hold no votes. Counts must
+  # match exactly, the unrounded party votes to floating-point precision.
+  muni_totals <- df_muni |>
+    mutate(state = substr(ags, 1, 2),
+           party_votes = rowSums(across(all_of(party_cols)))) |>
+    group_by(state) |>
+    summarise(across(all_of(c(vote_meta_cols, "party_votes")), sum), .groups = "drop")
+  recon <- full_join(raw_totals, muni_totals, by = "state", suffix = c("_raw", "_muni"))
+  for (v in c(vote_meta_cols, "party_votes")) {
+    gap <- recon[[paste0(v, "_muni")]] - recon[[paste0(v, "_raw")]]
+    off <- is.na(gap) | abs(gap) > if (v == "party_votes") 1e-6 else 0
+    if (any(off)) {
+      stop(cfg$year, ": ", v, " does not reconcile with the raw file in state(s) ",
+           paste0(recon$state[off], " (", gap[off], ")", collapse = ", "),
+           call. = FALSE)
+    }
+  }
+  cat("Per-state totals reconcile with the raw file\n")
 
   cat("Final municipality count:", nrow(df_muni), "\n")
 
@@ -526,11 +653,19 @@ df_all <- df_all |>
 
 # --- 4. Compute turnout and vote shares ---------------------------------------
 
+# Vote shares are shares of valid votes, as in the state and municipal data.
+stopifnot(!anyNA(df_all$valid_votes))
+
 df_all <- df_all |>
   mutate(
     turnout = ifelse(eligible_voters > 0, number_voters / eligible_voters, NA_real_),
-    across(all_of(party_cols_all), ~ ifelse(number_voters > 0, .x / number_voters, NA_real_))
+    across(all_of(party_cols_all), ~ ifelse(valid_votes > 0, .x / valid_votes, NA_real_))
   )
+
+# Party votes add up to valid votes in every municipality, including those
+# that received pooled mail-in votes (allocate_pool()), so shares sum to 1
+share_sum <- rowSums(select(df_all, all_of(party_cols_all)))
+stopifnot(all(abs(share_sum[df_all$valid_votes > 0] - 1) < 1e-9))
 
 # Cap turnout at 1 and flag
 df_all <- df_all |>
@@ -595,10 +730,10 @@ major_parties <- c("cdu", "csu", "spd", "gruene", "afd", "die_linke", "fdp", "bs
 for (yr in c(2009, 2014, 2019, 2024)) {
   cat(sprintf("\n  %d:\n", yr))
   sub <- df_all |> filter(election_year == yr)
-  total_v <- sum(sub$number_voters, na.rm = TRUE)
+  total_v <- sum(sub$valid_votes, na.rm = TRUE)
   for (p in major_parties) {
     if (p %in% names(sub)) {
-      s <- sum(sub[[p]] * sub$number_voters, na.rm = TRUE) / total_v
+      s <- sum(sub[[p]] * sub$valid_votes, na.rm = TRUE) / total_v
       if (s > 0.001) cat(sprintf("    %s: %.4f\n", p, s))
     }
   }

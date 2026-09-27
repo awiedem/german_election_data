@@ -49,9 +49,12 @@ all_numeric_cols <- c(
 
 cat("Party columns:", length(party_cols), "\n")
 
-# Convert party vote shares to absolute counts
+# Convert party vote shares to absolute counts. Shares are shares of valid
+# votes (01_european_muni_unharm.R), so the same denominator must be used here
+# and in section 7.
+stopifnot(!anyNA(df$valid_votes))
 df <- df |>
-  mutate(across(all_of(party_cols), ~ .x * number_voters))
+  mutate(across(all_of(party_cols), ~ .x * valid_votes))
 
 
 # --- 3. Aggregate Berlin Bezirke per year -----------------------------------
@@ -257,7 +260,19 @@ df_harm <- df_ok |>
   )
 
 gerda_audit_totals(df, df_harm, "election_year", all_numeric_cols, "european_muni_21")
-df_harm <- df_harm |> mutate(across(all_of(all_numeric_cols), round))
+
+# Vote shares come from the unrounded counts; rounding each party's weighted
+# votes separately made them miss valid_votes, so shares did not sum to 1.
+# Only the voter counts are rounded to whole numbers.
+count_cols <- setdiff(all_numeric_cols, party_cols)
+df_harm <- df_harm |>
+  mutate(
+    across(all_of(party_cols),
+           ~ ifelse(round(valid_votes) > 0, .x / valid_votes, NA_real_)),
+    across(all_of(count_cols), round)
+  )
+share_sum <- rowSums(select(df_harm, all_of(party_cols)))
+stopifnot(all(abs(share_sum[df_harm$valid_votes > 0] - 1) < 1e-9))
 
 cat("Harmonized rows:", nrow(df_harm), "\n")
 
@@ -282,13 +297,9 @@ date_map <- c(
 df_harm <- df_harm |>
   mutate(election_date = lubridate::ymd(date_map[as.character(election_year)]))
 
-# Compute vote shares and turnout
+# Compute turnout (vote shares: section 7)
 df_harm <- df_harm |>
   mutate(
-    across(
-      all_of(party_cols),
-      ~ ifelse(number_voters > 0, .x / number_voters, NA_real_)
-    ),
     turnout = ifelse(eligible_voters > 0, number_voters / eligible_voters, NA_real_),
     flag_turnout_above_1 = as.integer(!is.na(turnout) & turnout > 1),
     turnout = ifelse(!is.na(turnout) & turnout > 1, 1, turnout),
@@ -354,10 +365,10 @@ major_parties <- c("cdu", "csu", "spd", "gruene", "afd", "die_linke", "fdp", "bs
 for (yr in c(2009, 2014, 2019, 2024)) {
   cat(sprintf("\n  %d:\n", yr))
   sub <- df_harm |> filter(election_year == yr)
-  total_v <- sum(sub$number_voters, na.rm = TRUE)
+  total_v <- sum(sub$valid_votes, na.rm = TRUE)
   for (p in major_parties) {
     if (p %in% names(sub)) {
-      s <- sum(sub[[p]] * sub$number_voters, na.rm = TRUE) / total_v
+      s <- sum(sub[[p]] * sub$valid_votes, na.rm = TRUE) / total_v
       if (s > 0.001) cat(sprintf("    %s: %.4f\n", p, s))
     }
   }
