@@ -306,6 +306,21 @@ th_data <- th_data %>%
                                    SIMPLIFY = TRUE), origin = "1970-01-01")
   )
 
+# Pinned polling days for single-Kreis elections the rule above cannot date.
+# Taken from the TLS listing (wahlen.thueringen.de/kommunalwahlen/
+# kw_wahlergebnisse_LR.asp: "Landratswahl im Kreis Saalfeld-Rudolstadt am
+# 07.06.2026 (Stichwahl am 21.06.2026)"). The 2026 Hauptwahl report is stamped
+# 15.06.2026, and five Gemeinden held Bürgermeisterwahlen on 14.06.2026, so the
+# latest-prior-polling-day rule returns 14 June -- and the runoff, which has no
+# Gemeinde runoff to match, would follow as 28 June. Every earlier single-Kreis
+# election (2014, 2015, 2018, 2020, 2021, 2023, 2024) resolves to the listed day.
+th_pinned_dates <- c("LRInfoG2026_73.xlsx" = "2026-06-07",
+                     "LSInfoG2026_73.xlsx" = "2026-06-21")
+th_data <- th_data %>%
+  mutate(election_date = if_else(source_file %in% names(th_pinned_dates),
+                                 as.Date(unname(th_pinned_dates[source_file])),
+                                 election_date))
+
 # A single-Kreis runoff need not coincide with any Gemeinde runoff, so it has no
 # polling day to match against. Thüringen holds the Stichwahl exactly two weeks
 # after the Hauptwahl (§ 24 ThürKWG) — a rule that holds for every one of the

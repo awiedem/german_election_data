@@ -42,7 +42,8 @@ expected_unharm <- c("ags", "ags_name", "state", "state_name",
                      "election_year", "election_date", "election_type", "round",
                      "eligible_voters", "number_voters", "valid_votes",
                      "invalid_votes", "turnout",
-                     "winner_party", "winner_votes", "winner_voteshare")
+                     "winner_party", "winner_votes", "winner_voteshare",
+                     "flag_elected_by_council")
 miss_u <- setdiff(expected_unharm, names(l))
 check(length(miss_u) == 0,
       sprintf("landrat_unharm has all %d expected columns", length(expected_unharm)),
@@ -54,7 +55,7 @@ expected_cand <- c("ags", "ags_name", "state", "state_name",
                    "candidate_name", "candidate_party",
                    "candidate_votes_hw", "candidate_voteshare_hw",
                    "candidate_votes_sw", "candidate_voteshare_sw",
-                   "is_winner")
+                   "is_winner", "flag_elected_by_council")
 miss_c <- setdiff(expected_cand, names(lc))
 check(length(miss_c) == 0,
       sprintf("landrat_candidates has all %d critical columns", length(expected_cand)),
@@ -263,12 +264,14 @@ check_warn(nrow(no_cands) == 0,
                    nrow(unharm_keys)),
            sprintf("%d unharm rows have no matching candidate row", nrow(no_cands)))
 
+# Cycles the Kreistag decided have no winner by design; section 12 pins them
 no_winner <- lc %>%
   group_by(ags, election_date, election_type) %>%
-  summarise(any_winner = any(is_winner, na.rm = TRUE), .groups = "drop") %>%
-  filter(!any_winner)
+  summarise(any_winner = any(is_winner, na.rm = TRUE),
+            council = any(flag_elected_by_council %in% TRUE), .groups = "drop") %>%
+  filter(!any_winner, !council)
 check_warn(nrow(no_winner) == 0,
-           "every election in candidates has ≥1 winner",
+           "every election in candidates has ≥1 winner (Kreistag-elected cycles aside)",
            sprintf("%d elections have no winner candidate", nrow(no_winner)))
 
 no_rank1 <- lc %>%
@@ -323,6 +326,37 @@ check_warn(nrow(dup_cand) == 0,
            sprintf("%d duplicate (ags, date, candidate_name) in candidates",
                    nrow(dup_cand)))
 
+# Hard for the two scraped states: the BB portal reuses one URL per Kreis
+# across cycles and re-publishes pages, so two cached files can describe the
+# same election (00_bb_scrape.R keeps every version; parse_bb keeps the newest).
+# A slip there doubles every candidate and the winner; unharm would hide it.
+dup_cand_scraped <- dup_cand %>% filter(substr(ags, 1, 2) %in% c("12", "16"))
+check(nrow(dup_cand_scraped) == 0,
+      "BB/TH: no duplicate (ags, date, candidate_name)",
+      sprintf("BB/TH: %d duplicate candidate rows", nrow(dup_cand_scraped)))
+# A BB cycle the Kreistag decided (flag_elected_by_council, section 12) has no
+# winner from the ballot by design; section 12 checks those cycles instead.
+winners_scraped <- lc %>%
+  filter(state %in% c("12", "16")) %>%
+  group_by(ags, election_date) %>%
+  summarise(n_winner = sum(is_winner %in% TRUE),
+            council = any(flag_elected_by_council), .groups = "drop") %>%
+  filter(n_winner != 1, !council)
+# Both runoff candidates of a BB cycle ran in its Hauptwahl, so a Stichwahl row
+# without Hauptwahl votes is a pairing failure: the LWL spells some people
+# differently in the two rounds ("Bernd Sachse" / "Sachse, Bernd", MOL 2013),
+# which split each into two rows and crowned both until September 2026.
+bb_unpaired <- lc %>%
+  filter(state == "12", !is.na(candidate_votes_sw), is.na(candidate_votes_hw))
+check(nrow(bb_unpaired) == 0,
+      "BB: every Stichwahl candidate is paired with their Hauptwahl row",
+      sprintf("BB: %d Stichwahl rows without Hauptwahl votes: %s", nrow(bb_unpaired),
+              paste(unique(paste(bb_unpaired$ags_name, bb_unpaired$election_date)),
+                    collapse = "; ")))
+check(nrow(winners_scraped) == 0,
+      "BB/TH: exactly one winner per election cycle",
+      sprintf("BB/TH: %d cycles without exactly one winner", nrow(winners_scraped)))
+
 # ============================================================================
 # 10. Stichwahl logic
 # ============================================================================
@@ -355,9 +389,105 @@ cat(sprintf("    SL rows total: %d (with NA eligible_voters: %d)\n",
             sl_total, nrow(sl_no_eligible)))
 
 # ============================================================================
-# 12. Coverage summary
+# 12. Brandenburg: majority + 15 % quorum (§ 72 Abs. 2 BbgKWahlG)
 # ============================================================================
-cat("\n12. Coverage summary\n")
+# The voters elect a BB Landrat only with more than half of the valid votes,
+# amounting to at least 15 % of the eligible voters; if the runoff leader
+# misses that, the Kreistag elects. 01_landrat_combine.R marks such cycles
+# flag_elected_by_council and seats nobody from the ballot. Recomputed here
+# from the published counts, independently of the combine's code. The two
+# pinned cycles are stated on the LWL result pages themselves.
+cat("\n12. Brandenburg quorum (flag_elected_by_council)\n")
+check(is.logical(l$flag_elected_by_council) && !anyNA(l$flag_elected_by_council) &&
+        is.logical(lc$flag_elected_by_council) && !anyNA(lc$flag_elected_by_council),
+      "flag_elected_by_council is logical and never NA in both files",
+      "flag_elected_by_council is not a complete logical column")
+bb_rounds <- l %>% filter(state == "12") %>%
+  select(ags, election_date, round, eligible_voters, valid_votes, winner_party,
+         flag_u = flag_elected_by_council)
+bb_cyc <- lc %>%
+  filter(state == "12") %>%
+  group_by(ags, election_date) %>%
+  summarise(election_date_sw = first(election_date_sw),
+            top = if (all(is.na(election_date_sw))) max(candidate_votes_hw, na.rm = TRUE)
+                  else max(candidate_votes_sw, na.rm = TRUE),
+            flag = any(flag_elected_by_council),
+            flag_const = n_distinct(flag_elected_by_council) == 1,
+            n_win = sum(is_winner %in% TRUE), n_na = sum(is.na(is_winner)), n = n(),
+            .groups = "drop") %>%
+  mutate(decisive_date = coalesce(election_date_sw, election_date)) %>%
+  left_join(bb_rounds, by = c("ags", "decisive_date" = "election_date")) %>%
+  mutate(by_voters = top > valid_votes / 2 & top >= 0.15 * eligible_voters)
+check(nrow(bb_cyc) > 0 && !anyNA(bb_cyc$by_voters),
+      sprintf("BB: majority + 15 %% rule computable for all %d cycles", nrow(bb_cyc)),
+      "BB: a cycle lacks the counts for the majority + 15 % rule")
+check(all(bb_cyc$flag == !bb_cyc$by_voters, na.rm = TRUE) && all(bb_cyc$flag_const),
+      "BB: flag_elected_by_council == leader of the decisive round missed the rule",
+      sprintf("BB: flag disagrees with the recomputed rule in %d cycle(s)",
+              sum(bb_cyc$flag != !bb_cyc$by_voters, !bb_cyc$flag_const, na.rm = TRUE)))
+check(all(bb_cyc$n_win[bb_cyc$flag] == 0) && all(bb_cyc$n_na[bb_cyc$flag] == bb_cyc$n[bb_cyc$flag]) &&
+        all(is.na(bb_cyc$winner_party[bb_cyc$flag])),
+      "BB: Kreistag-elected cycles seat nobody (is_winner NA, winner_* NA)",
+      "BB: a Kreistag-elected cycle still names a winner")
+check(all(bb_cyc$n_win[!bb_cyc$flag] == 1),
+      "BB: every cycle the voters decided has exactly one winner",
+      sprintf("BB: %d voter-decided cycle(s) without exactly one winner",
+              sum(bb_cyc$n_win[!bb_cyc$flag] != 1)))
+# Hauptwahl rows of those cycles keep their round leader, both rounds flagged
+fl_rounds <- bb_rounds %>%
+  semi_join(bb_cyc %>% filter(flag), by = c("ags", "election_date"))
+check(all(fl_rounds$flag_u) && all(!is.na(fl_rounds$winner_party)) &&
+        sum(bb_rounds$flag_u) == 2L * sum(bb_cyc$flag),
+      "BB: landrat_unharm flags both rounds of each such cycle, Hauptwahl leader kept",
+      "BB: landrat_unharm flag does not cover exactly the rounds of the flagged cycles")
+check(!any(l$flag_elected_by_council[l$state != "12"]) &&
+        !any(lc$flag_elected_by_council[lc$state != "12"]),
+      "flag_elected_by_council is Brandenburg-only",
+      "flag_elected_by_council set outside Brandenburg")
+# Pinned: every cycle the Kreistag decided. Each runoff page says "Gewählt:
+# kein Bewerber" (Oberhavel 2021's has no such footer), and its printed "Stimmenzahl, die 15 % der Wahlberechtigten
+# umfasst" equals `threshold`, so the published electorate is tied to the
+# source as well. The Kreistag's choice (page notes, the LWL index column
+# "durch Kreistag", press and Wikipedia; see the final README) is recorded
+# here only:
+# runoff leader 9x, runoff loser 2x (EE, SPN 2010), non-candidate 1x (UM 2010).
+# Pages from 2010-2016 are archived copies (raw/brandenburg/README.md).
+pinned <- tribble(
+  ~ags,       ~election_date,        ~election_date_sw,     ~threshold, ~top,
+  "12060000", as.Date("2010-01-10"), as.Date("2010-01-24"), 22737,      18048, # Barnim: Ihrke, by lot after two Kreistag ballots without a majority
+  "12060000", as.Date("2018-04-22"), as.Date("2018-05-06"), 23358,      17470, # Barnim: Kurth, 04.07.2018
+  "12062000", as.Date("2010-01-10"), as.Date("2010-01-24"), 14765,      12602, # Elbe-Elster: Jaschinski (runoff loser), 29.03.2010
+  "12063000", as.Date("2016-04-10"), as.Date("2016-04-24"), 20175,      20000, # Havelland: Lewandowski, 20.06.2016
+  "12065000", as.Date("2015-02-22"), as.Date("2015-03-08"), 26267,      21288, # Oberhavel: Weskamp, 27.05.2015
+  "12065000", as.Date("2021-11-28"), as.Date("2021-12-12"), 27284,      24964, # Oberhavel: Tönnies, 06.04.2022
+  "12067000", as.Date("2016-11-27"), as.Date("2016-12-11"), 23068,      17819, # Oder-Spree: Lindemann, 25.01.2017
+  "12068000", as.Date("2010-01-10"), as.Date("2010-01-24"), 13321,      11580, # OPR: Reinhardt, 20.05.2010
+  "12068000", as.Date("2018-04-22"), as.Date("2018-05-06"), 12844,      12222, # OPR: Reinhardt by lot, 06.09.2018
+  "12071000", as.Date("2010-01-10"), as.Date("2010-01-24"), 16600,      14784, # Spree-Neiße: Altekrüger (runoff loser), 19.04.2010
+  "12072000", as.Date("2013-03-24"), as.Date("2013-04-14"), 20695,      20155, # Teltow-Fläming: Wehlan, 09.09.2013
+  "12073000", as.Date("2010-02-28"), as.Date("2010-03-14"), 16655,      16254) # Uckermark: Dietmar Schulze (no candidate), 19.05.2010
+got <- bb_cyc %>% filter(flag) %>%
+  transmute(ags, election_date, election_date_sw,
+            threshold = ceiling(0.15 * eligible_voters), top) %>%
+  arrange(ags, election_date)
+check(isTRUE(all.equal(as.data.frame(got), as.data.frame(arrange(pinned, ags, election_date)),
+                       check.attributes = FALSE)),
+      sprintf("BB: exactly the %d known Kreistag-elected cycles (2010-2021)", nrow(pinned)),
+      sprintf("BB: flagged cycles changed: %s",
+              paste(got$ags, got$election_date, collapse = ", ")))
+# The 2010-2016 first direct elections: 9 of 14 failed (Gäbler & Rösel, ifo
+# Dresden berichtet 4/2019). An independent count of the published rows.
+first_direct <- bb_cyc %>% group_by(ags) %>% slice_min(election_date, n = 1) %>% ungroup()
+check(nrow(first_direct) == 14 && max(first_direct$election_date) < as.Date("2017-01-01") &&
+        sum(first_direct$flag) == 9,
+      "BB: 14 first direct elections 2010-2016, 9 decided by the Kreistag (Gäbler & Rösel)",
+      sprintf("BB: first direct elections: %d Kreise, %d flagged, last %s",
+              nrow(first_direct), sum(first_direct$flag), max(first_direct$election_date)))
+
+# ============================================================================
+# 13. Coverage summary
+# ============================================================================
+cat("\n13. Coverage summary\n")
 print(state_counts)
 
 cat("\n────────────────────────────────────────────────────────────────────\n")
