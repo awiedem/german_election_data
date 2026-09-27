@@ -13,6 +13,7 @@ records the corrections and validation results; the [combined release](docs/rele
 
 - [Overview](#overview)
 - [Citation](#citation)
+- [License and reuse](#license-and-reuse)
 - [Datasets](#datasets)
 - [Harmonization](#harmonization)
 - [Known Data Issues](#known-data-issues)
@@ -50,6 +51,28 @@ Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, & Andreas Wiedemann. 2025.
    year = {2025}
 }
 ```
+
+## License and reuse
+
+The processed **federal election datasets** at municipality, county, and
+constituency level, including harmonized and unharmonized versions, are available
+under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) for rights held by
+the GERDA maintainers. **Commercial use is permitted.** Credit GERDA and the
+[paper cited above](#citation), retain supplied attribution and license notices,
+link the license, and indicate any changes. These terms apply whether you obtain
+the data directly or through the R package, an API, or an MCP server.
+
+See [LICENSE](https://github.com/awiedem/german_election_data/blob/main/LICENSE)
+for scope and terms. This notice documents the existing
+[federal-data reuse approval](mcp_server/DATA_REUSE_STATEMENT.md). Original
+providers' terms still apply to source materials. It does not establish or change
+the license for other election datasets, candidate data, INKAR or other
+covariates, shapefiles, crosswalk source files, or other third-party materials;
+consult their documentation and provider terms.
+
+The separate [gerda R package](https://github.com/hhilbig/gerda) declares an MIT
+license for its software. That software license does not change the licenses of
+the datasets it downloads. The data are provided as is, without warranty.
 
 ## Datasets
 

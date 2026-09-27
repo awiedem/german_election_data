@@ -1,0 +1,50 @@
+GERDA federal election data: CC BY 4.0
+
+The processed GERDA federal election datasets at municipality, county, and
+constituency level, together with the GERDA database compilation and accompanying
+documentation for those datasets, are licensed under the Creative Commons
+Attribution 4.0 International license (CC BY 4.0), to the extent that the GERDA
+maintainers hold the relevant rights. This covers both harmonized and
+unharmonized federal election datasets, whether downloaded directly or accessed
+through the gerda R package, an API, or an MCP server.
+
+You may copy, redistribute, adapt, and use the covered material commercially,
+subject to the license terms. Give appropriate credit to GERDA, retain supplied
+attribution and license notices, link to CC BY 4.0, and indicate any changes.
+Attribution must not suggest that the GERDA authors endorse you or your use.
+Do not impose additional legal or technological restrictions on the rights
+granted by the license.
+
+Full license terms:
+https://creativecommons.org/licenses/by/4.0/legalcode
+
+Required GERDA citation:
+Heddesheimer, Vincent, Hanno Hilbig, Florian Sichart, and Andreas Wiedemann.
+2025. "GERDA: The German Election Database." Scientific Data 12: 618.
+https://doi.org/10.1038/s41597-025-04811-5
+
+GERDA: https://www.german-elections.com/
+
+Scope and third-party materials
+
+This notice makes the federal-data reuse statement approved on September 17,
+2026 explicit at the repository root. See mcp_server/DATA_REUSE_STATEMENT.md.
+It does not establish or change the license for other election datasets,
+candidate data, INKAR or other covariates, shapefiles, crosswalk source files,
+or other third-party materials. Consult their documentation and original
+providers' terms. Source materials remain subject to applicable original
+provider terms, including attribution requirements; this notice grants only
+rights held by the GERDA maintainers.
+
+Software
+
+This data license does not license the software in this repository. The gerda
+R package is maintained separately at https://github.com/hhilbig/gerda and
+declares an MIT license for its software. Using the package to download data
+does not change the data's license or any applicable third-party terms.
+
+Warranty
+
+The covered material is provided as is, without warranty, as set out in
+CC BY 4.0. No guarantee is made that this license supplies permissions for
+rights held by third parties.
