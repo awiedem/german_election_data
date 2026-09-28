@@ -556,6 +556,21 @@ points: roughly 1,200--1,470 Gemeinden per election elect their council by
 the RP rows are the one case where `*_unharm` is not on the election-year
 boundaries — the Landesamt back-casts the whole series onto 2025 boundaries.
 
+**Schleswig-Holstein 1994--2013 covers only the four kreisfreie Städte.** For
+these five elections Statistikamt Nord published per-Gemeinde votes only for
+the Kreiswahl: its Gemeinde tables show Kreiswahl votes next to Gemeindewahl
+seats, and the Gemeinderat vote counts of the roughly 1,100 kreisangehörige
+Gemeinden were not published. Until September 2026 those Kreiswahl figures
+appeared here as Gemeindewahl results; they have been removed (5,565 rows) and
+remain available, correctly labelled, in `county_elec_unharm`. The rows of the
+kreisfreie Städte are their own Ratsversammlung results. Full coverage resumes
+in 2018.
+
+**Sachsen-Anhalt 2024** comes from the Landesamt's Gemeinderat file (before
+September 2026 the Kreistag results were published here by mistake) and
+includes seats. The seven Gemeinden of VG Vorharz voted on 15 September 2024
+and carry that date.
+
 Unlike the other pipelines, municipal elections carry a fixed set of ten major
 parties rather than every party that ever ran. Vote shares are proportions of
 `valid_votes`. Municipal elections are not synchronized nationally — each state

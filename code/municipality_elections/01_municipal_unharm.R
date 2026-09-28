@@ -19723,6 +19723,31 @@ sh_kommunalwahlen[sh_kommunalwahlen == "-"] <- NA
 # Fix AGS
 sh_kommunalwahlen$AGS_8dig <- stri_pad_left(sh_kommunalwahlen$AGS_8dig, 8, 0)
 
+# 1994-2013: outside the four kreisfreie Städte these are KREISWAHL results.
+# Statistikamt Nord published per-Gemeinde votes for 1994-2013 only for the
+# "Gemeindewahl in den kreisfreien Städten und Kreiswahl in den Kreisen" (the
+# 1994 report says so: its Gemeinde lines show Kreiswahl votes and Gemeindewahl
+# seats); the Gemeindewahl in the kreisangehörigen Gemeinden appears only as
+# seats. The files read above are those Kreiswahl tables: the 2008 file's own
+# Datei-Information names DatenK2008Wb.xls as the Kreiswahl, the 2013 file is
+# byte-identical to the county pipeline's Kreistag file, and 1998/2003 equal
+# the Kreiswahl polling-district sums and the Kreiswahl report. Published as
+# Gemeindewahl until 2026-09 (shares identical to county_elec_* in ~1,100
+# Gemeinden per year). The same figures remain in county_elec_* under their
+# own name; they are dropped here until the Gemeindewahl votes are obtained
+# from Statistikamt Nord. The kreisfreie Städte's rows are their Ratsversammlung
+# (Gemeindewahl) results and stay.
+sh_krfr <- c("01001000", "01002000", "01003000", "01004000")
+sh_kreiswahl_rows <- as.integer(sh_kommunalwahlen$election_year) <= 2013 &
+  !sh_kommunalwahlen$AGS_8dig %in% sh_krfr
+stopifnot(
+  sum(!sh_kreiswahl_rows & as.integer(sh_kommunalwahlen$election_year) <= 2013) == 4 * 5,
+  sum(sh_kreiswahl_rows) > 5000
+)
+cat("SH: dropping", sum(sh_kreiswahl_rows),
+    "Kreiswahl rows (kreisangehörige Gemeinden 1994-2013)\n")
+sh_kommunalwahlen <- sh_kommunalwahlen[!sh_kreiswahl_rows, ]
+
 # Save
 #write_csv(sh_kommunalwahlen, "processed/sh_kommunalwahlen.csv")
 
@@ -20052,6 +20077,7 @@ kommunalwahlen_merge <- kommunalwahlen_merge |>
 stopifnot(sum(kommunalwahlen_merge$state == "Sachsen-Anhalt" &
               kommunalwahlen_merge$election_year == "2024" &
               format(kommunalwahlen_merge$election_date, "%Y-%m-%d") == "2024-09-15") == 7)
+
 
 
 # Reduce to prop_ only ----------------------------------------------------

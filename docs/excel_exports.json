@@ -3129,7 +3129,7 @@
     "source": "data/mayoral_elections/final/mayoral_unharm.csv"
   },
   "data/municipal_elections/final/municipal_harm": {
-    "rows": 73535,
+    "rows": 68052,
     "columns": 50,
     "sheets": 1,
     "percentage_columns": [
@@ -3146,15 +3146,15 @@
       "bsw",
       "other"
     ],
-    "source_sha256": "31e63354cba9f1e6f7602972dc5926b01b5ce7804ad2aca966279936f89d53e7",
-    "rds_sha256": "e17817f13b313bba3893bc4cc1349081e6cd088a3da731230c753f99e2355596",
+    "source_sha256": "85b6b0ce765b89aff12340a0cf9693838f16144c18fbb1cba92bd0acca258fef",
+    "rds_sha256": "2753ce45307caf23b9a1bf662d3926bfa379262c775247023e337c1bd4f8c36b",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "62830041f24e713db5249da296c512c373a29b4b0b0e237ccb4cdddc064bcf59",
-    "bytes": 10535529,
+    "xlsx_sha256": "a665951fe5aee206389c0e4485ed12bd197bdd7314de58c358ae0144bd83b2f9",
+    "bytes": 9640672,
     "source": "data/municipal_elections/final/municipal_harm.csv"
   },
   "data/municipal_elections/final/municipal_harm_25": {
-    "rows": 84757,
+    "rows": 79284,
     "columns": 49,
     "sheets": 1,
     "percentage_columns": [
@@ -3171,15 +3171,15 @@
       "bsw",
       "other"
     ],
-    "source_sha256": "fe542187b3720dd9f04fb24901b21b969e5460dd2e4ec5de14097e3f1141ff44",
-    "rds_sha256": "0cb9f5a6061d77e64076e5f0a8073b2faf467c46fe8caf086d83f40cfc0dc111",
+    "source_sha256": "b99f478aff411d349289b628182b6d8ec40439304e7d048187886997608860ed",
+    "rds_sha256": "7822aea3569b33333137aeffec34af35bbba18f16097082916f3b433352856ea",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "b7ecf35a95b31220663801559c93a5a5afd711cd55c6e521d0420dce3fc4b21e",
-    "bytes": 11863877,
+    "xlsx_sha256": "c5c8dfadf64d81e23b6b1e9c9ff10e5ff7feeb0680ca5974fd9d1d1f36377297",
+    "bytes": 10970722,
     "source": "data/municipal_elections/final/municipal_harm_25.csv"
   },
   "data/municipal_elections/final/municipal_unharm": {
-    "rows": 98330,
+    "rows": 92765,
     "columns": 42,
     "sheets": 1,
     "percentage_columns": [
@@ -3196,11 +3196,11 @@
       "bsw",
       "other"
     ],
-    "source_sha256": "6c4fa4fb2e3a09763ab25f47e31fc78e4ba01723be8c0696f05a9cfcde624274",
-    "rds_sha256": "0af89daf5d0df4d73adf17597f4e38ade1e79d2f5906131ac6863b9d7ccadb5e",
+    "source_sha256": "d84f02c8f277781b7a36dda78efc4a34585f025a8f7376990151f7d6614b9395",
+    "rds_sha256": "b9de87d25677c96c0487ed1300bec5ed013c1573662eb10fd91c54c2f72e1d03",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "32925efb553d4c178a07e1d80ad70a896435ed51c5a7c1d5a0a8073c9b020034",
-    "bytes": 13796457,
+    "xlsx_sha256": "8beb5e671cd4f6cb3ee61d91e29969110dd6ca1715681b224a48b65ec5321236",
+    "bytes": 12913439,
     "source": "data/municipal_elections/final/municipal_unharm.csv"
   },
   "data/state_elections/final/ltw_wkr_unharm": {
