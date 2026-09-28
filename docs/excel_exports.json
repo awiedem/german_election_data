@@ -1960,8 +1960,8 @@
     "source": "data/crosswalks/final/cty_crosswalks.csv"
   },
   "data/european_elections/final/european_muni_harm": {
-    "rows": 42994,
-    "columns": 90,
+    "rows": 43149,
+    "columns": 91,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
@@ -2037,16 +2037,16 @@
       "volt",
       "x50plus"
     ],
-    "source_sha256": "5e129a45d5010fa4383ee8463570f3e27cd5c262c2969392597302c9261dd96c",
-    "rds_sha256": "5da13d0af46bcd0914f8be0bf965e72359174b486b6208f1ff767f2b9fc89c7c",
+    "source_sha256": "c728ba16efeb7335abf88c25cbe2dbd1f9b248d5b7fd807ea794187c430fc73d",
+    "rds_sha256": "642534cc7879912a6ada2e65ae021a609f6b2fe8b7febf44f4484ae7f4eadc99",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "d40f7a3a19d64c45c53eec0e3a232b7f217db1c83edd251e67c6e905874f0a2e",
-    "bytes": 23516705,
+    "xlsx_sha256": "8d356fd58a07b17304a6a8c92238f0c363deb75f2db2920e35e906657a4a7aa3",
+    "bytes": 23649796,
     "source": "data/european_elections/final/european_muni_harm.csv"
   },
   "data/european_elections/final/european_muni_unharm": {
-    "rows": 44730,
-    "columns": 87,
+    "rows": 44862,
+    "columns": 88,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
@@ -2122,11 +2122,11 @@
       "volt",
       "x50plus"
     ],
-    "source_sha256": "7869fa4d9a88520c8dcc56623cb75fca9aab0b4b6a8498c6d7592cbd1f2d731e",
-    "rds_sha256": "63bf9716e9f351c8ce715aae04b340d5de83240c06e4c63509b83ea3c7dd16f1",
+    "source_sha256": "9661e8d586da472d57537f0961f62c925d81c8d26304ec8ee8b33504763e865e",
+    "rds_sha256": "0319a4808b917fc86d33a6d556407645da41e1900e33f4282bb93de44dea6e30",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "c363e7d6eb1fff8cdaff9af25dc7e6ca83a2ea515d7895d737960a9402780be4",
-    "bytes": 23948330,
+    "xlsx_sha256": "cf392546d4d5f9fe1e15a9f6feae93b684f4fa44a4fa6924953f2875d5bd53d8",
+    "bytes": 24186666,
     "source": "data/european_elections/final/european_muni_unharm.csv"
   },
   "data/federal_elections/county_level/final/federal_cty_harm": {

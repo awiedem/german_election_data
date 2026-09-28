@@ -761,8 +761,8 @@ are proportions of **`valid_votes`**, as in the state and municipal files.
 Releases before September 2026 used `number_voters`; multiply such an older
 share by `number_voters / valid_votes` to convert it.
 
-**Files:** `european_muni_unharm` (44,730 x 87), `european_muni_harm`
-(42,994 x 90) in `data/european_elections/final/`.
+**Files:** `european_muni_unharm` (44,862 x 88), `european_muni_harm`
+(43,149 x 91) in `data/european_elections/final/`.
 
 Shared blocks apply, with 71 party columns.
 
@@ -774,9 +774,10 @@ Shared blocks apply, with 71 party columns.
 | `voters_w_wahlschein` | numeric | Voters with a Wahlschein (absentee ballot certificate, B1). |
 | `flag_turnout_above_1` | integer | 1 where turnout exceeded 1 before capping (allocated mail-in voters can exceed a small municipality's electorate). |
 | `flag_aggregated`, `n_predecessors` | integer | Harmonization bookkeeping — see the shared block. |
+| `flag_pooled` | integer | 2024: 1 for a Gemeinde the source counts inside a neighbour (`NA` counts and shares) and for the neighbour whose counts include it; 0 otherwise. In the harmonized file 1 if any predecessor is. |
 
 Zero handling here follows the *zero preserved* pattern: a 0 means the source
-reported no votes, and parties that did not run in a given year are also 0.
+reported no votes, and parties that did not run in a given year are also 0. The pooled Gemeinden of 2024 (below) are the exception: their shares are `NA`.
 
 Berlin appears as 14 Bezirke rows per year in the unharmonized file and as a
 single row (AGS `11000000`) in the harmonized one. Mail-in votes from shared
@@ -789,12 +790,26 @@ instead of 64.1%), and also dropped the gemeindefreie Bezirke Lohheide
 with every municipality of its group, including a lead municipality that also
 has postal districts of its own (some Verwaltungsgemeinschaften in Thüringen);
 earlier releases gave it to the other members only, which pushed some of them
-above 100% turnout. Crosswalk year mapping: 2009→2009, 2014→2014, 2019→2019,
-2024→2020.
+above 100% turnout.
+
+Crosswalk years: 2009, 2014 and 2019 use the crosswalk of their own year.
+2024 is mapped back from the Gemeinden as they stood on election day: each 2021
+Gemeinde is assigned to the 2024 Gemeinde that contained it, and a merged 2024
+result is split over its 2021 members by 2021 population, so those members share
+one set of vote shares. Until September 2026, 2024 went through the 2020
+crosswalk, which left 25 Gemeinden merged after 2021 without a 2024 row and
+their votes under the surviving code.
+
+**Gemeinden counted inside a neighbour (2024).** From 2024 the source merges the
+ballot districts of very small Gemeinden into a neighbour's (§ 61 EuWO). These
+132 Gemeinden (Schleswig-Holstein 32, Rheinland-Pfalz 92, Thüringen 8) have no
+result of their own: they are rows with `NA` counts and shares, and they and
+their 101 receivers carry `flag_pooled = 1`. Earlier releases dropped them. One
+further Gemeinde, Dierfeld (Rheinland-Pfalz, 9 inhabitants), has an electorate
+of zero in the 2024 source and has no 2024 row.
 
 Each state's eligible voters, voters, valid and invalid votes add up exactly to
-the ballot-district source file, and party shares sum to exactly 1 in every
-row. Allocated voter counts are whole numbers. Allocated party votes are the
+the ballot-district source file, and party shares sum to exactly 1 in every row that has a result. Allocated voter counts are whole numbers. Allocated party votes are the
 municipality's allocated valid votes split in the pool's party proportions and
 are not rounded, so in municipalities that receive shared mail-in votes
 `share * valid_votes` is not a whole number.
