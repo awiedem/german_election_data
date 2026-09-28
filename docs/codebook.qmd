@@ -580,10 +580,11 @@ Shared blocks apply: identifiers, turnout, harmonization.
 
 | Variable | Type | Description |
 | :------------------------------ | :-------- | :---------------------------------------------------- |
-| `election_type` | character | Type of council election. |
+| `election_type` | character | Type of council election: `Gemeinderatswahl` for the council of a Gemeinde or kreisfreie Stadt; the city-states carry `Bürgerschaftswahl` (Bremen), `Bürgerschaftswahl (Gesamtstimmen Landesliste)` (Hamburg) and `Abgeordnetenhauswahl (Zweitstimmen)` (Berlin). In the harmonized files it and `election_date` come from the predecessor municipality that contributes most of the target's electorate. |
+| `flag_mixed_election_date` | integer | Harmonized files: 1 where the predecessors of a target municipality voted on different dates within the year (e.g. one held a by-election), so `election_date` describes only the largest of them; 0 otherwise. |
 | `cdu_csu`, `spd`, `linke_pds`, `gruene`, `afd`, `piraten`, `fdp`, `die_partei`, `freie_wahler`, `bsw` | numeric | Vote share for each of the ten major parties, as a proportion of `valid_votes`. |
 | `other` | numeric | Combined share of all remaining lists — local voter groups, joint nominations, independents, minor parties. In many small municipalities this is the largest column. |
-| `seats_*` | numeric | Council seats won, ten columns matching the party columns. `municipal_unharm` only — see below. |
+| `seats_*` | numeric | Council seats won, ten columns matching the party columns. Not harmonized; in the harmonized files filled only for the pass-through years — see below. |
 | `replaced_0_with_na_*` | numeric | Ten flags (1/0) recording zero-to-`NA` recoding — see below. |
 
 ## Zero votes versus no list (`replaced_0_with_na_*`)
@@ -615,9 +616,12 @@ files and remain strictly 0/1 after harmonization.
 
 ## Council seats (`seats_*`)
 
-Seat counts are the number of council mandates a party won. They are carried in
-`municipal_unharm` **only**: a population-weighted sum of seats across merged
-municipalities is not a real council, so the harmonized files omit them.
+Seat counts are the number of council mandates a party won. They are not
+harmonized: a population-weighted sum of seats across merged municipalities is
+not a real council. The harmonized files carry the `seats_*` columns, but they
+are filled only for the years those files pass through without harmonizing
+(2021 in `municipal_harm`, 2025 onward in `municipal_harm_25`) and `NA` for
+every harmonized year.
 
 Coverage, `NA` elsewhere: Baden-Württemberg 1989--2024, Hessen 1993--2021,
 Thüringen 1994--2024, Nordrhein-Westfalen 1994--2025 (kreisfreie Städte only

@@ -20078,6 +20078,30 @@ stopifnot(sum(kommunalwahlen_merge$state == "Sachsen-Anhalt" &
               kommunalwahlen_merge$election_year == "2024" &
               format(kommunalwahlen_merge$election_date, "%Y-%m-%d") == "2024-09-15") == 7)
 
+# One label per kind of election. The state blocks wrote whatever their source
+# said ("Kommunalwahlen", "kommunalwahlen", "Kommunalwahl", "Gemeinderatswahlen",
+# and "Kreiswahlen" for the 25 Bavarian kreisfreie Städte of 1990, whose
+# Stadtrat election is a Gemeindewahl). The city-states keep their own election.
+kommunalwahlen_merge <- kommunalwahlen_merge |>
+  mutate(election_type = case_when(
+    election_type %in% c("Kommunalwahlen", "kommunalwahlen", "Kommunalwahl",
+                         "Gemeinderatswahlen", "Kreiswahlen") ~ "Gemeinderatswahl",
+    election_type == "Buergerschaftswahl (Gesamtstimmen Landesliste)" ~
+      "Bürgerschaftswahl (Gesamtstimmen Landesliste)",
+    election_type %in% c("Bürgerschaftswahl", "Abgeordnetenhauswahl (Zweitstimmen)") ~
+      election_type,
+    .default = NA_character_
+  ))
+stopifnot(!anyNA(kommunalwahlen_merge$election_type))
+
+# German elections are held on Sundays. The date table carried two weekday
+# typos until 2026-09 (Niedersachsen 1981 as 29.09., Sachsen-Anhalt 2024 as
+# 11.06. -- both Tuesdays).
+not_sunday <- kommunalwahlen_merge |>
+  filter(!is.na(election_date), format(election_date, "%u") != "7") |>
+  distinct(state, election_year, election_date)
+if (nrow(not_sunday) > 0) print(not_sunday)
+stopifnot(nrow(not_sunday) == 0)
 
 
 # Reduce to prop_ only ----------------------------------------------------

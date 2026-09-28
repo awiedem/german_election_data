@@ -3130,7 +3130,7 @@
   },
   "data/municipal_elections/final/municipal_harm": {
     "rows": 68052,
-    "columns": 50,
+    "columns": 47,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
@@ -3146,16 +3146,16 @@
       "bsw",
       "other"
     ],
-    "source_sha256": "85b6b0ce765b89aff12340a0cf9693838f16144c18fbb1cba92bd0acca258fef",
-    "rds_sha256": "2753ce45307caf23b9a1bf662d3926bfa379262c775247023e337c1bd4f8c36b",
+    "source_sha256": "af08a80de6e8db976f3db5dffa3ee7b0355442cacc2b6fc1913342eabc332878",
+    "rds_sha256": "c1d29433a389d892195e3ed7aedd9dafe26c0c730bedd7cf81eb174c06cf7c75",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "a665951fe5aee206389c0e4485ed12bd197bdd7314de58c358ae0144bd83b2f9",
-    "bytes": 9640672,
+    "xlsx_sha256": "d42eb614cc33af2777582cff48133481fbab5096fffdd86385e4abf16fb69201",
+    "bytes": 10590569,
     "source": "data/municipal_elections/final/municipal_harm.csv"
   },
   "data/municipal_elections/final/municipal_harm_25": {
     "rows": 79284,
-    "columns": 49,
+    "columns": 47,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
@@ -3171,11 +3171,11 @@
       "bsw",
       "other"
     ],
-    "source_sha256": "b99f478aff411d349289b628182b6d8ec40439304e7d048187886997608860ed",
-    "rds_sha256": "7822aea3569b33333137aeffec34af35bbba18f16097082916f3b433352856ea",
+    "source_sha256": "fa1d61390976a98636c0997f6dc789287c5a6ecdbf121030d1c6eaa74294536a",
+    "rds_sha256": "64a9dff7a19a1ce398251bf5b4aa4e8fa93c91269c5e8ea4212772cdbf08a515",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "c5c8dfadf64d81e23b6b1e9c9ff10e5ff7feeb0680ca5974fd9d1d1f36377297",
-    "bytes": 10970722,
+    "xlsx_sha256": "fd575ead9a470f2c9dd3d44ccabe3547241a5f1af744915179d1407dc7a6bf94",
+    "bytes": 12040119,
     "source": "data/municipal_elections/final/municipal_harm_25.csv"
   },
   "data/municipal_elections/final/municipal_unharm": {
@@ -3196,11 +3196,11 @@
       "bsw",
       "other"
     ],
-    "source_sha256": "d84f02c8f277781b7a36dda78efc4a34585f025a8f7376990151f7d6614b9395",
-    "rds_sha256": "b9de87d25677c96c0487ed1300bec5ed013c1573662eb10fd91c54c2f72e1d03",
+    "source_sha256": "df528308c9b945176c6944070092e3c3cce08a59f36867cfd1d306fab758da4c",
+    "rds_sha256": "d08c662db1a81bacfcfb9c1db16df0c329ce5885f34270ad9230f8d68728a306",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "8beb5e671cd4f6cb3ee61d91e29969110dd6ca1715681b224a48b65ec5321236",
-    "bytes": 12913439,
+    "xlsx_sha256": "50702abe524661d24bc63004e13fb8e641daba33eafcc3ad25658510429e5416",
+    "bytes": 12912215,
     "source": "data/municipal_elections/final/municipal_unharm.csv"
   },
   "data/state_elections/final/ltw_wkr_unharm": {
