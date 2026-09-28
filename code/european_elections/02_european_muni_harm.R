@@ -37,7 +37,7 @@ party_cols <- sort(setdiff(
   c("ags", "county", "state", "state_name", "election_year", "election_date",
     "eligible_voters", "number_voters", "valid_votes", "invalid_votes",
     "voters_wo_sperrvermerk", "voters_w_sperrvermerk", "voters_par24_2",
-    "voters_w_wahlschein", "turnout", "flag_turnout_above_1")
+    "voters_w_wahlschein", "turnout", "flag_turnout_above_1", "flag_pooled")
 ))
 
 all_numeric_cols <- c(
@@ -52,7 +52,8 @@ cat("Party columns:", length(party_cols), "\n")
 # Convert party vote shares to absolute counts. Shares are shares of valid
 # votes (01_european_muni_unharm.R), so the same denominator must be used here
 # and in section 7.
-stopifnot(!anyNA(df$valid_votes))
+# (NA only in the Gemeinden the 2024 source counts inside a neighbour)
+stopifnot(all(df$flag_pooled[is.na(df$valid_votes)] == 1))
 df <- df |>
   mutate(across(all_of(party_cols), ~ .x * valid_votes))
 
@@ -72,6 +73,7 @@ df <- df |>
     state_name = first(state_name),
     election_date = first(election_date),
     across(all_of(all_numeric_cols), ~ if (all(is.na(.x))) NA_real_ else sum(.x, na.rm = TRUE)),
+    flag_pooled = max(flag_pooled),
     .groups = "drop"
   )
 
@@ -81,11 +83,11 @@ cat("After Berlin aggregation:", nrow(df), "rows\n")
 # --- 4. Map crosswalk years -------------------------------------------------
 
 # Each election year maps to the crosswalk year that best represents boundaries
+# (2024 is mapped separately in 6e: the 1990-2020 crosswalk ends before it)
 cw_year_map <- c(
   "2009" = 2009,
   "2014" = 2014,
-  "2019" = 2019,
-  "2024" = 2020  # Latest available crosswalk year
+  "2019" = 2019
 )
 
 df <- df |>
@@ -95,6 +97,7 @@ df <- df |>
 # --- 5. Naive merge with crosswalk ------------------------------------------
 
 df_merged <- df |>
+  filter(election_year < 2024) |>
   left_join(
     cw |> select(ags, year, ags_21, pop_cw, area_cw),
     by = c("ags", "year_cw" = "year")
@@ -180,55 +183,98 @@ if (nrow(still_unmatched) > 0) {
 
   df_ok <- bind_rows(df_ok, df_identity)
 
-  # 6d: Manual merger codes for remaining unmatched
-  # These are municipalities that merged AFTER the crosswalk period (post-2020)
-  # Population weights from crosswalk analysis
-  merger_cw <- tribble(
-    ~ags,        ~ags_21,    ~pop_cw,
-    # Jahnatal (SN): 2 predecessors
-    "14522275", "14522450", 3.52 / (3.52 + 1.31),
-    "14522275", "14522620", 1.31 / (3.52 + 1.31),
-    # Berga-Wuenschendorf (TH): 2 predecessors
-    "16076094", "16076004", 0.537,
-    "16076094", "16076084", 0.463
-  )
-
-  # Uder's handwritten rounded weights summed to 1.0005. Derive the
-  # backward allocation from the stored 2023 populations, before the merger.
-  uder <- read_rds("data/crosswalks/final/crosswalk_ags_2023_to_2025.rds") |>
-    filter(ags_25 == "16061119", year == 2023)
-  stopifnot(nrow(uder) == 11L, !anyDuplicated(uder$ags),
-            all(uder$ags %in% cw$ags_21), all(uder$pop_cw == 1),
-            all(is.finite(uder$population)), all(uder$population > 0))
-  merger_cw <- bind_rows(merger_cw, uder |>
-    transmute(ags_21 = ags, ags = ags_25,
-              pop_cw = population / sum(population)))
-
-  # Apply merger mapping for any remaining unmatched that are in merger_cw
-  df_still_fail <- df_fallback |>
-    filter(is.na(ags_21) & !ags %in% identity_ok) |>
-    select(-ags_21, -pop_cw, -area_cw)
-
-  if (nrow(df_still_fail) > 0) {
-    df_mergers <- df_still_fail |>
-      filter(ags %in% merger_cw$ags) |>
-      left_join(merger_cw, by = "ags") |>
-      mutate(area_cw = pop_cw)
-
-    df_ok <- bind_rows(df_ok, df_mergers)
-
-    # Check if anything still unresolved
-    final_unmatched <- df_still_fail |>
-      filter(!ags %in% merger_cw$ags)
-    if (nrow(final_unmatched) > 0) {
-      cat("\n!!! UNRESOLVED AGS codes:\n")
-      final_unmatched |>
-        select(ags, election_year, state) |>
-        print(n = Inf)
-      stop("Cannot resolve all AGS codes. Fix before proceeding.")
-    }
+  # 6d: Anything still unmatched cannot be placed
+  final_unmatched <- df_fallback |>
+    filter(is.na(ags_21) & !ags %in% identity_ok)
+  if (nrow(final_unmatched) > 0) {
+    cat("\n!!! UNRESOLVED AGS codes:\n")
+    final_unmatched |>
+      select(ags, election_year, state) |>
+      print(n = Inf)
+    stop("Cannot resolve all AGS codes. Fix before proceeding.")
   }
 }
+
+# 6e: 2024 back onto 2021 boundaries -------------------------------------------
+# Until 2026-09 the 2024 results went through the 2020 crosswalk year. A code
+# that already existed in 2021 therefore mapped to itself even where it had
+# absorbed neighbours by June 2024, so those neighbours vanished from 2024 with
+# their votes filed under the survivor (25 Gemeinden: BB 3, TH 15, RP 2, SH 2,
+# MV 2, HE 1); only Jahnatal, Berga-Wünschendorf and Uder were split back by
+# hand. Routing through the 2025 codes instead would smear votes between
+# Gemeinden that were still separate on election day and merged later.
+# So the source unit is the Gemeinde as it stood on 9 June 2024 -- the codes
+# of the 2024 file itself. Each 2021 Gemeinde is assigned to the one that
+# contained it: itself if it still existed, else its 2023 successor, else its
+# 2025 successor (the first of these present in the 2024 file). A 2024 result
+# is then split over its 2021 members by 2021 population (the correct
+# inversion: pop_constituent / pop_unit, never relabelled forward weights).
+df_24 <- df |> filter(election_year == 2024)
+codes_24 <- df_24$ags
+cw_21_23 <- read_rds("data/crosswalks/final/crosswalk_ags_2021_to_2023.rds") |>
+  as_tibble()
+cw_23_25 <- read_rds("data/crosswalks/final/crosswalk_ags_2023_to_2025.rds") |>
+  as_tibble() |> filter(year == 2023)
+pop_21 <- read_rds("data/covars_municipality/final/ags_area_pop_emp.rds") |>
+  filter(year == 2021) |>
+  transmute(ags_21, pop_21 = population_ags)
+
+members_24 <- tibble(ags_21 = sort(unique(cw$ags_21))) |>
+  left_join(cw_21_23 |> select(ags_21 = ags_2021, ags_23 = ags_2023, w_23 = w_pop),
+            by = "ags_21", relationship = "one-to-many") |>
+  mutate(ags_23 = coalesce(ags_23, ags_21), w_23 = coalesce(w_23, 1)) |>
+  left_join(cw_23_25 |> select(ags_23 = ags, ags_25, w_25 = pop_cw),
+            by = "ags_23", relationship = "many-to-many") |>
+  mutate(
+    ags_25 = coalesce(ags_25, ags_23), w_25 = coalesce(w_25, 1),
+    ags = case_when(
+      ags_21 %in% codes_24 ~ ags_21,
+      ags_23 %in% codes_24 ~ ags_23,
+      ags_25 %in% codes_24 ~ ags_25
+    ),
+    w = case_when(
+      ags_21 %in% codes_24 ~ 1,
+      ags_23 %in% codes_24 ~ w_23,
+      TRUE                 ~ w_23 * w_25
+    )
+  ) |>
+  # a 2021 Gemeinde that still existed keeps weight 1 whatever its later
+  # history; otherwise weights reaching the same 2024 code by two routes add up
+  group_by(ags_21, ags) |>
+  summarise(w = if (first(ags_21) %in% codes_24) 1 else sum(w), .groups = "drop") |>
+  left_join(pop_21, by = "ags_21")
+
+# 2021 Gemeinden without a 2024 home must be uninhabited (the source drops
+# those rows); anything populated is an error -- except Dierfeld (9
+# inhabitants), which the 2024 source lists with an electorate of zero.
+lost_21 <- members_24 |> filter(is.na(ags), !ags_21 %in% "07231021")
+stopifnot(all(coalesce(lost_21$pop_21, 0) == 0))
+members_24 <- members_24 |> filter(!is.na(ags))
+
+map_24 <- members_24 |>
+  mutate(mass = coalesce(pop_21, 0) * w) |>
+  group_by(ags) |>
+  mutate(pop_cw = if (sum(mass) > 0) mass / sum(mass) else w / sum(w)) |>
+  ungroup() |>
+  filter(pop_cw > 0) |>
+  transmute(ags, ags_21, pop_cw, area_cw = pop_cw)
+stopifnot(all(codes_24 %in% map_24$ags))
+w_chk <- map_24 |> group_by(ags) |> summarise(w = sum(pop_cw)) |> filter(abs(w - 1) > 1e-9)
+stopifnot(nrow(w_chk) == 0)
+
+df_24_ok <- df_24 |>
+  mutate(year_cw = NA_real_) |>
+  left_join(map_24, by = "ags", relationship = "one-to-many")
+cat("2024:", nrow(df_24), "Gemeinden ->", n_distinct(df_24_ok$ags_21), "2021 Gemeinden;",
+    sum(map_24$ags != map_24$ags_21 | map_24$pop_cw < 1), "split / merged edges\n")
+df_ok <- bind_rows(df_ok, df_24_ok)
+
+# The 2024 flag keeps its old meaning: the code is unknown to the 2020 crosswalk.
+unmatched <- bind_rows(
+  unmatched,
+  df_24 |> filter(!ags %in% cw$ags[cw$year == 2020]) |>
+    select(ags, election_year, state, eligible_voters)
+)
 
 cat("\nAfter all corrections:", nrow(df_ok), "rows\n")
 
@@ -255,6 +301,7 @@ df_harm <- df_ok |>
       ~ if (all(is.na(.x))) NA_real_ else sum(.x * pop_cw, na.rm = TRUE)
     ),
     flag_unsuccessful_naive_merge = max(flag_unsuccessful_naive_merge, na.rm = TRUE),
+    flag_pooled = max(flag_pooled),
     n_predecessors = n(),
     .groups = "drop"
   )
@@ -272,7 +319,7 @@ df_harm <- df_harm |>
     across(all_of(count_cols), round)
   )
 share_sum <- rowSums(select(df_harm, all_of(party_cols)))
-stopifnot(all(abs(share_sum[df_harm$valid_votes > 0] - 1) < 1e-9))
+stopifnot(all(abs(share_sum[which(df_harm$valid_votes > 0)] - 1) < 1e-9))
 
 cat("Harmonized rows:", nrow(df_harm), "\n")
 
@@ -319,6 +366,7 @@ df_harm <- df_harm |>
     all_of(party_cols),
     flag_turnout_above_1,
     flag_unsuccessful_naive_merge,
+    flag_pooled,
     flag_aggregated,
     n_predecessors
   ) |>

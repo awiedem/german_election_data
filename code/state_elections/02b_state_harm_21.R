@@ -67,7 +67,7 @@ metadata_cols <- c("ags", "county", "election_year", "state", "election_date",
                    "eligible_voters", "number_voters", "valid_votes",
                    "invalid_votes", "turnout", "other", "cdu_csu",
                    "flag_naive_turnout_above_1", "flag_no_valid_votes",
-                   "flag_briefwahl_only", "flag_pooled")
+                   "flag_briefwahl_only", "flag_pooled", "flag_postal_allocated")
 party_vars <- setdiff(names(df), metadata_cols)
 df <- gerda_state_exclusions(df, party_vars, "state_harm_21")
 
@@ -185,7 +185,7 @@ duplicate_keys <- duplicated(df[c("ags", "election_year", "state")]) |
 df_singletons <- df[!duplicate_keys, ] |>
   select(ags, election_year, state, eligible_voters, number_voters, valid_votes,
          invalid_votes, all_of(party_vars), any_of(c("election_date", "county")),
-         flag_vv_placeholder, flag_pooled)
+         flag_vv_placeholder, flag_pooled, flag_postal_allocated)
 df <- df[duplicate_keys, ] |>
   group_by(ags, election_year, state) |>
   summarise(
@@ -196,6 +196,7 @@ df <- df[duplicate_keys, ] |>
     across(any_of(c("election_date", "county")), first),
     flag_vv_placeholder = max(flag_vv_placeholder),
     flag_pooled = max(flag_pooled),
+    flag_postal_allocated = max(flag_postal_allocated),
     .groups = "drop"
   ) |>
   bind_rows(df_singletons) |>
@@ -421,6 +422,7 @@ votes <- votes |>
   left_join(df_cw |>
               group_by(ags_21, election_year) |>
               summarise(flag_pooled = as.integer(any(flag_pooled == 1 & pop_cw > 0, na.rm = TRUE)),
+                        flag_postal_allocated = as.integer(any(flag_postal_allocated == 1 & pop_cw > 0, na.rm = TRUE)),
                         .groups = "drop"),
             by = c("ags_21", "election_year"))
 

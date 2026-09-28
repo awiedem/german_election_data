@@ -541,6 +541,11 @@ votes <- df_cw |>
   bind_rows(df25 |> dplyr::mutate(ags_21 = as.character(ags_21))) |>
   group_by(ags_21, election_year) |>
   summarise(
+    # Gemeinden the source counts inside a neighbour are NA rows (01 script).
+    # A target made up only of them has no result: blanked below, as the
+    # na.rm sums would otherwise publish it as 0.
+    pooled_only = all(flag_pooled == 1 & is.na(valid_votes)),
+    flag_pooled = max(flag_pooled),
     unique_mailin = max(unique_mailin),
     unique_multi_mailin = max(unique_multi_mailin),
     across(
@@ -553,7 +558,9 @@ votes <- df_cw |>
     eligible_voters_orig:far_left_w_linke,
     ~ round(.x, digits = 0)
   )) |>
-  ungroup()
+  ungroup() |>
+  mutate(across(eligible_voters_orig:far_left_w_linke, ~ ifelse(pooled_only, NA_real_, .x))) |>
+  select(-pooled_only)
 
 table(votes$election_year)
 
@@ -681,7 +688,7 @@ df_harm <- votes |>
     mutate(
       across(
         cdu:far_left_w_linke,
-        ~ ifelse(is.na(.x), 0, .x)
+        ~ ifelse(is.na(.x) & flag_pooled == 0, 0, .x)
       ),
       unique_multi_mailin = 0
     )) |>
@@ -924,6 +931,7 @@ df_harm <- df_harm |>
     cdu:zentrum,
     cdu_csu:far_left_w_linke,
     flag_naive_turnout_above_1:perc_total_votes_incogruence,
+    flag_pooled,
     area_cw:population
   )
 

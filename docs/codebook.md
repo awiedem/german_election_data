@@ -124,6 +124,7 @@ Recurring aggregate columns:
 | `far_left_w_linke` | numeric | As `far_left`, but including Die Linke/PDS. |
 | `total_vote_share` | numeric | Pipeline-specific party-share diagnostic. In state harmonized files it excludes `other` and derived aggregates, so a residual can leave it below 1. |
 | `waehlergruppen` | numeric | Combined share of local voter groups (municipal and county elections). |
+| `gemeinsame_wv` | numeric | Combined share of joint lists (gemeinsame Wahlvorschläge) put forward by two or more parties or voter groups, where the source reports them as one sum: Bayern 1984--2026 and Baden-Württemberg 1994. In Bayern this is mostly Freie Wähler (see below). |
 | `einzelbewerber` | numeric | Combined share of independent candidates (municipal and county elections). |
 
 **Zero versus missing.** How a zero is treated is *not* uniform across
@@ -230,9 +231,9 @@ original GERDA convention; the Wahlkreis files use `valid_votes`.
 `data/federal_elections/municipality_level/final/`.
 
 `federal_muni_raw` (160,313 x 145) is the ingested source data before
-standardization. `federal_muni_unharm` (151,793 x 141) is standardized
-on each year’s own boundaries. `federal_muni_harm_21` (107,660 x 149)
-and `federal_muni_harm_25` (107,295 x 147) are harmonized to 2021 and
+standardization. `federal_muni_unharm` (152,018 x 142) is standardized
+on each year’s own boundaries. `federal_muni_harm_21` (107,875 x 150)
+and `federal_muni_harm_25` (107,515 x 148) are harmonized to 2021 and
 2025 boundaries and start in 1990.
 
 Shared blocks apply: identifiers, turnout, party columns (111–125 party
@@ -265,6 +266,21 @@ result of that allocation.
 | `total_votes_incogruence` | numeric | `total_votes - valid_votes`. Note the misspelling of “incongruence” in the column name; it is retained to avoid breaking existing code. |
 | `perc_total_votes_incogruence` | numeric | The same discrepancy as a share of `valid_votes`. |
 | `flag_total_votes_incongruent` | integer | 1 where the discrepancy is non-zero. |
+
+**Gemeinden counted inside a neighbour (2021, 2025).** In these two elections
+the ballot-district statistics count some small Gemeinden inside a neighbour:
+the source lists the donor as “X (in Y enthalten)” or names it only in the
+receiver's “(einschl. X, …)”, and in 2021 all Gemeinden of Verbandsgemeinde
+Altenahr were counted in Altenahr (“zusammengelegt wegen Flutkatastrophe”).
+These donors (327 in 2021, 124 in 2025) are rows with `NA` counts and shares;
+they and their receivers carry `flag_pooled = 1` (1 in the harmonized files if
+any predecessor is pooled). Before September 2026 some donors were published as
+a result of zero and the others were missing, so 87 Gemeinden of
+`federal_muni_harm_25` had no 2021 row.
+
+| Variable | Type | Description |
+|:---|:---|:---|
+| `flag_pooled` | integer | 1 for a Gemeinde the source counts inside a neighbour (`NA` counts and shares) and for the neighbour whose counts include it; 0 otherwise. 2021 and 2025 only. |
 
 `federal_muni_raw` additionally carries `gruene_comb` and
 `linke_pds_comb`, which combine the separately reported predecessor
@@ -348,13 +364,14 @@ boundary years and all begin in 1990. Their municipality-name column is
 `ags_name_21` in `state_harm_21` and `ags_name` in
 `state_harm_23`/`state_harm_25`. The source flags `flag_briefwahl_only`,
 `flag_no_valid_votes` and `flag_naive_turnout_above_1` are present only
-in `state_unharm`; `flag_pooled` is present in all four files. In the harmonized files, four parties that the sources spell two ways are merged into one column — `pdh` (Partei der Humanisten) into `die_humanisten`, `freiewaehler` into `freie_wahler`, `tier_schutz_partei` into `tierschutz` and `volt_hamburg` into `volt` — while `state_unharm` keeps each source's own label.
+in `state_unharm`; `flag_pooled` and `flag_postal_allocated` are present in all four files. In the harmonized files, four parties that the sources spell two ways are merged into one column — `pdh` (Partei der Humanisten) into `die_humanisten`, `freiewaehler` into `freie_wahler`, `tier_schutz_partei` into `tierschutz` and `volt_hamburg` into `volt` — while `state_unharm` keeps each source's own label.
 
 | Variable | Type | Description |
 |:---|:---|:---|
 | `flag_briefwahl_only` | int/num | Legacy arithmetic flag: electorate was zero while valid votes were positive before electorate/voters/turnout were set to `NA`. It includes source gaps and extraction errors, so it does not prove that a row is a postal district. Values are 0/1, never party shares. |
 | `flag_no_valid_votes` | integer | 1 where the row reports no valid votes. |
-| `flag_pooled` | integer | 1 where the source counted the municipality together with another one: a donor without counts of its own (all counts and shares `NA`) or the receiving municipality whose counts include it. Set where the source identifies the pooling (Rheinland-Pfalz 2026: 58 donors, 40 receivers, pairs in `data/state_elections/metadata/rp_2026_pooled_municipalities.csv`; Thüringen 2024: 4 donors, receiver not named by the source); 0 otherwise. In harmonized files 1 if any contributing source row is pooled. |
+| `flag_pooled` | integer | 1 where the source counted the municipality together with another one: a donor without counts of its own (all counts and shares `NA`) or the receiving municipality whose counts include it. Set where the source identifies the pooling (Rheinland-Pfalz 2026: 58 donors, 40 receivers, pairs in `data/state_elections/metadata/rp_2026_pooled_municipalities.csv`; Niedersachsen 2017: Beierstedt and Gevensleben, counted in Jerxheim, the receiver inferred from the Samtgemeinde electorate, pairs in `data/state_elections/metadata/ni_pooled_municipalities.csv`; Thüringen 2024: 4 donors, receiver not named by the source); 0 otherwise. In harmonized files 1 if any contributing source row is pooled. |
+| `flag_postal_allocated` | integer | 1 where the pipeline added postal votes that the source counted outside the municipality (see below), so the row's counts, turnout and shares are partly estimated; 0 otherwise. Set in Niedersachsen 2008–2022, Brandenburg 2009 and 2019, Sachsen 1990–1999, 2019 and 2024, Sachsen-Anhalt 1990–2016 and Thüringen 1994–2024. In harmonized files 1 if any contributing source row is. |
 | `flag_naive_turnout_above_1` | integer | 1 where uncapped turnout exceeded 1. |
 | `flag_harm_turnout_above_1` | integer | As above, after harmonization (harmonized files). |
 | `flag_other_party_residual` | integer | In harmonized files, 1 where `total_vote_share` is below 0.999 or above 1.001. `other` is computed as a residual in every row; this flag records the discrepancy threshold. |
@@ -373,6 +390,8 @@ Linke Liste Schleswig-Holstein, separate from `einzelbewerber` and
 `linke_pds`. Wiedenborstel has no separate result; its electorate voted
 in Hennstedt. The reviewed transcription and source controls are
 documented in `data/state_elections/derived/sh_1983/README.md`.
+
+**Postal votes counted outside the municipality, and turnout above 1.** Several states count postal ballots in Briefwahlbezirke that serve more than one Gemeinde and publish them on the Kreis, Amt, Samtgemeinde, Wahlkreis or Land, or, in Sachsen 2019 and 2024, in the row of the Gemeinde that ran the postal vote for its neighbours ("Gemeinde führte Briefwahl ebenfalls für … durch"). The pipeline distributes these votes over the member Gemeinden, conserving each pool's totals exactly, and marks every recipient with `flag_postal_allocated`. The weight is the number of Wahlschein holders (A2) where the source reports it (Brandenburg 2019, Sachsen 2019 and 2024, and Thüringen 2014–2024, where the Gemeinde's own Wahlschein voters are subtracted), as in the federal data, since a postal voter needs a Wahlschein; elsewhere it is eligible voters (Thüringen 1994–2009: valid votes). In the Sachsen pools the lead Gemeinde reports how many postal voters it counted but not how they voted, so they are assumed to vote like its voters as a whole. Allocated counts can be fractional. Until September 2026 the Sachsen pools stayed with the lead Gemeinde (Schönfeld 2024: 131 % turnout, now 78 %), Thüringen weighted by valid votes, which also gave postal votes to Gemeinden that count their own, and the distributed counts were rounded Gemeinde by Gemeinde, which did not add up (Sachsen-Anhalt 1994 lost 245 invalid votes). `turnout` above 1 now remains in 10 rows of `state_harm_25`: Sachsen 1994 (3), Thüringen 1994–2009 (4), where no Wahlschein counts exist, and one each in Brandenburg 1990, Baden-Württemberg 2021 and Mecklenburg-Vorpommern 2021. `flag_naive_turnout_above_1` and `flag_harm_turnout_above_1` mark such rows; treat turnout in small flagged municipalities as an estimate.
 
 **Zero-vote recoding in harmonized files.** A party that received zero
 votes across *all* municipalities in a state-year is recoded from 0 to
@@ -539,9 +558,9 @@ of which missing elections are recoverable and which are not is
 
 Kommunalwahlen — municipal council (Gemeinderat / Stadtrat) elections.
 
-**Files:** `municipal_unharm` (96,275 x 42, 1969–2026), `municipal_harm`
-(73,538 x 50, 1990–2026, 2021 boundaries), `municipal_harm_25` (73,273 x
-49, 2025 boundaries) in `data/municipal_elections/final/`.
+**Files:** `municipal_unharm` (92,765 x 51, 1969–2026), `municipal_harm`
+(68,052 x 56, 1990–2026, 2021 boundaries), `municipal_harm_25` (79,284 x
+56, 2025 boundaries) in `data/municipal_elections/final/`.
 
 The Bayern series (1990–2026, six-year cycle) includes the 8 March 2026
 Gemeinde- and Stadtratswahlen from GENESIS-Online Bayern (statistic
@@ -560,8 +579,25 @@ therefore have no party shares at all (`other` = 1), and the RP rows are
 the one case where `*_unharm` is not on the election-year boundaries —
 the Landesamt back-casts the whole series onto 2025 boundaries.
 
+**Schleswig-Holstein 1994–2013 covers only the four kreisfreie Städte.** For
+these five elections Statistikamt Nord published per-Gemeinde votes only for
+the Kreiswahl: its Gemeinde tables show Kreiswahl votes next to Gemeindewahl
+seats, and the Gemeinderat vote counts of the roughly 1,100 kreisangehörige
+Gemeinden were not published. Statistikamt Nord confirmed in 2025 that it holds
+no such counts: its 1998 and 2003 Gemeindewahl files contain only the seat
+distribution, and the 2013 Gemeindewahl was not recorded. Until September 2026 those Kreiswahl figures
+appeared here as Gemeindewahl results; they have been removed (5,565 rows) and
+remain available, correctly labelled, in `county_elec_unharm`. The rows of the
+kreisfreie Städte are their own Ratsversammlung results. Full coverage resumes
+in 2018.
+
+**Sachsen-Anhalt 2024** comes from the Landesamt’s Gemeinderat file (before
+September 2026 the Kreistag results were published here by mistake) and
+includes seats. The seven Gemeinden of VG Vorharz voted on 15 September 2024
+and carry that date.
+
 Unlike the other pipelines, municipal elections carry a fixed set of ten
-major parties rather than every party that ever ran. Vote shares are
+major parties, plus three far-right parties, rather than every party that ever ran. Vote shares are
 proportions of `valid_votes`. Municipal elections are not synchronized
 nationally — each state sets its own schedule.
 
@@ -569,15 +605,19 @@ Shared blocks apply: identifiers, turnout, harmonization.
 
 | Variable | Type | Description |
 |:---|:---|:---|
-| `election_type` | character | Type of council election. |
+| `election_type` | character | Type of council election: `Gemeinderatswahl` for the council of a Gemeinde or kreisfreie Stadt; the city-states carry `Bürgerschaftswahl` (Bremen), `Bürgerschaftswahl (Gesamtstimmen Landesliste)` (Hamburg) and `Abgeordnetenhauswahl (Zweitstimmen)` (Berlin). In the harmonized files it and `election_date` come from the predecessor municipality that contributes most of the target's electorate. |
+| `flag_mixed_election_date` | integer | Harmonized files: 1 where the predecessors of a target municipality voted on different dates within the year (e.g. one held a by-election), so `election_date` describes only the largest of them; 0 otherwise. |
 | `cdu_csu`, `spd`, `linke_pds`, `gruene`, `afd`, `piraten`, `fdp`, `die_partei`, `freie_wahler`, `bsw` | numeric | Vote share for each of the ten major parties, as a proportion of `valid_votes`. |
 | `other` | numeric | Combined share of all remaining lists — local voter groups, joint nominations, independents, minor parties. In many small municipalities this is the largest column. |
-| `seats_*` | numeric | Council seats won, ten columns matching the party columns. `municipal_unharm` only — see below. |
-| `replaced_0_with_na_*` | numeric | Ten flags (1/0) recording zero-to-`NA` recoding — see below. |
+| `npd_heimat`, `freie_sachsen`, `iii_weg` | numeric | Vote shares of NPD / Die Heimat (one party, renamed in 2023, one column), Freie Sachsen and Der III. Weg, as proportions of `valid_votes`, wherever the source reports the party as a list of its own; elsewhere their votes are part of `other`. See below. |
+| `seats_*` | numeric | Council seats won, thirteen columns matching the party columns. Not harmonized; in the harmonized files filled only for the pass-through years — see below. |
+| `replaced_0_with_na_*` | numeric | Thirteen flags (1/0) recording zero-to-`NA` recoding — see below. |
+
+**Far-right parties (`npd_heimat`, `freie_sachsen`, `iii_weg`).** Added in September 2026, taken out of `other` wherever the source reports the party as a list of its own; where it does not, their votes stay in `other`, so `NA` in these columns can also mean that the source does not name the party. NPD / Die Heimat has results in every state in at least one election (with seats in 183 rows of `municipal_unharm`); Freie Sachsen only in Sachsen 2024 (32 Gemeinden, no seats because the Saxon source has none); Der III. Weg in Brandenburg 2024, Nordrhein-Westfalen 2025 and Rheinland-Pfalz 2019. Two source gaps: the Sachsen-Anhalt Gemeinderat file for 1994–2019 has no NPD column (2024 has one), and the Saxon files never name Der III. Weg.
 
 ## Zero votes versus no list (`replaced_0_with_na_*`)
 
-Where a source reports exactly 0 votes for one of the ten party columns,
+Where a source reports exactly 0 votes for one of the thirteen party columns,
 `01_municipal_unharm.R` recodes both the vote count and the vote share
 from 0 to `NA` and sets the matching `replaced_0_with_na_<party>` flag
 to 1.
@@ -587,31 +627,47 @@ municipality, not that it ran and won no votes. A list on the ballot
 virtually always attracts at least a few votes; the affected
 municipalities are overwhelmingly small (median ~950 valid votes,
 concentrated in Rheinland-Pfalz and Baden-Württemberg); and of the
-~105,000 flagged cells in `municipal_unharm` only two record a council
+~110,000 flagged cells in `municipal_unharm` only three record a council
 seat for the flagged party. Leaving the 0 in place would bias averages
 and time trends downward.
 
-Three cases are therefore distinguishable:
+How to read a party column:
 
 - **non-`NA` value** — the party ran; the value is its vote share.
-- **`NA` with flag = 1** — the source reported 0; in practice the party
-  did not stand.
-- **`NA` with flag = 0** — the party is not carried at all in that
-  state-year’s source (for example AfD before 2013, BSW before 2024).
+- **`NA`** — no result is recorded for the party there. In practice the party
+  fielded no list in that municipality, or the source does not carry the
+  party at all in that state-year (for example AfD before 2013, BSW before
+  2024).
+
+The flag records only **how the source wrote** a missing list, not whether
+the party was on the ballot: 1 where the source printed a literal 0, 0 where
+it left the cell blank or has no column for the party. Sources differ. Among
+the missing cells of carried parties, the source printed a 0 in all of them
+in Schleswig-Holstein, in most in Sachsen-Anhalt, Saarland and
+Baden-Württemberg, in some years in Nordrhein-Westfalen, Niedersachsen,
+Mecklenburg-Vorpommern and Bayern, and never in Hessen, Rheinland-Pfalz,
+Brandenburg, Sachsen, Thüringen or Bremen. So `NA` with flag = 0 is the
+common case for a party that did not stand: in Sachsen 2024 the AfD has a
+result in 259 Gemeinden and is `NA` with flag 0 in the other 159. Do not
+read flag = 0 as “not carried”.
 
 “Party X ran in municipality Y” is thus simply `!is.na(x)`. Do **not**
-replace `NA` with 0 before averaging. Note that the underlying sources
-do not themselves distinguish “ran and received 0 votes” from “did not
-run”, so that distinction cannot be recovered with certainty. The flags
-are present in all three municipal files and remain strictly 0/1 after
-harmonization.
+replace `NA` with 0 before averaging. Note that the underlying sources do not
+themselves distinguish “ran and received 0 votes” from “did not run”, so that
+distinction cannot be recovered with certainty. The flags are present in all
+three municipal files and remain strictly 0/1 after harmonization, where a
+flag is 1 if it is 1 for any predecessor. A harmonized share is `NA` only if
+no predecessor had a list; where some did, the share averages them with zero
+for the others, as it should.
 
 ## Council seats (`seats_*`)
 
-Seat counts are the number of council mandates a party won. They are
-carried in `municipal_unharm` **only**: a population-weighted sum of
-seats across merged municipalities is not a real council, so the
-harmonized files omit them.
+Seat counts are the number of council mandates a party won. They are not
+harmonized: a population-weighted sum of seats across merged municipalities is
+not a real council. The harmonized files carry the `seats_*` columns, but they
+are filled only for the years those files pass through without harmonizing
+(2021 in `municipal_harm`, 2025 onward in `municipal_harm_25`) and `NA` for
+every harmonized year.
 
 Coverage, `NA` elsewhere: Baden-Württemberg 1989–2024, Hessen 1993–2021,
 Thüringen 1994–2024, Nordrhein-Westfalen 1994–2025 (kreisfreie Städte
@@ -625,7 +681,7 @@ Schleswig-Holstein 2018, Bremen 1991–2023, Hamburg 2025 and Bayern 2026
 (from GENESIS table 14431-005r; earlier Bayern years pending). No seat
 data for Berlin or Sachsen.
 
-**Party seats do not sum to council size.** Only the ten major parties
+**Party seats do not sum to council size.** Only the thirteen named parties
 have seat columns, while local voter groups, joint nominations and
 independents hold a substantial share of German local seats. The row sum
 is a lower bound on council size, not the total.
@@ -635,12 +691,12 @@ is a lower bound on council size, not the total.
 Kreistagswahlen — county council elections, 1948–2026, plus a separate
 county-council composition panel.
 
-**Files:** `county_elec_unharm` (71,041 x 499),
-`county_elec_harm_21_muni` (44,018 x 510), `county_elec_harm_21_cty`
-(2,393 x 507), `county_council_seats` (7,200 x 22) in
+**Files:** `county_elec_unharm` (78,090 x 595),
+`county_elec_harm_21_muni` (49,006 x 606), `county_elec_harm_21_cty`
+(2,544 x 603), `county_council_seats` (7,200 x 22) in
 `data/county_elections/final/`.
 
-Shared blocks apply, with 488 party columns. Results are reported at
+Shared blocks apply, with 583 party columns. Results are reported at
 municipality level in most states, so the harmonized data comes in two
 shapes: `_muni` keeps the municipality as the unit, `_cty` aggregates to
 the county. Baden-Württemberg and Bayern publish at county level and are
@@ -654,6 +710,8 @@ crosswalks.
 | `flag_total_votes_incongruent` | integer | 1 where summed party votes do not match `valid_votes`. |
 | `perc_total_votes_incogruence` | numeric | That discrepancy as a share of `valid_votes` (note the retained misspelling). |
 | `area_ags`, `population_ags`, `employees_ags`, `pop_density_ags` | numeric | Municipality covariates joined in (`_muni` file). |
+
+**Bayern joint lists.** Most Bavarian joint lists are the Freie Wähler party running together with its own Kreisverband ("FREIE WÄHLER/Freie Wähler Kreisverband X e.V."): in 2026, 56 of 91 joint lists and 8.2 of the 10.2 % that `gemeinsame_wv` holds. `freie_waehler` counts only lists that ran alone (4.0 % in 2026), so it understates the Freie Wähler's local strength in every year. GENESIS reports joint lists for 1984–2020 only as one sum, which is why they cannot be split by party; 2026, which comes from the Landesamt XML with every list named, follows the same rule so the series stays comparable (until September 2026 its joint lists were credited to the first-named party). The municipal data counts joint lists in `other`; for the 25 kreisfreie Städte both files agree exactly on every party.
 
 Niedersachsen’s three-vote system makes the standard formula invalid, so
 `invalid_votes` is `NA` there. Hamburg is excluded (its
@@ -745,8 +803,8 @@ municipal files. Releases before September 2026 used `number_voters`;
 multiply such an older share by `number_voters / valid_votes` to convert
 it.
 
-**Files:** `european_muni_unharm` (44,730 x 87), `european_muni_harm`
-(42,994 x 90) in `data/european_elections/final/`.
+**Files:** `european_muni_unharm` (44,862 x 88), `european_muni_harm`
+(43,149 x 91) in `data/european_elections/final/`.
 
 Shared blocks apply, with 71 party columns.
 
@@ -758,10 +816,11 @@ Shared blocks apply, with 71 party columns.
 | `voters_w_wahlschein` | numeric | Voters with a Wahlschein (absentee ballot certificate, B1). |
 | `flag_turnout_above_1` | integer | 1 where turnout exceeded 1 before capping (allocated mail-in voters can exceed a small municipality’s electorate). |
 | `flag_aggregated`, `n_predecessors` | integer | Harmonization bookkeeping — see the shared block. |
+| `flag_pooled` | integer | 2024: 1 for a Gemeinde the source counts inside a neighbour (`NA` counts and shares) and for the neighbour whose counts include it; 0 otherwise. In the harmonized file 1 if any predecessor is. |
 
 Zero handling here follows the *zero preserved* pattern: a 0 means the
 source reported no votes, and parties that did not run in a given year
-are also 0.
+are also 0. The pooled Gemeinden of 2024 (below) are the exception: their shares are `NA`.
 
 Berlin appears as 14 Bezirke rows per year in the unharmonized file and
 as a single row (AGS `11000000`) in the harmonized one. Mail-in votes
@@ -775,12 +834,27 @@ the gemeindefreie Bezirke Lohheide (`03351501`) and Osterheide
 of its group, including a lead municipality that also has postal
 districts of its own (some Verwaltungsgemeinschaften in Thüringen);
 earlier releases gave it to the other members only, which pushed some
-of them above 100% turnout. Crosswalk year mapping: 2009→2009,
-2014→2014, 2019→2019, 2024→2020.
+of them above 100% turnout.
+
+Crosswalk years: 2009, 2014 and 2019 use the crosswalk of their own year.
+2024 is mapped back from the Gemeinden as they stood on election day: each 2021
+Gemeinde is assigned to the 2024 Gemeinde that contained it, and a merged 2024
+result is split over its 2021 members by 2021 population, so those members share
+one set of vote shares. Until September 2026, 2024 went through the 2020
+crosswalk, which left 25 Gemeinden merged after 2021 without a 2024 row and
+their votes under the surviving code.
+
+**Gemeinden counted inside a neighbour (2024).** From 2024 the source merges the
+ballot districts of very small Gemeinden into a neighbour's (§ 61 EuWO). These
+133 Gemeinden (Schleswig-Holstein 32, Rheinland-Pfalz 93, Thüringen 8) have no
+result of their own: they are rows with `NA` counts and shares, and they and
+their 102 receivers carry `flag_pooled = 1`. Earlier releases dropped them. For
+Dierfeld (Rheinland-Pfalz) the source shows only an all-zero row and names no
+receiver; the federal Leitbands of 2021 and 2025 count it in Manderscheid, which
+is therefore its receiver here too.
 
 Each state’s eligible voters, voters, valid and invalid votes add up
-exactly to the ballot-district source file, and party shares sum to
-exactly 1 in every row. Allocated voter counts are whole numbers.
+exactly to the ballot-district source file, and party shares sum to exactly 1 in every row that has a result. Allocated voter counts are whole numbers.
 Allocated party votes are the municipality’s allocated valid votes split
 in the pool’s party proportions and are not rounded, so in
 municipalities that receive shared mail-in votes `share * valid_votes`

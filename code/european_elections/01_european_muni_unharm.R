@@ -279,9 +279,72 @@ ew_configs <- list(
     ba_col      = "Bezirksart",
     bwbez_col   = "Kennziffer Briefwahlzugehörigkeit",
     drop_cols   = c("Kennziffer zusammengelegte Urnenwahlbezirke § 61 EuWO",
-                    "Optional: Ungekürzte Wahlbezirksbezeichnung")
+                    "Optional: Ungekürzte Wahlbezirksbezeichnung"),
+    leitband    = "data/european_elections/raw/ew24_wbz/ew24_wbz_leitband.csv"
   )
 )
+
+
+# --- 1a. Gemeinden counted inside a neighbour (2024) ---------------------------
+
+# From 2024 the Wahlbezirksstatistik merges the Urnenwahlbezirke of very small
+# Gemeinden into a neighbour's (§ 61 EuWO): the Leitband lists the donor as
+# "Bauler (enthalten in Wiesemscheid)" and the receiver as "Wiesemscheid
+# (einschl. Bauler)", and the donor's result row holds only zeros. Earlier
+# releases dropped these 132 Gemeinden (SH 32, RP 92, TH 8) with the
+# uninhabited areas. They are kept as NA rows instead and flagged, with their
+# receiver, like the pooled municipalities of the state data (flag_pooled).
+# Returns donor_ags / receiver_ags pairs; stops unless every donor resolves to
+# exactly one Gemeinde of its own Verbandsgemeinde.
+ew_pooled_municipalities <- function(path) {
+  lb <- fread(path, sep = ";", colClasses = "character", encoding = "UTF-8")
+  setnames(lb, 1:8, c("satzart", "land", "rb", "kreis", "vg", "gem", "bwz", "name"))
+  g <- lb[satzart == "60"]
+  g[, `:=`(ags = paste0(land, rb, kreis, gem), vgkey = paste(land, rb, kreis, vg),
+           base = trimws(sub("\\s*\\(?(einschl\\.|e[nm]thalten).*$", "", name)))]
+  # "(enthalten in X)"; twice written "(enthalten X)", once "(emthalten in X)"
+  don <- g[grepl("\\(e[nm]thalten ", name)]
+  don[, target := trimws(sub(".*\\(e[nm]thalten (in )?(.*)\\)\\s*$", "\\2", name))]
+  # Source typo: Wiedenborstel "(enthalten in Hennstadt)" -- Hennstedt, Kreis Steinburg
+  don[ags == "01061111" & target == "Hennstadt", target := "Hennstedt"]
+  pairs <- rbindlist(lapply(seq_len(nrow(don)), function(i) {
+    d <- don[i]
+    cand <- g[vgkey == d$vgkey & ags != d$ags & !grepl("\\(e[nm]thalten ", name)]
+    hit <- cand[base == d$target]
+    if (nrow(hit) != 1) hit <- cand[startsWith(base, d$target) | startsWith(d$target, base)]
+    if (nrow(hit) != 1) {
+      stop("EW Leitband: '", d$name, "' (", d$ags, ") matches ", nrow(hit),
+           " Gemeinden of its Verbandsgemeinde", call. = FALSE)
+    }
+    data.table(donor_ags = d$ags, receiver_ags = hit$ags)
+  }))
+  # Two donors have no Leitband row at all and are named only inside their
+  # receiver's: "Oldenbüttel (einschl. Gemeinde Tackesdorf)" and "Wittenbergen
+  # einschl. Auufer". Pinned, keyed on that text so a re-issued file fails loudly.
+  unlisted <- data.table(
+    donor_ags    = c("01058158", "01061005"),
+    donor_name   = c("Tackesdorf", "Auufer"),
+    receiver_ags = c("01058119", "01061115")
+  )
+  stopifnot(!any(unlisted$donor_ags %in% g$ags),
+            all(mapply(function(r, d) grepl(paste0("einschl\\. (Gemeinde )?", d), g$name[g$ags == r]),
+                       unlisted$receiver_ags, unlisted$donor_name)))
+  pairs <- rbind(pairs, unlisted[, .(donor_ags, receiver_ags)])
+  # Dierfeld has a Leitband row of its own, but its result is all zeros and
+  # neither it nor a neighbour says where its electorate (8 in 2019) went. The
+  # federal Leitbands of 2021 and 2025 both read "Manderscheid, Stadt (einschl.
+  # Dierfeld)". Pinned on the two unannotated names, so a re-issued file that
+  # annotates either row fails here instead of adding the pair twice.
+  silent <- data.table(
+    donor_ags     = "07231021", donor_name    = "Dierfeld",
+    receiver_ags  = "07231080", receiver_name = "Manderscheid, Stadt"
+  )
+  stopifnot(identical(g$name[g$ags == silent$donor_ags], silent$donor_name),
+            identical(g$name[g$ags == silent$receiver_ags], silent$receiver_name))
+  pairs <- rbind(pairs, silent[, .(donor_ags, receiver_ags)])
+  stopifnot(!anyDuplicated(pairs$donor_ags), !any(pairs$donor_ags %in% pairs$receiver_ags))
+  pairs
+}
 
 
 # --- 1b. Mail-in allocation ---------------------------------------------------
@@ -583,6 +646,7 @@ process_ew_year <- function(cfg) {
   }
   cat("Per-state totals reconcile with the raw file\n")
 
+
   cat("Final municipality count:", nrow(df_muni), "\n")
 
   # Check duplicates
@@ -609,6 +673,25 @@ process_ew_year <- function(cfg) {
                 .groups = "drop")
   } else {
     names(df_muni)[match(old_party_names, names(df_muni))] <- new_party_names
+  }
+
+  # Gemeinden the source counts inside a neighbour: NA rows, flagged with their
+  # receiver (section 1a). Added after the reconciliation (their votes are in the
+  # receiver's row) and after the party-name aggregation, which sums with
+  # na.rm = TRUE and would turn their NA into 0.
+  df_muni$flag_pooled <- 0L
+  if (!is.null(cfg$leitband)) {
+    pooled <- ew_pooled_municipalities(cfg$leitband)
+    stopifnot(!any(pooled$donor_ags %in% df_muni$ags),
+              all(pooled$receiver_ags %in% df_muni$ags))
+    df_muni <- bind_rows(
+      df_muni,
+      tibble(ags = pooled$donor_ags, county = substr(pooled$donor_ags, 1, 5))
+    ) |>
+      mutate(flag_pooled = as.integer(ags %in% c(pooled$donor_ags, pooled$receiver_ags))) |>
+      arrange(ags)
+    cat(sprintf("Kept %d Gemeinden counted inside %d neighbours as NA rows (flag_pooled)\n",
+                nrow(pooled), n_distinct(pooled$receiver_ags)))
   }
 
   # --- 9. Add metadata ---
@@ -642,19 +725,21 @@ meta_cols <- c("ags", "county", "state", "state_name", "election_year",
                "valid_votes", "invalid_votes", "voters_wo_sperrvermerk",
                "voters_w_sperrvermerk", "voters_par24_2", "voters_w_wahlschein")
 party_cols_all <- sort(setdiff(names(df_all), c(meta_cols, "turnout",
-                                                 "flag_turnout_above_1")))
+                                                 "flag_turnout_above_1", "flag_pooled")))
 
 cat("Total unique parties:", length(party_cols_all), "\n")
 
-# Replace NA with 0 for party columns (party not running = 0 votes)
+# Replace NA with 0 for party columns (party not running = 0 votes) -- except
+# in the pooled donors, which have no result at all
 df_all <- df_all |>
-  mutate(across(all_of(party_cols_all), ~ replace_na(.x, 0)))
+  mutate(across(all_of(party_cols_all), ~ ifelse(is.na(valid_votes), NA_real_, replace_na(.x, 0))))
 
 
 # --- 4. Compute turnout and vote shares ---------------------------------------
 
 # Vote shares are shares of valid votes, as in the state and municipal data.
-stopifnot(!anyNA(df_all$valid_votes))
+# (NA only in the pooled donors, section 1a)
+stopifnot(all(df_all$flag_pooled[is.na(df_all$valid_votes)] == 1))
 
 df_all <- df_all |>
   mutate(
@@ -665,7 +750,7 @@ df_all <- df_all |>
 # Party votes add up to valid votes in every municipality, including those
 # that received pooled mail-in votes (allocate_pool()), so shares sum to 1
 share_sum <- rowSums(select(df_all, all_of(party_cols_all)))
-stopifnot(all(abs(share_sum[df_all$valid_votes > 0] - 1) < 1e-9))
+stopifnot(all(abs(share_sum[which(df_all$valid_votes > 0)] - 1) < 1e-9))
 
 # Cap turnout at 1 and flag
 df_all <- df_all |>
@@ -685,7 +770,8 @@ df_all <- df_all |>
     voters_wo_sperrvermerk, voters_w_sperrvermerk, voters_par24_2, voters_w_wahlschein,
     turnout,
     all_of(party_cols_all),
-    flag_turnout_above_1
+    flag_turnout_above_1,
+    flag_pooled
   ) |>
   arrange(election_year, ags)
 
