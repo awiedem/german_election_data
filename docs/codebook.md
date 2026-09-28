@@ -607,20 +607,34 @@ concentrated in Rheinland-Pfalz and Baden-Württemberg); and of the
 seat for the flagged party. Leaving the 0 in place would bias averages
 and time trends downward.
 
-Three cases are therefore distinguishable:
+How to read a party column:
 
 - **non-`NA` value** — the party ran; the value is its vote share.
-- **`NA` with flag = 1** — the source reported 0; in practice the party
-  did not stand.
-- **`NA` with flag = 0** — the party is not carried at all in that
-  state-year’s source (for example AfD before 2013, BSW before 2024).
+- **`NA`** — no result is recorded for the party there. In practice the party
+  fielded no list in that municipality, or the source does not carry the
+  party at all in that state-year (for example AfD before 2013, BSW before
+  2024).
+
+The flag records only **how the source wrote** a missing list, not whether
+the party was on the ballot: 1 where the source printed a literal 0, 0 where
+it left the cell blank or has no column for the party. Sources differ. Among
+the missing cells of carried parties, the source printed a 0 in all of them
+in Schleswig-Holstein, in most in Sachsen-Anhalt, Saarland and
+Baden-Württemberg, in some years in Nordrhein-Westfalen, Niedersachsen,
+Mecklenburg-Vorpommern and Bayern, and never in Hessen, Rheinland-Pfalz,
+Brandenburg, Sachsen, Thüringen or Bremen. So `NA` with flag = 0 is the
+common case for a party that did not stand: in Sachsen 2024 the AfD has a
+result in 259 Gemeinden and is `NA` with flag 0 in the other 159. Do not
+read flag = 0 as “not carried”.
 
 “Party X ran in municipality Y” is thus simply `!is.na(x)`. Do **not**
-replace `NA` with 0 before averaging. Note that the underlying sources
-do not themselves distinguish “ran and received 0 votes” from “did not
-run”, so that distinction cannot be recovered with certainty. The flags
-are present in all three municipal files and remain strictly 0/1 after
-harmonization.
+replace `NA` with 0 before averaging. Note that the underlying sources do not
+themselves distinguish “ran and received 0 votes” from “did not run”, so that
+distinction cannot be recovered with certainty. The flags are present in all
+three municipal files and remain strictly 0/1 after harmonization, where a
+flag is 1 if it is 1 for any predecessor. A harmonized share is `NA` only if
+no predecessor had a list; where some did, the share averages them with zero
+for the others, as it should.
 
 ## Council seats (`seats_*`)
 
