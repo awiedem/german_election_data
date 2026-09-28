@@ -2386,8 +2386,8 @@
     "source": "data/federal_elections/county_level/final/federal_cty_unharm.csv"
   },
   "data/federal_elections/municipality_level/final/federal_muni_harm_21": {
-    "rows": 107650,
-    "columns": 149,
+    "rows": 107875,
+    "columns": 150,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
@@ -2506,16 +2506,16 @@
       "far_left_w_linke",
       "perc_total_votes_incogruence"
     ],
-    "source_sha256": "6fd0d99657b59126ea7e5bd0bca038e314563dce7bd23e969dc789fa66d56557",
-    "rds_sha256": "ce42d01d2e6d86a9eb9e75c64e3c347164bd888d9b61b055cedc16c874b8bf08",
+    "source_sha256": "154f0af26f8babfa016cbc3ea6090ae1a48e0736f9b7ea603e260d8d05b1079d",
+    "rds_sha256": "4e308347b01874f73b0e735356d9a24ecb340784be8c6852517867c1e50a5b9b",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "aca48cec6bbfd63eb5e9f639bf523aaae9ef7ae496e0e7e07915d4545fc822c1",
-    "bytes": 43387069,
+    "xlsx_sha256": "d50bdbcfca37c4768f16883e77891e0e2d6171c04246a966aaea4791eeb8b635",
+    "bytes": 44010177,
     "source": "data/federal_elections/municipality_level/final/federal_muni_harm_21.csv"
   },
   "data/federal_elections/municipality_level/final/federal_muni_harm_25": {
-    "rows": 107295,
-    "columns": 147,
+    "rows": 107515,
+    "columns": 148,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
@@ -2634,11 +2634,11 @@
       "far_left_w_linke",
       "perc_total_votes_incogruence"
     ],
-    "source_sha256": "5177a26811e8fea3d41a806a17a287ac87db2aafac3258ca990bbdee05f078b8",
-    "rds_sha256": "e8e3607453d7366be6141ba1e5a3053979be37d2651c786870dfaaedd56a9101",
+    "source_sha256": "b64a2130421552a8a4b39a6e205da0c6657c3f068057cd22dc1d851f334f3ea8",
+    "rds_sha256": "43b10cce0254069dec2fa619715ad4615f4932e80c29f38d55af313b0fca80c3",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "e7a438ddbe46b4010315881a201e6d7fb14868f6b4dcb7953f986322485cd545",
-    "bytes": 43280803,
+    "xlsx_sha256": "bea4d75ee832f657df9da1385d8fc81b1398862efe395a2a4e955ea07ebc8d84",
+    "bytes": 43898547,
     "source": "data/federal_elections/municipality_level/final/federal_muni_harm_25.csv"
   },
   "data/federal_elections/municipality_level/final/federal_muni_raw": {
@@ -2654,8 +2654,8 @@
     "source": "data/federal_elections/municipality_level/final/federal_muni_raw.csv"
   },
   "data/federal_elections/municipality_level/final/federal_muni_unharm": {
-    "rows": 151793,
-    "columns": 141,
+    "rows": 152018,
+    "columns": 142,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
@@ -2773,11 +2773,11 @@
       "far_left",
       "far_left_w_linke"
     ],
-    "source_sha256": "50b3b438808ce78edd2a6f1a6b8031d80c724e25d85571cd87ba105707b2a7ff",
-    "rds_sha256": "77fcef34b329e392a2bcf89ade47d757383f662bd7d69258872c575964d758c6",
+    "source_sha256": "c0d8930e47b5823bf58723baf3e66dafe30cad453de0ff72fcab549794f164f9",
+    "rds_sha256": "87a154685c0a737af262e7a30059b8d22cbbac18d44554222de80bd9fae1f78e",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "12f77088cc57c3eef15d8f95bd5154d641c140e5209b692714e3c4da2762ea5c",
-    "bytes": 59511215,
+    "xlsx_sha256": "f46e2e8942dbc542d966cf286a4936548c6effc6120bbd91c351c4b914664da5",
+    "bytes": 60198381,
     "source": "data/federal_elections/municipality_level/final/federal_muni_unharm.csv"
   },
   "data/federal_elections/wahlkreis_level/final/federal_wkr_2021_on_2025": {

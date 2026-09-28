@@ -242,9 +242,9 @@ convention; the Wahlkreis files use `valid_votes`.
 `data/federal_elections/municipality_level/final/`.
 
 `federal_muni_raw` (160,313 x 145) is the ingested source data before
-standardization. `federal_muni_unharm` (151,793 x 141) is standardized on each
-year's own boundaries. `federal_muni_harm_21` (107,660 x 149) and
-`federal_muni_harm_25` (107,295 x 147) are harmonized to 2021 and 2025
+standardization. `federal_muni_unharm` (152,018 x 142) is standardized on each
+year's own boundaries. `federal_muni_harm_21` (107,875 x 150) and
+`federal_muni_harm_25` (107,515 x 148) are harmonized to 2021 and 2025
 boundaries and start in 1990.
 
 Shared blocks apply: identifiers, turnout, party columns (111--125 party
@@ -277,6 +277,21 @@ allocation.
 | `total_votes_incogruence` | numeric | `total_votes - valid_votes`. Note the misspelling of "incongruence" in the column name; it is retained to avoid breaking existing code. |
 | `perc_total_votes_incogruence` | numeric | The same discrepancy as a share of `valid_votes`. |
 | `flag_total_votes_incongruent` | integer | 1 where the discrepancy is non-zero. |
+
+**Gemeinden counted inside a neighbour (2021, 2025).** In these two elections
+the ballot-district statistics count some small Gemeinden inside a neighbour:
+the source lists the donor as "X (in Y enthalten)" or names it only in the
+receiver's "(einschl. X, ...)", and in 2021 all Gemeinden of Verbandsgemeinde
+Altenahr were counted in Altenahr ("zusammengelegt wegen Flutkatastrophe").
+These donors (327 in 2021, 124 in 2025) are rows with `NA` counts and shares;
+they and their receivers carry `flag_pooled = 1` (1 in the harmonized files if
+any predecessor is pooled). Before September 2026 some donors were published as
+a result of zero and the others were missing, so 87 Gemeinden of
+`federal_muni_harm_25` had no 2021 row.
+
+| Variable | Type | Description |
+| :------------------------------ | :-------- | :---------------------------------------------------- |
+| `flag_pooled` | integer | 1 for a Gemeinde the source counts inside a neighbour (`NA` counts and shares) and for the neighbour whose counts include it; 0 otherwise. 2021 and 2025 only. |
 
 `federal_muni_raw` additionally carries `gruene_comb` and `linke_pds_comb`,
 which combine the separately reported predecessor labels (`b90/gr` with `grüne`,

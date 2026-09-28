@@ -14,6 +14,11 @@ pacman::p_load(
   "data.table",
   "haschaR"
 )
+# Unqualified filter() must be dplyr's: under Rscript it otherwise resolved to
+# stats::filter and the audit calls added on 2026-09-17 stopped the script, so
+# federal_muni_harm_25 was last rebuilt on 2026-09-11.
+conflict_prefer("filter", "dplyr")
+conflict_prefer("year", "lubridate")
 
 
 # Read crosswalk files ----------------------------------------------------
@@ -312,6 +317,11 @@ votes <- df_cw |>
   dplyr::filter(election_year < 2025) |>
   group_by(ags_25, election_year) |>
   summarise(
+    # Gemeinden the source counts inside a neighbour are NA rows (01 script).
+    # A target made up only of them has no result: blanked below, as the
+    # na.rm sums would otherwise publish it as 0.
+    pooled_only = all(flag_pooled == 1 & is.na(valid_votes)),
+    flag_pooled = max(flag_pooled),
     unique_mailin = max(unique_mailin),
     unique_multi_mailin = max(unique_multi_mailin),
     across(
@@ -324,7 +334,9 @@ votes <- df_cw |>
     eligible_voters_orig:far_left_w_linke,
     ~ round(.x, digits = 0)
   )) |>
-  ungroup()
+  ungroup() |>
+  mutate(across(eligible_voters_orig:far_left_w_linke, ~ ifelse(pooled_only, NA_real_, .x))) |>
+  select(-pooled_only)
 
 ## Population & area: weighted sum -----------------------------------------
 area_pop <- df_cw |>
@@ -389,7 +401,7 @@ df_harm <- votes |>
     mutate(
       across(
         cdu:far_left_w_linke,
-        ~ ifelse(is.na(.x), 0, .x)
+        ~ ifelse(is.na(.x) & flag_pooled == 0, 0, .x)
       ),
       unique_multi_mailin = 0
     )) |>
@@ -616,6 +628,7 @@ df_harm <- df_harm |>
     cdu:zentrum,
     cdu_csu:far_left_w_linke,
     flag_naive_turnout_above_1:perc_total_votes_incogruence,
+    flag_pooled,
     area_cw:population
   )
 
