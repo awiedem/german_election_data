@@ -5398,11 +5398,34 @@ ni_zs_dates <- c(
 
 ni_results <- list()
 
+## Gemeinden the source counts inside a neighbour: every cell of their row is
+## "-". Only NI 2017 has any (checked 1998-2022): Beierstedt and Gevensleben in
+## Samtgemeinde Heeseberg. The source does not name the receiver, but the SG's
+## 3,108 electors are exactly Jerxheim (1,766) + Söllingen (1,342), and
+## Jerxheim's electorate is 942 in 2013 and 881 in 2022 -- both donors are in
+## Jerxheim. Kept as NA rows and flagged like RP 2026 (flag_pooled); the pairs
+## are written to data/state_elections/metadata/ni_pooled_municipalities.csv.
+ni_pooled <- tibble::tribble(
+  ~election_year, ~donor_ags, ~donor_name, ~receiver_ags, ~receiver_name, ~reason,
+  2017L, "03154002", "Beierstedt", "03154012", "Jerxheim", "receiver inferred from Samtgemeinde electorate",
+  2017L, "03154006", "Gevensleben", "03154012", "Jerxheim", "receiver inferred from Samtgemeinde electorate"
+)
+
 for (yr in names(ni_zs_dates)) {
   cat("NI", yr, "...")
   zs_file <- list.files(ni_raw_path, pattern = paste0(yr, ".*_ZS[.]xml$"),
                         full.names = TRUE, recursive = TRUE)
   df <- ni_parse_zs(zs_file)
+
+  ## The pinned donors must be exactly the rows the source leaves empty, so a
+  ## re-issued file that fills them (or empties others) stops the run.
+  ni_pin <- ni_pooled[ni_pooled$election_year == as.integer(yr), ]
+  ni_empty <- df$ags[is.na(df$eligible_voters) & is.na(df$valid_votes)]
+  if (!setequal(ni_empty, ni_pin$donor_ags)) {
+    stop("NI ", yr, ": rows without counts (", paste(ni_empty, collapse = ", "),
+         ") differ from the pinned pooled donors (",
+         paste(ni_pin$donor_ags, collapse = ", "), ")")
+  }
 
   ## Distribute the Samtgemeinde Briefwahl residual over the member Gemeinden
   ## (weighted by eligible voters, as elsewhere in this script). Only the vote
@@ -5440,10 +5463,12 @@ for (yr in names(ni_zs_dates)) {
     result[[share_name]] <- df[[col_n]] / df$valid_votes
   }
   result$cdu_csu <- result$cdu
+  result$flag_pooled <- as.integer(result$ags %in% c(ni_pin$donor_ags, ni_pin$receiver_ags))
 
   cat(nrow(result), "munis,", sum(result$eligible_voters, na.rm = TRUE), "EV\n")
   ni_results[[yr]] <- result
 }
+fwrite(ni_pooled, "data/state_elections/metadata/ni_pooled_municipalities.csv")
 
 ## ---- Compilation file (1974-1994, historical Gebietsstand) ----
 ## SpreadsheetML with 10 data columns: EV, Wähler, Gültige, CDU, SPD, FDP, GRÜNE,
@@ -7419,8 +7444,9 @@ if (any(he_agg_rows)) {
 # municipalities -- a donor without counts of its own (all counts NA) or the
 # receiver whose counts include it. Set where the source identifies the pooling:
 # RP 2026 (58 donors, 40 receivers; pairs in
-# data/state_elections/metadata/rp_2026_pooled_municipalities.csv) and TH 2024
-# (4 donors; the source does not name the receiving Gemeinde). 0 elsewhere.
+# data/state_elections/metadata/rp_2026_pooled_municipalities.csv), NI 2017
+# (2 donors in Jerxheim; ni_pooled_municipalities.csv) and TH 2024 (4 donors;
+# the source does not name the receiving Gemeinde). 0 elsewhere.
 state_unharm$flag_pooled <- ifelse(is.na(state_unharm$flag_pooled), 0L,
                                    as.integer(state_unharm$flag_pooled))
 
