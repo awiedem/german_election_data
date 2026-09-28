@@ -607,11 +607,11 @@
       "total_vote_share",
       "perc_total_votes_incogruence"
     ],
-    "source_sha256": "d65069979253e8ad2b96efe8dc900743d9636ff950ca7fe2327a3e50ff717bfc",
-    "rds_sha256": "dfe4241605053bc6bf385871d9297f322a6d62a1248ed076e967401c85179234",
+    "source_sha256": "0334f5216d9c6faa63a0ec2ad38d207945e40beb3c08f3c4b85afa2efff88802",
+    "rds_sha256": "85b82e43f4ea1a615552e53d9dc1858b615b9e8468ec686c7dcd4e5ce60e3de0",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "30b460d8ad8682a4db057050733ee494bb5975d3a987c8dd89b3c5e7eaba4471",
-    "bytes": 575079,
+    "xlsx_sha256": "fd77057f4ad6538ea096f0554ff6511fc47ccffe87867fdfb96becb07154bcf2",
+    "bytes": 574904,
     "source": "data/county_elections/final/county_elec_harm_21_cty.csv"
   },
   "data/county_elections/final/county_elec_harm_21_muni": {
@@ -1808,11 +1808,11 @@
       "waehlergruppen",
       "einzelbewerber"
     ],
-    "source_sha256": "e60d34ba382ce24371ad41d7de71d2362aaad7cae36e190a88dad1ad4c0d6496",
-    "rds_sha256": "aac159c3381ce4e0eeb9f8b8213bd5532e9fdf6da9a1aa0c6da0d9fe5575d6c2",
+    "source_sha256": "241c6c56838891876b3097cc65929f1afabd56365de940933aa2ac3f4cf3e2b2",
+    "rds_sha256": "028f9e228c6b94ba7d5db9a72151742d678852e43e41b373dd682b7bd661de30",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "9b0818219512e7f732eb7325831cd3c93bfebd239a7227621899586071968f55",
-    "bytes": 11723874,
+    "xlsx_sha256": "c7e7aa81594c42d6fd73b1af1a3b6fe90a8c8c22a552929953e1fedeb12f3107",
+    "bytes": 11723788,
     "source": "data/county_elections/final/county_elec_unharm.csv"
   },
   "data/covars_county/final/cty_area_pop_emp": {

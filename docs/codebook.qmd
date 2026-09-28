@@ -142,6 +142,7 @@ Recurring aggregate columns:
 | `far_left_w_linke` | numeric | As `far_left`, but including Die Linke/PDS. |
 | `total_vote_share` | numeric | Pipeline-specific party-share diagnostic. In state harmonized files it excludes `other` and derived aggregates, so a residual can leave it below 1. |
 | `waehlergruppen` | numeric | Combined share of local voter groups (municipal and county elections). |
+| `gemeinsame_wv` | numeric | Combined share of joint lists (gemeinsame Wahlvorschläge) put forward by two or more parties or voter groups, where the source reports them as one sum: Bayern 1984--2026 and Baden-Württemberg 1994. In Bayern this is mostly Freie Wähler (see below). |
 | `einzelbewerber` | numeric | Combined share of independent candidates (municipal and county elections). |
 
 **Zero versus missing.** How a zero is treated is *not* uniform across GERDA,
@@ -683,11 +684,11 @@ size, not the total.
 Kreistagswahlen — county council elections, 1948--2026, plus a separate
 county-council composition panel.
 
-**Files:** `county_elec_unharm` (71,041 x 499), `county_elec_harm_21_muni`
-(44,018 x 510), `county_elec_harm_21_cty` (2,393 x 507), `county_council_seats`
+**Files:** `county_elec_unharm` (78,090 x 595), `county_elec_harm_21_muni`
+(49,006 x 606), `county_elec_harm_21_cty` (2,544 x 603), `county_council_seats`
 (7,200 x 22) in `data/county_elections/final/`.
 
-Shared blocks apply, with 488 party columns. Results are reported at
+Shared blocks apply, with 583 party columns. Results are reported at
 municipality level in most states, so the harmonized data comes in two shapes:
 `_muni` keeps the municipality as the unit, `_cty` aggregates to the county.
 Baden-Württemberg and Bayern publish at county level and are harmonized with
@@ -700,6 +701,8 @@ county crosswalks; the other states use municipality crosswalks.
 | `flag_total_votes_incongruent` | integer | 1 where summed party votes do not match `valid_votes`. |
 | `perc_total_votes_incogruence` | numeric | That discrepancy as a share of `valid_votes` (note the retained misspelling). |
 | `area_ags`, `population_ags`, `employees_ags`, `pop_density_ags` | numeric | Municipality covariates joined in (`_muni` file). |
+
+**Bayern joint lists.** Most Bavarian joint lists are the Freie Wähler party running together with its own Kreisverband ("FREIE WÄHLER/Freie Wähler Kreisverband X e.V."): in 2026, 56 of 91 joint lists and 8.2 of the 10.2 % that `gemeinsame_wv` holds. `freie_waehler` counts only lists that ran alone (4.0 % in 2026), so it understates the Freie Wähler's local strength in every year. GENESIS reports joint lists for 1984--2020 only as one sum, which is why they cannot be split by party; 2026, which comes from the Landesamt XML with every list named, follows the same rule so the series stays comparable (until September 2026 its joint lists were credited to the first-named party). The municipal data counts joint lists in `other`; for the 25 kreisfreie Städte both files agree exactly on every party.
 
 Niedersachsen's three-vote system makes the standard formula invalid, so
 `invalid_votes` is `NA` there. Hamburg is excluded (its Bezirksversammlungswahlen

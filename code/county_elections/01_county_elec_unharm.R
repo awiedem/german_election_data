@@ -2753,9 +2753,15 @@ for (yr in by_years) {
 # Unlike the XLSX series, the XML lists every individual Wahlvorschlag rather
 # than a pre-aggregated "Wählergruppen" bucket. To keep Bayern internally
 # consistent, recognised parties keep their own column and every local list
-# folds into `waehlergruppen`, mirroring the earlier years. Coalition labels
-# ("FREIE WÄHLER/Freie Wähler Ingolstadt", "ÖDP/Parteifreie") are attributed to
-# their leading party.
+# folds into `waehlergruppen`, mirroring the earlier years. Joint lists
+# (gemeinsame Wahlvorschläge, labelled "A/B": "FREIE WÄHLER/Freie Wähler
+# Ingolstadt", "SPD/Volt", "ÖDP/Parteifreie Umweltschützer") go to
+# `gemeinsame_wv`, as in 1984-2020, where GENESIS reports them only as one sum.
+# Until September 2026 they were credited to the first-named party, which lifted
+# Freie Wähler from 4.0 to 12.2 % of the 2026 votes (56 of the 91 joint lists
+# are FREIE WÄHLER + their own Kreisverband) and broke the series. The slash
+# labels are exactly what GENESIS counts as GEMWAHLVOR: they sum to it in all 25
+# kreisfreie Städte (14431, the municipal route).
 by_xml_file <- file.path(by_dir, "Bayern_2026_Gremien_Komplett.xml")
 
 if (file.exists(by_xml_file)) {
@@ -2772,9 +2778,8 @@ if (file.exists(by_xml_file)) {
   by26_col <- function(raw) {
     n <- normalise_party_cty(raw)
     if (n %in% by26_keep) return(n)
-    # coalition label: attribute to the leading party if recognised
-    lead <- normalise_party_cty(trimws(strsplit(raw, "/", fixed = TRUE)[[1]][1]))
-    if (lead %in% by26_keep) return(lead)
+    # joint list ("A/B"): its own column, whoever is named first
+    if (grepl("/", raw, fixed = TRUE)) return("gemeinsame_wv")
     "waehlergruppen"
   }
 
