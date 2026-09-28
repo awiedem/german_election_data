@@ -382,24 +382,33 @@ for (yr in names(th_dates)) {
       if (!is.na(k_voters[ki]) && k_voters[ki] > sum(result$number_voters[g_idx], na.rm = TRUE))
         postal_alloc_log <- c(postal_alloc_log, paste(yr, result$ags[g_idx][w > 0]))
 
+      ## The source writes "-" for zero, read as NA; NA + share stays NA, so a
+      ## receiving Gemeinde's "-" cell lost its share (TH 2024: 6.9 invalid
+      ## votes). Receivers count "-" as 0; a Gemeinde with no weight keeps its
+      ## NA (the no-data rows below must stay empty).
+      add_share <- function(x, r) {
+        recv <- w > 0
+        x[g_idx[recv]] <- coalesce(x[g_idx[recv]], 0) + r * w[recv]
+        x
+      }
       ## valid_votes
       vv_r <- k_valid[ki] - g_vv
       if (!is.na(vv_r) && vv_r > 0)
-        result$valid_votes[g_idx] <- result$valid_votes[g_idx] + vv_r * w
+        result$valid_votes <- add_share(result$valid_votes, vv_r)
       ## invalid_votes
       iv_r <- k_invalid[ki] - sum(result$invalid_votes[g_idx], na.rm = TRUE)
       if (!is.na(iv_r) && iv_r > 0)
-        result$invalid_votes[g_idx] <- result$invalid_votes[g_idx] + iv_r * w
+        result$invalid_votes <- add_share(result$invalid_votes, iv_r)
       ## number_voters
       nv_r <- k_voters[ki] - sum(result$number_voters[g_idx], na.rm = TRUE)
       if (!is.na(nv_r) && nv_r > 0)
-        result$number_voters[g_idx] <- result$number_voters[g_idx] + nv_r * w
+        result$number_voters <- add_share(result$number_voters, nv_r)
       ## party counts
       for (std_name in names(k_party)) {
         col_n <- paste0(std_name, "_n")
         p_r <- k_party[[std_name]][ki] - sum(result[[col_n]][g_idx], na.rm = TRUE)
         if (!is.na(p_r) && p_r > 0)
-          result[[col_n]][g_idx] <- result[[col_n]][g_idx] + p_r * w
+          result[[col_n]] <- add_share(result[[col_n]], p_r)
       }
       ## other_n
       k_mapped <- 0
@@ -407,7 +416,7 @@ for (yr in names(th_dates)) {
       k_other <- max(k_valid[ki] - k_mapped, 0)
       o_r <- k_other - sum(result$other_n[g_idx], na.rm = TRUE)
       if (!is.na(o_r) && o_r > 0)
-        result$other_n[g_idx] <- result$other_n[g_idx] + o_r * w
+        result$other_n <- add_share(result$other_n, o_r)
     }
   }
 

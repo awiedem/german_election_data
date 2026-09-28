@@ -111,6 +111,14 @@ Prompted by an external report of 29 rows with turnout > 1 in `state_harm_25`
    votes from any of these mechanisms: 18,301 rows of `state_unharm`. A pool that
    moves nothing (Niedersachsen 1998/2003, where the Samtgemeinde row equals its
    members' sum) flags nobody.
+5. **Thüringen's residual lost shares in "-" cells.** The source writes "-" for
+   zero, read as NA, and `NA + share` stays NA, so every share that fell on such a
+   cell was dropped: invalid votes came out 2–7 short per election, and in 2019
+   fifteen parties up to 46 votes short (BGE −46, ÖDP −37, AfD −0.6). Receivers now
+   count "-" as 0 (`add_share()`); Gemeinden with no weight keep their NA. All
+   seven TH elections now equal the Wahlkreis data exactly in voters, valid and
+   invalid votes and every party (TH 2019 `graue` is `graue_panther` there);
+   the cross-check's comparisons off by > 0.5 % fall from 62 to 61.
 
 **Result.** Rows with turnout > 1 in `state_harm_25`: 29 → 10, none in Sachsen or
 Thüringen from 2014 on. The rest: Sachsen 1994 (3), Thüringen 1994–2009 (4, no
