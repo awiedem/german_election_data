@@ -823,11 +823,12 @@ their votes under the surviving code.
 
 **Gemeinden counted inside a neighbour (2024).** From 2024 the source merges the
 ballot districts of very small Gemeinden into a neighbour's (§ 61 EuWO). These
-132 Gemeinden (Schleswig-Holstein 32, Rheinland-Pfalz 92, Thüringen 8) have no
+133 Gemeinden (Schleswig-Holstein 32, Rheinland-Pfalz 93, Thüringen 8) have no
 result of their own: they are rows with `NA` counts and shares, and they and
-their 101 receivers carry `flag_pooled = 1`. Earlier releases dropped them. One
-further Gemeinde, Dierfeld (Rheinland-Pfalz, 9 inhabitants), has an electorate
-of zero in the 2024 source and has no 2024 row.
+their 102 receivers carry `flag_pooled = 1`. Earlier releases dropped them. For
+Dierfeld (Rheinland-Pfalz) the source shows only an all-zero row and names no
+receiver; the federal Leitbands of 2021 and 2025 count it in Manderscheid, which
+is therefore its receiver here too.
 
 Each state's eligible voters, voters, valid and invalid votes add up exactly to
 the ballot-district source file, and party shares sum to exactly 1 in every row that has a result. Allocated voter counts are whole numbers. Allocated party votes are the

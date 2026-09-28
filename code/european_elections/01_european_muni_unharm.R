@@ -330,6 +330,18 @@ ew_pooled_municipalities <- function(path) {
             all(mapply(function(r, d) grepl(paste0("einschl\\. (Gemeinde )?", d), g$name[g$ags == r]),
                        unlisted$receiver_ags, unlisted$donor_name)))
   pairs <- rbind(pairs, unlisted[, .(donor_ags, receiver_ags)])
+  # Dierfeld has a Leitband row of its own, but its result is all zeros and
+  # neither it nor a neighbour says where its electorate (8 in 2019) went. The
+  # federal Leitbands of 2021 and 2025 both read "Manderscheid, Stadt (einschl.
+  # Dierfeld)". Pinned on the two unannotated names, so a re-issued file that
+  # annotates either row fails here instead of adding the pair twice.
+  silent <- data.table(
+    donor_ags     = "07231021", donor_name    = "Dierfeld",
+    receiver_ags  = "07231080", receiver_name = "Manderscheid, Stadt"
+  )
+  stopifnot(identical(g$name[g$ags == silent$donor_ags], silent$donor_name),
+            identical(g$name[g$ags == silent$receiver_ags], silent$receiver_name))
+  pairs <- rbind(pairs, silent[, .(donor_ags, receiver_ags)])
   stopifnot(!anyDuplicated(pairs$donor_ags), !any(pairs$donor_ags %in% pairs$receiver_ags))
   pairs
 }
