@@ -8535,11 +8535,39 @@ sachsen_anhalt_2019_kommunalwahlen_data_sub$Turnout <- sachsen_anhalt_2019_kommu
 
 ###### Sachsen-Anhalt 2024 Kommunalwahlen ----
 #### Load election data ----
+# NOT raw/sachsen_anhalt/sachsen-anhalt_2024.csv: despite its name that file
+# holds the KREISTAG (and kreisfreie Stadtrat) results summed to Gemeinden --
+# its own Datensatzbeschreibung is titled "Stadtratswahlen in den kreisfreien
+# Städten und Kreistagswahlen in den Landkreisen am 9. Juni 2024", and 217 of
+# its 218 rows equal the Kreistag Wahlbezirk file summed per Gemeinde. It was
+# published as municipal_* until 2026-09 (AfD "on the ballot" in 218/218
+# councils, 30.1 %). The Gemeinderat file ships in the StaLA zip below: AfD
+# lists in 128 councils, and it carries seats.
+sa_2024_zip <- "raw/Gemeinderatswahlen-20251010T211103Z-1-001.zip"
+sa_2024_member <- "Gemeinderatswahlen/Sachsen-Anhalt/Sachsen-Anhalt_2024_Gemeinderat.csv"
 sachsen_anhalt_2024_kommunalwahlen_data <- as.data.table(read_delim(
-  "raw/sachsen_anhalt/sachsen-anhalt_2024.csv",
+  unz(sa_2024_zip, sa_2024_member),
   delim = ";",
-  locale = locale(encoding = "ISO-8859-1")
+  locale = locale(encoding = "ISO-8859-1"),
+  col_types = cols(.default = col_character())
 ))
+stopifnot(
+  nrow(sachsen_anhalt_2024_kommunalwahlen_data) == 218,
+  all(sachsen_anhalt_2024_kommunalwahlen_data$Satzart == "GEM"),
+  !anyDuplicated(sachsen_anhalt_2024_kommunalwahlen_data$Schlüsselnummer),
+  "S01 - CDU" %in% names(sachsen_anhalt_2024_kommunalwahlen_data)
+)
+
+# The seven Gemeinden of VG Vorharz voted on 15.09.2024, the rest on
+# 09.06.2024 (footnote of the Datensatzbeschreibung). The per-state date table
+# holds one date per state-year, so keep the source's own date per Gemeinde and
+# apply it after the date join below.
+sa_2024_dates <- sachsen_anhalt_2024_kommunalwahlen_data[, .(
+  AGS_8dig = Schlüsselnummer,
+  sa_2024_date = as.Date(Datum, format = "%d.%m.%Y")
+)]
+stopifnot(!anyNA(sa_2024_dates$sa_2024_date),
+          sum(sa_2024_dates$sa_2024_date == as.Date("2024-09-15")) == 7)
 
 
 #### Recoding ----
@@ -8558,11 +8586,11 @@ sachsen_anhalt_2024_kommunalwahlen_data_sub[, IDBA := ""]
 # Renaming existing variables ----
 sachsen_anhalt_2024_kommunalwahlen_data_sub$AGS_8dig <- sachsen_anhalt_2024_kommunalwahlen_data_sub$Schlüsselnummer
 sachsen_anhalt_2024_kommunalwahlen_data_sub$Gebietsname <- sachsen_anhalt_2024_kommunalwahlen_data_sub$Name
-sachsen_anhalt_2024_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- sachsen_anhalt_2024_kommunalwahlen_data_sub$`A - Wahlberechtigte`
-sachsen_anhalt_2024_kommunalwahlen_data_sub$Wähler <- sachsen_anhalt_2024_kommunalwahlen_data_sub$`B - Wähler`
+sachsen_anhalt_2024_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`A - Wahlberechtigte`)
+sachsen_anhalt_2024_kommunalwahlen_data_sub$Wähler <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`B - Wähler`)
 # Use D - Gültige Stimmen (total valid votes), NOT C2 - Gültige Stimmzettel (ballot papers)
 # ST uses Kumulieren & Panaschieren: each voter has 3 votes, so total votes ≈ 3× ballots
-sachsen_anhalt_2024_kommunalwahlen_data_sub$GültigeStimmen <- sachsen_anhalt_2024_kommunalwahlen_data_sub$`D - Gültige Stimmen`
+sachsen_anhalt_2024_kommunalwahlen_data_sub$GültigeStimmen <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`D - Gültige Stimmen`)
 
 sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_CDU <- as.numeric(
   sachsen_anhalt_2024_kommunalwahlen_data_sub$`D01 - CDU`
@@ -8570,13 +8598,13 @@ sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_CDU <- as.numeric(
 sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_SPD <- as.numeric(
   sachsen_anhalt_2024_kommunalwahlen_data_sub$`D04 - SPD`
 )
-sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_DIELINKE <- sachsen_anhalt_2024_kommunalwahlen_data_sub$`D03 - DIE LINKE`
-sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_GRÜNE <- sachsen_anhalt_2024_kommunalwahlen_data_sub$`D06 - GRÜNE`
-sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_AfD <- sachsen_anhalt_2024_kommunalwahlen_data_sub$`D02 - AfD`
+sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`D03 - DIE LINKE`)
+sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_GRÜNE <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`D06 - GRÜNE`)
+sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_AfD <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`D02 - AfD`)
 sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_PIRATEN <- NA
-sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_FDP <- sachsen_anhalt_2024_kommunalwahlen_data_sub$`D05 - FDP`
-sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_DiePARTEI <- sachsen_anhalt_2024_kommunalwahlen_data_sub$`D11 - Die PARTEI`
-sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- sachsen_anhalt_2024_kommunalwahlen_data_sub$`D07 - FREIE WÄHLER`
+sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_FDP <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`D05 - FDP`)
+sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_DiePARTEI <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`D11 - Die PARTEI`)
+sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`D07 - FREIE WÄHLER`)
 
 sachsen_anhalt_2024_kommunalwahlen_data_sub$gew_CDU <- NA
 sachsen_anhalt_2024_kommunalwahlen_data_sub$gew_SPD <- NA
@@ -8588,15 +8616,15 @@ sachsen_anhalt_2024_kommunalwahlen_data_sub$gew_FDP <- NA
 sachsen_anhalt_2024_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
 sachsen_anhalt_2024_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
 
-sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_CDU <- NA
-sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_SPD <- NA
-sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_DIELINKE <- NA
-sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_GRÜNE <- NA
-sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_AfD <- NA
+sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_CDU <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`S01 - CDU`)
+sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_SPD <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`S04 - SPD`)
+sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_DIELINKE <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`S03 - DIE LINKE`)
+sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_GRÜNE <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`S06 - GRÜNE`)
+sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_AfD <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`S02 - AfD`)
 sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
-sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_FDP <- NA
-sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
-sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
+sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_FDP <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`S05 - FDP`)
+sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_DiePARTEI <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`S11 - Die PARTEI`)
+sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`S07 - FREIE WÄHLER`)
 
 # Creating new dataframe with selected vars ----
 sachsen_anhalt_2024_kommunalwahlen_data_sub <- sachsen_anhalt_2024_kommunalwahlen_data_sub[, .(
@@ -20008,6 +20036,22 @@ if (election_dates |> filter(is.na(election_date)) |> nrow() > 0) {
 kommunalwahlen_merge <- kommunalwahlen_merge |>
   left_join(election_dates, by = c("state", "election_year")) |>
   relocate(election_date, .after = election_year)
+
+# Sachsen-Anhalt 2024: the source dates every Gemeinde itself (VG Vorharz voted
+# on 15.09.2024, not with the rest on 09.06.2024), so it overrides the
+# one-date-per-state-year table.
+sa_2024_dates_join <- sa_2024_dates |>
+  transmute(
+    ags = AGS_8dig, state = "Sachsen-Anhalt", election_year = "2024",
+    sa_2024_date = as.POSIXct(sa_2024_date, tz = "UTC")
+  )
+kommunalwahlen_merge <- kommunalwahlen_merge |>
+  left_join(sa_2024_dates_join, by = c("ags", "state", "election_year")) |>
+  mutate(election_date = if_else(!is.na(sa_2024_date), sa_2024_date, election_date)) |>
+  select(-sa_2024_date)
+stopifnot(sum(kommunalwahlen_merge$state == "Sachsen-Anhalt" &
+              kommunalwahlen_merge$election_year == "2024" &
+              format(kommunalwahlen_merge$election_date, "%Y-%m-%d") == "2024-09-15") == 7)
 
 
 # Reduce to prop_ only ----------------------------------------------------
