@@ -1599,6 +1599,87 @@ parse_sn_legacy <- function(filepath, year) {
   as_tibble(df)
 }
 
+#' Name each GE_TG party column by the WK-sheet column it reproduces.
+#'
+#' The 2024 GE_TG sheet ships with five party headers attached to the wrong
+#' data: its "CDU" column holds the AfD vote, "AfD" holds CDU, "GRÜNE" holds
+#' SPD, "SPD" holds FDP and "FDP" holds GRÜNE. The WK and SN_LK sheets of the
+#' same workbook are labelled correctly (their statewide sums give AfD 31.0 %,
+#' CDU 26.9 %). Read by header, `county_elec_*` published Saxony 2024 with AfD
+#' and CDU reversed and an AfD share correlating -0.19 with the Landtagswahl
+#' three months later (0.83 after this fix). 2019 is labelled correctly.
+#'
+#' So a column's identity is never taken from the GE_TG header: summed per
+#' Wahlkreis, each GE_TG party column must equal exactly one WK-sheet party
+#' column in every Wahlkreis, and that column's header is the party name.
+#' Stops if any column matches none, or cannot be told apart from another.
+#' @return character vector of WK-sheet headers, parallel to `party_positions`
+sn_resolve_party_columns <- function(filepath, raw, headers, party_positions) {
+  suppressMessages(
+    wk <- read_excel(filepath, sheet = "WK", col_names = FALSE, col_types = "text")
+  )
+  wk_headers <- as.character(unlist(wk[1, ]))
+  wk <- wk[-1, ]
+  to_num <- function(v) {
+    v <- as.character(v)
+    v[v %in% c("x", "-", "")] <- NA_character_
+    x <- suppressWarnings(as.numeric(v))
+    x[is.na(x)] <- 0
+    x
+  }
+
+  wk_id_col <- which(wk_headers == "WK-Nr")[1]
+  wk_gs_col <- which(grepl("^g.ltige Stimmen$", wk_headers))[1]
+  stopifnot(!is.na(wk_id_col), !is.na(wk_gs_col))
+  wk_party_cols <- c()
+  for (i in (wk_gs_col + 1):length(wk_headers)) {
+    h <- trimws(wk_headers[i])
+    if (is.na(h) || nchar(h) == 0 || grepl("in %$|Wahlbeteiligung", h)) break
+    wk_party_cols <- c(wk_party_cols, i)
+  }
+  wk_ids <- as.character(wk[[wk_id_col]])
+
+  ge <- raw[-1, ]
+  ge_ort <- as.character(ge[[which(headers == "Ortnummer")[1]]])
+  ge <- ge[!is.na(ge_ort) & grepl("^\\d{8,9}$", ge_ort), ]  # GE + TG part rows
+  ge_wk <- as.character(ge[[which(headers == "WK-Nr")[1]]])
+  stopifnot(setequal(unique(ge_wk), wk_ids), !anyDuplicated(wk_ids))
+  per_wk <- function(col) {
+    s <- tapply(to_num(ge[[col]]), ge_wk, sum)
+    as.numeric(s[wk_ids])
+  }
+
+  # Same valid-vote total in every Wahlkreis, or the sheets do not describe the
+  # same election and nothing below can be trusted.
+  gs_col <- which(grepl("^g.ltige Stimmen$", headers))[1]
+  stopifnot(all(abs(per_wk(gs_col) - to_num(wk[[wk_gs_col]])) < 0.5))
+
+  resolved <- vapply(party_positions, function(pos) {
+    s <- per_wk(pos)
+    hits <- wk_party_cols[vapply(wk_party_cols, function(c) {
+      all(abs(s - to_num(wk[[c]])) < 0.5)
+    }, logical(1))]
+    if (length(hits) != 1) {
+      stop("SN ", basename(filepath), ": GE_TG column '", headers[pos],
+           "' matches ", length(hits), " WK-sheet columns (",
+           paste(wk_headers[hits], collapse = ", "), ")")
+    }
+    trimws(wk_headers[hits])
+  }, character(1))
+  if (anyDuplicated(resolved)) {
+    stop("SN ", basename(filepath), ": two GE_TG columns resolve to one party: ",
+         paste(resolved[duplicated(resolved)], collapse = ", "))
+  }
+
+  relabelled <- trimws(headers[party_positions]) != resolved
+  if (any(relabelled)) {
+    cat("    GE_TG party headers corrected from the WK sheet:\n")
+    cat(paste0("      '", trimws(headers[party_positions])[relabelled],
+               "' -> '", resolved[relabelled], "'\n"), sep = "")
+  }
+  resolved
+}
+
 #' Parse SN modern XLSX files (2019, 2024)
 #' GE_TG sheet with row 1 = headers, row 2+ = data
 #' Col 9 = Ortnummer (AGS), Col 10 = Ortname
@@ -1633,7 +1714,6 @@ parse_sn_modern <- function(filepath, year) {
 
   # Party columns: after gültige Stimmen up to first NA column
   party_positions <- c()
-  party_names <- c()
   for (i in (gueltig_st_col + 1):ncol(raw)) {
     name <- headers[i]
     if (is.na(name)) break  # NA separator = end of vote count cols
@@ -1641,13 +1721,19 @@ parse_sn_modern <- function(filepath, year) {
     if (nchar(clean_name) == 0) break
     # Skip percentage columns
     if (grepl("in %$", clean_name)) break
+    party_positions <- c(party_positions, i)
+  }
 
+  # The party a column holds comes from the WK sheet, not from this header row
+  # (the 2024 GE_TG headers are wrong -- see sn_resolve_party_columns()).
+  party_labels <- sn_resolve_party_columns(filepath, raw, headers, party_positions)
+  party_names <- c()
+  for (clean_name in party_labels) {
     if (grepl("hlervereinigungen", clean_name, ignore.case = TRUE)) {
       party_names <- c(party_names, "waehlervereinigungen")
     } else {
       party_names <- c(party_names, normalise_party_cty(clean_name))
     }
-    party_positions <- c(party_positions, i)
   }
 
   # Build column map

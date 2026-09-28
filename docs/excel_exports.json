@@ -607,11 +607,11 @@
       "total_vote_share",
       "perc_total_votes_incogruence"
     ],
-    "source_sha256": "2f7eaafc1939c622bc40c4b5a7f49b654e8f0b42db6399f5932eeec3def872f0",
-    "rds_sha256": "a1f48cefe74672019507b2ada7b988bd103a9dadb9dd20ae3bc20d5ac37e7576",
+    "source_sha256": "a267ea868e706d96e5b30407e205c09105f33500ce971fb708cc8a414d64da15",
+    "rds_sha256": "259ea200ab1cbd0d2f18d0eac3e5a97d4e0de0f0908bb0d1dde20549bf139236",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "3ef97c7136cba81ab00653844a8adabb5ba9c4ab0b30fcef24726008152f266f",
-    "bytes": 575782,
+    "xlsx_sha256": "f1e9741672bae40d0d52034e56ea0ac346b8894b9267b918082b55024e59505d",
+    "bytes": 575794,
     "source": "data/county_elections/final/county_elec_harm_21_cty.csv"
   },
   "data/county_elections/final/county_elec_harm_21_muni": {
@@ -1210,11 +1210,11 @@
       "total_vote_share",
       "perc_total_votes_incogruence"
     ],
-    "source_sha256": "92809b2c06e0a893ab29f489974fc1a6bd335c1b0c32cf328297b735c014960e",
-    "rds_sha256": "b3cb2548684be4a34597dc5371ff218578aeed9d30b83c885c62f693cd7b9ba8",
+    "source_sha256": "1de402281ac909fb02778e7c7f99df2d865b570f53659d4539a2c5ac40c9526b",
+    "rds_sha256": "f6098c810437f8f9fac38bc18ecfafd58c8b9b3102ea75fd4f74dbf637ef4cde",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "e9fb0702a6fff251db75ec76f4ac8e0a392421df089ad76ced07d867e8bae0d2",
-    "bytes": 11008974,
+    "xlsx_sha256": "3f7f89fd42b4bc566c72092d291935710294576557bb4d64f73c2f06a98073b4",
+    "bytes": 11008941,
     "source": "data/county_elections/final/county_elec_harm_21_muni.csv"
   },
   "data/county_elections/final/county_elec_unharm": {
@@ -1808,11 +1808,11 @@
       "waehlergruppen",
       "einzelbewerber"
     ],
-    "source_sha256": "1c16ec23402abdc46cc7e5bd5e2d0bddc37fefa818b108b80b66f5fc65feb652",
-    "rds_sha256": "219ead80ea6676f9ac47921dbdaea1165d1da487a9765601dcc51b8fffd6ef51",
+    "source_sha256": "8cf6a8852913214d245fbc4be26ecd7fdb1d57493dda315a6989cd6a65079128",
+    "rds_sha256": "9610f8700890cb1dc6cbf3e38bdd4f262d3c433485992391ec69803510c2213b",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "68b9b34b300d420cccbabfd241b8abf21720d66fd4e02562f0be860f675f0b3c",
-    "bytes": 11716968,
+    "xlsx_sha256": "86627c728c85a70bda3ed5ea7e9ecec8bb698a26d22afa7eb088cf567c1e2ce9",
+    "bytes": 11716963,
     "source": "data/county_elections/final/county_elec_unharm.csv"
   },
   "data/covars_county/final/cty_area_pop_emp": {
