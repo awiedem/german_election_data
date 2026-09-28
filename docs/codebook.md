@@ -554,9 +554,9 @@ of which missing elections are recoverable and which are not is
 
 Kommunalwahlen — municipal council (Gemeinderat / Stadtrat) elections.
 
-**Files:** `municipal_unharm` (96,275 x 42, 1969–2026), `municipal_harm`
-(73,538 x 50, 1990–2026, 2021 boundaries), `municipal_harm_25` (73,273 x
-49, 2025 boundaries) in `data/municipal_elections/final/`.
+**Files:** `municipal_unharm` (92,765 x 51, 1969–2026), `municipal_harm`
+(68,052 x 56, 1990–2026, 2021 boundaries), `municipal_harm_25` (79,284 x
+56, 2025 boundaries) in `data/municipal_elections/final/`.
 
 The Bayern series (1990–2026, six-year cycle) includes the 8 March 2026
 Gemeinde- and Stadtratswahlen from GENESIS-Online Bayern (statistic
@@ -591,7 +591,7 @@ includes seats. The seven Gemeinden of VG Vorharz voted on 15 September 2024
 and carry that date.
 
 Unlike the other pipelines, municipal elections carry a fixed set of ten
-major parties rather than every party that ever ran. Vote shares are
+major parties, plus three far-right parties, rather than every party that ever ran. Vote shares are
 proportions of `valid_votes`. Municipal elections are not synchronized
 nationally — each state sets its own schedule.
 
@@ -603,12 +603,15 @@ Shared blocks apply: identifiers, turnout, harmonization.
 | `flag_mixed_election_date` | integer | Harmonized files: 1 where the predecessors of a target municipality voted on different dates within the year (e.g. one held a by-election), so `election_date` describes only the largest of them; 0 otherwise. |
 | `cdu_csu`, `spd`, `linke_pds`, `gruene`, `afd`, `piraten`, `fdp`, `die_partei`, `freie_wahler`, `bsw` | numeric | Vote share for each of the ten major parties, as a proportion of `valid_votes`. |
 | `other` | numeric | Combined share of all remaining lists — local voter groups, joint nominations, independents, minor parties. In many small municipalities this is the largest column. |
-| `seats_*` | numeric | Council seats won, ten columns matching the party columns. Not harmonized; in the harmonized files filled only for the pass-through years — see below. |
-| `replaced_0_with_na_*` | numeric | Ten flags (1/0) recording zero-to-`NA` recoding — see below. |
+| `npd_heimat`, `freie_sachsen`, `iii_weg` | numeric | Vote shares of NPD / Die Heimat (one party, renamed in 2023, one column), Freie Sachsen and Der III. Weg, as proportions of `valid_votes`, wherever the source reports the party as a list of its own; elsewhere their votes are part of `other`. See below. |
+| `seats_*` | numeric | Council seats won, thirteen columns matching the party columns. Not harmonized; in the harmonized files filled only for the pass-through years — see below. |
+| `replaced_0_with_na_*` | numeric | Thirteen flags (1/0) recording zero-to-`NA` recoding — see below. |
+
+**Far-right parties (`npd_heimat`, `freie_sachsen`, `iii_weg`).** Added in September 2026, taken out of `other` wherever the source reports the party as a list of its own; where it does not, their votes stay in `other`, so `NA` in these columns can also mean that the source does not name the party. NPD / Die Heimat has results in every state in at least one election (with seats in 183 rows of `municipal_unharm`); Freie Sachsen only in Sachsen 2024 (32 Gemeinden, no seats because the Saxon source has none); Der III. Weg in Brandenburg 2024, Nordrhein-Westfalen 2025 and Rheinland-Pfalz 2019. Two source gaps: the Sachsen-Anhalt Gemeinderat file for 1994–2019 has no NPD column (2024 has one), and the Saxon files never name Der III. Weg.
 
 ## Zero votes versus no list (`replaced_0_with_na_*`)
 
-Where a source reports exactly 0 votes for one of the ten party columns,
+Where a source reports exactly 0 votes for one of the thirteen party columns,
 `01_municipal_unharm.R` recodes both the vote count and the vote share
 from 0 to `NA` and sets the matching `replaced_0_with_na_<party>` flag
 to 1.
@@ -618,7 +621,7 @@ municipality, not that it ran and won no votes. A list on the ballot
 virtually always attracts at least a few votes; the affected
 municipalities are overwhelmingly small (median ~950 valid votes,
 concentrated in Rheinland-Pfalz and Baden-Württemberg); and of the
-~105,000 flagged cells in `municipal_unharm` only two record a council
+~110,000 flagged cells in `municipal_unharm` only three record a council
 seat for the flagged party. Leaving the 0 in place would bias averages
 and time trends downward.
 
@@ -672,7 +675,7 @@ Schleswig-Holstein 2018, Bremen 1991–2023, Hamburg 2025 and Bayern 2026
 (from GENESIS table 14431-005r; earlier Bayern years pending). No seat
 data for Berlin or Sachsen.
 
-**Party seats do not sum to council size.** Only the ten major parties
+**Party seats do not sum to council size.** Only the thirteen named parties
 have seat columns, while local voter groups, joint nominations and
 independents hold a substantial share of German local seats. The row sum
 is a lower bound on council size, not the total.

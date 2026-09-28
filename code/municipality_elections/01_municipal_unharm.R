@@ -39,6 +39,39 @@ setwd(here::here("data/municipal_elections"))
 
 options(scipen = 999)
 
+# Far-right parties besides the AfD (NPD, renamed "Die Heimat"/HEIMAT in 2023 --
+# one party, one column; FREIE SACHSEN; Der III. Weg) are broken out as
+# abs_/gew_/sitze_NPD_HEIMAT, _FREIE_SACHSEN and _III_WEG wherever a source
+# names the party. Year blocks without them get NA via fill = TRUE in the
+# per-state merges.
+#
+# Some prepared "summary" sheets kept a minor party's column but lost its
+# header (it reads as "...N"). src_label_col() finds the column in the source
+# sheet the summary was cut from, by that sheet's own header; same_cols() then
+# proves the position: every row of the prepared sheet must reappear in the
+# source with identical values in the given columns (source columns shifted
+# by `offset` where the summary inserted or dropped a column).
+src_label_col <- function(src, label, rows = 1:12, first = FALSE) {
+  rows <- rows[rows <= nrow(src)]
+  hit <- which(vapply(seq_along(src), function(j) {
+    any(trimws(as.character(src[[j]][rows])) == label, na.rm = TRUE)
+  }, logical(1)))
+  if (first && length(hit) > 1) hit <- hit[1]
+  if (length(hit) != 1) stop("header '", label, "' found in ", length(hit), " columns")
+  hit
+}
+same_cols <- function(prepared, src, pos, offset = 0L) {
+  key <- function(d, j) {
+    do.call(paste, c(lapply(j, function(k) {
+      x <- suppressWarnings(as.numeric(as.character(d[[k]])))
+      # element-wise (format() would give the whole column one digit count);
+      # 0 and empty count as equal, as sources print "-" for zero
+      ifelse(is.na(x) | x == 0, "0", as.character(round(x, 6)))
+    }), sep = "|"))
+  }
+  all(key(prepared, pos) %in% key(src, pos + offset))
+}
+
 
 ########## DATA PROCESSING ----
 ######### BAYERN ----
@@ -329,6 +362,10 @@ bayern_1990_kreiswahlen_data_sub$sitze_FDP <- NA
 bayern_1990_kreiswahlen_data_sub$sitze_FREIEWÄHLER <- NA
 bayern_1990_kreiswahlen_data_sub$sitze_Gemeinsame_Wahlvorschläge <- NA
 bayern_1990_kreiswahlen_data_sub$sitze_Wählergruppen <- NA
+# NPD has its own column in the kreisfreie-Städte file (not in the Gemeinde file)
+bayern_1990_kreiswahlen_data_sub$abs_NPD_HEIMAT <- bayern_1990_kreiswahlen_data_sub$`Nationaldemokratische Partei Deutschlands (NPD)`
+bayern_1990_kreiswahlen_data_sub$gew_NPD_HEIMAT <- NA
+bayern_1990_kreiswahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 bayern_1990_kreiswahlen_data_sub <- bayern_1990_kreiswahlen_data_sub[, .(
@@ -371,7 +408,10 @@ bayern_1990_kreiswahlen_data_sub <- bayern_1990_kreiswahlen_data_sub[, .(
   sitze_FDP,
   sitze_FREIEWÄHLER,
   sitze_Gemeinsame_Wahlvorschläge,
-  sitze_Wählergruppen
+  sitze_Wählergruppen,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -1093,7 +1133,10 @@ by26_party_map <- c(CSU = "CDU", SPD = "SPD", DIELINKE = "DIELINKE",
                     GRUENE = "GRÜNE", AFD = "AfD", PIRATEN = "PIRATEN",
                     FDP = "FDP", FREIEWAEHLER = "FREIEWÄHLER",
                     GEMWAHLVOR = "Gemeinsame_Wahlvorschläge",
-                    WAEHLERGRUPPEN = "Wählergruppen")
+                    WAEHLERGRUPPEN = "Wählergruppen",
+                    # code NPD, label "Die Heimat (HEIMAT)"; "-" in every
+                    # Gemeinde in 2026, so it is flagged 0 -> NA throughout
+                    NPD = "NPD_HEIMAT")
 
 by26_wide <- function(long, prefix) {
   # the Insgesamt rows carry an EMPTY PARTG2 code (label "Insgesamt" only)
@@ -1172,17 +1215,20 @@ bayern_2026_kommunalwahlen_data_sub$Turnout <- as.numeric(
 ) /
   as.numeric(bayern_2026_kommunalwahlen_data_sub$Wahlberechtigteinsgesamt)
 
-# align column order with the other Bayern year blocks for rbind
+# align column order with the other Bayern year blocks for rbind (plus the
+# NPD/HEIMAT columns, which the 1996-2020 files do not carry)
 bayern_2026_kommunalwahlen_data_sub <- as.data.table(
   bayern_2026_kommunalwahlen_data_sub
-)[, names(bayern_2020_kommunalwahlen_data_sub), with = FALSE]
+)[, c(names(bayern_2020_kommunalwahlen_data_sub),
+      "abs_NPD_HEIMAT", "gew_NPD_HEIMAT", "sitze_NPD_HEIMAT", "prop_NPD_HEIMAT"),
+  with = FALSE]
 
 cat("Bayern 2026:", nrow(bayern_2026_kommunalwahlen_data_sub),
     "Gemeinden (incl. kreisfreie Städte) from GENESIS 14431\n")
 
 ####### Merge files and save overall output for Bayern ----
-# Merge
-bayern_kommunalwahlen <- rbind(
+# Merge (fill = TRUE: only 1990 kreisfreie Städte and 2026 carry NPD_HEIMAT)
+bayern_kommunalwahlen <- rbindlist(list(
   bayern_1990_kommunalwahlen_data_sub,
   bayern_1990_kreiswahlen_data_sub,
   bayern_1996_kommunalwahlen_data_sub,
@@ -1191,7 +1237,7 @@ bayern_kommunalwahlen <- rbind(
   bayern_2014_kommunalwahlen_data_sub,
   bayern_2020_kommunalwahlen_data_sub,
   bayern_2026_kommunalwahlen_data_sub
-)
+), use.names = TRUE, fill = TRUE)
 
 # Replace INF at Turnout
 bayern_kommunalwahlen[bayern_kommunalwahlen == "-"] <- NA
@@ -1368,6 +1414,10 @@ thueringen_1994_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
 thueringen_1994_kommunalwahlen_data_sub$sitze_FDP <- thueringen_1994_kommunalwahlen_data_sub$FDP_sitze
 thueringen_1994_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_1994_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
 thueringen_1994_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_1994_kommunalwahlen_data_sub$Waehlergruppen_sitze
+# NPD: own column in both the votes and the seats file (empty until 2004)
+thueringen_1994_kommunalwahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(thueringen_1994_kommunalwahlen_data_sub$NPD)
+thueringen_1994_kommunalwahlen_data_sub$gew_NPD_HEIMAT <- NA
+thueringen_1994_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- thueringen_1994_kommunalwahlen_data_sub$NPD_sitze
 
 # Creating new dataframe with selected vars ----
 thueringen_1994_kommunalwahlen_data_sub <- thueringen_1994_kommunalwahlen_data_sub[, .(
@@ -1410,7 +1460,10 @@ thueringen_1994_kommunalwahlen_data_sub <- thueringen_1994_kommunalwahlen_data_s
   sitze_DiePARTEI,
   sitze_FDP,
   sitze_FREIEWÄHLER,
-  sitze_Wählergruppen
+  sitze_Wählergruppen,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 thueringen_1994_kommunalwahlen_data_sub[
@@ -1586,6 +1639,9 @@ thueringen_1999_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
 thueringen_1999_kommunalwahlen_data_sub$sitze_FDP <- thueringen_1999_kommunalwahlen_data_sub$FDP_sitze
 thueringen_1999_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_1999_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
 thueringen_1999_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_1999_kommunalwahlen_data_sub$Waehlergruppen_sitze
+thueringen_1999_kommunalwahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(thueringen_1999_kommunalwahlen_data_sub$NPD)
+thueringen_1999_kommunalwahlen_data_sub$gew_NPD_HEIMAT <- NA
+thueringen_1999_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- thueringen_1999_kommunalwahlen_data_sub$NPD_sitze
 
 
 # Creating new dataframe with selected vars ----
@@ -1629,7 +1685,10 @@ thueringen_1999_kommunalwahlen_data_sub <- thueringen_1999_kommunalwahlen_data_s
   sitze_DiePARTEI,
   sitze_FDP,
   sitze_FREIEWÄHLER,
-  sitze_Wählergruppen
+  sitze_Wählergruppen,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 thueringen_1999_kommunalwahlen_data_sub[
   thueringen_1999_kommunalwahlen_data_sub == "-"
@@ -1806,6 +1865,9 @@ thueringen_2004_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
 thueringen_2004_kommunalwahlen_data_sub$sitze_FDP <- thueringen_2004_kommunalwahlen_data_sub$FDP_sitze
 thueringen_2004_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_2004_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
 thueringen_2004_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_2004_kommunalwahlen_data_sub$Waehlergruppen_sitze
+thueringen_2004_kommunalwahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(thueringen_2004_kommunalwahlen_data_sub$NPD)
+thueringen_2004_kommunalwahlen_data_sub$gew_NPD_HEIMAT <- NA
+thueringen_2004_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- thueringen_2004_kommunalwahlen_data_sub$NPD_sitze
 
 
 # Creating new dataframe with selected vars ----
@@ -1849,7 +1911,10 @@ thueringen_2004_kommunalwahlen_data_sub <- thueringen_2004_kommunalwahlen_data_s
   sitze_DiePARTEI,
   sitze_FDP,
   sitze_FREIEWÄHLER,
-  sitze_Wählergruppen
+  sitze_Wählergruppen,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 thueringen_2004_kommunalwahlen_data_sub[
   thueringen_2004_kommunalwahlen_data_sub == "-"
@@ -2028,6 +2093,9 @@ thueringen_2009_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
 thueringen_2009_kommunalwahlen_data_sub$sitze_FDP <- thueringen_2009_kommunalwahlen_data_sub$FDP_sitze
 thueringen_2009_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_2009_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
 thueringen_2009_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_2009_kommunalwahlen_data_sub$Waehlergruppen_sitze
+thueringen_2009_kommunalwahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(thueringen_2009_kommunalwahlen_data_sub$NPD)
+thueringen_2009_kommunalwahlen_data_sub$gew_NPD_HEIMAT <- NA
+thueringen_2009_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- thueringen_2009_kommunalwahlen_data_sub$NPD_sitze
 
 
 # Creating new dataframe with selected vars ----
@@ -2071,7 +2139,10 @@ thueringen_2009_kommunalwahlen_data_sub <- thueringen_2009_kommunalwahlen_data_s
   sitze_DiePARTEI,
   sitze_FDP,
   sitze_FREIEWÄHLER,
-  sitze_Wählergruppen
+  sitze_Wählergruppen,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 thueringen_2009_kommunalwahlen_data_sub[
@@ -2248,6 +2319,9 @@ thueringen_2014_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
 thueringen_2014_kommunalwahlen_data_sub$sitze_FDP <- thueringen_2014_kommunalwahlen_data_sub$FDP_sitze
 thueringen_2014_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_2014_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
 thueringen_2014_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_2014_kommunalwahlen_data_sub$Waehlergruppen_sitze
+thueringen_2014_kommunalwahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(thueringen_2014_kommunalwahlen_data_sub$NPD)
+thueringen_2014_kommunalwahlen_data_sub$gew_NPD_HEIMAT <- NA
+thueringen_2014_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- thueringen_2014_kommunalwahlen_data_sub$NPD_sitze
 
 
 # Creating new dataframe with selected vars ----
@@ -2291,7 +2365,10 @@ thueringen_2014_kommunalwahlen_data_sub <- thueringen_2014_kommunalwahlen_data_s
   sitze_DiePARTEI,
   sitze_FDP,
   sitze_FREIEWÄHLER,
-  sitze_Wählergruppen
+  sitze_Wählergruppen,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 thueringen_2014_kommunalwahlen_data_sub[
@@ -2468,6 +2545,9 @@ thueringen_2019_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
 thueringen_2019_kommunalwahlen_data_sub$sitze_FDP <- thueringen_2019_kommunalwahlen_data_sub$FDP_sitze
 thueringen_2019_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- thueringen_2019_kommunalwahlen_data_sub$FREIE_WAEHLER_sitze
 thueringen_2019_kommunalwahlen_data_sub$sitze_Wählergruppen <- thueringen_2019_kommunalwahlen_data_sub$Waehlergruppen_sitze
+thueringen_2019_kommunalwahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(thueringen_2019_kommunalwahlen_data_sub$NPD)
+thueringen_2019_kommunalwahlen_data_sub$gew_NPD_HEIMAT <- NA
+thueringen_2019_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- thueringen_2019_kommunalwahlen_data_sub$NPD_sitze
 
 
 # Creating new dataframe with selected vars ----
@@ -2511,7 +2591,10 @@ thueringen_2019_kommunalwahlen_data_sub <- thueringen_2019_kommunalwahlen_data_s
   sitze_DiePARTEI,
   sitze_FDP,
   sitze_FREIEWÄHLER,
-  sitze_Wählergruppen
+  sitze_Wählergruppen,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 thueringen_2019_kommunalwahlen_data_sub[
@@ -2597,7 +2680,9 @@ thueringen_2024_kommunalwahlen_data_sub <- thueringen_2024_kommunalwahlen_data |
           "FDP",
           "Die PARTEI",
           "Freie Wähler",
-          "BSW"
+          "BSW",
+          # Die Heimat (ex-NPD); "WG HEIMAT" etc. are local lists and stay "other"
+          "HEIMAT"
         ) ~
         Wähler,
 
@@ -2672,6 +2757,7 @@ thueringen_2024_kommunalwahlen_data_sub <- thueringen_2024_kommunalwahlen_data_s
     abs_DiePARTEI = `Die PARTEI`,
     abs_FREIEWÄHLER = `Freie Wähler`,
     abs_BSW = BSW,
+    abs_NPD_HEIMAT = HEIMAT,
     abs_Wählergruppen = other,
 
     # seats
@@ -2685,6 +2771,7 @@ thueringen_2024_kommunalwahlen_data_sub <- thueringen_2024_kommunalwahlen_data_s
     sitze_DiePARTEI = `sitze_Die PARTEI`,
     sitze_FREIEWÄHLER = `sitze_Freie Wähler`,
     sitze_BSW = sitze_BSW,
+    sitze_NPD_HEIMAT = sitze_HEIMAT,
     sitze_Wählergruppen = sitze_other
   ) |>
 
@@ -2700,6 +2787,7 @@ thueringen_2024_kommunalwahlen_data_sub$gew_FDP <- NA
 thueringen_2024_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
 thueringen_2024_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
 thueringen_2024_kommunalwahlen_data_sub$gew_BSW <- NA
+thueringen_2024_kommunalwahlen_data_sub$gew_NPD_HEIMAT <- NA
 thueringen_2024_kommunalwahlen_data_sub$gew_Wählergruppen <- NA
 
 
@@ -2749,7 +2837,10 @@ thueringen_2024_kommunalwahlen_data_sub <- thueringen_2024_kommunalwahlen_data_s
   sitze_FDP,
   sitze_FREIEWÄHLER,
   sitze_BSW,
-  sitze_Wählergruppen
+  sitze_Wählergruppen,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -3140,6 +3231,9 @@ hamburg_2004_buergerschaftswahl_data_sub$sitze_PIRATEN <- NA
 hamburg_2004_buergerschaftswahl_data_sub$sitze_FDP <- NA
 hamburg_2004_buergerschaftswahl_data_sub$sitze_DiePARTEI <- NA
 hamburg_2004_buergerschaftswahl_data_sub$sitze_FREIEWÄHLER <- NA
+hamburg_2004_buergerschaftswahl_data_sub$abs_NPD_HEIMAT <- as.numeric(hamburg_2004_buergerschaftswahl_data_sub$NPD)
+hamburg_2004_buergerschaftswahl_data_sub$gew_NPD_HEIMAT <- NA
+hamburg_2004_buergerschaftswahl_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 hamburg_2004_buergerschaftswahl_data_sub <- hamburg_2004_buergerschaftswahl_data_sub[, .(
@@ -3179,7 +3273,10 @@ hamburg_2004_buergerschaftswahl_data_sub <- hamburg_2004_buergerschaftswahl_data
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -3398,6 +3495,9 @@ hamburg_2011_buergerschaftswahl_data_sub$sitze_PIRATEN <- NA
 hamburg_2011_buergerschaftswahl_data_sub$sitze_FDP <- NA
 hamburg_2011_buergerschaftswahl_data_sub$sitze_DiePARTEI <- NA
 hamburg_2011_buergerschaftswahl_data_sub$sitze_FREIEWÄHLER <- NA
+hamburg_2011_buergerschaftswahl_data_sub$abs_NPD_HEIMAT <- as.numeric(hamburg_2011_buergerschaftswahl_data_sub$"NPD-Gesamtstimmen")
+hamburg_2011_buergerschaftswahl_data_sub$gew_NPD_HEIMAT <- NA
+hamburg_2011_buergerschaftswahl_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 hamburg_2011_buergerschaftswahl_data_sub <- hamburg_2011_buergerschaftswahl_data_sub[, .(
@@ -3437,7 +3537,10 @@ hamburg_2011_buergerschaftswahl_data_sub <- hamburg_2011_buergerschaftswahl_data
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -3527,6 +3630,9 @@ hamburg_2015_buergerschaftswahl_data_sub$sitze_PIRATEN <- NA
 hamburg_2015_buergerschaftswahl_data_sub$sitze_FDP <- NA
 hamburg_2015_buergerschaftswahl_data_sub$sitze_DiePARTEI <- NA
 hamburg_2015_buergerschaftswahl_data_sub$sitze_FREIEWÄHLER <- NA
+hamburg_2015_buergerschaftswahl_data_sub$abs_NPD_HEIMAT <- as.numeric(hamburg_2015_buergerschaftswahl_data_sub$"NPD-Gesamtstimmen")
+hamburg_2015_buergerschaftswahl_data_sub$gew_NPD_HEIMAT <- NA
+hamburg_2015_buergerschaftswahl_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 hamburg_2015_buergerschaftswahl_data_sub <- hamburg_2015_buergerschaftswahl_data_sub[, .(
@@ -3566,7 +3672,10 @@ hamburg_2015_buergerschaftswahl_data_sub <- hamburg_2015_buergerschaftswahl_data
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -3745,7 +3854,7 @@ hamburg_2025_buergerschaftswahl_data_sub <- hamburg_2025_buergerschaftswahl_data
     Merkmal = if_else(
       str_detect(
         Merkmal,
-        "Wahlb|Stimm|SPD|CDU|FDP|GRÜNE|Linke|AfD|FREIE|PARTEI|BSW"
+        "Wahlb|Stimm|SPD|CDU|FDP|GRÜNE|Linke|AfD|FREIE|PARTEI|BSW|NPD"
       ),
       Merkmal,
       "other"
@@ -3796,6 +3905,7 @@ hamburg_2025_buergerschaftswahl_data_sub <- hamburg_2025_buergerschaftswahl_data
     abs_DiePARTEI = `votes_total_Die PARTEI`,
     abs_FREIEWÄHLER = `votes_total_FREIE WÄHLER`,
     abs_BSW = votes_total_BSW,
+    abs_NPD_HEIMAT = votes_total_NPD,
     abs_Wählergruppen = votes_total_other,
 
     # seats
@@ -3808,6 +3918,7 @@ hamburg_2025_buergerschaftswahl_data_sub <- hamburg_2025_buergerschaftswahl_data
     sitze_DiePARTEI = `Mandatsverteilung_Die PARTEI`,
     sitze_FREIEWÄHLER = `Mandatsverteilung_FREIE WÄHLER`,
     sitze_BSW = Mandatsverteilung_BSW,
+    sitze_NPD_HEIMAT = Mandatsverteilung_NPD,
     sitze_Wählergruppen = Mandatsverteilung_other
   ) |>
 
@@ -3828,6 +3939,7 @@ hamburg_2025_buergerschaftswahl_data_sub$gew_FDP <- NA
 hamburg_2025_buergerschaftswahl_data_sub$gew_DiePARTEI <- NA
 hamburg_2025_buergerschaftswahl_data_sub$gew_FREIEWÄHLER <- NA
 hamburg_2025_buergerschaftswahl_data_sub$gew_BSW <- NA
+hamburg_2025_buergerschaftswahl_data_sub$gew_NPD_HEIMAT <- NA
 
 
 # Creating new dataframe with selected vars ----
@@ -3871,7 +3983,10 @@ hamburg_2025_buergerschaftswahl_data_sub <- hamburg_2025_buergerschaftswahl_data
   sitze_FDP,
   sitze_DiePARTEI,
   sitze_FREIEWÄHLER,
-  sitze_BSW
+  sitze_BSW,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -4498,6 +4613,9 @@ berlin_1999_kommunalwahlen_data_sub_zweitstimmen$sitze_AfD <- NA
 berlin_1999_kommunalwahlen_data_sub_zweitstimmen$sitze_PIRATEN <- NA
 berlin_1999_kommunalwahlen_data_sub_zweitstimmen$sitze_FDP <- NA
 berlin_1999_kommunalwahlen_data_sub_zweitstimmen$sitze_FREIEWÄHLER <- NA
+berlin_1999_kommunalwahlen_data_sub_zweitstimmen$abs_NPD_HEIMAT <- as.numeric(berlin_1999_kommunalwahlen_data_sub_zweitstimmen$NPD)
+berlin_1999_kommunalwahlen_data_sub_zweitstimmen$gew_NPD_HEIMAT <- NA
+berlin_1999_kommunalwahlen_data_sub_zweitstimmen$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 berlin_1999_kommunalwahlen_data_sub_zweitstimmen <- berlin_1999_kommunalwahlen_data_sub_zweitstimmen[, .(
@@ -4534,7 +4652,10 @@ berlin_1999_kommunalwahlen_data_sub_zweitstimmen <- berlin_1999_kommunalwahlen_d
   sitze_AfD,
   sitze_PIRATEN,
   sitze_FDP,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 
@@ -4756,6 +4877,9 @@ berlin_2001_kommunalwahlen_data_sub_zweitstimmen$sitze_AfD <- NA
 berlin_2001_kommunalwahlen_data_sub_zweitstimmen$sitze_PIRATEN <- NA
 berlin_2001_kommunalwahlen_data_sub_zweitstimmen$sitze_FDP <- NA
 berlin_2001_kommunalwahlen_data_sub_zweitstimmen$sitze_FREIEWÄHLER <- NA
+berlin_2001_kommunalwahlen_data_sub_zweitstimmen$abs_NPD_HEIMAT <- as.numeric(berlin_2001_kommunalwahlen_data_sub_zweitstimmen$NPD)
+berlin_2001_kommunalwahlen_data_sub_zweitstimmen$gew_NPD_HEIMAT <- NA
+berlin_2001_kommunalwahlen_data_sub_zweitstimmen$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 berlin_2001_kommunalwahlen_data_sub_zweitstimmen <- berlin_2001_kommunalwahlen_data_sub_zweitstimmen[, .(
@@ -4792,7 +4916,10 @@ berlin_2001_kommunalwahlen_data_sub_zweitstimmen <- berlin_2001_kommunalwahlen_d
   sitze_AfD,
   sitze_PIRATEN,
   sitze_FDP,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 
@@ -5014,6 +5141,9 @@ berlin_2006_kommunalwahlen_data_sub_zweitstimmen$sitze_AfD <- NA
 berlin_2006_kommunalwahlen_data_sub_zweitstimmen$sitze_PIRATEN <- NA
 berlin_2006_kommunalwahlen_data_sub_zweitstimmen$sitze_FDP <- NA
 berlin_2006_kommunalwahlen_data_sub_zweitstimmen$sitze_FREIEWÄHLER <- NA
+berlin_2006_kommunalwahlen_data_sub_zweitstimmen$abs_NPD_HEIMAT <- as.numeric(berlin_2006_kommunalwahlen_data_sub_zweitstimmen$NPD)
+berlin_2006_kommunalwahlen_data_sub_zweitstimmen$gew_NPD_HEIMAT <- NA
+berlin_2006_kommunalwahlen_data_sub_zweitstimmen$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 berlin_2006_kommunalwahlen_data_sub_zweitstimmen <- berlin_2006_kommunalwahlen_data_sub_zweitstimmen[, .(
@@ -5050,7 +5180,10 @@ berlin_2006_kommunalwahlen_data_sub_zweitstimmen <- berlin_2006_kommunalwahlen_d
   sitze_AfD,
   sitze_PIRATEN,
   sitze_FDP,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 
@@ -5272,6 +5405,9 @@ berlin_2011_kommunalwahlen_data_sub_zweitstimmen$sitze_AfD <- NA
 berlin_2011_kommunalwahlen_data_sub_zweitstimmen$sitze_PIRATEN <- NA
 berlin_2011_kommunalwahlen_data_sub_zweitstimmen$sitze_FDP <- NA
 berlin_2011_kommunalwahlen_data_sub_zweitstimmen$sitze_FREIEWÄHLER <- NA
+berlin_2011_kommunalwahlen_data_sub_zweitstimmen$abs_NPD_HEIMAT <- as.numeric(berlin_2011_kommunalwahlen_data_sub_zweitstimmen$NPD)
+berlin_2011_kommunalwahlen_data_sub_zweitstimmen$gew_NPD_HEIMAT <- NA
+berlin_2011_kommunalwahlen_data_sub_zweitstimmen$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 berlin_2011_kommunalwahlen_data_sub_zweitstimmen <- berlin_2011_kommunalwahlen_data_sub_zweitstimmen[, .(
@@ -5308,7 +5444,10 @@ berlin_2011_kommunalwahlen_data_sub_zweitstimmen <- berlin_2011_kommunalwahlen_d
   sitze_AfD,
   sitze_PIRATEN,
   sitze_FDP,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 
@@ -5530,6 +5669,9 @@ berlin_2016_kommunalwahlen_data_sub_zweitstimmen$sitze_AfD <- NA
 berlin_2016_kommunalwahlen_data_sub_zweitstimmen$sitze_PIRATEN <- NA
 berlin_2016_kommunalwahlen_data_sub_zweitstimmen$sitze_FDP <- NA
 berlin_2016_kommunalwahlen_data_sub_zweitstimmen$sitze_FREIEWÄHLER <- NA
+berlin_2016_kommunalwahlen_data_sub_zweitstimmen$abs_NPD_HEIMAT <- as.numeric(berlin_2016_kommunalwahlen_data_sub_zweitstimmen$NPD)
+berlin_2016_kommunalwahlen_data_sub_zweitstimmen$gew_NPD_HEIMAT <- NA
+berlin_2016_kommunalwahlen_data_sub_zweitstimmen$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 berlin_2016_kommunalwahlen_data_sub_zweitstimmen <- berlin_2016_kommunalwahlen_data_sub_zweitstimmen[, .(
@@ -5566,7 +5708,10 @@ berlin_2016_kommunalwahlen_data_sub_zweitstimmen <- berlin_2016_kommunalwahlen_d
   sitze_AfD,
   sitze_PIRATEN,
   sitze_FDP,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 
@@ -5788,6 +5933,9 @@ berlin_2021_kommunalwahlen_data_sub_zweitstimmen$sitze_AfD <- NA
 berlin_2021_kommunalwahlen_data_sub_zweitstimmen$sitze_PIRATEN <- NA
 berlin_2021_kommunalwahlen_data_sub_zweitstimmen$sitze_FDP <- NA
 berlin_2021_kommunalwahlen_data_sub_zweitstimmen$sitze_FREIEWÄHLER <- NA
+berlin_2021_kommunalwahlen_data_sub_zweitstimmen$abs_NPD_HEIMAT <- as.numeric(berlin_2021_kommunalwahlen_data_sub_zweitstimmen$NPD)
+berlin_2021_kommunalwahlen_data_sub_zweitstimmen$gew_NPD_HEIMAT <- NA
+berlin_2021_kommunalwahlen_data_sub_zweitstimmen$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 berlin_2021_kommunalwahlen_data_sub_zweitstimmen <- berlin_2021_kommunalwahlen_data_sub_zweitstimmen[, .(
@@ -5824,7 +5972,10 @@ berlin_2021_kommunalwahlen_data_sub_zweitstimmen <- berlin_2021_kommunalwahlen_d
   sitze_AfD,
   sitze_PIRATEN,
   sitze_FDP,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 
@@ -6038,6 +6189,9 @@ berlin_2023_kommunalwahlen_data_sub_zweitstimmen$sitze_AfD <- NA
 berlin_2023_kommunalwahlen_data_sub_zweitstimmen$sitze_PIRATEN <- NA
 berlin_2023_kommunalwahlen_data_sub_zweitstimmen$sitze_FDP <- NA
 berlin_2023_kommunalwahlen_data_sub_zweitstimmen$sitze_FREIEWÄHLER <- NA
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$abs_NPD_HEIMAT <- as.numeric(berlin_2023_kommunalwahlen_data_sub_zweitstimmen$NPD)
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$gew_NPD_HEIMAT <- NA
+berlin_2023_kommunalwahlen_data_sub_zweitstimmen$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 berlin_2023_kommunalwahlen_data_sub_zweitstimmen <- berlin_2023_kommunalwahlen_data_sub_zweitstimmen[, .(
@@ -6074,7 +6228,10 @@ berlin_2023_kommunalwahlen_data_sub_zweitstimmen <- berlin_2023_kommunalwahlen_d
   sitze_AfD,
   sitze_PIRATEN,
   sitze_FDP,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 
@@ -6103,8 +6260,8 @@ berlin_2023_kommunalwahlen_data_sub_zweitstimmen$Turnout <- as.numeric(
 
 
 ####### Merge files and save overall output for Berlin ----
-# Merge
-berlin_kommunalwahlen <- rbind(
+# Merge (fill = TRUE: 1990 and 1995 have no NPD column)
+berlin_kommunalwahlen <- rbindlist(list(
   berlin_1990_kommunalwahlen_data_sub_zweitstimmen,
   berlin_1995_kommunalwahlen_data_sub_zweitstimmen,
   berlin_1999_kommunalwahlen_data_sub_zweitstimmen,
@@ -6114,7 +6271,7 @@ berlin_kommunalwahlen <- rbind(
   berlin_2016_kommunalwahlen_data_sub_zweitstimmen,
   berlin_2021_kommunalwahlen_data_sub_zweitstimmen,
   berlin_2023_kommunalwahlen_data_sub_zweitstimmen
-)
+), use.names = TRUE, fill = TRUE)
 
 # Replace INF at Turnout
 berlin_kommunalwahlen$Turnout <- str_replace_all(
@@ -6214,6 +6371,10 @@ nrw_1994_kommunalwahlen_data_sub$sitze_AfD <- NA
 nrw_1994_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
 nrw_1994_kommunalwahlen_data_sub$sitze_FDP <- nrw_1994_kommunalwahlen_data_sub$FDP_Zusammen
 nrw_1994_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
+# NPD votes have their own column; its seats sit in an unlabelled seat column
+nrw_1994_kommunalwahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(nrw_1994_kommunalwahlen_data_sub$NPD)
+nrw_1994_kommunalwahlen_data_sub$gew_NPD_HEIMAT <- NA
+nrw_1994_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 nrw_1994_kommunalwahlen_data_sub <- nrw_1994_kommunalwahlen_data_sub[, .(
@@ -6250,7 +6411,10 @@ nrw_1994_kommunalwahlen_data_sub <- nrw_1994_kommunalwahlen_data_sub[, .(
   sitze_AfD,
   sitze_PIRATEN,
   sitze_FDP,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 
@@ -6360,6 +6524,9 @@ nrw_1999_kommunalwahlen_data_sub$sitze_AfD <- NA
 nrw_1999_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
 nrw_1999_kommunalwahlen_data_sub$sitze_FDP <- nrw_1999_kommunalwahlen_data_sub$FDP_Zusammen
 nrw_1999_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
+nrw_1999_kommunalwahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(nrw_1999_kommunalwahlen_data_sub$NPD)
+nrw_1999_kommunalwahlen_data_sub$gew_NPD_HEIMAT <- NA
+nrw_1999_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 nrw_1999_kommunalwahlen_data_sub <- nrw_1999_kommunalwahlen_data_sub[, .(
@@ -6396,7 +6563,10 @@ nrw_1999_kommunalwahlen_data_sub <- nrw_1999_kommunalwahlen_data_sub[, .(
   sitze_AfD,
   sitze_PIRATEN,
   sitze_FDP,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 
@@ -6506,6 +6676,9 @@ nrw_2004_kommunalwahlen_data_sub$sitze_AfD <- NA
 nrw_2004_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
 nrw_2004_kommunalwahlen_data_sub$sitze_FDP <- nrw_2004_kommunalwahlen_data_sub$FDP_Zusammen
 nrw_2004_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
+nrw_2004_kommunalwahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(nrw_2004_kommunalwahlen_data_sub$NPD)
+nrw_2004_kommunalwahlen_data_sub$gew_NPD_HEIMAT <- NA
+nrw_2004_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 nrw_2004_kommunalwahlen_data_sub <- nrw_2004_kommunalwahlen_data_sub[, .(
@@ -6542,7 +6715,10 @@ nrw_2004_kommunalwahlen_data_sub <- nrw_2004_kommunalwahlen_data_sub[, .(
   sitze_AfD,
   sitze_PIRATEN,
   sitze_FDP,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 
@@ -6655,6 +6831,9 @@ nrw_2009_kommunalwahlen_data_sub$sitze_AfD <- NA
 nrw_2009_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
 nrw_2009_kommunalwahlen_data_sub$sitze_FDP <- nrw_2009_kommunalwahlen_data_sub$FDP_Zusammen
 nrw_2009_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
+nrw_2009_kommunalwahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(nrw_2009_kommunalwahlen_data_sub$NPD)
+nrw_2009_kommunalwahlen_data_sub$gew_NPD_HEIMAT <- NA
+nrw_2009_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 nrw_2009_kommunalwahlen_data_sub <- nrw_2009_kommunalwahlen_data_sub[, .(
@@ -6691,7 +6870,10 @@ nrw_2009_kommunalwahlen_data_sub <- nrw_2009_kommunalwahlen_data_sub[, .(
   sitze_AfD,
   sitze_PIRATEN,
   sitze_FDP,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 
@@ -6803,6 +6985,9 @@ nrw_2014_kommunalwahlen_data_sub$sitze_AfD <- nrw_2014_kommunalwahlen_data_sub$A
 nrw_2014_kommunalwahlen_data_sub$sitze_PIRATEN <- nrw_2014_kommunalwahlen_data_sub$PIRATEN_Zusammen
 nrw_2014_kommunalwahlen_data_sub$sitze_FDP <- nrw_2014_kommunalwahlen_data_sub$FDP_Zusammen
 nrw_2014_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
+nrw_2014_kommunalwahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(nrw_2014_kommunalwahlen_data_sub$NPD)
+nrw_2014_kommunalwahlen_data_sub$gew_NPD_HEIMAT <- NA
+nrw_2014_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 nrw_2014_kommunalwahlen_data_sub <- nrw_2014_kommunalwahlen_data_sub[, .(
@@ -6839,7 +7024,10 @@ nrw_2014_kommunalwahlen_data_sub <- nrw_2014_kommunalwahlen_data_sub[, .(
   sitze_AfD,
   sitze_PIRATEN,
   sitze_FDP,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 
@@ -6979,6 +7167,9 @@ nrw_2020_kommunalwahlen_data_sub$sitze_FDP <- as.numeric(
   nrw_2020_kommunalwahlen_data_sub$FDP_Zusammen
 )
 nrw_2020_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
+nrw_2020_kommunalwahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(nrw_2020_kommunalwahlen_data_sub$NPD)
+nrw_2020_kommunalwahlen_data_sub$gew_NPD_HEIMAT <- NA
+nrw_2020_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 
 # Creating new dataframe with selected vars ----
@@ -7016,7 +7207,10 @@ nrw_2020_kommunalwahlen_data_sub <- nrw_2020_kommunalwahlen_data_sub[, .(
   sitze_AfD,
   sitze_PIRATEN,
   sitze_FDP,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 
@@ -7311,6 +7505,13 @@ nrw_2025_kommunalwahlen_data_sub$gew_PIRATEN <- NA
 nrw_2025_kommunalwahlen_data_sub$gew_FDP <- NA
 nrw_2025_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
 nrw_2025_kommunalwahlen_data_sub$gew_BSW <- NA
+# Die Heimat ("Heimat") and Der III. Weg ("III.Weg") each stood in one Gemeinde
+nrw_2025_kommunalwahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(nrw_2025_kommunalwahlen_data_sub$Heimat)
+nrw_2025_kommunalwahlen_data_sub$abs_III_WEG <- as.numeric(nrw_2025_kommunalwahlen_data_sub$III.Weg)
+nrw_2025_kommunalwahlen_data_sub$gew_NPD_HEIMAT <- NA
+nrw_2025_kommunalwahlen_data_sub$gew_III_WEG <- NA
+nrw_2025_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- as.numeric(nrw_2025_kommunalwahlen_data_sub$Heimat_sitze)
+nrw_2025_kommunalwahlen_data_sub$sitze_III_WEG <- as.numeric(nrw_2025_kommunalwahlen_data_sub$III.Weg_sitze)
 
 nrw_2025_kommunalwahlen_data_sub$sitze_CDU <- as.numeric(
   nrw_2025_kommunalwahlen_data_sub$CDU_sitze
@@ -7379,7 +7580,13 @@ nrw_2025_kommunalwahlen_data_sub <- nrw_2025_kommunalwahlen_data_sub[, .(
   sitze_PIRATEN,
   sitze_FDP,
   sitze_FREIEWÄHLER,
-  sitze_BSW
+  sitze_BSW,
+  abs_NPD_HEIMAT,
+  abs_III_WEG,
+  gew_NPD_HEIMAT,
+  gew_III_WEG,
+  sitze_NPD_HEIMAT,
+  sitze_III_WEG
 )]
 
 
@@ -7514,6 +7721,24 @@ saarland_kommunalwahlen_data_sub$gew_PIRATEN <- NA
 saarland_kommunalwahlen_data_sub$gew_FDP <- NA
 saarland_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
 
+# NPD: the summary sheet is GRW_8419_Gemeinden.xlsx with an AGS column inserted
+# as column 2, and the NPD column lost its header there. Take it by position,
+# proven against the source's own header and values (see same_cols()).
+saarland_grw_src <- read_excel(
+  "raw/saarland/GRW_8419_Gemeinden.xlsx",
+  col_names = FALSE,
+  col_types = "text"
+)
+sl_npd_pos <- src_label_col(saarland_grw_src, "NPD") + 1L
+stopifnot(same_cols(
+  saarland_kommunalwahlen_data,
+  saarland_grw_src,
+  pos = c(match(c("GültigeStimmen", "SPD_abs", "CDU_abs"), names(saarland_kommunalwahlen_data)), sl_npd_pos),
+  offset = -1L
+))
+saarland_kommunalwahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(saarland_kommunalwahlen_data_sub[[sl_npd_pos]])
+saarland_kommunalwahlen_data_sub$gew_NPD_HEIMAT <- NA
+
 # Seats: the GRW seat file covers only 2019, while this frame holds 1984-2019.
 # Build an AGS->seats lookup (52 municipalities) and assign only to 2019 rows so
 # the single-year seats are not stamped onto earlier years of the same AGS.
@@ -7545,6 +7770,7 @@ saarland_kommunalwahlen_data_sub$sitze_AfD <- sl_seat("AfD")
 saarland_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
 saarland_kommunalwahlen_data_sub$sitze_FDP <- sl_seat("FDP")
 saarland_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
+saarland_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- NA # the 2019 seat file has no NPD column
 
 # Creating new dataframe with selected vars ----
 saarland_kommunalwahlen_data_sub <- saarland_kommunalwahlen_data_sub[, .(
@@ -7581,7 +7807,10 @@ saarland_kommunalwahlen_data_sub <- saarland_kommunalwahlen_data_sub[, .(
   sitze_AfD,
   sitze_PIRATEN,
   sitze_FDP,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 
@@ -8555,7 +8784,9 @@ stopifnot(
   nrow(sachsen_anhalt_2024_kommunalwahlen_data) == 218,
   all(sachsen_anhalt_2024_kommunalwahlen_data$Satzart == "GEM"),
   !anyDuplicated(sachsen_anhalt_2024_kommunalwahlen_data$Schlüsselnummer),
-  "S01 - CDU" %in% names(sachsen_anhalt_2024_kommunalwahlen_data)
+  "S01 - CDU" %in% names(sachsen_anhalt_2024_kommunalwahlen_data),
+  # Die Heimat is list 13. (The Datensatzbeschreibung calls D08 "NPD"; D08 is dieBasis.)
+  all(c("D13 - HEIMAT", "S13 - HEIMAT") %in% names(sachsen_anhalt_2024_kommunalwahlen_data))
 )
 
 # The seven Gemeinden of VG Vorharz voted on 15.09.2024, the rest on
@@ -8605,6 +8836,7 @@ sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_PIRATEN <- NA
 sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_FDP <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`D05 - FDP`)
 sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_DiePARTEI <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`D11 - Die PARTEI`)
 sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_FREIEWÄHLER <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`D07 - FREIE WÄHLER`)
+sachsen_anhalt_2024_kommunalwahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`D13 - HEIMAT`)
 
 sachsen_anhalt_2024_kommunalwahlen_data_sub$gew_CDU <- NA
 sachsen_anhalt_2024_kommunalwahlen_data_sub$gew_SPD <- NA
@@ -8615,6 +8847,7 @@ sachsen_anhalt_2024_kommunalwahlen_data_sub$gew_PIRATEN <- NA
 sachsen_anhalt_2024_kommunalwahlen_data_sub$gew_FDP <- NA
 sachsen_anhalt_2024_kommunalwahlen_data_sub$gew_DiePARTEI <- NA
 sachsen_anhalt_2024_kommunalwahlen_data_sub$gew_FREIEWÄHLER <- NA
+sachsen_anhalt_2024_kommunalwahlen_data_sub$gew_NPD_HEIMAT <- NA
 
 sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_CDU <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`S01 - CDU`)
 sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_SPD <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`S04 - SPD`)
@@ -8625,6 +8858,7 @@ sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
 sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_FDP <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`S05 - FDP`)
 sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_DiePARTEI <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`S11 - Die PARTEI`)
 sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`S07 - FREIE WÄHLER`)
+sachsen_anhalt_2024_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- as.numeric(sachsen_anhalt_2024_kommunalwahlen_data_sub$`S13 - HEIMAT`)
 
 # Creating new dataframe with selected vars ----
 sachsen_anhalt_2024_kommunalwahlen_data_sub <- sachsen_anhalt_2024_kommunalwahlen_data_sub[, .(
@@ -8664,7 +8898,10 @@ sachsen_anhalt_2024_kommunalwahlen_data_sub <- sachsen_anhalt_2024_kommunalwahle
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -8688,8 +8925,8 @@ sachsen_anhalt_2024_kommunalwahlen_data_sub$Turnout <- sachsen_anhalt_2024_kommu
 
 
 ####### Merge files and save overall output for Sachsen-Anhalt ----
-# Merge
-sachsen_anhalt_kommunalwahlen <- rbind(
+# Merge (fill = TRUE: only the 2024 file names Die Heimat)
+sachsen_anhalt_kommunalwahlen <- rbindlist(list(
   sachsen_anhalt_1994_kommunalwahlen_data_sub,
   sachsen_anhalt_1999_kommunalwahlen_data_sub,
   sachsen_anhalt_2004_kommunalwahlen_data_sub,
@@ -8697,7 +8934,7 @@ sachsen_anhalt_kommunalwahlen <- rbind(
   sachsen_anhalt_2014_kommunalwahlen_data_sub,
   sachsen_anhalt_2019_kommunalwahlen_data_sub,
   sachsen_anhalt_2024_kommunalwahlen_data_sub
-)
+), use.names = TRUE, fill = TRUE)
 
 # Replace INF at Turnout
 sachsen_anhalt_kommunalwahlen$Turnout <- str_replace_all(
@@ -9437,6 +9674,36 @@ baden_wuerttemberg_2014_gemeinderatswahlen_data_sub$sitze_FDP <- baden_wuerttemb
 baden_wuerttemberg_2014_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- baden_wuerttemberg_2014_gemeinderatswahlen_data_sub$DIEPARTEI_sitze
 baden_wuerttemberg_2014_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
 
+# NPD: the summary sheet lost the party's header. Read it from the sheet the
+# summary was cut from (Tabelle1, same workbook) -- votes on the "Gültige
+# Stimmen" rows, seats on the "Gewählte" rows -- joined by AGS; the CDU
+# votes and seats must agree exactly for the join to count.
+bw14_src <- read_excel(
+  "raw/baden_wuerttemberg/baden_wuerttemberg_2014.xlsx",
+  sheet = "Tabelle1",
+  col_names = FALSE,
+  col_types = "text"
+)
+bw14_npd_j <- src_label_col(bw14_src, "NPD")
+# "CDU" recurs among the joint lists further right; the party block comes first
+bw14_cdu_j <- src_label_col(bw14_src, "CDU", first = TRUE)
+bw14_key <- suppressWarnings(as.numeric(as.character(bw14_src[[2]])))
+bw14_num <- function(j) suppressWarnings(as.numeric(as.character(bw14_src[[j]])))
+bw14_vr <- which(bw14_src[[4]] == "Anzahl" & bw14_src[[8]] == "Gültige Stimmen")
+bw14_sr <- which(bw14_src[[4]] == "Anzahl" & bw14_src[[8]] == "Gewählte")
+bw14_mv <- match(as.numeric(baden_wuerttemberg_2014_gemeinderatswahlen_data_sub$AGS), bw14_key[bw14_vr])
+bw14_ms <- match(as.numeric(baden_wuerttemberg_2014_gemeinderatswahlen_data_sub$AGS), bw14_key[bw14_sr])
+bw14_same <- function(a, b) all(ifelse(is.na(a) | is.na(b), is.na(a) & is.na(b), a == b))
+stopifnot(
+  !anyDuplicated(bw14_key[bw14_vr]), !anyDuplicated(bw14_key[bw14_sr]),
+  !anyNA(bw14_mv), !anyNA(bw14_ms),
+  bw14_same(as.numeric(baden_wuerttemberg_2014_gemeinderatswahlen_data_sub$CDU_abs), bw14_num(bw14_cdu_j)[bw14_vr][bw14_mv]),
+  bw14_same(as.numeric(baden_wuerttemberg_2014_gemeinderatswahlen_data_sub$CDU_sitze), bw14_num(bw14_cdu_j)[bw14_sr][bw14_ms])
+)
+baden_wuerttemberg_2014_gemeinderatswahlen_data_sub$abs_NPD_HEIMAT <- bw14_num(bw14_npd_j)[bw14_vr][bw14_mv]
+baden_wuerttemberg_2014_gemeinderatswahlen_data_sub$gew_NPD_HEIMAT <- NA
+baden_wuerttemberg_2014_gemeinderatswahlen_data_sub$sitze_NPD_HEIMAT <- bw14_num(bw14_npd_j)[bw14_sr][bw14_ms]
+
 # Creating new dataframe with selected vars ----
 baden_wuerttemberg_2014_gemeinderatswahlen_data_sub <- baden_wuerttemberg_2014_gemeinderatswahlen_data_sub[, .(
   AGS_8dig,
@@ -9475,7 +9742,10 @@ baden_wuerttemberg_2014_gemeinderatswahlen_data_sub <- baden_wuerttemberg_2014_g
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -9803,8 +10073,9 @@ baden_wuerttemberg_2024_gemeinderatswahlen_data_sub$Turnout <- baden_wuerttember
 
 
 ####### Merge files and save overall output for Baden-Wuerttemberg ----
-# Merge
-baden_wuerttemberg_kommunalwahlen <- rbind(
+# Merge (fill = TRUE: only 2014 carries NPD -- the 2024 GENESIS table lists the
+# NPD but with no votes in any Gemeinde, and 1989-2009/2019 have no column)
+baden_wuerttemberg_kommunalwahlen <- rbindlist(list(
   baden_wuerttemberg_1989_gemeinderatswahlen_data_sub,
   baden_wuerttemberg_1994_gemeinderatswahlen_data_sub,
   baden_wuerttemberg_1999_gemeinderatswahlen_data_sub,
@@ -9813,7 +10084,7 @@ baden_wuerttemberg_kommunalwahlen <- rbind(
   baden_wuerttemberg_2014_gemeinderatswahlen_data_sub,
   baden_wuerttemberg_2019_gemeinderatswahlen_data_sub,
   baden_wuerttemberg_2024_gemeinderatswahlen_data_sub
-)
+), use.names = TRUE, fill = TRUE)
 
 # Replace INF at Turnout
 baden_wuerttemberg_kommunalwahlen$Turnout <- str_replace_all(
@@ -10318,6 +10589,10 @@ mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
 mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$sitze_FDP <- NA
 mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
 mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
+# the source header reads "NDP" -- a typo for the NPD
+mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$NDP)
+mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$gew_NPD_HEIMAT <- NA
+mecklenburg_vorpommern_2009_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 mecklenburg_vorpommern_2009_kommunalwahlen_data_sub <- mecklenburg_vorpommern_2009_kommunalwahlen_data_sub[, .(
@@ -10357,7 +10632,10 @@ mecklenburg_vorpommern_2009_kommunalwahlen_data_sub <- mecklenburg_vorpommern_20
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -10498,6 +10776,9 @@ mecklenburg_vorpommern_2014_kommunalwahlen_data_sub$sitze_FDP <- as.numeric(
 )
 mecklenburg_vorpommern_2014_kommunalwahlen_data_sub$sitze_DiePARTEI <- NA
 mecklenburg_vorpommern_2014_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
+mecklenburg_vorpommern_2014_kommunalwahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(mecklenburg_vorpommern_2014_kommunalwahlen_data_sub$NPD)
+mecklenburg_vorpommern_2014_kommunalwahlen_data_sub$gew_NPD_HEIMAT <- NA
+mecklenburg_vorpommern_2014_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- as.numeric(mecklenburg_vorpommern_2014_kommunalwahlen_data_sub$NPD_sitze)
 
 # Creating new dataframe with selected vars ----
 mecklenburg_vorpommern_2014_kommunalwahlen_data_sub <- mecklenburg_vorpommern_2014_kommunalwahlen_data_sub[, .(
@@ -10537,7 +10818,10 @@ mecklenburg_vorpommern_2014_kommunalwahlen_data_sub <- mecklenburg_vorpommern_20
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 
@@ -11165,6 +11449,9 @@ mecklenburg_vorpommern_1994_kreiswahlen_data_sub$sitze_PIRATEN <- NA
 mecklenburg_vorpommern_1994_kreiswahlen_data_sub$sitze_FDP <- NA
 mecklenburg_vorpommern_1994_kreiswahlen_data_sub$sitze_DiePARTEI <- NA
 mecklenburg_vorpommern_1994_kreiswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+mecklenburg_vorpommern_1994_kreiswahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(mecklenburg_vorpommern_1994_kreiswahlen_data_sub$NPD)
+mecklenburg_vorpommern_1994_kreiswahlen_data_sub$gew_NPD_HEIMAT <- NA
+mecklenburg_vorpommern_1994_kreiswahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 mecklenburg_vorpommern_1994_kreiswahlen_data_sub <- mecklenburg_vorpommern_1994_kreiswahlen_data_sub[, .(
@@ -11204,7 +11491,10 @@ mecklenburg_vorpommern_1994_kreiswahlen_data_sub <- mecklenburg_vorpommern_1994_
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -11309,6 +11599,9 @@ mecklenburg_vorpommern_1999_kreiswahlen_data_sub$sitze_PIRATEN <- NA
 mecklenburg_vorpommern_1999_kreiswahlen_data_sub$sitze_FDP <- NA
 mecklenburg_vorpommern_1999_kreiswahlen_data_sub$sitze_DiePARTEI <- NA
 mecklenburg_vorpommern_1999_kreiswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+mecklenburg_vorpommern_1999_kreiswahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(mecklenburg_vorpommern_1999_kreiswahlen_data_sub$NPD)
+mecklenburg_vorpommern_1999_kreiswahlen_data_sub$gew_NPD_HEIMAT <- NA
+mecklenburg_vorpommern_1999_kreiswahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 mecklenburg_vorpommern_1999_kreiswahlen_data_sub <- mecklenburg_vorpommern_1999_kreiswahlen_data_sub[, .(
@@ -11348,7 +11641,10 @@ mecklenburg_vorpommern_1999_kreiswahlen_data_sub <- mecklenburg_vorpommern_1999_
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -11452,6 +11748,9 @@ mecklenburg_vorpommern_2004_kreiswahlen_data_sub$sitze_PIRATEN <- NA
 mecklenburg_vorpommern_2004_kreiswahlen_data_sub$sitze_FDP <- NA
 mecklenburg_vorpommern_2004_kreiswahlen_data_sub$sitze_DiePARTEI <- NA
 mecklenburg_vorpommern_2004_kreiswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+mecklenburg_vorpommern_2004_kreiswahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(mecklenburg_vorpommern_2004_kreiswahlen_data_sub$NPD)
+mecklenburg_vorpommern_2004_kreiswahlen_data_sub$gew_NPD_HEIMAT <- NA
+mecklenburg_vorpommern_2004_kreiswahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 mecklenburg_vorpommern_2004_kreiswahlen_data_sub <- mecklenburg_vorpommern_2004_kreiswahlen_data_sub[, .(
@@ -11491,7 +11790,10 @@ mecklenburg_vorpommern_2004_kreiswahlen_data_sub <- mecklenburg_vorpommern_2004_
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -11682,7 +11984,8 @@ mecklenburg_vorpommern_2014_kreiswahlen_data_sub <- mecklenburg_vorpommern_2014_
     DIELINKE = sum(DIELINKE, na.rm = T),
     GRÜNE = sum(GRÜNE, na.rm = T),
     FDP = sum(FDP, na.rm = T),
-    AfD = sum(AfD, na.rm = T)
+    AfD = sum(AfD, na.rm = T),
+    NPD = sum(NDP, na.rm = T) # header typo "NDP" in the source
   ) %>%
   ungroup()
 
@@ -11757,6 +12060,9 @@ mecklenburg_vorpommern_2014_kreiswahlen_data_sub$sitze_PIRATEN <- NA
 mecklenburg_vorpommern_2014_kreiswahlen_data_sub$sitze_FDP <- NA
 mecklenburg_vorpommern_2014_kreiswahlen_data_sub$sitze_DiePARTEI <- NA
 mecklenburg_vorpommern_2014_kreiswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+mecklenburg_vorpommern_2014_kreiswahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(mecklenburg_vorpommern_2014_kreiswahlen_data_sub$NPD)
+mecklenburg_vorpommern_2014_kreiswahlen_data_sub$gew_NPD_HEIMAT <- NA
+mecklenburg_vorpommern_2014_kreiswahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 mecklenburg_vorpommern_2014_kreiswahlen_data_sub <- mecklenburg_vorpommern_2014_kreiswahlen_data_sub[, .(
@@ -11796,7 +12102,10 @@ mecklenburg_vorpommern_2014_kreiswahlen_data_sub <- mecklenburg_vorpommern_2014_
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -11908,6 +12217,9 @@ mecklenburg_vorpommern_2019_kreiswahlen_data_sub$sitze_PIRATEN <- NA
 mecklenburg_vorpommern_2019_kreiswahlen_data_sub$sitze_FDP <- NA
 mecklenburg_vorpommern_2019_kreiswahlen_data_sub$sitze_DiePARTEI <- NA
 mecklenburg_vorpommern_2019_kreiswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(mecklenburg_vorpommern_2019_kreiswahlen_data_sub$NPD)
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$gew_NPD_HEIMAT <- NA
+mecklenburg_vorpommern_2019_kreiswahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 mecklenburg_vorpommern_2019_kreiswahlen_data_sub <- mecklenburg_vorpommern_2019_kreiswahlen_data_sub[, .(
@@ -11947,7 +12259,10 @@ mecklenburg_vorpommern_2019_kreiswahlen_data_sub <- mecklenburg_vorpommern_2019_
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -12178,6 +12493,50 @@ mecklenburg_vorpommern_kommunalwahlen$AGS_8dig <- stri_pad_left(
 
 # ----
 ######### HESSEN ----
+# NPD: the overview workbook keeps every party's columns but names only the
+# main parties, so the NPD block reads as "...N". Its position comes from the
+# workbook the overview was cut from (raw/hessen/Original/Gemeindewahlen ab
+# 1989.xlsx: same sheets and columns, plus title rows), where the header names
+# it. The header can sit off its data: in 2006 every party label is one column
+# left of the party's votes. So the shift is measured on the named CDU and SPD
+# columns (must agree), the gew./Sitze columns sit at the same offsets from the
+# party's first column as the named CDU_gew/CDU_sitze do, and wherever the CDU
+# block has a percentage column the NPD block's must equal 100 * votes / valid,
+# which proves the column holds a party's votes. same_cols() then proves the
+# overview and the source agree on these columns.
+he_orig_path <- "raw/hessen/Original/Gemeindewahlen ab 1989.xlsx"
+he_npd_cols <- function(sheet, prepared) {
+  src <- read_excel(he_orig_path, sheet = sheet, col_names = FALSE, col_types = "text")
+  nm <- names(prepared)
+  shift <- match(c("CDU", "SPD"), nm) -
+    c(src_label_col(src, "CDU", first = TRUE), src_label_col(src, "SPD", first = TRUE))
+  stopifnot(!anyNA(shift), shift[1] == shift[2])
+  j <- src_label_col(src, "NPD") + shift[1]
+  num <- function(k) {
+    if (is.na(k)) return(NA_real_)
+    suppressWarnings(as.numeric(as.character(prepared[[k]])))
+  }
+  off <- function(suffix) match(paste0("CDU", suffix), nm) - match("CDU", nm)
+  og <- off("_gew")
+  os <- off("_sitze")
+  valid <- num(match("GueltigeStimmen", nm))
+  is_pct <- function(k, votes) {
+    p <- num(k)
+    ok <- !is.na(votes) & votes > 0
+    any(ok) && all(!is.na(p[ok]) & abs(p[ok] - 100 * votes[ok] / valid[ok]) < 1e-6)
+  }
+  cdu_j <- match("CDU", nm)
+  pct_off <- Filter(function(o) is_pct(cdu_j + o, num(cdu_j)), 1:3)
+  if (length(pct_off) > 0) stopifnot(is_pct(j + pct_off[1], num(j)))
+  pos <- c(match(c("GueltigeStimmen", "CDU"), nm), j)
+  if (!is.na(og)) pos <- c(pos, match("CDU_gew", nm), j + og)
+  if (!is.na(os)) pos <- c(pos, match("CDU_sitze", nm), j + os)
+  stopifnot(!anyNA(pos), same_cols(prepared, src, pos))
+  cat("Hessen", sheet, ": NPD votes in column", j, "(header shift", shift[1],
+      if (length(pct_off) > 0) "; percentage check passed)\n" else "; no percentage column)\n")
+  list(abs = num(j), gew = num(j + og), sitze = num(j + os))
+}
+
 ###### Hessen 1989 Gemeinderatswahl ----
 #### Load election data ----
 
@@ -12244,6 +12603,10 @@ hessen_1989_gemeinderatswahl_data_sub$sitze_PIRATEN <- NA
 hessen_1989_gemeinderatswahl_data_sub$sitze_FDP <- NA
 hessen_1989_gemeinderatswahl_data_sub$sitze_DiePARTEI <- NA
 hessen_1989_gemeinderatswahl_data_sub$sitze_FREIEWÄHLER <- NA
+he_npd <- he_npd_cols("1989", hessen_1989_gemeinderatswahl_data)
+hessen_1989_gemeinderatswahl_data_sub$abs_NPD_HEIMAT <- he_npd$abs
+hessen_1989_gemeinderatswahl_data_sub$gew_NPD_HEIMAT <- he_npd$gew
+hessen_1989_gemeinderatswahl_data_sub$sitze_NPD_HEIMAT <- he_npd$sitze
 
 # Creating new dataframe with selected vars ----
 hessen_1989_gemeinderatswahl_data_sub <- hessen_1989_gemeinderatswahl_data_sub[, .(
@@ -12283,7 +12646,10 @@ hessen_1989_gemeinderatswahl_data_sub <- hessen_1989_gemeinderatswahl_data_sub[,
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -12372,6 +12738,10 @@ hessen_1993_gemeinderatswahl_data_sub$sitze_PIRATEN <- NA
 hessen_1993_gemeinderatswahl_data_sub$sitze_FDP <- hessen_1993_gemeinderatswahl_data_sub$FDP_sitze
 hessen_1993_gemeinderatswahl_data_sub$sitze_DiePARTEI <- NA
 hessen_1993_gemeinderatswahl_data_sub$sitze_FREIEWÄHLER <- NA
+he_npd <- he_npd_cols("1993", hessen_1993_gemeinderatswahl_data)
+hessen_1993_gemeinderatswahl_data_sub$abs_NPD_HEIMAT <- he_npd$abs
+hessen_1993_gemeinderatswahl_data_sub$gew_NPD_HEIMAT <- he_npd$gew
+hessen_1993_gemeinderatswahl_data_sub$sitze_NPD_HEIMAT <- he_npd$sitze
 
 # Creating new dataframe with selected vars ----
 hessen_1993_gemeinderatswahl_data_sub <- hessen_1993_gemeinderatswahl_data_sub[, .(
@@ -12411,7 +12781,10 @@ hessen_1993_gemeinderatswahl_data_sub <- hessen_1993_gemeinderatswahl_data_sub[,
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -12500,6 +12873,10 @@ hessen_1997_gemeinderatswahl_data_sub$sitze_PIRATEN <- NA
 hessen_1997_gemeinderatswahl_data_sub$sitze_FDP <- hessen_1997_gemeinderatswahl_data_sub$FDP_sitze
 hessen_1997_gemeinderatswahl_data_sub$sitze_DiePARTEI <- NA
 hessen_1997_gemeinderatswahl_data_sub$sitze_FREIEWÄHLER <- NA
+he_npd <- he_npd_cols("1997", hessen_1997_gemeinderatswahl_data)
+hessen_1997_gemeinderatswahl_data_sub$abs_NPD_HEIMAT <- he_npd$abs
+hessen_1997_gemeinderatswahl_data_sub$gew_NPD_HEIMAT <- he_npd$gew
+hessen_1997_gemeinderatswahl_data_sub$sitze_NPD_HEIMAT <- he_npd$sitze
 
 # Creating new dataframe with selected vars ----
 hessen_1997_gemeinderatswahl_data_sub <- hessen_1997_gemeinderatswahl_data_sub[, .(
@@ -12539,7 +12916,10 @@ hessen_1997_gemeinderatswahl_data_sub <- hessen_1997_gemeinderatswahl_data_sub[,
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -12628,6 +13008,10 @@ hessen_2001_gemeinderatswahl_data_sub$sitze_PIRATEN <- NA
 hessen_2001_gemeinderatswahl_data_sub$sitze_FDP <- hessen_2001_gemeinderatswahl_data_sub$FDP_sitze
 hessen_2001_gemeinderatswahl_data_sub$sitze_DiePARTEI <- NA
 hessen_2001_gemeinderatswahl_data_sub$sitze_FREIEWÄHLER <- NA
+he_npd <- he_npd_cols("2001", hessen_2001_gemeinderatswahl_data)
+hessen_2001_gemeinderatswahl_data_sub$abs_NPD_HEIMAT <- he_npd$abs
+hessen_2001_gemeinderatswahl_data_sub$gew_NPD_HEIMAT <- he_npd$gew
+hessen_2001_gemeinderatswahl_data_sub$sitze_NPD_HEIMAT <- he_npd$sitze
 
 # Creating new dataframe with selected vars ----
 hessen_2001_gemeinderatswahl_data_sub <- hessen_2001_gemeinderatswahl_data_sub[, .(
@@ -12667,7 +13051,10 @@ hessen_2001_gemeinderatswahl_data_sub <- hessen_2001_gemeinderatswahl_data_sub[,
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -12756,6 +13143,10 @@ hessen_2006_gemeinderatswahl_data_sub$sitze_PIRATEN <- NA
 hessen_2006_gemeinderatswahl_data_sub$sitze_FDP <- hessen_2006_gemeinderatswahl_data_sub$FDP_sitze
 hessen_2006_gemeinderatswahl_data_sub$sitze_DiePARTEI <- NA
 hessen_2006_gemeinderatswahl_data_sub$sitze_FREIEWÄHLER <- hessen_2006_gemeinderatswahl_data_sub$FreieWaehler_sitze
+he_npd <- he_npd_cols("2006", hessen_2006_gemeinderatswahl_data)
+hessen_2006_gemeinderatswahl_data_sub$abs_NPD_HEIMAT <- he_npd$abs
+hessen_2006_gemeinderatswahl_data_sub$gew_NPD_HEIMAT <- he_npd$gew
+hessen_2006_gemeinderatswahl_data_sub$sitze_NPD_HEIMAT <- he_npd$sitze
 
 # Creating new dataframe with selected vars ----
 hessen_2006_gemeinderatswahl_data_sub <- hessen_2006_gemeinderatswahl_data_sub[, .(
@@ -12795,7 +13186,10 @@ hessen_2006_gemeinderatswahl_data_sub <- hessen_2006_gemeinderatswahl_data_sub[,
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -12884,6 +13278,10 @@ hessen_2006_gemeinderatswahl_data_sub$sitze_PIRATEN <- NA
 hessen_2006_gemeinderatswahl_data_sub$sitze_FDP <- hessen_2006_gemeinderatswahl_data_sub$FDP_sitze
 hessen_2006_gemeinderatswahl_data_sub$sitze_DiePARTEI <- NA
 hessen_2006_gemeinderatswahl_data_sub$sitze_FREIEWÄHLER <- hessen_2006_gemeinderatswahl_data_sub$FreieWaehler_sitze
+he_npd <- he_npd_cols("2006", hessen_2006_gemeinderatswahl_data)
+hessen_2006_gemeinderatswahl_data_sub$abs_NPD_HEIMAT <- he_npd$abs
+hessen_2006_gemeinderatswahl_data_sub$gew_NPD_HEIMAT <- he_npd$gew
+hessen_2006_gemeinderatswahl_data_sub$sitze_NPD_HEIMAT <- he_npd$sitze
 
 # Creating new dataframe with selected vars ----
 hessen_2006_gemeinderatswahl_data_sub <- hessen_2006_gemeinderatswahl_data_sub[, .(
@@ -12923,7 +13321,10 @@ hessen_2006_gemeinderatswahl_data_sub <- hessen_2006_gemeinderatswahl_data_sub[,
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -13012,6 +13413,10 @@ hessen_2011_gemeinderatswahl_data_sub$sitze_PIRATEN <- hessen_2011_gemeinderatsw
 hessen_2011_gemeinderatswahl_data_sub$sitze_FDP <- hessen_2011_gemeinderatswahl_data_sub$FDP_sitze
 hessen_2011_gemeinderatswahl_data_sub$sitze_DiePARTEI <- hessen_2011_gemeinderatswahl_data_sub$DiePartei_sitze
 hessen_2011_gemeinderatswahl_data_sub$sitze_FREIEWÄHLER <- hessen_2011_gemeinderatswahl_data_sub$FreieWaehler_sitze
+he_npd <- he_npd_cols("2011", hessen_2011_gemeinderatswahl_data)
+hessen_2011_gemeinderatswahl_data_sub$abs_NPD_HEIMAT <- he_npd$abs
+hessen_2011_gemeinderatswahl_data_sub$gew_NPD_HEIMAT <- he_npd$gew
+hessen_2011_gemeinderatswahl_data_sub$sitze_NPD_HEIMAT <- he_npd$sitze
 
 # Creating new dataframe with selected vars ----
 hessen_2011_gemeinderatswahl_data_sub <- hessen_2011_gemeinderatswahl_data_sub[, .(
@@ -13051,7 +13456,10 @@ hessen_2011_gemeinderatswahl_data_sub <- hessen_2011_gemeinderatswahl_data_sub[,
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -13140,6 +13548,10 @@ hessen_2016_gemeinderatswahl_data_sub$sitze_PIRATEN <- hessen_2016_gemeinderatsw
 hessen_2016_gemeinderatswahl_data_sub$sitze_FDP <- hessen_2016_gemeinderatswahl_data_sub$FDP_sitze
 hessen_2016_gemeinderatswahl_data_sub$sitze_DiePARTEI <- hessen_2016_gemeinderatswahl_data_sub$DiePartei_sitze
 hessen_2016_gemeinderatswahl_data_sub$sitze_FREIEWÄHLER <- hessen_2016_gemeinderatswahl_data_sub$FreieWaehler_sitze
+he_npd <- he_npd_cols("2016", hessen_2016_gemeinderatswahl_data)
+hessen_2016_gemeinderatswahl_data_sub$abs_NPD_HEIMAT <- he_npd$abs
+hessen_2016_gemeinderatswahl_data_sub$gew_NPD_HEIMAT <- he_npd$gew
+hessen_2016_gemeinderatswahl_data_sub$sitze_NPD_HEIMAT <- he_npd$sitze
 
 # Creating new dataframe with selected vars ----
 hessen_2016_gemeinderatswahl_data_sub <- hessen_2016_gemeinderatswahl_data_sub[, .(
@@ -13179,7 +13591,10 @@ hessen_2016_gemeinderatswahl_data_sub <- hessen_2016_gemeinderatswahl_data_sub[,
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -13268,6 +13683,10 @@ hessen_2021_gemeinderatswahl_data_sub$sitze_PIRATEN <- hessen_2021_gemeinderatsw
 hessen_2021_gemeinderatswahl_data_sub$sitze_FDP <- hessen_2021_gemeinderatswahl_data_sub$FDP_sitze
 hessen_2021_gemeinderatswahl_data_sub$sitze_DiePARTEI <- hessen_2021_gemeinderatswahl_data_sub$DiePartei_sitze
 hessen_2021_gemeinderatswahl_data_sub$sitze_FREIEWÄHLER <- hessen_2021_gemeinderatswahl_data_sub$FreieWaehler_sitze
+he_npd <- he_npd_cols("2021", hessen_2021_gemeinderatswahl_data)
+hessen_2021_gemeinderatswahl_data_sub$abs_NPD_HEIMAT <- he_npd$abs
+hessen_2021_gemeinderatswahl_data_sub$gew_NPD_HEIMAT <- he_npd$gew
+hessen_2021_gemeinderatswahl_data_sub$sitze_NPD_HEIMAT <- he_npd$sitze
 
 # Creating new dataframe with selected vars ----
 hessen_2021_gemeinderatswahl_data_sub <- hessen_2021_gemeinderatswahl_data_sub[, .(
@@ -13307,7 +13726,10 @@ hessen_2021_gemeinderatswahl_data_sub <- hessen_2021_gemeinderatswahl_data_sub[,
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -13377,7 +13799,9 @@ hessen_2026_gemeinderatswahl_data_sub <- data.table(
   abs_FDP = .he26_num("FDP absolut"),
   abs_DiePARTEI = .he26_num("Die PARTEI absolut"),
   abs_FREIEWÄHLER = .he26_num("FREIE WÄHLER absolut"),
-  abs_BSW = .he26_num("BSW absolut")
+  abs_BSW = .he26_num("BSW absolut"),
+  # Die Heimat stood in 3 Gemeinden; like every party here, no seats are carried
+  abs_NPD_HEIMAT = .he26_num("HEIMAT absolut")
 )
 # vote shares (same idiom as the per-year blocks above)
 hessen_2026_gemeinderatswahl_data_sub <-
@@ -13515,6 +13939,10 @@ niedersachsen_1991_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
 niedersachsen_1991_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 niedersachsen_1991_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 niedersachsen_1991_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+# NPD: own column in both the Gemeinde and the kreisfreie-Stadt (Kreiswahl) file
+niedersachsen_1991_gemeinderatswahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(niedersachsen_1991_gemeinderatswahlen_data_sub$NPD)
+niedersachsen_1991_gemeinderatswahlen_data_sub$gew_NPD_HEIMAT <- NA
+niedersachsen_1991_gemeinderatswahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 niedersachsen_1991_gemeinderatswahlen_data_sub <- niedersachsen_1991_gemeinderatswahlen_data_sub[, .(
@@ -13554,7 +13982,10 @@ niedersachsen_1991_gemeinderatswahlen_data_sub <- niedersachsen_1991_gemeinderat
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -13664,6 +14095,9 @@ niedersachsen_1996_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
 niedersachsen_1996_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 niedersachsen_1996_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 niedersachsen_1996_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+niedersachsen_1996_gemeinderatswahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(niedersachsen_1996_gemeinderatswahlen_data_sub$NPD)
+niedersachsen_1996_gemeinderatswahlen_data_sub$gew_NPD_HEIMAT <- NA
+niedersachsen_1996_gemeinderatswahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 niedersachsen_1996_gemeinderatswahlen_data_sub <- niedersachsen_1996_gemeinderatswahlen_data_sub[, .(
@@ -13703,7 +14137,10 @@ niedersachsen_1996_gemeinderatswahlen_data_sub <- niedersachsen_1996_gemeinderat
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -13813,6 +14250,9 @@ niedersachsen_2001_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
 niedersachsen_2001_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 niedersachsen_2001_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 niedersachsen_2001_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+niedersachsen_2001_gemeinderatswahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(niedersachsen_2001_gemeinderatswahlen_data_sub$NPD)
+niedersachsen_2001_gemeinderatswahlen_data_sub$gew_NPD_HEIMAT <- NA
+niedersachsen_2001_gemeinderatswahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 niedersachsen_2001_gemeinderatswahlen_data_sub <- niedersachsen_2001_gemeinderatswahlen_data_sub[, .(
@@ -13852,7 +14292,10 @@ niedersachsen_2001_gemeinderatswahlen_data_sub <- niedersachsen_2001_gemeinderat
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -14120,6 +14563,9 @@ niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_PIRATEN <- as.numeric(niede
 niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_FDP <- as.numeric(niedersachsen_2011_gemeinderatswahlen_data_sub$`FDP(insgesamt)_sitze`)
 niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+niedersachsen_2011_gemeinderatswahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(niedersachsen_2011_gemeinderatswahlen_data_sub$NPD)
+niedersachsen_2011_gemeinderatswahlen_data_sub$gew_NPD_HEIMAT <- NA
+niedersachsen_2011_gemeinderatswahlen_data_sub$sitze_NPD_HEIMAT <- as.numeric(niedersachsen_2011_gemeinderatswahlen_data_sub$`NPD(insgesamt)_sitze`)
 
 # Creating new dataframe with selected vars ----
 niedersachsen_2011_gemeinderatswahlen_data_sub <- niedersachsen_2011_gemeinderatswahlen_data_sub[, .(
@@ -14159,7 +14605,10 @@ niedersachsen_2011_gemeinderatswahlen_data_sub <- niedersachsen_2011_gemeinderat
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -14188,6 +14637,23 @@ niedersachsen_2016_gemeinderatswahlen_data <- as.data.table(read_excel(
   "raw/niedersachsen/niedersachsen_gemeinderatswahlen_2016.xlsx",
   sheet = "anzahl"
 ))
+# NPD: the anzahl sheet is Tabelle 4b of the same workbook with its header
+# renamed, and the NPD column lost its name there. Take it by the position
+# Tabelle 4b's own header gives it, proven on the values (see same_cols()),
+# before the seat merge below reorders the columns.
+ni16_src <- read_excel(
+  "raw/niedersachsen/niedersachsen_gemeinderatswahlen_2016.xlsx",
+  sheet = "Tabelle 4b",
+  col_names = FALSE,
+  col_types = "text"
+)
+ni16_npd_j <- src_label_col(ni16_src, "NPD")
+stopifnot(same_cols(
+  niedersachsen_2016_gemeinderatswahlen_data,
+  ni16_src,
+  pos = c(match(c("GueltigeStimmen", "CDU"), names(niedersachsen_2016_gemeinderatswahlen_data)), ni16_npd_j)
+))
+niedersachsen_2016_gemeinderatswahlen_data$NPD <- suppressWarnings(as.numeric(as.character(niedersachsen_2016_gemeinderatswahlen_data[[ni16_npd_j]])))
 niedersachsen_2016_gemeinderatswahlen_data_sitze <- as.data.table(read_excel(
   "raw/niedersachsen/niedersachsen_gemeinderatswahlen_2016.xlsx",
   sheet = "sitze"
@@ -14300,6 +14766,9 @@ niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
 niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_FDP <- as.numeric(niedersachsen_2016_gemeinderatswahlen_data_sub$FDP_sitze)
 niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+niedersachsen_2016_gemeinderatswahlen_data_sub$abs_NPD_HEIMAT <- niedersachsen_2016_gemeinderatswahlen_data_sub$NPD
+niedersachsen_2016_gemeinderatswahlen_data_sub$gew_NPD_HEIMAT <- NA
+niedersachsen_2016_gemeinderatswahlen_data_sub$sitze_NPD_HEIMAT <- NA # the sitze sheet carries the main parties only
 
 # Creating new dataframe with selected vars ----
 niedersachsen_2016_gemeinderatswahlen_data_sub <- niedersachsen_2016_gemeinderatswahlen_data_sub[, .(
@@ -14339,7 +14808,10 @@ niedersachsen_2016_gemeinderatswahlen_data_sub <- niedersachsen_2016_gemeinderat
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -14497,6 +14969,9 @@ niedersachsen_2021_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
 niedersachsen_2021_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 niedersachsen_2021_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 niedersachsen_2021_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+niedersachsen_2021_gemeinderatswahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(niedersachsen_2021_gemeinderatswahlen_data_sub$`36`) # column 36 = NPD in the header row
+niedersachsen_2021_gemeinderatswahlen_data_sub$gew_NPD_HEIMAT <- NA
+niedersachsen_2021_gemeinderatswahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 
 # add NUTS3 level election results for Kreisfreie Städte
@@ -14595,6 +15070,8 @@ niedersachsen_2021_kreiswahlen_data_sub$sitze_DiePARTEI <- as.numeric(
 niedersachsen_2021_kreiswahlen_data_sub$sitze_FREIEWÄHLER <- as.numeric(
   niedersachsen_2021_kreiswahlen_data_sub$`FREIE WÄHLER Sitze`
 )
+niedersachsen_2021_kreiswahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(niedersachsen_2021_kreiswahlen_data_sub$`NPD Stimmen`)
+niedersachsen_2021_kreiswahlen_data_sub$sitze_NPD_HEIMAT <- as.numeric(niedersachsen_2021_kreiswahlen_data_sub$`NPD Sitze`)
 
 
 # bind to dataframe
@@ -14642,7 +15119,10 @@ niedersachsen_2021_gemeinderatswahlen_data_sub <- niedersachsen_2021_gemeinderat
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 
@@ -14851,8 +15331,8 @@ niedersachsen_1981_1986_gemeindewahl$Turnout <-
 cat("NI 1981/1986:", nrow(niedersachsen_1981_1986_gemeindewahl), "rows\n")
 
 ####### Merge files and save overall output for Niedersachsen ----
-# Merge
-niedersachsen_kommunalwahlen <- rbind(
+# Merge (fill = TRUE: the 2006 files have no NPD column)
+niedersachsen_kommunalwahlen <- rbindlist(list(
   niedersachsen_1991_gemeinderatswahlen_data_sub,
   niedersachsen_1996_gemeinderatswahlen_data_sub,
   niedersachsen_2001_gemeinderatswahlen_data_sub,
@@ -14860,7 +15340,7 @@ niedersachsen_kommunalwahlen <- rbind(
   niedersachsen_2011_gemeinderatswahlen_data_sub,
   niedersachsen_2016_gemeinderatswahlen_data_sub,
   niedersachsen_2021_gemeinderatswahlen_data_sub
-)
+), use.names = TRUE, fill = TRUE)
 
 niedersachsen_kommunalwahlen <- niedersachsen_kommunalwahlen |>
   bind_rows(niedersachsen_2011_16_staedte) |>
@@ -14957,6 +15437,9 @@ sachsen_1994_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 sachsen_1994_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 sachsen_1994_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
 sachsen_1994_gemeinderatswahlen_data_sub$sitze_BSW <- NA
+sachsen_1994_gemeinderatswahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(sachsen_1994_gemeinderatswahlen_data_sub$NPD)
+sachsen_1994_gemeinderatswahlen_data_sub$gew_NPD_HEIMAT <- NA
+sachsen_1994_gemeinderatswahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 sachsen_1994_gemeinderatswahlen_data_sub <- sachsen_1994_gemeinderatswahlen_data_sub[, .(
@@ -14999,7 +15482,10 @@ sachsen_1994_gemeinderatswahlen_data_sub <- sachsen_1994_gemeinderatswahlen_data
   sitze_FDP,
   sitze_DiePARTEI,
   sitze_FREIEWÄHLER,
-  sitze_BSW
+  sitze_BSW,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -15095,6 +15581,9 @@ sachsen_1999_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 sachsen_1999_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 sachsen_1999_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
 sachsen_1999_gemeinderatswahlen_data_sub$sitze_BSW <- NA
+sachsen_1999_gemeinderatswahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(sachsen_1999_gemeinderatswahlen_data_sub$NPD)
+sachsen_1999_gemeinderatswahlen_data_sub$gew_NPD_HEIMAT <- NA
+sachsen_1999_gemeinderatswahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 sachsen_1999_gemeinderatswahlen_data_sub <- sachsen_1999_gemeinderatswahlen_data_sub[, .(
@@ -15137,7 +15626,10 @@ sachsen_1999_gemeinderatswahlen_data_sub <- sachsen_1999_gemeinderatswahlen_data
   sitze_FDP,
   sitze_DiePARTEI,
   sitze_FREIEWÄHLER,
-  sitze_BSW
+  sitze_BSW,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -15233,6 +15725,9 @@ sachsen_2004_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 sachsen_2004_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 sachsen_2004_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
 sachsen_2004_gemeinderatswahlen_data_sub$sitze_BSW <- NA
+sachsen_2004_gemeinderatswahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(sachsen_2004_gemeinderatswahlen_data_sub$NPD)
+sachsen_2004_gemeinderatswahlen_data_sub$gew_NPD_HEIMAT <- NA
+sachsen_2004_gemeinderatswahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 sachsen_2004_gemeinderatswahlen_data_sub <- sachsen_2004_gemeinderatswahlen_data_sub[, .(
@@ -15275,7 +15770,10 @@ sachsen_2004_gemeinderatswahlen_data_sub <- sachsen_2004_gemeinderatswahlen_data
   sitze_FDP,
   sitze_DiePARTEI,
   sitze_FREIEWÄHLER,
-  sitze_BSW
+  sitze_BSW,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -15370,6 +15868,9 @@ sachsen_2009_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 sachsen_2009_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 sachsen_2009_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
 sachsen_2009_gemeinderatswahlen_data_sub$sitze_BSW <- NA
+sachsen_2009_gemeinderatswahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(sachsen_2009_gemeinderatswahlen_data_sub$NPD)
+sachsen_2009_gemeinderatswahlen_data_sub$gew_NPD_HEIMAT <- NA
+sachsen_2009_gemeinderatswahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 sachsen_2009_gemeinderatswahlen_data_sub <- sachsen_2009_gemeinderatswahlen_data_sub[, .(
@@ -15412,7 +15913,10 @@ sachsen_2009_gemeinderatswahlen_data_sub <- sachsen_2009_gemeinderatswahlen_data
   sitze_FDP,
   sitze_DiePARTEI,
   sitze_FREIEWÄHLER,
-  sitze_BSW
+  sitze_BSW,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -15507,6 +16011,9 @@ sachsen_2014_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 sachsen_2014_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 sachsen_2014_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
 sachsen_2014_gemeinderatswahlen_data_sub$sitze_BSW <- NA
+sachsen_2014_gemeinderatswahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(sachsen_2014_gemeinderatswahlen_data_sub$NPD)
+sachsen_2014_gemeinderatswahlen_data_sub$gew_NPD_HEIMAT <- NA
+sachsen_2014_gemeinderatswahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 sachsen_2014_gemeinderatswahlen_data_sub <- sachsen_2014_gemeinderatswahlen_data_sub[, .(
@@ -15549,7 +16056,10 @@ sachsen_2014_gemeinderatswahlen_data_sub <- sachsen_2014_gemeinderatswahlen_data
   sitze_FDP,
   sitze_DiePARTEI,
   sitze_FREIEWÄHLER,
-  sitze_BSW
+  sitze_BSW,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -15644,6 +16154,9 @@ sachsen_2019_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 sachsen_2019_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 sachsen_2019_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
 sachsen_2019_gemeinderatswahlen_data_sub$sitze_BSW <- NA
+sachsen_2019_gemeinderatswahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(sachsen_2019_gemeinderatswahlen_data_sub$NPD)
+sachsen_2019_gemeinderatswahlen_data_sub$gew_NPD_HEIMAT <- NA
+sachsen_2019_gemeinderatswahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 sachsen_2019_gemeinderatswahlen_data_sub <- sachsen_2019_gemeinderatswahlen_data_sub[, .(
@@ -15686,7 +16199,10 @@ sachsen_2019_gemeinderatswahlen_data_sub <- sachsen_2019_gemeinderatswahlen_data
   sitze_FDP,
   sitze_DiePARTEI,
   sitze_FREIEWÄHLER,
-  sitze_BSW
+  sitze_BSW,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -15783,6 +16299,13 @@ sachsen_2024_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 sachsen_2024_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 sachsen_2024_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
 sachsen_2024_gemeinderatswahlen_data_sub$sitze_BSW <- NA
+# Die Heimat (ex-NPD) and FREIE SACHSEN (clean_names: heimat, freie_sachsen)
+sachsen_2024_gemeinderatswahlen_data_sub$abs_NPD_HEIMAT <- as.numeric(sachsen_2024_gemeinderatswahlen_data_sub$heimat)
+sachsen_2024_gemeinderatswahlen_data_sub$abs_FREIE_SACHSEN <- as.numeric(sachsen_2024_gemeinderatswahlen_data_sub$freie_sachsen)
+sachsen_2024_gemeinderatswahlen_data_sub$gew_NPD_HEIMAT <- NA
+sachsen_2024_gemeinderatswahlen_data_sub$gew_FREIE_SACHSEN <- NA
+sachsen_2024_gemeinderatswahlen_data_sub$sitze_NPD_HEIMAT <- NA
+sachsen_2024_gemeinderatswahlen_data_sub$sitze_FREIE_SACHSEN <- NA
 
 # Creating new dataframe with selected vars ----
 sachsen_2024_gemeinderatswahlen_data_sub <- sachsen_2024_gemeinderatswahlen_data_sub[, .(
@@ -15825,7 +16348,13 @@ sachsen_2024_gemeinderatswahlen_data_sub <- sachsen_2024_gemeinderatswahlen_data
   sitze_FDP,
   sitze_DiePARTEI,
   sitze_FREIEWÄHLER,
-  sitze_BSW
+  sitze_BSW,
+  abs_NPD_HEIMAT,
+  abs_FREIE_SACHSEN,
+  gew_NPD_HEIMAT,
+  gew_FREIE_SACHSEN,
+  sitze_NPD_HEIMAT,
+  sitze_FREIE_SACHSEN
 )] |>
   mutate(across(
     c(starts_with('abs_'), starts_with('gew_'), starts_with('sitze_')),
@@ -15856,8 +16385,8 @@ sachsen_2024_gemeinderatswahlen_data_sub <- sachsen_2024_gemeinderatswahlen_data
   filter(nchar(AGS_8dig) == 8)
 
 ####### Merge files and save overall output for Sachsen ----
-# Merge
-sachsen_kommunalwahlen <- rbind(
+# Merge (fill = TRUE: FREIE SACHSEN exists only in 2024)
+sachsen_kommunalwahlen <- rbindlist(list(
   sachsen_1994_gemeinderatswahlen_data_sub,
   sachsen_1999_gemeinderatswahlen_data_sub,
   sachsen_2004_gemeinderatswahlen_data_sub,
@@ -15865,7 +16394,7 @@ sachsen_kommunalwahlen <- rbind(
   sachsen_2014_gemeinderatswahlen_data_sub,
   sachsen_2019_gemeinderatswahlen_data_sub,
   sachsen_2024_gemeinderatswahlen_data_sub
-)
+), use.names = TRUE, fill = TRUE)
 
 # Replace - with NA
 sachsen_kommunalwahlen[sachsen_kommunalwahlen == "-"] <- NA
@@ -15950,6 +16479,9 @@ bremen_overall_buergerschaftswahl_data_sub$sitze_PIRATEN <- NA
 bremen_overall_buergerschaftswahl_data_sub$sitze_FDP <- bremen_overall_buergerschaftswahl_data_sub$FDP_sitze
 bremen_overall_buergerschaftswahl_data_sub$sitze_DiePARTEI <- NA
 bremen_overall_buergerschaftswahl_data_sub$sitze_FREIEWÄHLER <- NA
+bremen_overall_buergerschaftswahl_data_sub$abs_NPD_HEIMAT <- as.numeric(bremen_overall_buergerschaftswahl_data_sub$NPD)
+bremen_overall_buergerschaftswahl_data_sub$gew_NPD_HEIMAT <- NA
+bremen_overall_buergerschaftswahl_data_sub$sitze_NPD_HEIMAT <- NA # the seat columns lump the NPD into Andere_sitze
 
 # Creating new dataframe with selected vars ----
 bremen_overall_buergerschaftswahl_data_sub <- bremen_overall_buergerschaftswahl_data_sub[, .(
@@ -15989,7 +16521,10 @@ bremen_overall_buergerschaftswahl_data_sub <- bremen_overall_buergerschaftswahl_
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -16325,6 +16860,9 @@ brandenburg_1998_gemeinderatswahlen_data_recoded$sitze_DiePARTEI <- NA
 brandenburg_1998_gemeinderatswahlen_data_recoded$sitze_FREIEWÄHLER <- NA
 brandenburg_1998_gemeinderatswahlen_data_recoded$sitze_Gemeinsame_Wahlvorschläge <- NA
 brandenburg_1998_gemeinderatswahlen_data_recoded$sitze_Wählergruppen <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$abs_NPD_HEIMAT <- as.numeric(brandenburg_1998_gemeinderatswahlen_data_recoded$NPD)
+brandenburg_1998_gemeinderatswahlen_data_recoded$gew_NPD_HEIMAT <- NA
+brandenburg_1998_gemeinderatswahlen_data_recoded$sitze_NPD_HEIMAT <- NA
 
 names(brandenburg_1998_gemeinderatswahlen_data_recoded)
 
@@ -16369,7 +16907,10 @@ brandenburg_1998_gemeinderatswahlen_data_recoded <- brandenburg_1998_gemeinderat
   sitze_FDP,
   sitze_FREIEWÄHLER,
   sitze_Gemeinsame_Wahlvorschläge,
-  sitze_Wählergruppen
+  sitze_Wählergruppen,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -16529,6 +17070,29 @@ brandenburg_2003_gemeinderatswahlen_data_recoded <- merge(
   all.x = TRUE
 )
 
+# NPD
+brandenburg_2003_gemeinderatswahlen_data_NPD <- brandenburg_2003_gemeinderatswahlen_data[
+  brandenburg_2003_gemeinderatswahlen_data$Wahlvorschlagsträger == "NPD"
+]
+brandenburg_2003_gemeinderatswahlen_data_NPD <- brandenburg_2003_gemeinderatswahlen_data_NPD[, c(
+  'AGS',
+  'Stimmen',
+  'Sitze'
+)]
+names(brandenburg_2003_gemeinderatswahlen_data_NPD)[
+  names(brandenburg_2003_gemeinderatswahlen_data_NPD) == "Stimmen"
+] <- "NPD"
+names(brandenburg_2003_gemeinderatswahlen_data_NPD)[
+  names(brandenburg_2003_gemeinderatswahlen_data_NPD) == "Sitze"
+] <- "sitze_NPD"
+stopifnot(!anyDuplicated(brandenburg_2003_gemeinderatswahlen_data_NPD$AGS))
+brandenburg_2003_gemeinderatswahlen_data_recoded <- merge(
+  brandenburg_2003_gemeinderatswahlen_data_recoded,
+  brandenburg_2003_gemeinderatswahlen_data_NPD,
+  by = c('AGS'),
+  all.x = TRUE
+)
+
 # Wählergruppen
 brandenburg_2003_gemeinderatswahlen_data_WAEHLERGRUPPEN <- brandenburg_2003_gemeinderatswahlen_data[
   brandenburg_2003_gemeinderatswahlen_data$Wahlvorschlagsträger ==
@@ -16632,6 +17196,9 @@ brandenburg_2003_gemeinderatswahlen_data_recoded$sitze_DiePARTEI <- NA
 brandenburg_2003_gemeinderatswahlen_data_recoded$sitze_FREIEWÄHLER <- NA
 brandenburg_2003_gemeinderatswahlen_data_recoded$sitze_Gemeinsame_Wahlvorschläge <- brandenburg_2003_gemeinderatswahlen_data_recoded$`sitze_WAEHLERGRUPPEN`
 brandenburg_2003_gemeinderatswahlen_data_recoded$sitze_Wählergruppen <- brandenburg_2003_gemeinderatswahlen_data_recoded$`sitze_EINZELBEWERBER`
+brandenburg_2003_gemeinderatswahlen_data_recoded$abs_NPD_HEIMAT <- as.numeric(brandenburg_2003_gemeinderatswahlen_data_recoded$NPD)
+brandenburg_2003_gemeinderatswahlen_data_recoded$gew_NPD_HEIMAT <- NA
+brandenburg_2003_gemeinderatswahlen_data_recoded$sitze_NPD_HEIMAT <- as.numeric(brandenburg_2003_gemeinderatswahlen_data_recoded$sitze_NPD)
 
 names(brandenburg_2003_gemeinderatswahlen_data_recoded)
 
@@ -16676,7 +17243,10 @@ brandenburg_2003_gemeinderatswahlen_data_recoded <- brandenburg_2003_gemeinderat
   sitze_FDP,
   sitze_FREIEWÄHLER,
   sitze_Gemeinsame_Wahlvorschläge,
-  sitze_Wählergruppen
+  sitze_Wählergruppen,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -16868,6 +17438,29 @@ brandenburg_2008_gemeinderatswahlen_data_recoded <- merge(
   all.x = TRUE
 )
 
+# NPD
+brandenburg_2008_gemeinderatswahlen_data_NPD <- brandenburg_2008_gemeinderatswahlen_data[
+  brandenburg_2008_gemeinderatswahlen_data$Wahlvorschlagsträger == "NPD"
+]
+brandenburg_2008_gemeinderatswahlen_data_NPD <- brandenburg_2008_gemeinderatswahlen_data_NPD[, c(
+  'AGS',
+  'Stimmen',
+  'Sitze'
+)]
+names(brandenburg_2008_gemeinderatswahlen_data_NPD)[
+  names(brandenburg_2008_gemeinderatswahlen_data_NPD) == "Stimmen"
+] <- "NPD"
+names(brandenburg_2008_gemeinderatswahlen_data_NPD)[
+  names(brandenburg_2008_gemeinderatswahlen_data_NPD) == "Sitze"
+] <- "sitze_NPD"
+stopifnot(!anyDuplicated(brandenburg_2008_gemeinderatswahlen_data_NPD$AGS))
+brandenburg_2008_gemeinderatswahlen_data_recoded <- merge(
+  brandenburg_2008_gemeinderatswahlen_data_recoded,
+  brandenburg_2008_gemeinderatswahlen_data_NPD,
+  by = c('AGS'),
+  all.x = TRUE
+)
+
 # Wählergruppen
 
 brandenburg_2008_gemeinderatswahlen_data_WAEHLERGRUPPEN <- brandenburg_2008_gemeinderatswahlen_data[
@@ -16990,6 +17583,9 @@ brandenburg_2008_gemeinderatswahlen_data_recoded$sitze_DiePARTEI <- NA
 brandenburg_2008_gemeinderatswahlen_data_recoded$sitze_FREIEWÄHLER <- brandenburg_2008_gemeinderatswahlen_data_recoded$sitze_FREIEWÄHLER
 brandenburg_2008_gemeinderatswahlen_data_recoded$sitze_Gemeinsame_Wahlvorschläge <- brandenburg_2008_gemeinderatswahlen_data_recoded$`sitze_EINZELBEWERBER`
 brandenburg_2008_gemeinderatswahlen_data_recoded$sitze_Wählergruppen <- brandenburg_2008_gemeinderatswahlen_data_recoded$`sitze_WAEHLERGRUPPEN`
+brandenburg_2008_gemeinderatswahlen_data_recoded$abs_NPD_HEIMAT <- as.numeric(brandenburg_2008_gemeinderatswahlen_data_recoded$NPD)
+brandenburg_2008_gemeinderatswahlen_data_recoded$gew_NPD_HEIMAT <- NA
+brandenburg_2008_gemeinderatswahlen_data_recoded$sitze_NPD_HEIMAT <- as.numeric(brandenburg_2008_gemeinderatswahlen_data_recoded$sitze_NPD)
 
 names(brandenburg_2008_gemeinderatswahlen_data_recoded)
 
@@ -17034,7 +17630,10 @@ brandenburg_2008_gemeinderatswahlen_data_recoded <- brandenburg_2008_gemeinderat
   sitze_FDP,
   sitze_FREIEWÄHLER,
   sitze_Gemeinsame_Wahlvorschläge,
-  sitze_Wählergruppen
+  sitze_Wählergruppen,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -17295,6 +17894,29 @@ brandenburg_2014_gemeinderatswahlen_data_recoded <- merge(
   all.x = TRUE
 )
 
+# NPD
+brandenburg_2014_gemeinderatswahlen_data_NPD <- brandenburg_2014_gemeinderatswahlen_data[
+  brandenburg_2014_gemeinderatswahlen_data$Wahlvorschlagsträger_Kurz == "NPD"
+]
+brandenburg_2014_gemeinderatswahlen_data_NPD <- brandenburg_2014_gemeinderatswahlen_data_NPD[, c(
+  'AGS',
+  'Stimmen',
+  'Sitze'
+)]
+names(brandenburg_2014_gemeinderatswahlen_data_NPD)[
+  names(brandenburg_2014_gemeinderatswahlen_data_NPD) == "Stimmen"
+] <- "NPD"
+names(brandenburg_2014_gemeinderatswahlen_data_NPD)[
+  names(brandenburg_2014_gemeinderatswahlen_data_NPD) == "Sitze"
+] <- "sitze_NPD"
+stopifnot(!anyDuplicated(brandenburg_2014_gemeinderatswahlen_data_NPD$AGS))
+brandenburg_2014_gemeinderatswahlen_data_recoded <- merge(
+  brandenburg_2014_gemeinderatswahlen_data_recoded,
+  brandenburg_2014_gemeinderatswahlen_data_NPD,
+  by = c('AGS'),
+  all.x = TRUE
+)
+
 # Wählergruppen
 brandenburg_2014_gemeinderatswahlen_data_WAEHLERGRUPPEN <- brandenburg_2014_gemeinderatswahlen_data[
   brandenburg_2014_gemeinderatswahlen_data$`ArtdesWahlvorschlags-trägers` ==
@@ -17416,6 +18038,9 @@ brandenburg_2014_gemeinderatswahlen_data_recoded$sitze_DiePARTEI <- brandenburg_
 brandenburg_2014_gemeinderatswahlen_data_recoded$sitze_FREIEWÄHLER <- brandenburg_2014_gemeinderatswahlen_data_recoded$sitze_FREIEWÄHLER
 brandenburg_2014_gemeinderatswahlen_data_recoded$sitze_Gemeinsame_Wahlvorschläge <- brandenburg_2014_gemeinderatswahlen_data_recoded$`sitze_WAEHLERGRUPPEN`
 brandenburg_2014_gemeinderatswahlen_data_recoded$sitze_Wählergruppen <- brandenburg_2014_gemeinderatswahlen_data_recoded$`sitze_EINZELBEWERBER`
+brandenburg_2014_gemeinderatswahlen_data_recoded$abs_NPD_HEIMAT <- as.numeric(brandenburg_2014_gemeinderatswahlen_data_recoded$NPD)
+brandenburg_2014_gemeinderatswahlen_data_recoded$gew_NPD_HEIMAT <- NA
+brandenburg_2014_gemeinderatswahlen_data_recoded$sitze_NPD_HEIMAT <- as.numeric(brandenburg_2014_gemeinderatswahlen_data_recoded$sitze_NPD)
 
 
 # Creating new dataframe with selected vars ----
@@ -17459,7 +18084,10 @@ brandenburg_2014_gemeinderatswahlen_data_recoded <- brandenburg_2014_gemeinderat
   sitze_FDP,
   sitze_FREIEWÄHLER,
   sitze_Gemeinsame_Wahlvorschläge,
-  sitze_Wählergruppen
+  sitze_Wählergruppen,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -17765,6 +18393,29 @@ brandenburg_2019_gemeinderatswahlen_data_recoded <- merge(
   all.x = TRUE
 )
 
+# NPD
+brandenburg_2019_gemeinderatswahlen_data_NPD <- brandenburg_2019_gemeinderatswahlen_data[
+  brandenburg_2019_gemeinderatswahlen_data$Merkmal_Kurzname == "NPD"
+]
+brandenburg_2019_gemeinderatswahlen_data_NPD <- brandenburg_2019_gemeinderatswahlen_data_NPD[, c(
+  'AGS',
+  'Anzahl',
+  'Sitze'
+)]
+names(brandenburg_2019_gemeinderatswahlen_data_NPD)[
+  names(brandenburg_2019_gemeinderatswahlen_data_NPD) == "Anzahl"
+] <- "NPD"
+names(brandenburg_2019_gemeinderatswahlen_data_NPD)[
+  names(brandenburg_2019_gemeinderatswahlen_data_NPD) == "Sitze"
+] <- "sitze_NPD"
+stopifnot(!anyDuplicated(brandenburg_2019_gemeinderatswahlen_data_NPD$AGS))
+brandenburg_2019_gemeinderatswahlen_data_recoded <- merge(
+  brandenburg_2019_gemeinderatswahlen_data_recoded,
+  brandenburg_2019_gemeinderatswahlen_data_NPD,
+  by = c('AGS'),
+  all.x = TRUE
+)
+
 # Wählergruppen
 brandenburg_2019_gemeinderatswahlen_data_WAEHLERGRUPPEN <- dplyr::filter(
   brandenburg_2019_gemeinderatswahlen_data,
@@ -17886,6 +18537,9 @@ brandenburg_2019_gemeinderatswahlen_data_recoded$sitze_DiePARTEI <- brandenburg_
 brandenburg_2019_gemeinderatswahlen_data_recoded$sitze_FREIEWÄHLER <- brandenburg_2019_gemeinderatswahlen_data_recoded$sitze_FREIEWÄHLER
 brandenburg_2019_gemeinderatswahlen_data_recoded$sitze_Gemeinsame_Wahlvorschläge <- brandenburg_2019_gemeinderatswahlen_data_recoded$`sitze_WAEHLERGRUPPEN`
 brandenburg_2019_gemeinderatswahlen_data_recoded$sitze_Wählergruppen <- brandenburg_2019_gemeinderatswahlen_data_recoded$`sitze_EINZELBEWERBER`
+brandenburg_2019_gemeinderatswahlen_data_recoded$abs_NPD_HEIMAT <- as.numeric(brandenburg_2019_gemeinderatswahlen_data_recoded$NPD)
+brandenburg_2019_gemeinderatswahlen_data_recoded$gew_NPD_HEIMAT <- NA
+brandenburg_2019_gemeinderatswahlen_data_recoded$sitze_NPD_HEIMAT <- as.numeric(brandenburg_2019_gemeinderatswahlen_data_recoded$sitze_NPD)
 
 
 # Creating new dataframe with selected vars ----
@@ -17929,7 +18583,10 @@ brandenburg_2019_gemeinderatswahlen_data_recoded <- brandenburg_2019_gemeinderat
   sitze_FDP,
   sitze_FREIEWÄHLER,
   sitze_Gemeinsame_Wahlvorschläge,
-  sitze_Wählergruppen
+  sitze_Wählergruppen,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -18238,6 +18895,52 @@ brandenburg_2024_gemeinderatswahlen_data_recoded <- merge(
   all.x = TRUE
 )
 
+# HEIMAT (Die Heimat, ex-NPD)
+brandenburg_2024_gemeinderatswahlen_data_HEIMAT <- brandenburg_2024_gemeinderatswahlen_data[
+  brandenburg_2024_gemeinderatswahlen_data$Merkmal_Kurzname == "HEIMAT"
+]
+brandenburg_2024_gemeinderatswahlen_data_HEIMAT <- brandenburg_2024_gemeinderatswahlen_data_HEIMAT[, c(
+  'AGS',
+  'Anzahl',
+  'Sitze'
+)]
+names(brandenburg_2024_gemeinderatswahlen_data_HEIMAT)[
+  names(brandenburg_2024_gemeinderatswahlen_data_HEIMAT) == "Anzahl"
+] <- "HEIMAT"
+names(brandenburg_2024_gemeinderatswahlen_data_HEIMAT)[
+  names(brandenburg_2024_gemeinderatswahlen_data_HEIMAT) == "Sitze"
+] <- "sitze_HEIMAT"
+stopifnot(!anyDuplicated(brandenburg_2024_gemeinderatswahlen_data_HEIMAT$AGS))
+brandenburg_2024_gemeinderatswahlen_data_recoded <- merge(
+  brandenburg_2024_gemeinderatswahlen_data_recoded,
+  brandenburg_2024_gemeinderatswahlen_data_HEIMAT,
+  by = c('AGS'),
+  all.x = TRUE
+)
+
+# III. WEG (Der III. Weg)
+brandenburg_2024_gemeinderatswahlen_data_IIIWEG <- brandenburg_2024_gemeinderatswahlen_data[
+  brandenburg_2024_gemeinderatswahlen_data$Merkmal_Kurzname == "III. WEG"
+]
+brandenburg_2024_gemeinderatswahlen_data_IIIWEG <- brandenburg_2024_gemeinderatswahlen_data_IIIWEG[, c(
+  'AGS',
+  'Anzahl',
+  'Sitze'
+)]
+names(brandenburg_2024_gemeinderatswahlen_data_IIIWEG)[
+  names(brandenburg_2024_gemeinderatswahlen_data_IIIWEG) == "Anzahl"
+] <- "IIIWEG"
+names(brandenburg_2024_gemeinderatswahlen_data_IIIWEG)[
+  names(brandenburg_2024_gemeinderatswahlen_data_IIIWEG) == "Sitze"
+] <- "sitze_IIIWEG"
+stopifnot(!anyDuplicated(brandenburg_2024_gemeinderatswahlen_data_IIIWEG$AGS))
+brandenburg_2024_gemeinderatswahlen_data_recoded <- merge(
+  brandenburg_2024_gemeinderatswahlen_data_recoded,
+  brandenburg_2024_gemeinderatswahlen_data_IIIWEG,
+  by = c('AGS'),
+  all.x = TRUE
+)
+
 # Wählergruppen
 brandenburg_2024_gemeinderatswahlen_data_WAEHLERGRUPPEN <- dplyr::filter(
   brandenburg_2024_gemeinderatswahlen_data,
@@ -18359,6 +19062,12 @@ brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_DiePARTEI <- brandenburg_
 brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_FREIEWÄHLER <- brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_FREIEWÄHLER
 brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_Gemeinsame_Wahlvorschläge <- brandenburg_2024_gemeinderatswahlen_data_recoded$`sitze_WAEHLERGRUPPEN`
 brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_Wählergruppen <- brandenburg_2024_gemeinderatswahlen_data_recoded$`sitze_EINZELBEWERBER`
+brandenburg_2024_gemeinderatswahlen_data_recoded$abs_NPD_HEIMAT <- as.numeric(brandenburg_2024_gemeinderatswahlen_data_recoded$HEIMAT)
+brandenburg_2024_gemeinderatswahlen_data_recoded$gew_NPD_HEIMAT <- NA
+brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_NPD_HEIMAT <- as.numeric(brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_HEIMAT)
+brandenburg_2024_gemeinderatswahlen_data_recoded$abs_III_WEG <- as.numeric(brandenburg_2024_gemeinderatswahlen_data_recoded$IIIWEG)
+brandenburg_2024_gemeinderatswahlen_data_recoded$gew_III_WEG <- NA
+brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_III_WEG <- as.numeric(brandenburg_2024_gemeinderatswahlen_data_recoded$sitze_IIIWEG)
 
 
 # Creating new dataframe with selected vars ----
@@ -18402,7 +19111,13 @@ brandenburg_2024_gemeinderatswahlen_data_recoded <- brandenburg_2024_gemeinderat
   sitze_FDP,
   sitze_FREIEWÄHLER,
   sitze_Gemeinsame_Wahlvorschläge,
-  sitze_Wählergruppen
+  sitze_Wählergruppen,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT,
+  abs_III_WEG,
+  gew_III_WEG,
+  sitze_III_WEG
 )]
 
 # Calculating vote shares ----
@@ -18425,8 +19140,8 @@ brandenburg_2024_gemeinderatswahlen_data_recoded$Turnout <- brandenburg_2024_gem
   brandenburg_2024_gemeinderatswahlen_data_recoded$Wahlberechtigteinsgesamt
 
 ####### Merge files and save overall output for Brandenburg ----
-# Merge
-brandenburg_kommunalwahlen <- rbind(
+# Merge (fill = TRUE: 1993 has no NPD row, and III. Weg stood only in 2024)
+brandenburg_kommunalwahlen <- rbindlist(list(
   brandenburg_1993_gemeinderatswahlen_data_recoded,
   brandenburg_1998_gemeinderatswahlen_data_recoded,
   brandenburg_2003_gemeinderatswahlen_data_recoded,
@@ -18434,7 +19149,7 @@ brandenburg_kommunalwahlen <- rbind(
   brandenburg_2014_gemeinderatswahlen_data_recoded,
   brandenburg_2019_gemeinderatswahlen_data_recoded,
   brandenburg_2024_gemeinderatswahlen_data_recoded
-)
+), use.names = TRUE, fill = TRUE)
 
 # Replace - with NA
 brandenburg_kommunalwahlen[brandenburg_kommunalwahlen == "-"] <- NA
@@ -18599,10 +19314,10 @@ rlp_stala <- rlp_stala |>
   select(-cw_name)
 
 # Map the StaLA party columns onto the fixed municipal schema. Everything not
-# listed here (DKP, DS, DU, DVU, EAP, Liberale, NPD, ÖDP, REP, PP, DSU,
-# TIERSCHUTZPARTEI, Volt, BIG, LKR, III. Weg and the Mehrheitswahl column for
-# the ~1,200-1,470 Gemeinden that elect their council by majority vote) falls
-# into the residual OTHER category computed in the final merge.
+# listed here (DKP, DS, DU, DVU, EAP, Liberale, ÖDP, REP, PP, DSU,
+# TIERSCHUTZPARTEI, Volt, BIG, LKR and the Mehrheitswahl column for the
+# ~1,200-1,470 Gemeinden that elect their council by majority vote) falls into
+# the residual OTHER category computed in the final merge.
 rlp_stala_party_map <- c(
   CDU = "CDU",
   SPD = "SPD",
@@ -18613,7 +19328,9 @@ rlp_stala_party_map <- c(
   FDP = "FDP",
   DiePARTEI = "Die PARTEI",
   FREIEWÄHLER = "FREIE WÄHLER",
-  Wählergruppen = "Wählergruppen"
+  Wählergruppen = "Wählergruppen",
+  NPD_HEIMAT = "NPD",
+  III_WEG = "III. Weg"
 )
 stopifnot(all(rlp_stala_party_map %in% rlp_stala_parties))
 
@@ -18665,7 +19382,13 @@ rlp_kommunalwahlen <- as.data.table(rlp_stala)[, .(
   sitze_FDP,
   sitze_DiePARTEI,
   sitze_FREIEWÄHLER,
-  sitze_Wählergruppen
+  sitze_Wählergruppen,
+  abs_NPD_HEIMAT,
+  abs_III_WEG,
+  gew_NPD_HEIMAT,
+  gew_III_WEG,
+  sitze_NPD_HEIMAT,
+  sitze_III_WEG
 )]
 
 # Calculating vote shares ----
@@ -19087,6 +19810,9 @@ sh_2013_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
 sh_2013_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 sh_2013_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 sh_2013_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+sh_2013_gemeinderatswahlen_data_sub$abs_NPD_HEIMAT <- sh_2013_gemeinderatswahlen_data_sub$NPD
+sh_2013_gemeinderatswahlen_data_sub$gew_NPD_HEIMAT <- NA
+sh_2013_gemeinderatswahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 sh_2013_gemeinderatswahlen_data_sub <- sh_2013_gemeinderatswahlen_data_sub[, .(
@@ -19126,7 +19852,10 @@ sh_2013_gemeinderatswahlen_data_sub <- sh_2013_gemeinderatswahlen_data_sub[, .(
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 # Calculating vote shares ----
 # https://stackoverflow.com/questions/45947787/create-new-variables-with-mutate-at-while-keeping-the-original-ones
@@ -19169,6 +19898,7 @@ sh_2008_gemeinderatswahlen_data_sub <-
     Gruene = sum(Gruene),
     FDP = sum(FDP),
     DIELINKE = sum(DIELINKE),
+    NPD = sum(NPD),
     AGS_8dig = first(AGS_processed)
   )
 sh_2008_gemeinderatswahlen_data_sub <- as.data.table(
@@ -19220,6 +19950,9 @@ sh_2008_gemeinderatswahlen_data_sub$sitze_PIRATEN <- NA
 sh_2008_gemeinderatswahlen_data_sub$sitze_FDP <- NA
 sh_2008_gemeinderatswahlen_data_sub$sitze_DiePARTEI <- NA
 sh_2008_gemeinderatswahlen_data_sub$sitze_FREIEWÄHLER <- NA
+sh_2008_gemeinderatswahlen_data_sub$abs_NPD_HEIMAT <- sh_2008_gemeinderatswahlen_data_sub$NPD
+sh_2008_gemeinderatswahlen_data_sub$gew_NPD_HEIMAT <- NA
+sh_2008_gemeinderatswahlen_data_sub$sitze_NPD_HEIMAT <- NA
 
 # Creating new dataframe with selected vars ----
 sh_2008_gemeinderatswahlen_data_sub <- sh_2008_gemeinderatswahlen_data_sub[, .(
@@ -19259,7 +19992,10 @@ sh_2008_gemeinderatswahlen_data_sub <- sh_2008_gemeinderatswahlen_data_sub[, .(
   sitze_PIRATEN,
   sitze_FDP,
   sitze_DiePARTEI,
-  sitze_FREIEWÄHLER
+  sitze_FREIEWÄHLER,
+  abs_NPD_HEIMAT,
+  gew_NPD_HEIMAT,
+  sitze_NPD_HEIMAT
 )]
 
 # Calculating vote shares ----
@@ -19706,8 +20442,8 @@ sh_1994_gemeinderatswahlen_data_sub$Turnout <- sh_1994_gemeinderatswahlen_data_s
 
 
 ####### Merge files and save overall output for SH ----
-# Merge
-sh_kommunalwahlen <- rbind(
+# Merge (fill = TRUE: only the 2008 and 2013 files name the NPD)
+sh_kommunalwahlen <- rbindlist(list(
   sh_1994_gemeinderatswahlen_data_sub,
   sh_1998_gemeinderatswahlen_data_sub,
   sh_2003_gemeinderatswahlen_data_sub,
@@ -19715,7 +20451,7 @@ sh_kommunalwahlen <- rbind(
   sh_2013_gemeinderatswahlen_data_sub,
   sh_2018_gemeinderatswahlen_data_sub,
   sh_2023_gemeinderatswahlen_data_sub
-)
+), use.names = TRUE, fill = TRUE)
 
 # Replace - with NA
 sh_kommunalwahlen[sh_kommunalwahlen == "-"] <- NA
@@ -19810,6 +20546,9 @@ kommunalwahlen_merge <- kommunalwahlen_merge %>%
         abs_DiePARTEI,
         abs_FREIEWÄHLER,
         abs_BSW,
+        abs_NPD_HEIMAT,
+        abs_FREIE_SACHSEN,
+        abs_III_WEG,
         na.rm = T
       )),
     prop_OTHER = (1 -
@@ -19824,6 +20563,9 @@ kommunalwahlen_merge <- kommunalwahlen_merge %>%
         prop_DiePARTEI,
         prop_FREIEWÄHLER,
         prop_BSW,
+        prop_NPD_HEIMAT,
+        prop_FREIE_SACHSEN,
+        prop_III_WEG,
         na.rm = T
       ))
   ) %>%
@@ -19898,6 +20640,21 @@ kommunalwahlen_merge <- kommunalwahlen_merge %>%
       abs_BSW == 0 ~ 1,
       abs_BSW != 0 ~ 0,
       TRUE ~ 0
+    ),
+    replaced_0_with_NA_NPD_HEIMAT = case_when(
+      abs_NPD_HEIMAT == 0 ~ 1,
+      abs_NPD_HEIMAT != 0 ~ 0,
+      TRUE ~ 0
+    ),
+    replaced_0_with_NA_FREIE_SACHSEN = case_when(
+      abs_FREIE_SACHSEN == 0 ~ 1,
+      abs_FREIE_SACHSEN != 0 ~ 0,
+      TRUE ~ 0
+    ),
+    replaced_0_with_NA_III_WEG = case_when(
+      abs_III_WEG == 0 ~ 1,
+      abs_III_WEG != 0 ~ 0,
+      TRUE ~ 0
     )
   )
 
@@ -19946,7 +20703,13 @@ kommunalwahlen_merge <- kommunalwahlen_merge %>%
       replaced_0_with_NA_BSW == 1,
       NA,
       prop_BSW
-    )
+    ),
+    abs_NPD_HEIMAT = ifelse(replaced_0_with_NA_NPD_HEIMAT == 1, NA, abs_NPD_HEIMAT),
+    prop_NPD_HEIMAT = ifelse(replaced_0_with_NA_NPD_HEIMAT == 1, NA, prop_NPD_HEIMAT),
+    abs_FREIE_SACHSEN = ifelse(replaced_0_with_NA_FREIE_SACHSEN == 1, NA, abs_FREIE_SACHSEN),
+    prop_FREIE_SACHSEN = ifelse(replaced_0_with_NA_FREIE_SACHSEN == 1, NA, prop_FREIE_SACHSEN),
+    abs_III_WEG = ifelse(replaced_0_with_NA_III_WEG == 1, NA, abs_III_WEG),
+    prop_III_WEG = ifelse(replaced_0_with_NA_III_WEG == 1, NA, prop_III_WEG)
   )
 
 kommunalwahlen_merge <- kommunalwahlen_merge %>%
@@ -19960,7 +20723,10 @@ kommunalwahlen_merge <- kommunalwahlen_merge %>%
     prop_FDP = ifelse(abs_FDP == 0, NA, prop_FDP),
     prop_DiePARTEI = ifelse(abs_DiePARTEI == 0, NA, prop_DiePARTEI),
     prop_FREIEWÄHLER = ifelse(abs_FREIEWÄHLER == 0, NA, prop_FREIEWÄHLER),
-    prop_BSW = ifelse(abs_BSW == 0, NA, prop_BSW)
+    prop_BSW = ifelse(abs_BSW == 0, NA, prop_BSW),
+    prop_NPD_HEIMAT = ifelse(abs_NPD_HEIMAT == 0, NA, prop_NPD_HEIMAT),
+    prop_FREIE_SACHSEN = ifelse(abs_FREIE_SACHSEN == 0, NA, prop_FREIE_SACHSEN),
+    prop_III_WEG = ifelse(abs_III_WEG == 0, NA, prop_III_WEG)
   )
 
 # Fix prop_other ----
@@ -19994,7 +20760,10 @@ kommunalwahlen_merge <- kommunalwahlen_merge |>
     sitze_PIRATEN = as.numeric(sitze_PIRATEN),
     sitze_DiePARTEI = as.numeric(sitze_DiePARTEI),
     sitze_FREIEWÄHLER = as.numeric(sitze_FREIEWÄHLER),
-    sitze_BSW = as.numeric(sitze_BSW)
+    sitze_BSW = as.numeric(sitze_BSW),
+    sitze_NPD_HEIMAT = as.numeric(sitze_NPD_HEIMAT),
+    sitze_FREIE_SACHSEN = as.numeric(sitze_FREIE_SACHSEN),
+    sitze_III_WEG = as.numeric(sitze_III_WEG)
   )
 
 
@@ -20132,7 +20901,15 @@ kommunalwahlen_merge <- kommunalwahlen_merge |>
   rename_with(~ str_replace(., "diepartei", "die_partei")) |>
   rename_with(~ str_replace(., "freiewähler", "freie_wahler")) |>
   rename_with(~ str_replace(., "grüne", "gruene")) |>
-  rename_with(~ str_replace(., "dielinke", "linke_pds"))
+  rename_with(~ str_replace(., "dielinke", "linke_pds")) |>
+  # the far-right columns are appended by the fill = TRUE merges; keep every
+  # party block in one order, ending with other
+  relocate(npd_heimat, freie_sachsen, iii_weg, .after = bsw) |>
+  relocate(seats_npd_heimat, seats_freie_sachsen, seats_iii_weg, .after = seats_bsw) |>
+  relocate(
+    replaced_0_with_na_npd_heimat, replaced_0_with_na_freie_sachsen,
+    replaced_0_with_na_iii_weg, .after = replaced_0_with_na_bsw
+  )
 
 # Sort ----------------------------------------------------
 kommunalwahlen_merge <- kommunalwahlen_merge %>%

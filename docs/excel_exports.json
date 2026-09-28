@@ -3130,7 +3130,7 @@
   },
   "data/municipal_elections/final/municipal_harm": {
     "rows": 68052,
-    "columns": 47,
+    "columns": 56,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
@@ -3144,18 +3144,21 @@
       "die_partei",
       "freie_wahler",
       "bsw",
+      "npd_heimat",
+      "freie_sachsen",
+      "iii_weg",
       "other"
     ],
-    "source_sha256": "af08a80de6e8db976f3db5dffa3ee7b0355442cacc2b6fc1913342eabc332878",
-    "rds_sha256": "c1d29433a389d892195e3ed7aedd9dafe26c0c730bedd7cf81eb174c06cf7c75",
+    "source_sha256": "f55d297667b5362cbcd4d07bc86c09bfd1ec8aef3d2a575548cfafe07264023b",
+    "rds_sha256": "b8ba41742f37695208951699d212bb62e5ed8691ebe5a5a9693c95824d07e031",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "d42eb614cc33af2777582cff48133481fbab5096fffdd86385e4abf16fb69201",
-    "bytes": 10590569,
+    "xlsx_sha256": "d0a78b5150c92abf0489c721be8f0d6d6c9044d99a59e1393e1cc7b467d19dde",
+    "bytes": 11002233,
     "source": "data/municipal_elections/final/municipal_harm.csv"
   },
   "data/municipal_elections/final/municipal_harm_25": {
     "rows": 79284,
-    "columns": 47,
+    "columns": 56,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
@@ -3169,18 +3172,21 @@
       "die_partei",
       "freie_wahler",
       "bsw",
+      "npd_heimat",
+      "freie_sachsen",
+      "iii_weg",
       "other"
     ],
-    "source_sha256": "fa1d61390976a98636c0997f6dc789287c5a6ecdbf121030d1c6eaa74294536a",
-    "rds_sha256": "64a9dff7a19a1ce398251bf5b4aa4e8fa93c91269c5e8ea4212772cdbf08a515",
+    "source_sha256": "04944be5ec8ed8c16b44dcd43354ad0f5e38435e3b9a6bc97984de92bea63fc2",
+    "rds_sha256": "1309b810a96265237c650b1e9f0ca805a9e2a81a7ff7fe1b8b1ce544324253c6",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "fd575ead9a470f2c9dd3d44ccabe3547241a5f1af744915179d1407dc7a6bf94",
-    "bytes": 12040119,
+    "xlsx_sha256": "424ad5ea0f7a264f89a7b63b31bc87b79ee7b15a8d84c7fc915862a936a45c08",
+    "bytes": 12548818,
     "source": "data/municipal_elections/final/municipal_harm_25.csv"
   },
   "data/municipal_elections/final/municipal_unharm": {
     "rows": 92765,
-    "columns": 42,
+    "columns": 51,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
@@ -3194,13 +3200,16 @@
       "die_partei",
       "freie_wahler",
       "bsw",
+      "npd_heimat",
+      "freie_sachsen",
+      "iii_weg",
       "other"
     ],
-    "source_sha256": "df528308c9b945176c6944070092e3c3cce08a59f36867cfd1d306fab758da4c",
-    "rds_sha256": "d08c662db1a81bacfcfb9c1db16df0c329ce5885f34270ad9230f8d68728a306",
+    "source_sha256": "933438c4c24110abee175f4b91e6d303f0b138365683d290bec0d3d61c859fd0",
+    "rds_sha256": "38048c8fbffd837b46d925d9dd4afe680a019fc4444a9c0739f50f08db12eb90",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "50702abe524661d24bc63004e13fb8e641daba33eafcc3ad25658510429e5416",
-    "bytes": 12912215,
+    "xlsx_sha256": "ffe38b7ff3f4d2080b9d28d1a943591afe3c54b5cf6feba6311173c3b5c0dd1a",
+    "bytes": 13678418,
     "source": "data/municipal_elections/final/municipal_unharm.csv"
   },
   "data/state_elections/final/ltw_wkr_unharm": {
