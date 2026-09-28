@@ -2790,17 +2790,23 @@ if (file.exists(by_xml_file)) {
     ung <- xml_find_first(se, "Ungueltige_Stimmzettel")
     wv  <- xml_find_all(se, "Wahlvorschlag")
 
-    shares <- by26_num(xml_text(xml_find_first(wv, "Gewichtete_Stimmen_Anteil"))) / 100
+    # Shares from the weighted vote counts, not Gewichtete_Stimmen_Anteil: that
+    # percentage is printed to one decimal (SPD Stadtrat Kempten 8.0 for
+    # 7.95 %), which rounded every 2026 share by up to 0.05 points. Lists
+    # without figures (named only, as in 2020) count as no votes, as before.
+    votes  <- by26_num(xml_text(xml_find_first(wv, "Gewichtete_Stimmen_absolut")))
+    valid  <- by26_num(xml_text(xml_find_first(zus, "Gewichtete_Stimmen")))
+    stopifnot(isTRUE(sum(votes, na.rm = TRUE) == valid))
     cols   <- vapply(xml_text(xml_find_first(wv, "Bezeichnung")), by26_col,
                      character(1), USE.NAMES = FALSE)
-    agg <- tapply(shares, cols, sum, na.rm = TRUE)
+    agg <- tapply(votes, cols, sum, na.rm = TRUE) / valid
 
     base <- data.frame(
       ags = paste0("09", formatC(as.integer(key), width = 3, flag = "0"), "000"),
       ags_name = xml_text(xml_find_first(ag, "Name_der_Regionaleinheit")),
       eligible_voters = by26_num(xml_text(xml_find_first(ag, "Stimmberechtigte"))),
       number_voters   = by26_num(xml_text(xml_find_first(ag, "Waehler"))),
-      valid_votes     = by26_num(xml_text(xml_find_first(zus, "Gewichtete_Stimmen"))),
+      valid_votes     = valid,
       invalid_votes   = by26_num(xml_text(xml_find_first(ung, "Anzahl"))),
       stringsAsFactors = FALSE
     )
