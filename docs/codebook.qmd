@@ -578,7 +578,9 @@ boundaries — the Landesamt back-casts the whole series onto 2025 boundaries.
 these five elections Statistikamt Nord published per-Gemeinde votes only for
 the Kreiswahl: its Gemeinde tables show Kreiswahl votes next to Gemeindewahl
 seats, and the Gemeinderat vote counts of the roughly 1,100 kreisangehörige
-Gemeinden were not published. Until September 2026 those Kreiswahl figures
+Gemeinden were not published. Statistikamt Nord confirmed in 2025 that it holds
+no such counts: its 1998 and 2003 Gemeindewahl files contain only the seat
+distribution, and the 2013 Gemeindewahl was not recorded. Until September 2026 those Kreiswahl figures
 appeared here as Gemeindewahl results; they have been removed (5,565 rows) and
 remain available, correctly labelled, in `county_elec_unharm`. The rows of the
 kreisfreie Städte are their own Ratsversammlung results. Full coverage resumes

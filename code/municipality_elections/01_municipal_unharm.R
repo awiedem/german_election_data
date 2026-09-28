@@ -20470,8 +20470,12 @@ sh_kommunalwahlen$AGS_8dig <- stri_pad_left(sh_kommunalwahlen$AGS_8dig, 8, 0)
 # the Kreiswahl polling-district sums and the Kreiswahl report. Published as
 # Gemeindewahl until 2026-09 (shares identical to county_elec_* in ~1,100
 # Gemeinden per year). The same figures remain in county_elec_* under their
-# own name; they are dropped here until the Gemeindewahl votes are obtained
-# from Statistikamt Nord. The kreisfreie Städte's rows are their Ratsversammlung
+# own name; they are dropped here for good. The Gemeindewahl votes do not exist
+# at Statistikamt Nord: asked in 2025 (reply 25.03.2025), it sent 1998/2003
+# "Gemeindewahl" files that hold only the seat distribution, said the 2013
+# Gemeindewahl was not recorded, and has earlier years on paper only; the
+# published GERDA article (Scientific Data 2025) says the same. Do not request
+# them again. The kreisfreie Städte's rows are their Ratsversammlung
 # (Gemeindewahl) results and stay.
 sh_krfr <- c("01001000", "01002000", "01003000", "01004000")
 sh_kreiswahl_rows <- as.integer(sh_kommunalwahlen$election_year) <= 2013 &
