@@ -41,7 +41,8 @@ the constituency pipeline exactly; the municipality sum did not.
 | Brandenburg | 2019 | the `Amt` rows, which hold *only* postal votes (Wahlberechtigte = 0) | 35,999 |
 
 Distribution follows the convention already used elsewhere in `01b`: weighted by
-eligible voters within the pooled unit, rounded, and `eligible_voters` is left
+eligible voters within the pooled unit, rounded (weights and rounding revised in
+September 2026, see the next section), and `eligible_voters` is left
 alone (a postal voter is already in their municipality's electorate). The shared
 helper is `allocate_pooled_counts()` at the top of the Sachsen-Anhalt section; it
 falls back to progressively shorter code prefixes so a block booked on a code
@@ -73,6 +74,48 @@ pipeline within 0.05 % (23 before). What remains, and why:
   Kreis row does not equal the sum of its municipalities. Unexplained.
 - **Bayern** and **Rheinland-Pfalz 1979–2016** are measure and coverage
   differences, not defects — see `docs/codebook.md`.
+
+## Postal allocation: weights, Sachsen pools, exact rounding (September 2026)
+
+Prompted by an external report of 29 rows with turnout > 1 in `state_harm_25`
+(coal_compensation project, 2026-09-28, item 9), mostly Sachsen and Thüringen.
+
+1. **Sachsen 2019/2024 Briefwahl pools.** Small Gemeinden hand their postal vote
+   to a neighbour, and the source says so per Gemeinde ("Briefwahl der Gemeinde
+   wurde von X durchgeführt" / "Gemeinde führte Briefwahl ebenfalls für A, B und C
+   durch"). The lead's row held the whole pool's postal vote: Schönfeld 2024 had
+   1,878 voters for 1,428 electors (131 %), now 78 %. `sn_reallocate_postal_pools()`
+   moves the postal voters (`darunter Briefwähler`; 2019: `Wähler mit Wahlschein`)
+   from the lead and spreads them over lead and members by Wahlschein holders (A2);
+   their votes are taken in the lead's proportions, as the source does not report
+   them apart. 76 pools over 199 Gemeinden in 2019, 31 over 80 in 2024; unrounded,
+   so each pool is conserved exactly.
+2. **Weights.** Wahlschein holders (A2), the weight of the federal data, wherever
+   the source reports them: Brandenburg 2019 (`pool_weight` in
+   `allocate_pooled_counts()`), the Sachsen pools, and Thüringen 2014–2024, whose
+   Wahlkreis residual now uses A2 − B1 (Wahlschein holders not already voting in
+   the Gemeinde) instead of valid votes, which had handed postal votes to
+   Gemeinden that count their own. Everything else keeps eligible voters
+   (Thüringen 1994–2009 valid votes: no A2/B1 in the source).
+3. **Exact rounding.** `allocate_pooled_counts()` rounded each Gemeinde's share
+   with `round()`, and the pieces did not add up to the pool: small counts spread
+   thinly were rounded to 0 everywhere. Now largest-remainder rounding, with a
+   stop if a pool is not distributed exactly. The recovered voters in the table
+   above therefore change slightly: Sachsen-Anhalt 58,762 · 88,280 · 97,907 ·
+   101,273 · 49,286 · 16,688 · 20,335; Sachsen 134,886 · 24,638 · 22,740;
+   Niedersachsen 56,739 · 72,502 · 129,166 · 167,258; Brandenburg 2009 178,942,
+   2019 35,999. Invalid votes moved most (Sachsen-Anhalt 1994 +245, Sachsen 1990
+   +150). The Wahlkreis cross-check (section 21 of the Wahlkreis `99_audit.R`)
+   now reports 62 comparisons off by > 0.5 %, down from 64.
+4. **`flag_postal_allocated`** (all four files) marks every Gemeinde that received
+   votes from any of these mechanisms: 18,301 rows of `state_unharm`. A pool that
+   moves nothing (Niedersachsen 1998/2003, where the Samtgemeinde row equals its
+   members' sum) flags nobody.
+
+**Result.** Rows with turnout > 1 in `state_harm_25`: 29 → 10, none in Sachsen or
+Thüringen from 2014 on. The rest: Sachsen 1994 (3), Thüringen 1994–2009 (4, no
+Wahlschein counts), and one each in Brandenburg 1990, Baden-Württemberg 2021 and
+Mecklenburg-Vorpommern 2021; all carry `flag_harm_turnout_above_1`.
 
 ## Pipeline files
 

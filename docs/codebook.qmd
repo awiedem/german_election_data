@@ -373,7 +373,7 @@ Shared blocks apply. The three harmonized files target different boundary
 years and all begin in 1990. Their municipality-name column is `ags_name_21`
 in `state_harm_21` and `ags_name` in `state_harm_23`/`state_harm_25`.
 The source flags `flag_briefwahl_only`, `flag_no_valid_votes` and
-`flag_naive_turnout_above_1` are present only in `state_unharm`; `flag_pooled` is
+`flag_naive_turnout_above_1` are present only in `state_unharm`; `flag_pooled` and `flag_postal_allocated` are
 present in all four files. In the harmonized files, four parties that the sources spell two ways are merged into one column — `pdh` (Partei der Humanisten) into `die_humanisten`, `freiewaehler` into `freie_wahler`, `tier_schutz_partei` into `tierschutz` and `volt_hamburg` into `volt` — while `state_unharm` keeps each source's own label.
 
 | Variable | Type | Description |
@@ -381,6 +381,7 @@ present in all four files. In the harmonized files, four parties that the source
 | `flag_briefwahl_only` | int/num | Legacy arithmetic flag: electorate was zero while valid votes were positive before electorate/voters/turnout were set to `NA`. It includes source gaps and extraction errors, so it does not prove that a row is a postal district. Values are 0/1, never party shares. |
 | `flag_no_valid_votes` | integer | 1 where the row reports no valid votes. |
 | `flag_pooled` | integer | 1 where the source counted the municipality together with another one: a donor without counts of its own (all counts and shares `NA`) or the receiving municipality whose counts include it. Set where the source identifies the pooling (Rheinland-Pfalz 2026: 58 donors, 40 receivers, pairs in `data/state_elections/metadata/rp_2026_pooled_municipalities.csv`; Niedersachsen 2017: Beierstedt and Gevensleben, counted in Jerxheim, the receiver inferred from the Samtgemeinde electorate, pairs in `data/state_elections/metadata/ni_pooled_municipalities.csv`; Thüringen 2024: 4 donors, receiver not named by the source); 0 otherwise. In harmonized files 1 if any contributing source row is pooled. |
+| `flag_postal_allocated` | integer | 1 where the pipeline added postal votes that the source counted outside the municipality (see below), so the row's counts, turnout and shares are partly estimated; 0 otherwise. Set in Niedersachsen 2008--2022, Brandenburg 2009 and 2019, Sachsen 1990--1999, 2019 and 2024, Sachsen-Anhalt 1990--2016 and Thüringen 1994--2024. In harmonized files 1 if any contributing source row is. |
 | `flag_naive_turnout_above_1` | integer | 1 where uncapped turnout exceeded 1. |
 | `flag_harm_turnout_above_1` | integer | As above, after harmonization (harmonized files). |
 | `flag_other_party_residual` | integer | In harmonized files, 1 where `total_vote_share` is below 0.999 or above 1.001. `other` is computed as a residual in every row; this flag records the discrepancy threshold. |
@@ -398,6 +399,8 @@ statewide result. `llsh` denotes Linke Liste Schleswig-Holstein, separate from
 `einzelbewerber` and `linke_pds`. Wiedenborstel has no separate result; its
 electorate voted in Hennstedt. The reviewed transcription and source controls
 are documented in `data/state_elections/derived/sh_1983/README.md`.
+
+**Postal votes counted outside the municipality, and turnout above 1.** Several states count postal ballots in Briefwahlbezirke that serve more than one Gemeinde and publish them on the Kreis, Amt, Samtgemeinde, Wahlkreis or Land, or, in Sachsen 2019 and 2024, in the row of the Gemeinde that ran the postal vote for its neighbours ("Gemeinde führte Briefwahl ebenfalls für … durch"). The pipeline distributes these votes over the member Gemeinden, conserving each pool's totals exactly, and marks every recipient with `flag_postal_allocated`. The weight is the number of Wahlschein holders (A2) where the source reports it (Brandenburg 2019, Sachsen 2019 and 2024, and Thüringen 2014--2024, where the Gemeinde's own Wahlschein voters are subtracted), as in the federal data, since a postal voter needs a Wahlschein; elsewhere it is eligible voters (Thüringen 1994--2009: valid votes). In the Sachsen pools the lead Gemeinde reports how many postal voters it counted but not how they voted, so they are assumed to vote like its voters as a whole. Allocated counts can be fractional. Until September 2026 the Sachsen pools stayed with the lead Gemeinde (Schönfeld 2024: 131 % turnout, now 78 %), Thüringen weighted by valid votes, which also gave postal votes to Gemeinden that count their own, and the distributed counts were rounded Gemeinde by Gemeinde, which did not add up (Sachsen-Anhalt 1994 lost 245 invalid votes). `turnout` above 1 now remains in 10 rows of `state_harm_25`: Sachsen 1994 (3), Thüringen 1994--2009 (4), where no Wahlschein counts exist, and one each in Brandenburg 1990, Baden-Württemberg 2021 and Mecklenburg-Vorpommern 2021. `flag_naive_turnout_above_1` and `flag_harm_turnout_above_1` mark such rows; treat turnout in small flagged municipalities as an estimate.
 
 **Zero-vote recoding in harmonized files.** A party that received zero votes across *all*
 municipalities in a state-year is recoded from 0 to `NA`, so that "did not

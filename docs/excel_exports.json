@@ -4133,7 +4133,7 @@
   },
   "data/state_elections/final/state_harm_21": {
     "rows": 85046,
-    "columns": 374,
+    "columns": 375,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
@@ -4492,16 +4492,16 @@
       "total_vote_share",
       "perc_total_votes_incongruence"
     ],
-    "source_sha256": "2c31b7e67ea5279a5886d370a271fddb6b1055826bd7a51d3484353e42e8f735",
-    "rds_sha256": "0100edc68375469987cb477b1b927465ad9d79428c655bb9685f501ac0cc83d7",
+    "source_sha256": "3d6bbde0f61ececf9d3dbcb68eaca7f9832f0cab562d3b5a580de9403b2e57ef",
+    "rds_sha256": "4174e85a96636db65c21beeb2a328bb73061c2dde0e8b292ceeb6ef5603ffc76",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "49fb7eca6afa16c2750f8bb04d1cba658e011c13649c5f1c8355a2de6a6ea37a",
-    "bytes": 23929400,
+    "xlsx_sha256": "0a20dbeee82293717eb2788096be7ea5f55aeaedcc3fe68093df46bed90baee8",
+    "bytes": 24273280,
     "source": "data/state_elections/final/state_harm_21.csv"
   },
   "data/state_elections/final/state_harm_23": {
     "rows": 84955,
-    "columns": 374,
+    "columns": 375,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
@@ -4860,16 +4860,16 @@
       "total_vote_share",
       "perc_total_votes_incongruence"
     ],
-    "source_sha256": "dcbe546755338a51f3735281a9bb5d8ca30c9fc69be23749270591627267070f",
-    "rds_sha256": "17b23ab3256a6e9e2387ec495199e92f4140c47a95be7b52f12c879b25b9d0ff",
+    "source_sha256": "b29ae0f90c9a1c85d311684ee2638a4b1808f7e51f2300f7edff74cb8c69dac4",
+    "rds_sha256": "ef967b75dbd26dd8b270677de3507ceb1c1e8e1eefdedbe1e2cf6fd78d6f0a2b",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "d26f07947d6154e5bdea31553dec692434d014aab7f3d0728a2e6afc5f5df8eb",
-    "bytes": 24016020,
+    "xlsx_sha256": "ddba8c3f1647d14d2da88d90d46f632c56599fc8ebabcc7ddf7d8b6cf9b72f08",
+    "bytes": 24241692,
     "source": "data/state_elections/final/state_harm_23.csv"
   },
   "data/state_elections/final/state_harm_25": {
     "rows": 84819,
-    "columns": 374,
+    "columns": 375,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
@@ -5228,16 +5228,16 @@
       "total_vote_share",
       "perc_total_votes_incongruence"
     ],
-    "source_sha256": "395125a90473f8aa8171622f3e5fe147811d96fa69e7ac2ad2a35638327da4c7",
-    "rds_sha256": "7dbae7d0c85b9f9bfa5c9c8ef4395ed5e4f896c0be39c53a8b592c58194509b1",
+    "source_sha256": "80f75ae3efe2438b6fc2a683071b2b428b90b0641885c508a417eb5e68fcde38",
+    "rds_sha256": "7e2e19da26be38d7db470dd61b1ae625ca1b10f50b6a72ba88fff2e31d46f978",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "e2dfc839502f691b263cd6d33cd651415f28b9b7e79a113dfee4e40505d1a2c8",
-    "bytes": 23983130,
+    "xlsx_sha256": "d532972958a9e1ffbbc2a29c72a66d5de34f7259a8991d0f709093cacdd9c029",
+    "bytes": 24208005,
     "source": "data/state_elections/final/state_harm_25.csv"
   },
   "data/state_elections/final/state_unharm": {
     "rows": 153030,
-    "columns": 369,
+    "columns": 370,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
@@ -5598,11 +5598,11 @@
       "other",
       "cdu_csu"
     ],
-    "source_sha256": "baf521db7b7d24a654bab6ef1379bb646a092c155bf6f324550cbe9c665b2a33",
-    "rds_sha256": "0a13aa13a8ebd23aa0fd9bd59dfbfa9599f8583f58c44818d4bd0088c066157d",
+    "source_sha256": "ed3cd6d5f35de869c1158202e5f46286ce5d11b142872ac0a6f35035c58e11d8",
+    "rds_sha256": "8e4849143b5a410fb4a74daef24883152104825f56bf211a7b3a9487c449e38d",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "94156a7115f869381cc22e75e1755cd780a57ffc83153b2dbf588f5185d2eb04",
-    "bytes": 29750632,
+    "xlsx_sha256": "3ef8843ecb3eb69f8ec463d0bc186654741f2e9ea82f4b668c382a2f743d5f4a",
+    "bytes": 30123019,
     "source": "data/state_elections/final/state_unharm.csv"
   }
 }
