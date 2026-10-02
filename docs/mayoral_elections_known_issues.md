@@ -405,3 +405,22 @@ The 1993–2012 candidate names from Hessami (2018, *REStat*, doi:10.7910/DVN/FZ
 **Also fixed in passing (all states):** the runoff-only branch of the pivot filed a January runoff under the next year. Two cycles carried two `election_year` values (Beselich 2009/10, Donauwörth 1948/49); they now take the Hauptwahl's year.
 
 `99_audit.R` section 22 pins all of the above and is calibrated: it fails on the September-2026 release.
+
+## 16. Thüringen: the Wahlvorschlag is a name, so `winner_party` is not a party (open, October 2026)
+
+Found in the pre-publication audit of 2026-10-02. The problem has been in every release since Thüringen was added. It is documented here and not yet fixed.
+
+**What the source does.** The Landesamt database (`wahlen.thueringen.de`) redacts candidate names (§ 50 Abs. 2 ThürKWO) and shows only the *Wahlvorschlag*. From 2020 on, most Wahlvorschläge are written as the candidate's name, "Nachname, Vorname", sometimes followed by the nominating party or group in brackets. `00_th_scrape.py` stores the Wahlvorschlag in `candidate_party` and, when it looks like a name, also splits it into the name columns.
+
+**What reaches the data.**
+- `mayoral_candidates`: 648 Thüringen rows (624 winners) have the candidate's own name in `candidate_party`. 632 of them are from 2020–2026 and 16 from 1998–2019.
+  - 376 rows hold only the name, so the source gives no party for these candidates.
+  - 272 rows add a party or group in brackets, "Nachname, Vorname (CDU)". In these rows `candidate_first_name` carries the bracket too ("Vorname (CDU)"). These are the "about 270" rows listed as open in the dataset README.
+- `mayor_panel`: `winner_party` is a person's name in 624 of 647 Thüringen rows (2,725 of 2,851 Thüringen rows of `mayor_panel_annual`). Thüringen mayors therefore cannot be classified by party from this field.
+- Where a Gemeinde has two elections in the panel, `party_switch` and `is_new_party_mayor` compare these strings, so they record a change of person or of label rather than of party (35 rows each).
+- `mayoral_unharm`: `winner_party` holds a name in 681 of 3,978 Thüringen rows.
+- `landrat_candidates` is not affected.
+
+**In analyses.** Treat a Thüringen `candidate_party` or `winner_party` that contains a comma as missing party information, or use the bracketed part where there is one. Leave Thüringen out of party-change analyses unless the field is recoded first.
+
+**A fix** would split the field in the Thüringen stage: the bracketed text becomes the party (otherwise `NA`), and the name parts lose the bracket. It changes `candidate_party`, `winner_party` and the derived party variables for Thüringen, so it needs a rebuild and its own release.

@@ -2,7 +2,20 @@
 
 For the next GERDA session, whose job is to audit this release before anything is pushed.
 
-## Status
+## Update, later on 2026-10-02: audited and squashed (still NOT published)
+
+- **Audits done, all passed:**
+  - Privacy: every file and intermediate version a push would upload was scanned; no withheld name or name-derived attribute was found.
+  - Git LFS: all objects are present and stored as pointers.
+  - `person_id`: groupings change only where intended. Hessen IDs are sequential, so 293 panel rows are relabelled.
+  - Names: an all-state re-scan found nothing new from this release.
+  - Hessen: 51 of 51 sampled cycles were confirmed against public sources.
+- **Squashed:** the four commits below are now one commit on `main` (`Mayoral: Hessen names 1993-2012 …`), with a tree identical to the old merge `f767448`. A push now uploads 239 MB of LFS instead of 926 MB. The original commits stay on the local branches `hessen-hessami-names`, `claude/happy-maxwell-987a81` and `backup/main-unsquashed-2026-10-02`. Do not push those branches.
+- **Website:** branch `hessen-hessami-names` now has `e8308e2`, which adds the name repairs and the `person_id` renumbering to the update-log entry. It is still unmerged and unpushed.
+- **Found in the audit and documented, not fixed:** in Thüringen, `candidate_party` / `winner_party` hold the candidate's name (known issues §16).
+- **de_housing:** `22_identity_aware_mayor_did.R` and `47_electoral_position_validation.R` assert that the restricted twin adds names only for Sachsen-Anhalt. They will stop on this release. They were left unchanged pending Vincent's decision.
+
+## Status (as of the merge)
 
 - **Merged locally into `main`; not pushed.** Vincent wants further audits first. Do not push `main`, the website branch, or any release until he says so.
 - **Two branches went in:**
