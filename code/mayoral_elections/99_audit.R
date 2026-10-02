@@ -733,16 +733,106 @@ check(nrow(hag_p) == 2 && n_distinct(hag_p$person_id) == 1 &&
         hag_p$term_number[2] == 2 && hag_p$is_incumbent[2] == 1,
       "MV LUP: Hagenow 2015 + 2022 linked to one person (2022 = incumbent re-election)",
       "MV LUP: Hagenow terms not linked to a single person")
-# The mechanism that kept the incomplete cycle winner-less is retained but unused.
+# The mechanism that kept the incomplete cycle winner-less is retained. No MV
+# cycle uses it; since October 2026 it marks exactly the two Hessen Hauptwahlen
+# that seated nobody (a sole candidate failed the Ja/Nein vote; section 22).
+fdm <- mc %>% filter(flag_decisive_round_missing %in% TRUE) %>% distinct(ags, election_date)
 check("flag_decisive_round_missing" %in% names(mc) &&
-        sum(mc$flag_decisive_round_missing, na.rm = TRUE) == 0,
-      "MV LUP: flag_decisive_round_missing present and currently 0 rows (no cycle incomplete)",
-      sprintf("MV LUP: flag_decisive_round_missing on %d rows (expected 0)",
-              sum(mc$flag_decisive_round_missing, na.rm = TRUE)))
+        !any(substr(fdm$ags, 1, 2) == "13") &&
+        setequal(paste(fdm$ags, fdm$election_date),
+                 c("06532007 2016-03-06", "06634015 2022-03-06")),
+      "flag_decisive_round_missing: no MV cycle; only the 2 failed Hessen Ja/Nein votes",
+      sprintf("flag_decisive_round_missing on unexpected cycles: %s",
+              paste(fdm$ags, fdm$election_date, collapse = ", ")))
 lup_p <- mp %>% filter(ags %in% lup)
 check(nrow(lup_p) == 7 && n_distinct(paste(lup_p$ags, lup_p$election_year)) == 7,
       sprintf("MV LUP: %d panel terms (one per cycle)", nrow(lup_p)),
       sprintf("MV LUP: expected 7 panel terms, got %d", nrow(lup_p)))
+
+# ============================================================================
+cat("\n22. Hessen names (Hessami 2018), runoff pairing, panel fixes (October 2026)\n")
+# 1993-2012 names come from Hessami (2018, REStat, doi:10.7910/DVN/FZWOMK, CC0).
+# The elected person is named publicly; other candidates' names live only in the
+# restricted twin. Stage 0 now links each runoff candidate to their first-round
+# row (pair_id). Calibrated on the September-2026 release, where 22a, 22c, 22d,
+# 22e (twin), 22f, 22g and 22h all fail: 192 runoff-only rows, a runoff result
+# on the third-placed candidate (2008), no 1993-2012 names, 285 winners without
+# gender, Waldems 2000 joined to 1999, the 5 same-year terms missing. 22b and the
+# 22e privacy check are invariants that held before as well.
+he_c  <- mc %>% filter(state == "06")
+he_lc <- lc %>% filter(state == "06")
+runoff_only <- function(d) d %>%
+  group_by(ags, election_date) %>%
+  mutate(.hw = any(!is.na(candidate_votes_hw) | !is.na(candidate_voteshare_hw))) %>%
+  ungroup() %>%
+  filter(.hw, is.na(candidate_votes_hw), is.na(candidate_voteshare_hw),
+         !is.na(candidate_votes_sw) | !is.na(candidate_voteshare_sw))
+n_ro <- nrow(runoff_only(he_c)) + nrow(runoff_only(he_lc))
+check(n_ro == 0,
+      "22a HE: every runoff result sits on its candidate's first-round row (0 runoff-only rows)",
+      sprintf("22a HE: %d runoff-only rows — the HW/SW pairing (pair_id) broke", n_ro))
+rows_bad <- he_c %>% filter(!is.na(n_candidates_hw)) %>%
+  count(ags, election_date, n_candidates_hw) %>% filter(n != n_candidates_hw)
+check(nrow(rows_bad) == 0,
+      "22b HE: every cycle has exactly as many rows as first-round Wahlvorschläge",
+      sprintf("22b HE: %d cycles with rows != n_candidates_hw", nrow(rows_bad)))
+# A runoff is between the first round's top two; the two exceptions are pinned:
+# Nauheim 2023 (tie for 2nd, decided by lot) and Siegbach 1996 (2nd withdrew).
+r3 <- he_c %>% filter(!is.na(candidate_votes_sw), candidate_rank_hw > 2) %>%
+  distinct(ags, election_date)
+check(setequal(paste(r3$ags, r3$election_date),
+               c("06433009 2023-02-26", "06532019 1996-04-28")),
+      "22c HE: runoff entrants are first-round ranks 1-2 (2 documented exceptions)",
+      sprintf("22c HE: unexpected runoff entrants ranked >2: %s",
+              paste(r3$ags, r3$election_date, collapse = ", ")))
+w12 <- he_c %>% filter(election_year <= 2012)
+check(sum(w12$is_winner %in% TRUE) == 1506 &&
+        all(!is.na(w12$candidate_name[w12$is_winner %in% TRUE])),
+      "22d HE 1993-2012: all 1,506 elected persons named (Hessami 2018)",
+      sprintf("22d HE 1993-2012: %d of %d winners named",
+              sum(!is.na(w12$candidate_name[w12$is_winner %in% TRUE])),
+              sum(w12$is_winner %in% TRUE)))
+check(sum(!(w12$is_winner %in% TRUE) & !is.na(w12$candidate_name)) == 0 &&
+        sum(!(w12$is_winner %in% TRUE) & !is.na(w12$candidate_gender)) == 0,
+      "22e HE 1993-2012: PRIVACY — no losing candidate is named (or gendered) in the public file",
+      "22e HE 1993-2012: a losing candidate's name reached the public file")
+rtwin <- "data/mayoral_elections/final_restricted/mayoral_candidates_restricted.rds"
+if (file.exists(rtwin)) {
+  mr12 <- readRDS(rtwin) %>% filter(state == "06", election_year <= 2012)
+  check(sum(!(mr12$is_winner %in% TRUE) & !is.na(mr12$candidate_name)) == 2266,
+        "22e HE: the restricted twin holds the 2,266 losing candidates' names",
+        sprintf("22e HE: restricted twin has %d named non-winners (expected 2,266)",
+                sum(!(mr12$is_winner %in% TRUE) & !is.na(mr12$candidate_name))))
+}
+he_w <- he_c %>% filter(is_winner %in% TRUE)
+check(sum(is.na(he_w$candidate_gender)) == 0,
+      sprintf("22f HE: all %d elected persons carry a gender (HSL records it for every winner)", nrow(he_w)),
+      sprintf("22f HE: %d winners without gender (runoff gender not carried to the HW row?)",
+              sum(is.na(he_w$candidate_gender))))
+check(sum(he_c$election_year == 2013 & he_c$is_winner %in% TRUE & !is.na(he_c$candidate_name)) >= 11,
+      "22g HE 2013: the 11 winners named in Hessami's collected.dta are present",
+      "22g HE 2013: winner names from collected.dta missing")
+he_p <- mp %>% filter(state == "06")
+wal <- he_p %>% filter(ags == "06439016") %>% arrange(election_date)
+check(wal$person_id[wal$election_date == as.Date("2000-05-21")] ==
+        wal$person_id[wal$election_date == as.Date("1993-05-02")] &&
+        wal$person_id[wal$election_date == as.Date("2000-05-21")] !=
+        wal$person_id[wal$election_date == as.Date("1999-06-13")],
+      "22h HE panel: Waldems 2000 is the 1993 mayor's return (the 1999 election was annulled)",
+      "22h HE panel: Waldems 2000 not linked to the 1993 mayor")
+same_yr <- he_p %>% count(ags, election_year) %>% filter(n > 1)
+check(setequal(paste(same_yr$ags, same_yr$election_year),
+               c("06432001 2007", "06432002 2002", "06433001 1993", "06440002 1999",
+                 "06631002 2014")) &&
+        nrow(he_p %>% filter(ags == "06633002", election_year == 2017)) == 1,
+      "22h HE panel: the 5 counted same-year terms kept; Bad Karlshafen's superseded 2017 runoff excluded",
+      sprintf("22h HE panel: same-year terms wrong (%s)",
+              paste(same_yr$ags, same_yr$election_year, collapse = ", ")))
+check(nrow(he_p) == n_distinct(paste(he_p$ags, he_p$election_date)) &&
+        sum(he_p$person_id_method == "hessen_official_term_sequence") >= 2415,
+      sprintf("22h HE panel: %d terms, one per decisive election, %d counter-linked",
+              nrow(he_p), sum(he_p$person_id_method == "hessen_official_term_sequence")),
+      "22h HE panel: duplicate terms or counter links lost")
 
 cat("\n════════════════════════════════════════════════════════════════════\n")
 if (failed == 0) {

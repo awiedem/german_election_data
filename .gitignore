@@ -95,6 +95,15 @@ data/mayoral_elections/raw/sachsen_anhalt/st_stala_parsed.csv
 data/mayoral_elections/raw/sachsen_anhalt/st_bmbm_parsed.csv
 data/mayoral_elections/raw/sachsen_anhalt/st_bm_parsed.csv
 
+# Hessen mayoral candidate names 1993-2012 (Hessami 2018, CC0) name LOSING
+# candidates, who are private individuals. GERDA publishes the elected persons'
+# names only; the other names reach the restricted twin alone. The source files,
+# the parsed names and the withheld-name side file therefore stay out of git.
+data/mayoral_elections/raw/hessen/hessami_2018/*.dta
+data/mayoral_elections/raw/hessen/he_hessami_parsed.csv
+data/mayoral_elections/raw/hessen/he_hessami_collected_parsed.csv
+data/mayoral_elections/raw/hessen/he_hist_restricted_names.csv
+
 # RESTRICTED (scientific-use-only) twins of the published candidate datasets.
 # Identical to data/{mayoral,landrat}_elections/final/*_candidates.* except that
 # the Sachsen-Anhalt losing candidates keep their names, gender, birth year and

@@ -117,16 +117,40 @@ def round_of(title):
     return "hauptwahl"
 
 
+# Surname particles, and the nobility titles that stand directly before them.
+PARTICLES = {"von", "vom", "zu", "zum", "zur", "van", "de", "du", "der", "den",
+             "ten", "ter", "di", "da", "del"}
+NOBLE_TITLES = {"graf", "gräfin", "freiherr", "freifrau", "freiin", "prinz",
+                "prinzessin", "baron", "baronin", "fürst", "fürstin", "herzog",
+                "herzogin", "edler", "edle", "ritter"}
+
+
 def split_name(full):
     """'Matthias Kutsch' -> ('Kutsch','Matthias'); keeps multi-token first names.
-    Strips a leading academic title for the name parts (kept in candidate_name)."""
+    Strips a leading academic title for the name parts (kept in candidate_name).
+
+    Komm.ONE writes "Vorname Nachname", so the surname is normally the last
+    word. A surname with a particle starts at that particle ("Vorname van X",
+    "Vorname Martin De X"), and a nobility title right before the particle
+    belongs to it too ("Vorname Graf von X"). Taking only the last word put
+    "Vorname Graf von" into the given name. A surname with no particle that
+    has two words, or a compound such as "A von B", cannot be told from a
+    second given name here; 01b repairs those for elected candidates from the
+    StaLA register."""
     full = (full or "").strip()
     toks = full.split()
     core = [t for t in toks if not re.fullmatch(r"(Dr\.?|Prof\.?|Dipl\.?-?\w*\.?)", t)]
     if not core:
         return "", ""
-    last = core[-1]
-    first = " ".join(core[:-1])
+    k = len(core) - 1
+    for i in range(1, len(core) - 1):         # not the first word, not the last
+        if core[i].lower() in PARTICLES:
+            k = i
+            while k > 1 and core[k - 1].lower() in NOBLE_TITLES:
+                k -= 1
+            break
+    last = " ".join(core[k:])
+    first = " ".join(core[:k])
     return last, first
 
 

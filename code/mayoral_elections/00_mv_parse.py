@@ -419,6 +419,11 @@ def parse_pdf(path, fname):
         if "," in name:
             last, first = name.split(",", 1)
             last, first = last.strip(), first.strip()
+            # Sorted form with the particle LAST: "Name, Vorname, zu" means
+            # "zu Name". Left alone the given name read "Vorname, zu".
+            m = re.fullmatch(r"(.+?),\s*(von der|von dem|von|vom|zu|zum|zur|van der|van|de)", first)
+            if m:
+                first, last = m.group(1).strip(), f"{m.group(2)} {last}"
         else:
             last, first = name, ""
         a = aggs[c["round"]]
