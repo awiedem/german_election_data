@@ -553,6 +553,28 @@ check(sum(!is.na(st_c$candidate_last_name) &
       "ST: elected mayors remain named (public office-holders, Bayern model)",
       "ST: winner names unexpectedly missing")
 
+# Thüringen follows the same rule (decision of 2026-10-03). The Landesamt itself
+# withdraws losing candidates' names after a period (§ 50 Abs. 2 ThürKWO), so
+# losers carry no personal data in mayoral_candidates or landrat_candidates;
+# elected persons stay named. Calibration: 116 mayoral / 176 Landrat named
+# losers on 2b8b288, 0 after.
+for (th_set in c("mayoral", "landrat")) {
+  th_losers <- (if (th_set == "mayoral") mc else lc) %>%
+    filter(state == "16", !(is_winner %in% TRUE))
+  th_leaks <- sapply(intersect(st_personal, names(th_losers)), function(cl) {
+    v <- th_losers[[cl]]
+    sum(!is.na(v) & nzchar(trimws(as.character(v))))
+  })
+  check(sum(th_leaks) == 0,
+        sprintf("TH %s: %d losing-candidate rows carry no personal data", th_set, nrow(th_losers)),
+        sprintf("TH %s: personal data present on losing candidates — %s", th_set,
+                paste(sprintf("%s=%d", names(th_leaks)[th_leaks > 0], th_leaks[th_leaks > 0]),
+                      collapse = ", ")))
+}
+check(sum(mc$state == "16" & mc$is_winner %in% TRUE & !is.na(mc$candidate_last_name)) > 600,
+      "TH: elected mayors remain named (public office-holders)",
+      "TH: winner names unexpectedly missing")
+
 # Landrat unaffected — mayoral 01 overwrites landrat_unharm from HE/BY, but ST
 # Landrat comes from a separate pipeline (00_st_scrape.R in landrat_elections/).
 # Ensure ST Landrat coverage is untouched by this change (10 of 11 Landkreise —

@@ -101,8 +101,8 @@ parse_de_num <- function(x) {
   suppressWarnings(as.numeric(x))
 }
 
-# ---- Sachsen-Anhalt anonymisation ------------------------------------------
-# VERBATIM COPY of anonymise_st_losers() in
+# ---- Sachsen-Anhalt and Thüringen anonymisation ----------------------------
+# VERBATIM COPY of anonymise_losers() and withheld_loser_states in
 # code/mayoral_elections/01b_mayoral_candidates.R (~line 2717). THE TWO COPIES
 # MUST STAY IN SYNC. It is needed here as well because this script re-binds new
 # candidate rows onto the already-anonymised landrat_candidates and rewrites
@@ -119,20 +119,28 @@ parse_de_num <- function(x) {
 # Vote counts, shares, ranks and the Wahlvorschlagsträger (party) are NOT
 # personal data and are kept, so the electoral analysis is unaffected. Winners
 # are public office-holders and keep their names, exactly as in Bayern.
+#
+# Thüringen (16) follows the same rule (decision of 2026-10-03). Its Landesamt
+# names every candidate of a recent election but withdraws the losers' names
+# after a period (§ 50 Abs. 2 ThürKWO: "nicht mehr möglich"), naming only the
+# elected person from then on. The official OB and Landrat files name losers
+# too. GERDA publishes the elected person and keeps the others in the
+# restricted twin.
+withheld_loser_states <- c("15", "16")   # Sachsen-Anhalt, Thüringen
 st_personal_cols <- c("candidate_name", "candidate_last_name",
                       "candidate_first_name", "candidate_title",
                       "candidate_gender", "candidate_birth_year",
                       "candidate_profession")
 
-anonymise_st_losers <- function(df, label) {
+anonymise_losers <- function(df, label) {
   if (!all(c("ags", "is_winner") %in% names(df)) || !nrow(df)) return(df)
-  idx <- substr(as.character(df$ags), 1, 2) == "15" & !(df$is_winner %in% TRUE)
+  idx <- substr(as.character(df$ags), 1, 2) %in% withheld_loser_states & !(df$is_winner %in% TRUE)
   n_before <- sum(idx & !is.na(df$candidate_last_name) &
                     nzchar(trimws(as.character(df$candidate_last_name))))
   for (cl in intersect(st_personal_cols, names(df))) {
     df[[cl]][idx] <- NA
   }
-  cat("  ", label, ": anonymised ", sum(idx), " ST non-winner rows (",
+  cat("  ", label, ": anonymised ", sum(idx), " ST/TH non-winner rows (",
       n_before, " carried a name)\n", sep = "")
   df
 }
@@ -1553,7 +1561,7 @@ if (nrow(new_long) > 0) {
   # Prefer the RESTRICTED twin written by 01b_mayoral_candidates.R: it is the
   # same frame with the Sachsen-Anhalt losers still named. Building on it lets
   # this script emit its own restricted twin below; the public file is then
-  # produced from it by anonymise_st_losers(), which is exactly what 01b did.
+  # produced from it by anonymise_losers(), which is exactly what 01b did.
   # A restricted file that no longer matches the public one in shape means 01b
   # has not been re-run since — bind that and the restricted twin silently goes
   # stale, so stop instead.
@@ -1629,17 +1637,17 @@ if (nrow(new_long) > 0) {
            "data/landrat_elections/final_restricted/landrat_candidates_restricted.csv")
     cat("\n✓ Saved RESTRICTED landrat_candidates_restricted.{rds,csv}:",
         nrow(combined_cands), "rows (",
-        sum(substr(as.character(combined_cands$ags), 1, 2) == "15" &
+        sum(substr(as.character(combined_cands$ags), 1, 2) %in% withheld_loser_states &
               !(combined_cands$is_winner %in% TRUE) &
               !is.na(combined_cands$candidate_last_name)),
-        "named ST non-winners retained )\n")
+        "named ST/TH non-winners retained )\n")
   }
 
-  # Re-apply the Sachsen-Anhalt anonymisation (see helper above). 01b applies it
+  # Re-apply the ST/TH anonymisation (see helper above). 01b applies it
   # to landrat_candidates, but this script rewrites that file, so it has to be
   # re-applied to the newly bound rows or the anonymisation is order-dependent.
-  cat("\n=== Anonymising Sachsen-Anhalt losing candidates (StaLA licence) ===\n")
-  combined_cands <- anonymise_st_losers(combined_cands, "landrat_candidates")
+  cat("\n=== Anonymising Sachsen-Anhalt and Thüringen losing candidates ===\n")
+  combined_cands <- anonymise_losers(combined_cands, "landrat_candidates")
 
   cat("Final landrat_candidates rows:", nrow(combined_cands), "\n")
   cat("By state:\n")

@@ -83,6 +83,8 @@ This dataset is currently published only in unharmonized form (original boundari
 
 ## Known data-quality issues
 
+- **Thüringen losing candidates not named (October 2026)**: as for Sachsen-Anhalt, only the elected Landrat is named in `landrat_candidates`; losing candidates keep votes, shares, ranks and Wahlvorschlagsträger, and their names stay in the restricted twin (§ 50 Abs. 2 ThürKWO; see the mayoral README).
+
 - **Rheinland-Pfalz candidate names split (October 2026)**: the Landeswahlleiter sheet "Landräte" has no Vorname column and writes "Nachname, Vorname" in one cell. Until October 2026 the whole cell was published as `candidate_last_name`, with `candidate_first_name` NA (274 rows). It is now split at the comma, with academic titles removed from the parts; `candidate_name` keeps the source string. See the "Candidate-name repairs" entry in the mayoral README.
 
 - **NRW 2025 Stichwahl date typo (patched)**: Same upstream IT.NRW issue affecting OB rows also affects Landrat rows in the 2025 file. All 2025 SW dates are encoded as `2020-09-27` in the source XML. The pipeline patches them to `2025-09-28` automatically; see [`code/mayoral_elections/01_mayoral_unharm.R`](../../../code/mayoral_elections/01_mayoral_unharm.R) for the workaround. Will be removed once IT.NRW corrects the source.

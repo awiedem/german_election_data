@@ -406,21 +406,30 @@ The 1993–2012 candidate names from Hessami (2018, *REStat*, doi:10.7910/DVN/FZ
 
 `99_audit.R` section 22 pins all of the above and is calibrated: it fails on the September-2026 release.
 
-## 16. Thüringen: the Wahlvorschlag is a name, so `winner_party` is not a party (open, October 2026)
+## 16. Thüringen: the Wahlvorschlag was a name, so `winner_party` was not a party (fixed, October 2026)
 
-Found in the pre-publication audit of 2026-10-02. The problem has been in every release since Thüringen was added. It is documented here and not yet fixed.
+Found in the pre-publication audit of 2026-10-02 and fixed the same day. The defect had been in every release since Thüringen was added.
 
-**What the source does.** The Landesamt database (`wahlen.thueringen.de`) redacts candidate names (§ 50 Abs. 2 ThürKWO) and shows only the *Wahlvorschlag*. From 2020 on, most Wahlvorschläge are written as the candidate's name, "Nachname, Vorname", sometimes followed by the nominating party or group in brackets. `00_th_scrape.py` stores the Wahlvorschlag in `candidate_party` and, when it looks like a name, also splits it into the name columns.
+**What the source does.** The Landesamt database (`wahlen.thueringen.de`) redacts candidates' personal data (§ 50 Abs. 2 ThürKWO). It lists each candidate by the *Wahlvorschlag* only ("CDU", "Einzelbewerber", "Weitere Personen"). Where it names a person, the Wahlvorschlag reads "Nachname, Vorname" or "Nachname, Vorname (Träger)". It always names the elected person, and every candidate of a recent election. `00_th_scrape.py` stored that string whole as `candidate_party`.
 
-**What reaches the data.**
-- `mayoral_candidates`: 648 Thüringen rows (624 winners) have the candidate's own name in `candidate_party`. 632 of them are from 2020–2026 and 16 from 1998–2019.
-  - 376 rows hold only the name, so the source gives no party for these candidates.
-  - 272 rows add a party or group in brackets, "Nachname, Vorname (CDU)". In these rows `candidate_first_name` carries the bracket too ("Vorname (CDU)"). These are the "about 270" rows listed as open in the dataset README.
-- `mayor_panel`: `winner_party` is a person's name in 624 of 647 Thüringen rows (2,725 of 2,851 Thüringen rows of `mayor_panel_annual`). Thüringen mayors therefore cannot be classified by party from this field.
-- Where a Gemeinde has two elections in the panel, `party_switch` and `is_new_party_mayor` compare these strings, so they record a change of person or of label rather than of party (35 rows each).
-- `mayoral_unharm`: `winner_party` holds a name in 681 of 3,978 Thüringen rows.
-- `landrat_candidates` is not affected.
+**What was wrong.**
+- `mayoral_candidates`: in 647 Thüringen rows (624 winners, mostly 2020–2026) the party was the candidate's own name. In 272 of them the given name also carried the bracket ("Vorname (CDU)").
+- `mayor_panel`: `winner_party` was a person's name in 624 of 647 Thüringen rows. So `party_switch` and `is_new_party_mayor` compared names, not parties.
+- 17 joint lists or group labels ("SPD, CDU, UWS", "FFW, ATG", "Bi, Zukunft Kammerforst") were read as "Nachname, Vorname". They became fake persons, 10 of them winners in `mayor_panel`.
+- 8 elected persons were not recognised as names, because their names contain "ß" or a title ("Dr.").
+- The kreisfreie-Stadt OB files write "Name, Vorname, Dr.", so 37 given names ended in a title.
 
-**In analyses.** Treat a Thüringen `candidate_party` or `winner_party` that contains a comma as missing party information, or use the bracketed part where there is one. Leave Thüringen out of party-change analyses unless the field is recoded first.
+**Fix.** `code/mayoral_elections/th_wahlvorschlag.R` splits the string in stages 01 and 01b; the scraped intermediate is unchanged.
+- **Name:** the name loses the bracket, and academic titles leave the name parts.
+- **Party:** the Träger in the bracket becomes `candidate_party`. When there is no bracket, the party is `NA`, because the source does not say which party nominated the elected person. It may not be "Einzelbewerber": the same election can list a separate, redacted "Einzelbewerber".
+- **Groups:** a string is a person only if every name word is capitalised and lower-case after the first letter. That rule excludes the joint lists; one group that passes it is pinned as not a person.
+- **Genuine labels kept:** a list named after its candidate, such as "Wenzl" (Eisenach 2012) or "MarcoSeidel" (Tanna 2021), is a genuine Träger and stays.
 
-**A fix** would split the field in the Thüringen stage: the bracketed text becomes the party (otherwise `NA`), and the name parts lose the bracket. It changes `candidate_party`, `winner_party` and the derived party variables for Thüringen, so it needs a rebuild and its own release.
+**Effect (Thüringen only; every other state and both Landrat files are unchanged).**
+- `mayoral_candidates`: 761 named rows (770 before, −17 non-persons, +8 winners). All 761 now have a gender (570 before).
+- `mayor_panel`: 645 rows (647). `winner_party` is a party or group in 294 rows and `NA` in 351. `party_switch` is TRUE in 9 rows (35 before) and `is_new_party_mayor` in 277 (630).
+- `mayor_panel_annual`: 2,775 Thüringen rows (2,851).
+- `mayoral_unharm` / `mayoral_harm`: `winner_party` changed in 669 Thüringen rows.
+- Thüringen person groupings are unchanged, but the IDs are sequential, so 472 panel rows carry a new `person_id` label.
+
+`98_full_audit.R` G8 fails if a Thüringen party contains "Nachname,", in `mayoral_candidates` or as the winner's party in `mayor_panel`. Calibration: 647 / 624 on the release of 2026-10-02, 0 after.

@@ -2432,8 +2432,8 @@ if (file.exists(mv_file)) {
 # from wahlen.thueringen.de) + th_ob_parsed.csv (kreisfreie-Stadt OB from raw
 # files). Candidate names are mostly redacted (§50 ThürKWO) so candidate_party
 # carries the Wahlvorschlag (party / Einzelbewerber label); candidate_name is
-# populated only where the Wahlvorschlag is itself a person name (and for the
-# OB Info files 2006-2024, which list named candidates).
+# populated only where the Wahlvorschlag names a person (and for the OB Info
+# files 2006-2024, which list named candidates). See th_wahlvorschlag.R.
 
 cat("\n=== Processing Thüringen mayoral elections (BM + OB) ===\n")
 
@@ -2446,6 +2446,17 @@ if (length(th_have) > 0) {
     fread(f, encoding = "UTF-8",
           colClasses = list(character = c("ags", "ags_name", "state", "state_name",
             "election_date", "candidate_party", "candidate_name")))))
+
+  # The database writes a named candidate's Wahlvorschlag as "Nachname, Vorname"
+  # or "Nachname, Vorname (Träger)", and 00_th_scrape.py copied that string into
+  # both candidate_name and candidate_party. Split it: the name without the
+  # bracket, the Träger as the party (NA when the source gives none). Joint lists
+  # such as "SPD, CDU, UWS" are not names (known issues §16).
+  source("code/mayoral_elections/th_wahlvorschlag.R")
+  from_db <- th_raw$source == "wahlen.thueringen.de"
+  th_wv <- split_th_wahlvorschlag(th_raw$candidate_party[from_db])
+  th_raw$candidate_name[from_db] <- ifelse(th_wv$person, th_wv$name, "")
+  th_raw$candidate_party[from_db] <- th_wv$party
 
   th_candidates <- th_raw %>%
     mutate(
@@ -2465,12 +2476,16 @@ if (length(th_have) > 0) {
     ) %>%
     ungroup() %>%
     mutate(
-      # Names are usually "Last, First" (OB Info files; Einzelbewerber Wahlvorschläge).
+      # Names are "Last, First" (OB Info files; named Wahlvorschläge, split above).
       # Most BM candidate_name is NA (redacted by §50 ThürKWO) -> no person tracking.
+      # Academic titles leave the surname; candidate_name keeps the source string.
       candidate_last_name = ifelse(grepl(",", candidate_name),
-                                   trimws(sub(",.*$", "", candidate_name)), NA_character_),
+                                   trimws(sub("^((Dr|Prof)\\.( [a-z]+\\.)* )+", "",
+                                              sub(",.*$", "", candidate_name))), NA_character_),
+      # The OB Info files write "Name, Vorname, Dr." -- the title leaves the given name.
       candidate_first_name = ifelse(grepl(",", candidate_name),
-                                    trimws(sub("^[^,]*,\\s*", "", candidate_name)), NA_character_),
+                                    trimws(sub(",\\s*((Dr|Prof)\\.[^,]*)$", "",
+                                               sub("^[^,]*,\\s*", "", candidate_name))), NA_character_),
       candidate_gender = NA_character_, candidate_birth_year = NA_real_,
       candidate_profession = NA_character_, office_type = NA_character_
     ) %>%
@@ -2898,7 +2913,7 @@ if (file.exists(st_stala_file)) {
     # Gemeinden share one AGS on one day (flag_shared_ags). Without ags_name the
     # second Gemeinde's ELECTED MAYOR was ranked against the other Gemeinde's
     # candidates, demoted to a loser, and then stripped of his name by
-    # anonymise_st_losers() — three real mayors erased from the person record
+    # anonymise_losers() — three real mayors erased from the person record
     # (Blaha/Heideloh, Feuerborn/Cosa, Blankau/Dannefeld). The name is used ONLY
     # where the source flags the AGS as shared: the StaLA and portal files spell
     # five Gemeinde names differently, so an unconditional ags_name key would
@@ -2917,7 +2932,7 @@ if (file.exists(st_stala_file)) {
       # winner's birth year (2,330 winner rows). Blanking them here threw the
       # gender away and forced 04_*.R to PREDICT it from the first name, which
       # both mislabels people (8 verified disagreements with the register) and
-      # leaves 307 ST winners genderless. anonymise_st_losers() further down
+      # leaves 307 ST winners genderless. anonymise_losers() further down
       # still strips both for non-winners, so the licence position is unchanged.
       candidate_gender = recode_gender(candidate_gender),
       candidate_birth_year = ifelse(is_winner %in% TRUE,
@@ -3766,7 +3781,7 @@ cat("  mayoral_candidates:", nrow(mayoral_candidates), "rows\n")
 cat("  landrat_candidates:", nrow(landrat_candidates), "rows\n")
 
 # ============================================================================
-# ANONYMISATION — Sachsen-Anhalt (state 15)
+# ANONYMISATION — Sachsen-Anhalt (state 15) and Thüringen (16)
 # ============================================================================
 # The Statistisches Landesamt Sachsen-Anhalt supplies its Bürgermeisterwahlen
 # data with full candidate names for SCIENTIFIC USE ONLY. Only anonymised data
@@ -3784,20 +3799,28 @@ cat("  landrat_candidates:", nrow(landrat_candidates), "rows\n")
 # candidate name. Downstream, 04_candidate_characteristics.R derives gender and
 # name-origin FROM the name, so stripping here also keeps those NA for losers
 # (matching Bayern, whose losers are NA throughout).
+#
+# Thüringen (16) follows the same rule (decision of 2026-10-03). Its Landesamt
+# names every candidate of a recent election but withdraws the losers' names
+# after a period (§ 50 Abs. 2 ThürKWO: "nicht mehr möglich"), naming only the
+# elected person from then on. The official OB and Landrat files name losers
+# too. GERDA publishes the elected person and keeps the others in the
+# restricted twin.
+withheld_loser_states <- c("15", "16")   # Sachsen-Anhalt, Thüringen
 st_personal_cols <- c("candidate_name", "candidate_last_name",
                       "candidate_first_name", "candidate_title",
                       "candidate_gender", "candidate_birth_year",
                       "candidate_profession")
 
-anonymise_st_losers <- function(df, label) {
+anonymise_losers <- function(df, label) {
   if (!all(c("ags", "is_winner") %in% names(df)) || !nrow(df)) return(df)
-  idx <- substr(as.character(df$ags), 1, 2) == "15" & !(df$is_winner %in% TRUE)
+  idx <- substr(as.character(df$ags), 1, 2) %in% withheld_loser_states & !(df$is_winner %in% TRUE)
   n_before <- sum(idx & !is.na(df$candidate_last_name) &
                     nzchar(trimws(as.character(df$candidate_last_name))))
   for (cl in intersect(st_personal_cols, names(df))) {
     df[[cl]][idx] <- NA
   }
-  cat("  ", label, ": anonymised ", sum(idx), " ST non-winner rows (",
+  cat("  ", label, ": anonymised ", sum(idx), " ST/TH non-winner rows (",
       n_before, " carried a name)\n", sep = "")
   df
 }
@@ -3815,9 +3838,9 @@ write_restricted_candidates <- function(df, dir, stem) {
   write_rds(df, file.path(dir, paste0(stem, ".rds")), compress = "gz")
   fwrite(df, file.path(dir, paste0(stem, ".csv")))
   cat("  ", file.path(dir, stem), ".{rds,csv}: ", nrow(df), " rows (",
-      sum(substr(as.character(df$ags), 1, 2) == "15" &
+      sum(substr(as.character(df$ags), 1, 2) %in% withheld_loser_states &
             !(df$is_winner %in% TRUE) & !is.na(df$candidate_last_name)),
-      " named ST non-winners retained)\n", sep = "")
+      " named ST/TH non-winners retained)\n", sep = "")
 }
 
 # ---- Hessen: names published for elected persons only ----------------------
@@ -3843,9 +3866,9 @@ write_restricted_candidates(landrat_candidates,
                             "data/landrat_elections/final_restricted",
                             "landrat_candidates_restricted")
 
-cat("\n=== Anonymising Sachsen-Anhalt losing candidates (StaLA licence) ===\n")
-mayoral_candidates <- anonymise_st_losers(mayoral_candidates, "mayoral_candidates")
-landrat_candidates <- anonymise_st_losers(landrat_candidates, "landrat_candidates")
+cat("\n=== Anonymising Sachsen-Anhalt and Thüringen losing candidates ===\n")
+mayoral_candidates <- anonymise_losers(mayoral_candidates, "mayoral_candidates")
+landrat_candidates <- anonymise_losers(landrat_candidates, "landrat_candidates")
 mayoral_candidates <- anonymise_restricted_names(mayoral_candidates, "mayoral_candidates") %>%
   select(-name_restricted)
 

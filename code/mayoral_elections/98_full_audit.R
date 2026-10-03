@@ -562,6 +562,25 @@ for (nm_set in names(name_sets)) {
     ok(paste0("cand.surname_comma.", nm_set), sprintf("no %s surname contains a comma", nm_set))
 }
 
+# G8. Thüringen names its elected persons as the Wahlvorschlag, "Nachname,
+# Vorname (Träger)". Stored whole, the name became the party (and, in the panel,
+# winner_party), with the bracket in the given name (known issues §16). The party
+# must be the Träger or NA, never "Nachname, Vorname". (A list named after its
+# candidate, such as "Wenzl" in Eisenach 2012, is a genuine Träger.)
+# Calibration: 647 candidate rows / 624 panel rows on the release of 2026-10-02, 0 after.
+th <- mc[substr(ags,1,2) == "16" & !is.na(candidate_last_name) & !is.na(candidate_party)]
+th_own <- th[mapply(function(p, l) grepl(paste0(l, ","), p, fixed = TRUE), candidate_party, candidate_last_name)]
+if (nrow(th_own)) rep("ERROR", "cand.th_party_is_name",
+  sprintf("%d Thüringen candidate rows carry their own name as the party", nrow(th_own)),
+  th_own[, .N, .(election_year)]) else
+  ok("cand.th_party_is_name", "no Thüringen candidate carries their own name as the party")
+th_wp <- merge(mp[substr(ags,1,2) == "16" & !is.na(winner_party), .(ags, election_date, winner_party)],
+               th[is_winner %in% TRUE, .(ags, election_date, candidate_last_name)], by = c("ags", "election_date"))
+th_wp <- th_wp[mapply(function(p, l) grepl(paste0(l, ","), p, fixed = TRUE), winner_party, candidate_last_name)]
+if (nrow(th_wp)) rep("ERROR", "panel.th_winner_party_is_name",
+  sprintf("%d Thüringen mayor_panel rows have a person's name as winner_party", nrow(th_wp))) else
+  ok("panel.th_winner_party_is_name", "no Thüringen winner_party is a person's name")
+
 cat("\n========== F. Coverage by state ==========\n")
 print(mu[election_type %in% mtypes, .(elec=uniqueN(paste(ags,election_date)), munis=uniqueN(ags),
         yrs=paste0(min(election_year),"-",max(election_year))), .(st=sn[substr(ags,1,2)])][order(st)])

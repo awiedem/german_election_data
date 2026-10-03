@@ -2014,6 +2014,13 @@ if (length(th_have) > 0) {
           colClasses = list(character = c("ags", "ags_name", "state", "state_name",
             "election_date", "candidate_party", "candidate_name")))))
 
+  # The database writes a named candidate's Wahlvorschlag as "Nachname, Vorname"
+  # or "Nachname, Vorname (Träger)"; winner_party takes the Träger, or NA when
+  # the source gives none -- not the name (known issues §16).
+  source("code/mayoral_elections/th_wahlvorschlag.R")
+  from_db <- th_raw$source == "wahlen.thueringen.de"
+  th_raw$candidate_party[from_db] <- split_th_wahlvorschlag(th_raw$candidate_party[from_db])$party
+
   th_clean <- th_raw %>%
     mutate(election_date = as.Date(election_date),
            election_year = as.integer(election_year)) %>%

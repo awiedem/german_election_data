@@ -286,25 +286,31 @@ check_warn(nrow(no_rank1) == 0,
 
 # Sachsen-Anhalt losing candidates are anonymised on purpose (StaLA scientific-
 # use licence and section 80 KWO LSA), exactly as in mayoral_candidates, so a
-# missing name is required there rather than a defect. Elected Landraete stay
+# missing name is required there rather than a defect. Thüringen follows the
+# same rule since 2026-10-03 (section 50 Abs. 2 ThürKWO). Elected Landraete stay
 # named, and every other scraped state must name all its candidates.
 n_na_name_scraped <- lc %>%
-  filter(state %in% c("05","12","14","16"), is.na(candidate_name)) %>%
+  filter(state %in% c("05","12","14") |
+           (state == "16" & is_winner %in% TRUE), is.na(candidate_name)) %>%
   nrow()
 check(n_na_name_scraped == 0,
-      "all NRW/BB/SN/TH candidates have non-NA name",
-      sprintf("%d NRW/BB/SN/TH candidates with NA name", n_na_name_scraped))
+      "all NRW/BB/SN candidates and TH winners have non-NA name",
+      sprintf("%d NRW/BB/SN candidates or TH winners with NA name", n_na_name_scraped))
 
-st_named_losers <- lc %>%
-  filter(state == "15", !(is_winner %in% TRUE), !is.na(candidate_name)) %>% nrow()
-check(st_named_losers == 0,
-      "ST losing candidates are anonymised (licence / section 80 KWO LSA)",
-      sprintf("%d named ST non-winner rows leaked", st_named_losers))
-st_named_winners <- lc %>%
-  filter(state == "15", is_winner %in% TRUE, !is.na(candidate_name)) %>% nrow()
-check(st_named_winners > 0,
-      sprintf("ST elected Landraete remain named (%d rows)", st_named_winners),
-      "ST winners lost their names — anonymisation is too broad")
+for (st_code in c("15", "16")) {
+  st_lab <- c("15" = "ST", "16" = "TH")[[st_code]]
+  st_named_losers <- lc %>%
+    filter(state == st_code, !(is_winner %in% TRUE), !is.na(candidate_name)) %>% nrow()
+  check(st_named_losers == 0,
+        sprintf("%s losing candidates are anonymised (%s)", st_lab,
+                if (st_code == "15") "licence / section 80 KWO LSA" else "section 50 ThürKWO"),
+        sprintf("%d named %s non-winner rows leaked", st_named_losers, st_lab))
+  st_named_winners <- lc %>%
+    filter(state == st_code, is_winner %in% TRUE, !is.na(candidate_name)) %>% nrow()
+  check(st_named_winners > 0,
+        sprintf("%s elected Landraete remain named (%d rows)", st_lab, st_named_winners),
+        sprintf("%s winners lost their names — anonymisation is too broad", st_lab))
+}
 
 # ============================================================================
 # 9. Duplicate detection
