@@ -23,7 +23,7 @@
 #   Row 10+: per-Gemeinde rows (Satzart="G")
 # From 2018 on the candidate header takes TWO rows and everything below moves
 # down two: the party alone on row 6 ("AfD", "SPD", "Einzelbewerber"), the
-# name alone on row 7 ("Benninghaus, Thomas"), the K-row on row 10.
+# name alone on row 7 ("Nachname, Vorname"), the K-row on row 10.
 #
 # Cols (positional):
 #   1=Stand (E/V/Z), 2=Satzart (K/G), 3=Kreis-nr, 4=Gemeinde-nr, 5=Stimmbezirksnr,

@@ -95,6 +95,17 @@ data/mayoral_elections/raw/sachsen_anhalt/st_stala_parsed.csv
 data/mayoral_elections/raw/sachsen_anhalt/st_bmbm_parsed.csv
 data/mayoral_elections/raw/sachsen_anhalt/st_bm_parsed.csv
 
+# Thüringen mayoral/Landrat RAW + intermediate files name LOSING candidates. The
+# Landesamt withdraws those names after a period (§ 50 Abs. 2 ThürKWO) and GERDA
+# publishes only the elected persons (decision of 2026-10-03). These stay on disk
+# so the pipeline runs; they are not redistributed. Untracked on 2026-10-03, so
+# earlier commits still contain them. The party-level "Daten*.xls" carry no names.
+data/mayoral_elections/raw/thueringen/LRInfo*.xlsx
+data/mayoral_elections/raw/thueringen/LSInfo*.xlsx
+data/mayoral_elections/raw/thueringen/th_ob_parsed.csv
+data/mayoral_elections/raw/thueringen_bm/th_bm_scraped.csv
+data/landrat_elections/raw/thueringen_parsed.rds
+
 # Hessen mayoral candidate names 1993-2012 (Hessami 2018, CC0) name LOSING
 # candidates, who are private individuals. GERDA publishes the elected persons'
 # names only; the other names reach the restricted twin alone. The source files,

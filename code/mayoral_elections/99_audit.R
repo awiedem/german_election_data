@@ -757,13 +757,14 @@ check(nrow(hag_p) == 2 && n_distinct(hag_p$person_id) == 1 &&
       "MV LUP: Hagenow terms not linked to a single person")
 # The mechanism that kept the incomplete cycle winner-less is retained. No MV
 # cycle uses it; since October 2026 it marks exactly the two Hessen Hauptwahlen
-# that seated nobody (a sole candidate failed the Ja/Nein vote; section 22).
+# that seated nobody (a sole candidate failed the Ja/Nein vote; section 22) and
+# the Thüringen cycle whose elected person declined (16077047, 2026).
 fdm <- mc %>% filter(flag_decisive_round_missing %in% TRUE) %>% distinct(ags, election_date)
 check("flag_decisive_round_missing" %in% names(mc) &&
         !any(substr(fdm$ags, 1, 2) == "13") &&
         setequal(paste(fdm$ags, fdm$election_date),
-                 c("06532007 2016-03-06", "06634015 2022-03-06")),
-      "flag_decisive_round_missing: no MV cycle; only the 2 failed Hessen Ja/Nein votes",
+                 c("06532007 2016-03-06", "06634015 2022-03-06", "16077047 2026-03-01")),
+      "flag_decisive_round_missing: no MV cycle; only the 2 failed Hessen Ja/Nein votes and the declined TH election",
       sprintf("flag_decisive_round_missing on unexpected cycles: %s",
               paste(fdm$ags, fdm$election_date, collapse = ", ")))
 lup_p <- mp %>% filter(ags %in% lup)

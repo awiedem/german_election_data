@@ -2458,6 +2458,17 @@ if (length(th_have) > 0) {
   th_raw$candidate_name[from_db] <- ifelse(th_wv$person, th_wv$name, "")
   th_raw$candidate_party[from_db] <- th_wv$party
 
+  # A round whose elected person declined ("Wahl nicht angenommen; Neuwahlen
+  # erforderlich": 16077047, Stichwahl 2026-03-15) seated nobody, like the failed
+  # Hessen Ja/Nein votes. Flag it and the Hauptwahl of its cycle (within 60 days
+  # before) so the winner repair below leaves the cycle without a winner.
+  th_raw$flag_decisive_round_missing <- FALSE
+  for (i in which(from_db & grepl("nicht angenommen", th_raw$winner_name_raw))) {
+    d <- as.Date(th_raw$election_date[i])
+    th_raw$flag_decisive_round_missing[th_raw$ags == th_raw$ags[i] &
+      as.Date(th_raw$election_date) <= d & as.Date(th_raw$election_date) >= d - 60] <- TRUE
+  }
+
   th_candidates <- th_raw %>%
     mutate(
       election_date = as.Date(election_date),
@@ -2495,7 +2506,8 @@ if (length(th_have) > 0) {
       invalid_votes, turnout, candidate_name, candidate_last_name,
       candidate_first_name, candidate_gender, candidate_party,
       candidate_votes, candidate_voteshare, candidate_birth_year,
-      candidate_profession, office_type, n_candidates, candidate_rank, is_winner
+      candidate_profession, office_type, n_candidates, candidate_rank, is_winner,
+      flag_decisive_round_missing
     )
 
   th_clean <- standardise_candidates(th_candidates)
