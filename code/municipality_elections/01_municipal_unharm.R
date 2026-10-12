@@ -1260,6 +1260,24 @@ bayern_kommunalwahlen <- bayern_kommunalwahlen %>%
 
 # ----
 ######### THUERINGEN ----
+# Mehrheitswahl ----
+# Gemeinden with no or only one admissible list elect their council by majority
+# vote: voters pick individual candidates, some of whom carry a party label.
+# The TLS originals mark them in a column "Mehr-heits-wahl"; in the prepared
+# workbooks it lost its header (1994/2004 "...5", 1999 "Column1", 2009-2019
+# "...6"). Each column was checked against the originals' header and Gemeinde
+# list (October 2026); the counts below pin it. The flag feeds the
+# majority-vote rule in the final merge (party shares and seats NA).
+th_mw_flag <- function(dt, col, expected) {
+  v <- dt[[col, exact = TRUE]]
+  stopifnot(
+    !is.null(v),
+    all(is.na(v) | tolower(trimws(v)) == "x"),
+    sum(!is.na(v)) == expected
+  )
+  as.integer(!is.na(v))
+}
+
 ###### Thueringen 1994 Gemeinderatswahlen ----
 #### Load election data ----
 thueringen_1994_kommunalwahlen_data <- as.data.table(read_csv(
@@ -1420,8 +1438,13 @@ thueringen_1994_kommunalwahlen_data_sub$gew_NPD_HEIMAT <- NA
 thueringen_1994_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- thueringen_1994_kommunalwahlen_data_sub$NPD_sitze
 
 # Creating new dataframe with selected vars ----
+thueringen_1994_kommunalwahlen_data_sub[, flag_majority_vote := th_mw_flag(
+  thueringen_1994_kommunalwahlen_data_sub, "...5", 284L
+)]
+
 thueringen_1994_kommunalwahlen_data_sub <- thueringen_1994_kommunalwahlen_data_sub[, .(
   AGS_8dig,
+  flag_majority_vote,
   Bundesland,
   Gebietsname,
   election_year,
@@ -1589,7 +1612,7 @@ thueringen_1999_kommunalwahlen_data_sub$abs_AfD <- as.numeric(
   thueringen_1999_kommunalwahlen_data_sub$abs_AfD
 )
 
-thueringen_1999_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(0)
+thueringen_1999_kommunalwahlen_data_sub$abs_PIRATEN <- NA_real_ # no Piraten column in the source; a 0 here set replaced_0_with_na_piraten = 1 in every row
 thueringen_1999_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(
   thueringen_1999_kommunalwahlen_data_sub$abs_PIRATEN
 )
@@ -1645,8 +1668,13 @@ thueringen_1999_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- thueringen_1999_komm
 
 
 # Creating new dataframe with selected vars ----
+thueringen_1999_kommunalwahlen_data_sub[, flag_majority_vote := th_mw_flag(
+  thueringen_1999_kommunalwahlen_data_sub, "Column1", 226L
+)]
+
 thueringen_1999_kommunalwahlen_data_sub <- thueringen_1999_kommunalwahlen_data_sub[, .(
   AGS_8dig,
+  flag_majority_vote,
   Bundesland,
   Gebietsname,
   election_year,
@@ -1815,7 +1843,7 @@ thueringen_2004_kommunalwahlen_data_sub$abs_AfD <- as.numeric(
   thueringen_2004_kommunalwahlen_data_sub$abs_AfD
 )
 
-thueringen_2004_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(0)
+thueringen_2004_kommunalwahlen_data_sub$abs_PIRATEN <- NA_real_ # no Piraten column in the source; a 0 here set replaced_0_with_na_piraten = 1 in every row
 thueringen_2004_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(
   thueringen_2004_kommunalwahlen_data_sub$abs_PIRATEN
 )
@@ -1871,8 +1899,13 @@ thueringen_2004_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- thueringen_2004_komm
 
 
 # Creating new dataframe with selected vars ----
+thueringen_2004_kommunalwahlen_data_sub[, flag_majority_vote := th_mw_flag(
+  thueringen_2004_kommunalwahlen_data_sub, "...5", 254L
+)]
+
 thueringen_2004_kommunalwahlen_data_sub <- thueringen_2004_kommunalwahlen_data_sub[, .(
   AGS_8dig,
+  flag_majority_vote,
   Bundesland,
   Gebietsname,
   election_year,
@@ -2043,7 +2076,7 @@ thueringen_2009_kommunalwahlen_data_sub$abs_AfD <- as.numeric(
   thueringen_2009_kommunalwahlen_data_sub$abs_AfD
 )
 
-thueringen_2009_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(0)
+thueringen_2009_kommunalwahlen_data_sub$abs_PIRATEN <- NA_real_ # no Piraten column in the source; a 0 here set replaced_0_with_na_piraten = 1 in every row
 thueringen_2009_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(
   thueringen_2009_kommunalwahlen_data_sub$abs_PIRATEN
 )
@@ -2099,8 +2132,13 @@ thueringen_2009_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- thueringen_2009_komm
 
 
 # Creating new dataframe with selected vars ----
+thueringen_2009_kommunalwahlen_data_sub[, flag_majority_vote := th_mw_flag(
+  thueringen_2009_kommunalwahlen_data_sub, "...6", 263L
+)]
+
 thueringen_2009_kommunalwahlen_data_sub <- thueringen_2009_kommunalwahlen_data_sub[, .(
   AGS_8dig,
+  flag_majority_vote,
   Bundesland,
   Gebietsname,
   election_year,
@@ -2270,7 +2308,7 @@ thueringen_2014_kommunalwahlen_data_sub$abs_AfD <- as.numeric(
   thueringen_2014_kommunalwahlen_data_sub$abs_AfD
 )
 
-thueringen_2014_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(0)
+thueringen_2014_kommunalwahlen_data_sub$abs_PIRATEN <- NA_real_ # no Piraten column in the source; a 0 here set replaced_0_with_na_piraten = 1 in every row
 thueringen_2014_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(
   thueringen_2014_kommunalwahlen_data_sub$abs_PIRATEN
 )
@@ -2325,8 +2363,13 @@ thueringen_2014_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- thueringen_2014_komm
 
 
 # Creating new dataframe with selected vars ----
+thueringen_2014_kommunalwahlen_data_sub[, flag_majority_vote := th_mw_flag(
+  thueringen_2014_kommunalwahlen_data_sub, "...6", 255L
+)]
+
 thueringen_2014_kommunalwahlen_data_sub <- thueringen_2014_kommunalwahlen_data_sub[, .(
   AGS_8dig,
+  flag_majority_vote,
   Bundesland,
   Gebietsname,
   election_year,
@@ -2477,8 +2520,13 @@ thueringen_2019_kommunalwahlen_data_sub$abs_SPD <- as.numeric(
   thueringen_2019_kommunalwahlen_data_sub$abs_SPD
 )
 
+# The 2019 file names the column DIE_LINKE (PDS only up to 2004). Reading `$PDS`
+# returned NULL, which left the Linke NA in every 2019 Gemeinde and pushed its
+# votes into `other` until October 2026. Look the column up by its exact name
+# so a renamed source column stops the run instead.
+stopifnot("DIE_LINKE" %in% names(thueringen_2019_kommunalwahlen_data_sub))
 thueringen_2019_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(
-  thueringen_2019_kommunalwahlen_data_sub$PDS
+  thueringen_2019_kommunalwahlen_data_sub[["DIE_LINKE", exact = TRUE]]
 )
 thueringen_2019_kommunalwahlen_data_sub$abs_DIELINKE <- as.numeric(
   thueringen_2019_kommunalwahlen_data_sub$abs_DIELINKE
@@ -2496,7 +2544,7 @@ thueringen_2019_kommunalwahlen_data_sub$abs_AfD <- as.numeric(
   thueringen_2019_kommunalwahlen_data_sub$abs_AfD
 )
 
-thueringen_2019_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(0)
+thueringen_2019_kommunalwahlen_data_sub$abs_PIRATEN <- NA_real_ # no Piraten column in the source; a 0 here set replaced_0_with_na_piraten = 1 in every row
 thueringen_2019_kommunalwahlen_data_sub$abs_PIRATEN <- as.numeric(
   thueringen_2019_kommunalwahlen_data_sub$abs_PIRATEN
 )
@@ -2551,8 +2599,13 @@ thueringen_2019_kommunalwahlen_data_sub$sitze_NPD_HEIMAT <- thueringen_2019_komm
 
 
 # Creating new dataframe with selected vars ----
+thueringen_2019_kommunalwahlen_data_sub[, flag_majority_vote := th_mw_flag(
+  thueringen_2019_kommunalwahlen_data_sub, "...6", 212L
+)]
+
 thueringen_2019_kommunalwahlen_data_sub <- thueringen_2019_kommunalwahlen_data_sub[, .(
   AGS_8dig,
+  flag_majority_vote,
   Bundesland,
   Gebietsname,
   election_year,
@@ -2646,6 +2699,78 @@ names(thueringen_2024_kommunalwahlen_data) <- str_replace(
   "_nr"
 )
 
+#### Kreisfreie Städte (Stadtratswahl) ----
+# thueringen_2024.xlsx covers only the 17 Landkreise, so Erfurt, Gera, Jena,
+# Suhl and Weimar were missing from 2024 until October 2026. Their Stadtrat
+# results are pages of the same TLS database, saved verbatim in
+# raw/thueringen/tls_gw2024_kreisfreie_staedte/ (README and manifest there).
+# The pages never close their table cells, so rows are split on the tags. Each
+# city is reshaped into the workbook's long layout, so the label mapping below
+# applies unchanged.
+th24_cities <- c(
+  "51" = "Erfurt, Stadt", "52" = "Gera, Stadt", "53" = "Jena, Stadt",
+  "54" = "Suhl, Stadt", "55" = "Weimar, Stadt"
+)
+read_th24_city <- function(kreis) {
+  path <- sprintf(
+    "raw/thueringen/tls_gw2024_kreisfreie_staedte/TH_GW2024_Stadtrat_0%s.html",
+    kreis
+  )
+  html <- iconv(
+    readChar(path, file.info(path)$size, useBytes = TRUE),
+    "windows-1252", "UTF-8"
+  )
+  stopifnot(grepl("Stadtratswahl 2024 in Thüringen - endgültiges Ergebnis", html, fixed = TRUE))
+  cell_text <- function(x) {
+    x <- gsub("&nbsp;", " ", gsub("<[^>]*>", "", x), fixed = TRUE)
+    trimws(gsub("[[:space:]]+", " ", x))
+  }
+  rows <- strsplit(html, "<tr[ >]", perl = TRUE)[[1]][-1]
+  cells <- lapply(rows, function(r) {
+    cell_text(sub("^[^>]*>", "", strsplit(r, "<td", fixed = TRUE)[[1]][-1]))
+  })
+  num <- function(x) as.numeric(gsub("[^0-9]", "", x))
+  total <- function(key) {
+    hit <- Filter(function(p) length(p) >= 2 && p[1] == key, cells)
+    stopifnot(length(hit) == 1)
+    num(hit[[1]][2])
+  }
+  lists <- Filter(function(p) length(p) >= 5 && grepl("^[0-9]{1,2}$", p[1]), cells)
+  label <- vapply(lists, `[`, "", 2)
+  votes <- vapply(lists, function(p) num(p[3]), 0)
+  seats <- vapply(lists, function(p) num(p[4]), 0) # "-" (no seat) -> NA
+  # the page's own totals must be reproduced exactly
+  stopifnot(
+    length(lists) > 0,
+    sum(votes) == total("Gültige Stimmen"),
+    sum(seats, na.rm = TRUE) == total("Zu vergebene Sitze")
+  )
+  tibble(
+    Kreis_nr = kreis,
+    Gemeinde_nr = "000",
+    Gemeinde = th24_cities[[kreis]],
+    Wähler = c(
+      "Wahlberechtigte", "Wähler/Wahlbeteiligung", "Ungültige Stimmzettel",
+      "Zu vergebende Sitze", "Gültige Stimmen", label
+    ),
+    Anzahl = as.character(c(
+      total("Wahlberechtigte"), total("Wähler"), total("Ungültige Stimmabgaben"),
+      NA, total("Gültige Stimmen"), votes
+    )),
+    Sitze = c(
+      NA, NA, NA, as.character(total("Zu vergebene Sitze")), NA,
+      ifelse(is.na(seats), "-", as.character(seats))
+    )
+  )
+}
+th24_city_rows <- bind_rows(lapply(names(th24_cities), read_th24_city))
+stopifnot(!any(paste0(th24_city_rows$Kreis_nr, th24_city_rows$Gemeinde_nr) %in%
+  paste0(thueringen_2024_kommunalwahlen_data$Kreis_nr, thueringen_2024_kommunalwahlen_data$Gemeinde_nr)))
+thueringen_2024_kommunalwahlen_data <- bind_rows(
+  thueringen_2024_kommunalwahlen_data,
+  th24_city_rows
+)
+
 
 #### Recoding ----
 # Create new dataframe ----
@@ -2661,6 +2786,8 @@ thueringen_2024_kommunalwahlen_data_sub <- thueringen_2024_kommunalwahlen_data |
     AGS_8dig = paste0(Kreis_nr, Gemeinde_nr), # first three digits "160" are added later => adapted to pre-existing framework
 
     label = case_when(
+      # the party's own list, written in capitals in Jena, Suhl and one Gemeinde
+      Wähler == "FREIE WÄHLER" ~ "Freie Wähler",
       Wähler %in%
         c(
           "Stimmverhalten",
@@ -2689,6 +2816,13 @@ thueringen_2024_kommunalwahlen_data_sub <- thueringen_2024_kommunalwahlen_data |
       T ~ "other"
     )
   )
+
+# Mehrheitswahl Gemeinden write "Mehrheitswahl" in their Sitze cell (210, the
+# same Gemeinden the TLS overview marks with "x")
+th24_mw <- unique(thueringen_2024_kommunalwahlen_data_sub$AGS_8dig[
+  thueringen_2024_kommunalwahlen_data_sub$Sitze %in% "Mehrheitswahl"
+])
+stopifnot(length(th24_mw) == 210)
 
 # pivot both votes and seats to wide format
 thueringen_2024_kommunalwahlen_data_sub <- thueringen_2024_kommunalwahlen_data_sub |>
@@ -2794,8 +2928,11 @@ thueringen_2024_kommunalwahlen_data_sub$gew_Wählergruppen <- NA
 names(thueringen_2024_kommunalwahlen_data_sub)
 
 # select vars ----
+thueringen_2024_kommunalwahlen_data_sub[, flag_majority_vote := as.integer(AGS_8dig %in% th24_mw)]
+
 thueringen_2024_kommunalwahlen_data_sub <- thueringen_2024_kommunalwahlen_data_sub[, .(
   AGS_8dig,
+  flag_majority_vote,
   Bundesland,
   Gebietsname,
   election_year,
@@ -5255,7 +5392,7 @@ berlin_2011_kommunalwahlen_data_sub_erststimmen$abs_SPD <- berlin_2011_kommunalw
 berlin_2011_kommunalwahlen_data_sub_erststimmen$abs_DIELINKE <- berlin_2011_kommunalwahlen_data_sub_erststimmen$DIELINKE
 berlin_2011_kommunalwahlen_data_sub_erststimmen$abs_GRÜNE <- berlin_2011_kommunalwahlen_data_sub_erststimmen$"GRÜNE"
 berlin_2011_kommunalwahlen_data_sub_erststimmen$abs_AfD <- NA
-berlin_2011_kommunalwahlen_data_sub_erststimmen$abs_PIRATEN <- NA
+berlin_2011_kommunalwahlen_data_sub_erststimmen$abs_PIRATEN <- as.numeric(berlin_2011_kommunalwahlen_data_sub_erststimmen[["PIRATEN", exact = TRUE]]) # NA until October 2026, although the file has the column
 berlin_2011_kommunalwahlen_data_sub_erststimmen$abs_FDP <- berlin_2011_kommunalwahlen_data_sub_erststimmen$FDP
 berlin_2011_kommunalwahlen_data_sub_erststimmen$abs_FREIEWÄHLER <- berlin_2011_kommunalwahlen_data_sub_erststimmen$FREIEWÄHLER
 
@@ -5384,7 +5521,7 @@ berlin_2011_kommunalwahlen_data_sub_zweitstimmen$abs_SPD <- berlin_2011_kommunal
 berlin_2011_kommunalwahlen_data_sub_zweitstimmen$abs_DIELINKE <- berlin_2011_kommunalwahlen_data_sub_zweitstimmen$DIELINKE
 berlin_2011_kommunalwahlen_data_sub_zweitstimmen$abs_GRÜNE <- berlin_2011_kommunalwahlen_data_sub_zweitstimmen$"GRÜNE"
 berlin_2011_kommunalwahlen_data_sub_zweitstimmen$abs_AfD <- NA
-berlin_2011_kommunalwahlen_data_sub_zweitstimmen$abs_PIRATEN <- NA
+berlin_2011_kommunalwahlen_data_sub_zweitstimmen$abs_PIRATEN <- as.numeric(berlin_2011_kommunalwahlen_data_sub_zweitstimmen[["PIRATEN", exact = TRUE]]) # NA until October 2026, although the file has the column
 berlin_2011_kommunalwahlen_data_sub_zweitstimmen$abs_FDP <- berlin_2011_kommunalwahlen_data_sub_zweitstimmen$FDP
 berlin_2011_kommunalwahlen_data_sub_zweitstimmen$abs_FREIEWÄHLER <- NA
 
@@ -7320,6 +7457,66 @@ nrw_kreisfreie_kommunalwahlen_data_sub$sitze_PIRATEN <- NA
 nrw_kreisfreie_kommunalwahlen_data_sub$sitze_FDP <- NA
 nrw_kreisfreie_kommunalwahlen_data_sub$sitze_FREIEWÄHLER <- NA
 
+# Aachen 2014 and 2020 ----
+# The two Aachen rows of the prepared "summary" sheet were typed in by hand in
+# September 2024 and hold other elections in shifted columns: 2014 the
+# Oberbürgermeisterwahl, 2020 the Städteregionstag result in the city. They are
+# replaced by the official Stadtratswahl results from IT.NRW
+# (raw/nrw/aachen_ratswahl/: the 2020 result with 2014 as comparison column,
+# seats on page 2). Die PARTEI, Volt, ÖDP, REP and the Wählergruppen go to
+# `other`, as for every NRW city in this block. The guard on the hand-typed
+# voter counts stops the run if the sheet is ever corrected.
+aachen_ratswahl <- tibble::tribble(
+  ~year, ~hand_typed_voters, ~eligible, ~voters, ~valid,
+  ~CDU, ~SPD, ~GRUENE, ~FDP, ~LINKE, ~AfD, ~PIRATEN, ~rest,
+  ~seats, ~s_CDU, ~s_SPD, ~s_GRUENE, ~s_FDP, ~s_LINKE, ~s_AfD, ~s_PIRATEN,
+  # 2014: rest = Die PARTEI 436 + Sonstige 4,218
+  "2014", 102683, 194455, 102544, 101452,
+  36872, 26382, 16778, 4523, 6170, 2572, 3501, 436 + 4218,
+  76, 28, 20, 13, 3, 5, 2, 3,
+  # 2020: rest = Die PARTEI 2,295 + ÖDP 673 + Volt 3,784 + Wählergruppe 1 1,632 + 2 45
+  "2020", 102525, 192502, 102781, 101863,
+  25268, 18676, 34712, 5042, 4694, 3816, 1226, 2295 + 673 + 3784 + 1632 + 45,
+  58, 14, 11, 20, 3, 3, 2, 1
+)
+stopifnot(with(
+  aachen_ratswahl,
+  CDU + SPD + GRUENE + FDP + LINKE + AfD + PIRATEN + rest == valid &
+    s_CDU + s_SPD + s_GRUENE + s_FDP + s_LINKE + s_AfD + s_PIRATEN <= seats
+))
+# the sitze_* columns of this block are logical NA; set() would coerce a seat
+# count to TRUE, so make them numeric first
+for (cn in grep("^sitze_", names(nrw_kreisfreie_kommunalwahlen_data_sub), value = TRUE)) {
+  set(nrw_kreisfreie_kommunalwahlen_data_sub, j = cn,
+      value = as.numeric(nrw_kreisfreie_kommunalwahlen_data_sub[[cn]]))
+}
+stopifnot(vapply(
+  c("Wahlberechtigteinsgesamt", "Wähler", "GültigeStimmen",
+    paste0("abs_", c("CDU", "SPD", "GRÜNE", "FDP", "DIELINKE", "AfD", "PIRATEN"))),
+  function(cn) is.numeric(nrw_kreisfreie_kommunalwahlen_data_sub[[cn]]), logical(1)
+))
+for (i in seq_len(nrow(aachen_ratswahl))) {
+  a <- aachen_ratswahl[i, ]
+  r <- which(
+    nrw_kreisfreie_kommunalwahlen_data_sub$AGS_8dig == "05313000" &
+      as.character(nrw_kreisfreie_kommunalwahlen_data_sub$election_year) == a$year
+  )
+  stopifnot(
+    length(r) == 1,
+    nrw_kreisfreie_kommunalwahlen_data_sub$Wähler[r] == a$hand_typed_voters
+  )
+  set(nrw_kreisfreie_kommunalwahlen_data_sub, r, "Wahlberechtigteinsgesamt", a$eligible)
+  set(nrw_kreisfreie_kommunalwahlen_data_sub, r, "Wähler", a$voters)
+  set(nrw_kreisfreie_kommunalwahlen_data_sub, r, "GültigeStimmen", a$valid)
+  for (p in list(
+    c("CDU", "CDU"), c("SPD", "SPD"), c("GRÜNE", "GRUENE"), c("FDP", "FDP"),
+    c("DIELINKE", "LINKE"), c("AfD", "AfD"), c("PIRATEN", "PIRATEN")
+  )) {
+    set(nrw_kreisfreie_kommunalwahlen_data_sub, r, paste0("abs_", p[1]), a[[p[2]]])
+    set(nrw_kreisfreie_kommunalwahlen_data_sub, r, paste0("sitze_", p[1]), a[[paste0("s_", p[2])]])
+  }
+}
+
 # Creating new dataframe with selected vars ----
 nrw_kreisfreie_kommunalwahlen_data_sub <- nrw_kreisfreie_kommunalwahlen_data_sub[, .(
   AGS_8dig,
@@ -7654,6 +7851,14 @@ nrw_kommunalwahlen$AGS_8dig <- stri_pad_left(
   8,
   "0"
 )
+
+# Aachen has been 05334002 (Städteregion Aachen) since 21 October 2009; the
+# IT.NRW kreisfreie-Städte tables still list it under the old code 05313000.
+# The 30 August 2009 election predates the change and keeps the old code.
+aachen_new_code <- nrw_kommunalwahlen$AGS_8dig == "05313000" &
+  as.integer(as.character(nrw_kommunalwahlen$election_year)) >= 2014
+stopifnot(sum(aachen_new_code) == 3) # 2014, 2020, 2025
+nrw_kommunalwahlen$AGS_8dig[aachen_new_code] <- "05334002"
 
 # Reorder
 nrw_kommunalwahlen <- nrw_kommunalwahlen %>%
@@ -16559,6 +16764,43 @@ bremen_overall_buergerschaftswahl_data_sub <- bremen_overall_buergerschaftswahl_
 # ----
 # ----
 ######### BRANDENBURG ----
+# `freie_wahler` in Brandenburg is the party BVB / FREIE WÄHLER (Brandenburger
+# Vereinigte Bürgerbewegungen / Freie Wähler), in any spelling of its name.
+# Until October 2026 any list whose short name contained "Freie Wähler", "FW"
+# or "Freie WG" was counted, which took in volunteer fire-brigade lists (FFW),
+# local Freie Wählergemeinschaften and unrelated acronyms, and missed the
+# party's own lists written in capitals. The source's list type cannot separate
+# the two (the party's local lists run as Wählergruppen or Listenvereinigungen),
+# so the name decides. Local "Freie Wähler X" associations stay in `other`, and
+# so do the party's joint lists with another named group (AUB-, FBI /,
+# .../GARTENFREUNDE, ... & Bürger für Bürger), as for every joint list.
+# Is a Brandenburg list the party BVB / FREIE WÄHLER running on its own?
+bb_is_bvb_fw <- function(short, long = NA_character_) {
+  ws <- "[[:space:]]*"
+  party <- paste0(
+    "(\\bBVB\\b", ws, "[/-]?", ws, "(FREIE", ws, "W(Ä|ä)HLER|Freie", ws, "W(ä|Ä)hler|FW\\b))",
+    "|(Brandenburg[a-z]*", ws, "[Vv]ereinigte", ws, "Bürgerbew[a-zA-Z.]*", ws, "[/-]?", ws,
+    "(Freie|FREIE)", ws, "(Wähler|WÄHLER))"
+  )
+  # a name that also names another group is a joint list (-> other):
+  # text before the party name, or "/", "&", "+" after it
+  generic <- "^(Listenvereinigung|Wählergruppe|LV|WG)?[[:space:]:–-]*$"
+  one <- function(x) {
+    if (is.na(x) || !nzchar(trimws(x))) return(NA)
+    m <- regexpr(party, x, perl = TRUE)
+    if (m < 0) return(NA)
+    pre <- trimws(substr(x, 1, m - 1))
+    # the party name may recur (a list union of two party lists, Bernau 2019)
+    post <- gsub(party, "", substr(x, m + attr(m, "match.length"), nchar(x)), perl = TRUE)
+    !(nzchar(pre) && !grepl(generic, pre, perl = TRUE)) && !grepl("[/&+]", post)
+  }
+  s <- vapply(short, one, NA)
+  l <- vapply(long, one, NA)
+  # the short name decides when it names the party; the long name can only
+  # reveal a joint list (".../ GARTENFREUNDE") or identify an abbreviated one
+  ifelse(!is.na(s), s & !(l %in% FALSE), l %in% TRUE)
+}
+
 ###### Brandenburg 1993 Gemeinderatswahlen ----
 #### Load election data ----
 brandenburg_1993_gemeinderatswahlen_data <- as.data.table(read_excel(
@@ -16667,6 +16909,31 @@ brandenburg_1993_gemeinderatswahlen_data_recoded$sitze_Wählergruppen <- NA
 names(brandenburg_1993_gemeinderatswahlen_data_recoded)
 
 # Creating new dataframe with selected vars ----
+# Brandenburg an der Havel 1993 ----
+# The workbook's column for 12051000 is corrupt in every cell (1,116,600 valid
+# votes for 39,588 voters; Greens 53 though they did not stand). It is replaced
+# by the official result: LDS Brandenburg, Statistischer Bericht B VII 3-3
+# (Kreistage und Stadtverordnetenversammlungen der kreisfreien Städte,
+# 05.12.1993, endgültig), Table 2, saved in raw/brandenburg/lds_reports/. The
+# voter groups FW-BRB 20,719, Bürgerliste 8,168 and Pro Kirchmöser 2,753 go to
+# `other`. The pin on the workbook's figure stops the run if it is corrected.
+bb93_r <- which(brandenburg_1993_gemeinderatswahlen_data_recoded$AGS_8dig == "12051000")
+stopifnot(
+  length(bb93_r) == 1,
+  brandenburg_1993_gemeinderatswahlen_data_recoded$GültigeStimmen[bb93_r] == 1116600
+)
+bb93_official <- c(
+  Wahlberechtigteinsgesamt = 71007, Wähler = 39188, GültigeStimmen = 110672,
+  abs_SPD = 32055, abs_DIELINKE = 21880, abs_CDU = 15672, abs_FDP = 9425,
+  abs_GRÜNE = NA, abs_Wählergruppen = 20719 + 8168 + 2753
+)
+stopifnot(sum(bb93_official[c("abs_SPD", "abs_DIELINKE", "abs_CDU", "abs_FDP",
+                              "abs_Wählergruppen")]) == bb93_official[["GültigeStimmen"]])
+for (cc in names(bb93_official)) {
+  set(brandenburg_1993_gemeinderatswahlen_data_recoded, bb93_r, cc,
+      as.numeric(bb93_official[[cc]]))
+}
+
 brandenburg_1993_gemeinderatswahlen_data_recoded <- brandenburg_1993_gemeinderatswahlen_data_recoded[, .(
   AGS_8dig,
   Bundesland,
@@ -16867,6 +17134,20 @@ brandenburg_1998_gemeinderatswahlen_data_recoded$sitze_NPD_HEIMAT <- NA
 names(brandenburg_1998_gemeinderatswahlen_data_recoded)
 
 # Creating new dataframe with selected vars ----
+# Mittenwalde (Dahme-Spreewald) 1998 ----
+# Two typos in the workbook: valid votes 3,353 for 3,853 and Greens 83 for 88,
+# so the party shares summed to 1.148. Official figures: LDS Brandenburg,
+# Statistischer Bericht B VII 3-98/5, Table 2, p. 63 (SPD 2,540 + CDU 1,225 +
+# Greens 88 = 3,853), saved in raw/brandenburg/lds_reports/. Pinned on the typos.
+bb98_r <- which(brandenburg_1998_gemeinderatswahlen_data_recoded$AGS_8dig == "12061332")
+stopifnot(
+  length(bb98_r) == 1,
+  brandenburg_1998_gemeinderatswahlen_data_recoded$GültigeStimmen[bb98_r] == 3353,
+  brandenburg_1998_gemeinderatswahlen_data_recoded$abs_GRÜNE[bb98_r] == 83
+)
+set(brandenburg_1998_gemeinderatswahlen_data_recoded, bb98_r, "GültigeStimmen", 3853)
+set(brandenburg_1998_gemeinderatswahlen_data_recoded, bb98_r, "abs_GRÜNE", 88)
+
 brandenburg_1998_gemeinderatswahlen_data_recoded <- brandenburg_1998_gemeinderatswahlen_data_recoded[, .(
   AGS_8dig,
   Bundesland,
@@ -17409,7 +17690,7 @@ brandenburg_2008_gemeinderatswahlen_data_recoded <- merge(
 # FW
 brandenburg_2008_gemeinderatswahlen_data_FW <- dplyr::filter(
   brandenburg_2008_gemeinderatswahlen_data,
-  grepl('Freie Wähler|FW|Freie WG', Wahlvorschlagsträger)
+  bb_is_bvb_fw(Wahlvorschlagsträger) # 2008 has no long names
 )
 brandenburg_2008_gemeinderatswahlen_data_FW <- brandenburg_2008_gemeinderatswahlen_data_FW[, c(
   'AGS',
@@ -17840,9 +18121,18 @@ brandenburg_2014_gemeinderatswahlen_data_recoded <- merge(
 )
 
 # GRUENE
+# The 2014 file writes the party as "GRÜNE/B 90" (as in 2008). The old pattern
+# 'GRÜNEN' matched nothing, so the Greens were NA in every 2014 Gemeinde until
+# October 2026. Exact label, like CDU/SPD/LINKE: joint lists such as Frankfurt
+# (Oder)'s "GRÜNE/B 90&BI Stadtentw." and the association list "GRÜNE LIGA" stay
+# in `other`.
 brandenburg_2014_gemeinderatswahlen_data_GRUENE <- dplyr::filter(
   brandenburg_2014_gemeinderatswahlen_data,
-  grepl('GRÜNEN', Wahlvorschlagsträger_Kurz)
+  Wahlvorschlagsträger_Kurz == "GRÜNE/B 90"
+)
+stopifnot(
+  nrow(brandenburg_2014_gemeinderatswahlen_data_GRUENE) > 0,
+  !anyDuplicated(brandenburg_2014_gemeinderatswahlen_data_GRUENE$AGS)
 )
 brandenburg_2014_gemeinderatswahlen_data_GRUENE <- brandenburg_2014_gemeinderatswahlen_data_GRUENE[, c(
   'AGS',
@@ -17865,7 +18155,10 @@ brandenburg_2014_gemeinderatswahlen_data_recoded <- merge(
 # FW
 brandenburg_2014_gemeinderatswahlen_data_FW <- dplyr::filter(
   brandenburg_2014_gemeinderatswahlen_data,
-  grepl('Freie Wähler|FW|Freie WG', Wahlvorschlagsträger_Kurz)
+  bb_is_bvb_fw(
+    Wahlvorschlagsträger_Kurz,
+    .data[[grep("Lang$", names(brandenburg_2014_gemeinderatswahlen_data), value = TRUE)]]
+  )
 )
 brandenburg_2014_gemeinderatswahlen_data_FW <- brandenburg_2014_gemeinderatswahlen_data_FW[, c(
   'AGS',
@@ -18364,7 +18657,11 @@ brandenburg_2019_gemeinderatswahlen_data_recoded <- merge(
 # FW
 brandenburg_2019_gemeinderatswahlen_data_FW <- dplyr::filter(
   brandenburg_2019_gemeinderatswahlen_data,
-  grepl('Freie Wähler|FW|Freie WG', Merkmal_Kurzname)
+  # the long-name header carries line breaks between "Merkmal" and "Langname"
+  bb_is_bvb_fw(
+    Merkmal_Kurzname,
+    .data[[grep("Langname$", names(brandenburg_2019_gemeinderatswahlen_data), value = TRUE)]]
+  )
 )
 brandenburg_2019_gemeinderatswahlen_data_FW <- brandenburg_2019_gemeinderatswahlen_data_FW[, c(
   'AGS',
@@ -18866,7 +19163,11 @@ brandenburg_2024_gemeinderatswahlen_data_recoded <- merge(
 # FW
 brandenburg_2024_gemeinderatswahlen_data_FW <- dplyr::filter(
   brandenburg_2024_gemeinderatswahlen_data,
-  grepl('Freie Wähler|FW|Freie WG', Merkmal_Kurzname)
+  # the long-name header carries line breaks between "Merkmal" and "Langname"
+  bb_is_bvb_fw(
+    Merkmal_Kurzname,
+    .data[[grep("Langname$", names(brandenburg_2024_gemeinderatswahlen_data), value = TRUE)]]
+  )
 )
 brandenburg_2024_gemeinderatswahlen_data_FW <- brandenburg_2024_gemeinderatswahlen_data_FW[, c(
   'AGS',
@@ -19341,9 +19642,24 @@ for (nm in names(rlp_stala_party_map)) {
   rlp_stala[[paste0("sitze_", nm)]] <- rlp_stala[[paste0("sitze__", src)]]
 }
 
+# Gemeinden electing their council by Mehrheitswahl have their votes in the
+# source's own "Mehrheitswahl" column; flag them for the majority-vote rule in
+# the final merge. Only rows where that column holds the whole vote count: on
+# the 2025 boundaries the source back-casts to, some 1969-1989 rows combine
+# then-separate Gemeinden that voted by list with ones that voted by majority
+# (Bad Neuenahr-Ahrweiler 1969, CDU 48 %). Those keep their list shares and are
+# flagged 0; their `other` includes the majority-vote votes.
+stopifnot("Mehrheitswahl" %in% rlp_stala_parties)
+rlp_mw_share <- coalesce(as.numeric(rlp_stala[["gew__Mehrheitswahl"]]), 0) /
+  as.numeric(rlp_stala$GültigeStimmen)
+rlp_stala$flag_majority_vote <- as.integer(!is.na(rlp_mw_share) & rlp_mw_share > 0.999)
+message("RP Mehrheitswahl: ", sum(rlp_stala$flag_majority_vote), " rows flagged, ",
+        sum(rlp_mw_share > 0 & rlp_mw_share <= 0.999, na.rm = TRUE), " mixed rows kept as list elections")
+
 # Creating new dataframe with selected vars ----
 rlp_kommunalwahlen <- as.data.table(rlp_stala)[, .(
   AGS_8dig,
+  flag_majority_vote,
   Bundesland,
   Gebietsname,
   election_year,
@@ -20533,6 +20849,28 @@ kommunalwahlen_merge <- kommunalwahlen_merge %>%
   filter(!is.na(AGS_8dig))
 
 
+# Majority-vote rule ----
+# In a Gemeinde that elects its council by Mehrheitswahl (no or only one
+# admissible list), voters pick individual candidates. A party label on a
+# candidate is not a party list, so party shares and seats are not defined
+# there: every named party's votes, shares and seats are set to NA, and `other`
+# holds the whole vote. Rheinland-Pfalz and Thüringen 2024 always worked this
+# way; until October 2026 Thüringen 1994-2019 credited the candidates' party
+# labels to the parties (e.g. Büttstedt 2019 "CDU 94.8 %").
+# flag_majority_vote: 1 = Mehrheitswahl, 0 = list election, NA = the source
+# does not say (every state except Thüringen and Rheinland-Pfalz).
+mw_parties <- c(
+  "CDU", "SPD", "DIELINKE", "GRÜNE", "AfD", "PIRATEN", "FDP", "DiePARTEI",
+  "FREIEWÄHLER", "BSW", "NPD_HEIMAT", "FREIE_SACHSEN", "III_WEG"
+)
+mw_cols <- intersect(
+  as.vector(outer(c("abs_", "gew_", "sitze_", "prop_"), mw_parties, paste0)),
+  names(kommunalwahlen_merge)
+)
+mw_rows <- which(kommunalwahlen_merge$flag_majority_vote %in% 1L)
+stopifnot(length(mw_rows) > 0)
+for (cc in mw_cols) set(kommunalwahlen_merge, i = mw_rows, j = cc, value = NA)
+
 # Change FW and remainder category ----
 kommunalwahlen_merge <- kommunalwahlen_merge %>%
   mutate(across(starts_with("abs_"), ~ as.numeric(.x))) %>%
@@ -20575,6 +20913,7 @@ kommunalwahlen_merge <- kommunalwahlen_merge %>%
   ) %>%
   dplyr::select(
     AGS_8dig:GültigeStimmen,
+    flag_majority_vote,
     starts_with('abs_') & !matches('^abs_OTHER$'),
     abs_OTHER,
     starts_with('gew_') & !matches('^gew_OTHER$'),
@@ -20893,7 +21232,8 @@ kommunalwahlen_merge <- kommunalwahlen_merge |>
     turnout,
     starts_with("prop_"),
     starts_with("seats_"),
-    starts_with("replaced")
+    starts_with("replaced"),
+    flag_majority_vote
   )
 
 glimpse(kommunalwahlen_merge)
@@ -20957,6 +21297,31 @@ kommunalwahlen_merge <- kommunalwahlen_merge |>
     state = state_name_to_code[state],
     election_year = as.integer(election_year)
   )
+
+# Voter counts corrected or withheld (October 2026) ---------------------
+# In 15 rows the source's voter count is too low: the valid votes exceed three
+# times the voters, though every voter has three votes. Mostly the postal
+# voters were left out of the count while their votes were kept, so the votes
+# and party shares are right. Where an official document gives the correct
+# count it is used; otherwise number_voters and turnout are withheld (NA).
+# Each row is pinned on the published counts, so a corrected source stops the
+# run. Rows and evidence: data/municipal_elections/metadata/voter_count_corrections.csv
+voter_fix <- data.table::fread(
+  here::here("data/municipal_elections/metadata/voter_count_corrections.csv"),
+  colClasses = list(character = "ags")
+)
+for (i in seq_len(nrow(voter_fix))) {
+  r <- which(kommunalwahlen_merge$ags == voter_fix$ags[i] &
+               kommunalwahlen_merge$election_year == voter_fix$election_year[i])
+  stopifnot(
+    length(r) == 1,
+    kommunalwahlen_merge$number_voters[r] == voter_fix$published_voters[i],
+    kommunalwahlen_merge$valid_votes[r] == voter_fix$published_valid[i]
+  )
+  kommunalwahlen_merge$number_voters[r] <- voter_fix$corrected_voters[i]
+  kommunalwahlen_merge$turnout[r] <-
+    voter_fix$corrected_voters[i] / kommunalwahlen_merge$eligible_voters[r]
+}
 
 # Add state_name and relocate metadata to the front ---------------------
 kommunalwahlen_merge <- kommunalwahlen_merge |>

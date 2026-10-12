@@ -129,3 +129,8 @@ data/landrat_elections/final_restricted/
 # into the tracked gender_guesser_lookup.csv / name_origin_lookup.rds).
 data/mayoral_elections/processed/*_restricted.csv
 data/mayoral_elections/processed/*_restricted.rds
+
+# Brandenburg municipal-election report whose imprint requires consent for
+# electronic distribution (like the B VII 3-6 issues of 2002/2003/2008); the
+# manifest stays tracked.
+data/municipal_elections/raw/brandenburg/lds_reports/SB_B7-3-5_5j-08_BB.pdf

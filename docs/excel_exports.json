@@ -3129,8 +3129,8 @@
     "source": "data/mayoral_elections/final/mayoral_unharm.csv"
   },
   "data/municipal_elections/final/municipal_harm": {
-    "rows": 68052,
-    "columns": 56,
+    "rows": 68057,
+    "columns": 57,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
@@ -3149,16 +3149,16 @@
       "iii_weg",
       "other"
     ],
-    "source_sha256": "f55d297667b5362cbcd4d07bc86c09bfd1ec8aef3d2a575548cfafe07264023b",
-    "rds_sha256": "b8ba41742f37695208951699d212bb62e5ed8691ebe5a5a9693c95824d07e031",
+    "source_sha256": "3eea1096402e83a89b8520de78eeee34326a60c6d420905592216e41f605ff99",
+    "rds_sha256": "9af8b987e8921fadc06b50dda28a00f39d966ce5fdf04f5faa0de8c2fa7fb8e8",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "d0a78b5150c92abf0489c721be8f0d6d6c9044d99a59e1393e1cc7b467d19dde",
-    "bytes": 11002233,
+    "xlsx_sha256": "adffb7f9dd7c726da14d3eabe17b5dd33a812b513a441d3e1c8b82973458a41f",
+    "bytes": 11032730,
     "source": "data/municipal_elections/final/municipal_harm.csv"
   },
   "data/municipal_elections/final/municipal_harm_25": {
-    "rows": 79284,
-    "columns": 56,
+    "rows": 79289,
+    "columns": 57,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
@@ -3177,16 +3177,16 @@
       "iii_weg",
       "other"
     ],
-    "source_sha256": "04944be5ec8ed8c16b44dcd43354ad0f5e38435e3b9a6bc97984de92bea63fc2",
-    "rds_sha256": "1309b810a96265237c650b1e9f0ca805a9e2a81a7ff7fe1b8b1ce544324253c6",
+    "source_sha256": "b29d8a092395955f28f5884f644febc34d9800272e3681c4510651943c759c82",
+    "rds_sha256": "baf7f909acb7004cc3af91f2badce732c188da997d7b77b7e4febdc2a9ad4fa1",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "424ad5ea0f7a264f89a7b63b31bc87b79ee7b15a8d84c7fc915862a936a45c08",
-    "bytes": 12548818,
+    "xlsx_sha256": "1341eb95ce7fdcc106d829fa61c6d92b3682ea8ea83e347732d365b86e42b7f7",
+    "bytes": 12606971,
     "source": "data/municipal_elections/final/municipal_harm_25.csv"
   },
   "data/municipal_elections/final/municipal_unharm": {
-    "rows": 92765,
-    "columns": 51,
+    "rows": 92770,
+    "columns": 52,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
@@ -3205,11 +3205,11 @@
       "iii_weg",
       "other"
     ],
-    "source_sha256": "933438c4c24110abee175f4b91e6d303f0b138365683d290bec0d3d61c859fd0",
-    "rds_sha256": "38048c8fbffd837b46d925d9dd4afe680a019fc4444a9c0739f50f08db12eb90",
+    "source_sha256": "a921b52d902dca3d238f02545237ccb64459f5d9f37083aab5179da729699da4",
+    "rds_sha256": "370bd876235aa44ee64d354267d0cfd77b3ef9a5c4a7431c8ee16d75ca5230d7",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "ffe38b7ff3f4d2080b9d28d1a943591afe3c54b5cf6feba6311173c3b5c0dd1a",
-    "bytes": 13678418,
+    "xlsx_sha256": "85c23458548f0571153829d6aa594715cdcbe65bea67029bf5c45026b86fcb4c",
+    "bytes": 13737976,
     "source": "data/municipal_elections/final/municipal_unharm.csv"
   },
   "data/state_elections/final/ltw_wkr_unharm": {

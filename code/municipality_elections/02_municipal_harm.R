@@ -205,6 +205,17 @@ df <- gerda_read_election_source("data/municipal_elections/final/municipal_unhar
   filter(election_year >= 1990) |>
   mutate(election_year = as.numeric(election_year))
 
+# joint lists credited to a party in the harmonised files only (Potsdam 2014
+# CDU/ANW, Frankfurt (Oder) 2014 Greens); see
+# code/municipality_elections/harm_joint_list_credits.R
+source("code/municipality_elections/harm_joint_list_credits.R")
+df <- apply_joint_list_credits(df)
+
+# flag_majority_vote is 1/0 in Thüringen and Rheinland-Pfalz and NA elsewhere
+# (source does not say); a target is 1 if any predecessor voted by Mehrheitswahl.
+# max(na.rm = TRUE) would turn an all-NA group into -Inf.
+max_or_na <- function(x) if (all(is.na(x))) NA_integer_ else as.integer(max(x, na.rm = TRUE))
+
 # look at how many observations for each state and year
 df |>
   group_by(state, election_year) |>
@@ -301,9 +312,7 @@ df <- df |>
       id == "01059187_2008" ~ "01059011", # Boren
       # 03361013_2001 is NOT remapped: see the year_cw override below.
       id == "05313000_2009" ~ "05334002", # Aachen
-      id == "05313000_2014" ~ "05334002", # Aachen
-      id == "05313000_2020" ~ "05334002", # Aachen
-      id == "05313000_2025" ~ "05334002", # Aachen
+      # Aachen 2014/2020/2025 carry 05334002 in municipal_unharm since October 2026
       # Rheinland-Pfalz: the StaLA Sonderauswertung reports the whole 1969-2019
       # series on 2025 boundaries, so these five Gemeinden appear under codes
       # that only enter the crosswalk part-way through its span (07140502/03/04
@@ -594,16 +603,21 @@ glimpse(df_cw)
 # Weighted sums
 sums <- df_cw |>
   filter(election_year < 2021) |>  # Only harmonize years before 2021
+  mutate(.vw = is.na(number_voters) & !is.na(valid_votes)) |>
   group_by(ags_21, ags_name_21, election_year) |>
-  summarize_at(
+  summarise(
     # 1+2+3: Weighted sum
-    vars(eligible_voters:valid_votes),
-    ~ sum(.x * pop_cw, na.rm = TRUE)
+    across(eligible_voters:valid_votes, ~ sum(.x * pop_cw, na.rm = TRUE)),
+    # a predecessor with votes but a withheld voter count (NA in municipal_unharm,
+    # see voter_count_corrections.csv) makes the target's count unknown, not 0
+    .withheld = any(.vw & pop_cw > 0),
+    .groups = "drop"
   ) |>
+  mutate(number_voters = if_else(.withheld, NA_real_, number_voters)) |>
+  select(-.withheld) |>
   rename(
     ags = ags_21, year = election_year, ags_name = ags_name_21
   ) |>
-  ungroup() |>
   mutate(
     turnout = number_voters / eligible_voters
   )
@@ -630,15 +644,15 @@ means <- df_cw %>%
 flags <- df_cw |>
   filter(election_year < 2021) |>  # Only harmonize years before 2021
   group_by(ags_21, election_year) |>
-  summarize_at(
+  summarise(
     # for all that start with replaced_ take maximum
-    vars(starts_with("replaced_"), flag_unsuccessful_naive_merge),
-    ~ max(.x, na.rm = TRUE)
+    across(c(starts_with("replaced_"), flag_unsuccessful_naive_merge), ~ max(.x, na.rm = TRUE)),
+    flag_majority_vote = max_or_na(flag_majority_vote),
+    .groups = "drop"
   ) |>
   rename(
     ags = ags_21, year = election_year
-  ) |>
-  ungroup() 
+  )
 
 ## Election date and type ---------------------------------------------------
 
@@ -757,12 +771,17 @@ stopifnot(nrow(w_chk) == 0)
 sums_post21 <- df_post21_cw |>
   filter(!is.na(ags_21)) |>
   mutate(ags_21 = as.character(ags_21)) |>
+  mutate(.vw = is.na(number_voters) & !is.na(valid_votes)) |>
   group_by(ags_21, election_year) |>
-  summarize_at(
-    vars(eligible_voters:valid_votes),
-    ~ sum(.x * final_pop_cw, na.rm = TRUE)
+  summarise(
+    across(eligible_voters:valid_votes, ~ sum(.x * final_pop_cw, na.rm = TRUE)),
+    # a predecessor with votes but a withheld voter count (NA in municipal_unharm,
+    # see voter_count_corrections.csv) makes the target's count unknown, not 0
+    .withheld = any(.vw & final_pop_cw > 0),
+    .groups = "drop"
   ) |>
-  ungroup() |>
+  mutate(number_voters = if_else(.withheld, NA_real_, number_voters)) |>
+  select(-.withheld) |>
   mutate(turnout = number_voters / eligible_voters)
 
 # Get ags_name_21 from existing crosswalk
@@ -799,12 +818,12 @@ flags_post21 <- df_post21_cw |>
     flag_unsuccessful_naive_merge = 0
   ) |>
   group_by(ags_21, election_year) |>
-  summarize_at(
-    vars(all_of(flag_cols), flag_unsuccessful_naive_merge),
-    ~ max(.x, na.rm = TRUE)
+  summarise(
+    across(c(all_of(flag_cols), flag_unsuccessful_naive_merge), ~ max(.x, na.rm = TRUE)),
+    flag_majority_vote = max_or_na(flag_majority_vote),
+    .groups = "drop"
   ) |>
-  rename(ags = ags_21, year = election_year) |>
-  ungroup()
+  rename(ags = ags_21, year = election_year)
 
 # Area/population
 area_pop_post21 <- df_post21_cw |>
