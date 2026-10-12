@@ -562,6 +562,11 @@ Kommunalwahlen — municipal council (Gemeinderat / Stadtrat) elections.
 (68,057 x 57, 1990–2026, 2021 boundaries), `municipal_harm_25` (79,289 x
 57, 2025 boundaries) in `data/municipal_elections/final/`.
 
+Municipalities formed after 2021 (Jahnatal, Uder, Berga-Wünschendorf, ...) have
+no rows of their own in `municipal_harm`: their results are split onto their
+2021 constituents, which therefore all show the merged unit’s shares.
+`municipal_harm_25` carries them under their own codes.
+
 The Bayern series (1990–2026, six-year cycle) includes the 8 March 2026
 Gemeinde- and Stadtratswahlen from GENESIS-Online Bayern (statistic
 14431, final results). For 2026 the source publishes weighted votes
@@ -595,6 +600,12 @@ in 2018.
 September 2026 the Kreistag results were published here by mistake) and
 includes seats. The seven Gemeinden of VG Vorharz voted on 15 September 2024
 and carry that date.
+
+**Sachsen-Anhalt, earlier releases and 2005–2010.** Releases before
+13 November 2024 published Kreistag results by Gemeinde as the 1994–2019
+council results. Between 2005 and 2010 the Gemeindegebietsreform spread the
+council elections over several years (mostly 2009, some in 2010, a few in
+2005–2008), so a common election grid has to pool these years.
 
 **Corrections, October 2026.**
 
