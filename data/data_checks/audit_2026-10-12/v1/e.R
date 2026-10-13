@@ -1,0 +1,12 @@
+suppressMessages(library(dplyr))
+w <- readRDS("data/federal_elections/wahlkreis_level/final/federal_wkr_unharm.rds")
+print(w |> filter(state=="11", election_year==2021) |> summarise(n=n(), ev=sum(eligible_voters), nv=sum(number_voters), vv=sum(valid_votes)))
+print(w |> filter(state=="11", election_year==2021) |> select(wkr_nr, wkr_name, eligible_voters, number_voters) |> mutate(t=number_voters/eligible_voters) |> as.data.frame())
+cty <- readRDS("data/federal_elections/county_level/final/federal_cty_unharm.rds")
+print(cty |> filter(state=="11", year==2021) |> summarise(sum(eligible_voters), sum(number_voters)))
+print(table(w$stimme))
+# F6
+u <- readRDS("data/federal_elections/municipality_level/final/federal_muni_unharm.rds")
+print(u |> group_by(election_year) |> summarise(na=mean(is.na(ags_name)), n=sum(is.na(ags_name))) |> as.data.frame())
+print(sum(is.na(u$ags_name)))
+cw <- readRDS("data/crosswalks/final/ags_crosswalks.rds"); print(class(cw$ags)); print(table(nchar(as.character(cw$ags)))); print(names(cw))

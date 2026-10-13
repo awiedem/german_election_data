@@ -1,0 +1,18 @@
+suppressMessages(library(dplyr))
+setwd("/Users/hanno/Documents/GitHub/german_election_data")
+fh<-readRDS("data/federal_elections/municipality_level/final/federal_muni_harm_21.rds")
+sh<-readRDS("data/state_elections/final/state_harm_21.rds")
+mh<-readRDS("data/municipal_elections/final/municipal_harm.rds")
+eh<-readRDS("data/european_elections/final/european_muni_harm.rds")
+cv<-readRDS("data/covars_municipality/final/ags_area_pop_emp.rds")
+print(grep("name",names(sh),value=T))
+cat("fed not state:");print(setdiff(fh$ags,sh$ags));cat("fed not muni:",setdiff(fh$ags,mh$ags)," muni not fed:",setdiff(mh$ags,fh$ags),"\n")
+cat("fed not eu:",length(setdiff(fh$ags,eh$ags)),setdiff(fh$ags,eh$ags),"; eu not fed:",setdiff(eh$ags,fh$ags),"\n")
+nm<-bind_rows(fh%>%transmute(ags,n=ags_name,src="fed"),sh%>%transmute(ags,n=ags_name_21,src="state"),mh%>%transmute(ags,n=ags_name,src="muni"))%>%distinct()%>%filter(!is.na(n))
+print(grep("ags_name",names(sh),value=T))
+nn<-nm%>%mutate(k=tolower(trimws(n)))%>%group_by(ags)%>%summarise(k=n_distinct(k),.groups="drop")
+cat("AGS with >1 distinct names:",sum(nn$k>1),"of",nrow(nn),"\n")
+print(head(as.data.frame(nm%>%filter(ags%in%head(nn$ags[nn$k>1],10))%>%arrange(ags)),24))
+# state prefix vs state column across all with ags & state
+chk<-function(d,nm){ if(!all(c("ags","state")%in%names(d)))return(NULL); x<-d%>%filter(substr(ags,1,2)!=state); cat(nm,"prefix mismatch:",nrow(x),"\n"); if(nrow(x)) print(head(as.data.frame(x%>%select(ags,state,any_of("election_year"))),5))}
+for(f in c("federal_elections/municipality_level/final/federal_muni_unharm","federal_elections/municipality_level/final/federal_muni_harm_21","federal_elections/municipality_level/final/federal_muni_harm_25","state_elections/final/state_unharm","state_elections/final/state_harm_21","state_elections/final/state_harm_25","european_elections/final/european_muni_unharm","european_elections/final/european_muni_harm","municipal_elections/final/municipal_unharm","municipal_elections/final/municipal_harm","county_elections/final/county_elec_unharm","county_elections/final/county_elec_harm_21_muni","mayoral_elections/final/mayoral_unharm","mayoral_elections/final/mayoral_harm","landrat_elections/final/landrat_unharm")) chk(readRDS(paste0("data/",f,".rds")),basename(f))

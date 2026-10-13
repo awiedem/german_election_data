@@ -1,0 +1,15 @@
+suppressMessages({library(dplyr);library(bundeslaendeR)}); options(width=250, dplyr.print_max=400)
+d <- "data/state_elections/final/"
+u <- readRDS(paste0(d,"state_unharm.rds")); w <- readRDS(paste0(d,"ltw_wkr_unharm.rds"))
+st <- c(BW="08",BY="09",BE="11",BB="12",HB="04",HH="02",HE="06",MV="13",NI="03",NW="05",RP="07",SL="10",SN="14",ST="15",SH="01",TH="16")
+bl <- as.data.frame(ltw_elections) %>% mutate(election_date=as.Date(election_date)) %>% group_by(state, election_date) %>% summarise(el_b=first(electorate), nv_b=first(number_of_voters), vv_b=first(valid_votes), .groups="drop") %>% mutate(state_gerda=st[state])
+s <- function(x) if (all(is.na(x))) NA_real_ else sum(x, na.rm=TRUE)
+a <- u %>% group_by(state_gerda=state, election_date) %>% summarise(n=n(), el_u=s(eligible_voters), nv_u=s(number_voters), vv_u=s(valid_votes), .groups="drop")
+m <- inner_join(bl, a, by=c("state_gerda","election_date")) %>% mutate(d_el=el_u/el_b-1, d_nv=nv_u/nv_b-1, d_vv=vv_u/vv_b-1) %>% filter(election_date>=as.Date("1990-01-01"))
+cat("compared", nrow(m), "\n")
+print(m %>% filter(abs(d_el)>0.005|abs(d_nv)>0.005|abs(d_vv)>0.005) %>% mutate(across(starts_with("d_"),~round(.x,4))) %>% select(state_gerda,election_date,n,el_b,el_u,d_el,nv_b,nv_u,d_nv,vv_b,vv_u,d_vv) %>% as.data.frame())
+# wkr zweitstimme vs bl
+b2 <- w %>% filter(stimme %in% c("zweitstimme","einzelstimme")) %>% group_by(state_gerda=state, election_date, stimme) %>% summarise(nw=n(), el_w=s(eligible_voters), nv_w=s(number_voters), vv_w=s(valid_votes), .groups="drop")
+m2 <- inner_join(bl, b2, by=c("state_gerda","election_date")) %>% mutate(d_el=el_w/el_b-1, d_nv=nv_w/nv_b-1, d_vv=vv_w/vv_b-1)
+cat("\nWKR vs bundeslaendeR (>0.5%), stimme zweit/einzel\n")
+print(m2 %>% filter(abs(d_el)>0.005|abs(d_nv)>0.005) %>% mutate(across(starts_with("d_"),~round(.x,4))) %>% select(state_gerda,election_date,stimme,nw,el_b,el_w,d_el,nv_b,nv_w,d_nv,d_vv) %>% as.data.frame())

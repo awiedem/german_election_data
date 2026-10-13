@@ -1,0 +1,8 @@
+suppressMessages(library(dplyr))
+u <- readRDS("data/federal_elections/municipality_level/final/federal_muni_unharm.rds")
+h <- readRDS("data/federal_elections/municipality_level/final/federal_muni_harm_21.rds")
+c <- readRDS("data/federal_elections/county_level/final/federal_cty_unharm.rds") |> filter(!grepl("999$",ags))
+a <- u |> group_by(election_year) |> summarise(elig=sum(eligible_voters,na.rm=T), elig_orig=sum(eligible_voters_orig,na.rm=T), nv=sum(number_voters,na.rm=T), nv_orig=sum(number_voters_orig,na.rm=T), wtd_turn=sum(turnout*eligible_voters_orig,na.rm=T)/sum(eligible_voters_orig, na.rm=T))
+b <- c |> group_by(election_year=year) |> summarise(cty_elig=sum(eligible_voters,na.rm=T), cty_nv=sum(number_voters,na.rm=T), cty_turn=cty_nv/cty_elig)
+r <- left_join(a,b,by="election_year") |> mutate(elig_vs_cty=elig/cty_elig-1, elig_orig_vs_cty=elig_orig/cty_elig-1, nv_vs_cty=nv/cty_nv-1, turn_calc=nv/elig, turn_calc_orig=nv/elig_orig)
+print(as.data.frame(r |> select(election_year, elig, elig_orig, cty_elig, elig_vs_cty, elig_orig_vs_cty, nv_vs_cty, cty_turn, turn_calc, turn_calc_orig, wtd_turn)), digits=5)

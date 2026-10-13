@@ -1,0 +1,7 @@
+suppressMessages(library(dplyr))
+r <- readRDS("data/federal_elections/municipality_level/final/federal_muni_raw.rds")
+print(r |> filter(election_year==2021) |> summarise(spd=sum(spd,na.rm=T), valid=sum(valid_votes,na.rm=T), nv=sum(number_voters,na.rm=T)))
+print(names(r)[1:30])
+u <- readRDS("data/federal_elections/municipality_level/final/federal_muni_unharm.rds")
+print(u |> filter(election_year==2021) |> summarise(spd_sh=mean(spd,na.rm=T), mx=max(spd,na.rm=T)))
+print(r |> group_by(election_year) |> summarise(maxspd=max(spd, na.rm=T), nrow=n()) |> as.data.frame())

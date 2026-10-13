@@ -1,0 +1,5 @@
+suppressMessages({library(dplyr)}); options(width=250)
+u <- readRDS("data/state_elections/final/state_unharm.rds")
+print(grep("ssw|npd|freie|fw", names(u), value=TRUE))
+x <- u %>% filter(state=="01") %>% group_by(election_year) %>% summarise(vv=sum(valid_votes,na.rm=T), ssw=sum(ssw*valid_votes,na.rm=T)/sum(valid_votes,na.rm=T), npd=sum(npd*valid_votes,na.rm=T)/sum(valid_votes,na.rm=T), other=sum(other*valid_votes,na.rm=T)/sum(valid_votes,na.rm=T), n_ssw_nonNA=sum(!is.na(ssw)))
+print(as.data.frame(x))

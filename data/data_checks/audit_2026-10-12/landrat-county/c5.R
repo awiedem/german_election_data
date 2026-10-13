@@ -1,0 +1,10 @@
+suppressMessages(library(dplyr)); options(width=250,tibble.width=Inf)
+setwd("/Users/hanno/Documents/GitHub/german_election_data")
+hc <- as_tibble(readRDS("data/county_elections/final/county_elec_harm_21_cty.rds"))
+h <- as_tibble(readRDS("data/county_elections/final/county_elec_harm_21_muni.rds"))
+a <- hc%>%filter(state=="01")%>%group_by(county_code)%>%summarise(yrs=paste(election_year,collapse=","));print(a,n=20)
+x <- hc%>%filter(state=="01",election_year==2018)%>%select(county_code,valid_votes,eligible_voters)
+print(x)
+# Does 2018 Flensburg (01001) cty total = just city? 
+print(h%>%filter(state=="01",election_year==2018)%>%group_by(county)%>%summarise(n=n(),vv=sum(valid_votes))%>%head(20))
+print(h%>%filter(state=="01",election_year==2023)%>%group_by(county)%>%summarise(n=n(),vv=sum(valid_votes)))

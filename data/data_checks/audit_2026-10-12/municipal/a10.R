@@ -1,0 +1,5 @@
+suppressMessages(library(dplyr))
+u <- readRDS("data/municipal_elections/final/municipal_unharm.rds")
+options(width=220)
+print(u %>% filter(ags=="09162000") %>% select(election_year,eligible_voters,number_voters,valid_votes,turnout,cdu_csu,spd,gruene,afd,other,seats_cdu_csu,seats_spd) %>% as.data.frame)
+print(u %>% filter(ags=="09162000") %>% select(election_year,seats_cdu_csu,seats_spd,seats_gruene,seats_afd,seats_linke_pds,seats_fdp,seats_freie_wahler) %>% as.data.frame)

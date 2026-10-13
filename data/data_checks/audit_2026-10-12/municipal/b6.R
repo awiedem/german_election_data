@@ -1,0 +1,7 @@
+suppressMessages(library(dplyr))
+options(width=250)
+u <- readRDS("data/municipal_elections/final/municipal_unharm.rds") %>% filter(state=="09")
+w <- u %>% select(ags,ags_name,election_year,eligible_voters,turnout) %>% tidyr::pivot_wider(names_from=election_year,values_from=c(eligible_voters,turnout))
+x <- w %>% filter(turnout_1990>0.9); cat("BY 1990 turnout>0.9:",nrow(x),"; median ratio eligible 1990/1996:",median(x$eligible_voters_1990/x$eligible_voters_1996,na.rm=T)," vs all:",median(w$eligible_voters_1990/w$eligible_voters_1996,na.rm=T),"\n")
+print(summary(w$turnout_1990)); print(summary(w$turnout_1996))
+print(x %>% select(ags,ags_name,eligible_voters_1990,eligible_voters_1996,turnout_1990,turnout_1996) %>% head(8) %>% as.data.frame)

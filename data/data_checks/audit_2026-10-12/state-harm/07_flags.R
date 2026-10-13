@@ -1,0 +1,12 @@
+suppressMessages(library(dplyr)); options(width=250)
+u <- readRDS("data/state_elections/final/state_unharm.rds")
+cat("unharm: nv>ev rows:", sum(u$number_voters>u$eligible_voters,na.rm=TRUE),"\n")
+print(table(turnoutNA=is.na(u$turnout[which(u$number_voters>u$eligible_voters)]), flagnaive=u$flag_naive_turnout_above_1[which(u$number_voters>u$eligible_voters)], flagbw=u$flag_briefwahl_only[which(u$number_voters>u$eligible_voters)]))
+print(u %>% filter(number_voters>eligible_voters, is.na(turnout)) %>% select(ags,election_year,eligible_voters,number_voters,valid_votes,turnout,starts_with("flag_")) %>% as.data.frame())
+cat("turnout formula check\n")
+z <- u %>% filter(!is.na(turnout), eligible_voters>0) %>% mutate(t2=number_voters/eligible_voters, dif=abs(turnout-t2)) 
+cat("max diff",max(z$dif,na.rm=T),"n>1e-6:",sum(z$dif>1e-6,na.rm=T),"\n")
+print(z %>% filter(dif>1e-6) %>% count(state,election_year) %>% head(20))
+cat("flag table\n"); print(table(u$flag_briefwahl_only, u$flag_naive_turnout_above_1, u$flag_no_valid_votes))
+for (n in c("21","23","25")) { h <- readRDS(sprintf("data/state_elections/final/state_harm_%s.rds",n)); z<-h %>% filter(!is.na(turnout), eligible_voters>0) %>% mutate(dif=abs(turnout-number_voters/eligible_voters)); cat(n,"harm turnout formula: n>1e-6:",sum(z$dif>1e-6),"max",max(z$dif),"\n")
+ cat(" turnout nonNA but eligible 0/NA:", sum(!is.na(h$turnout) & (is.na(h$eligible_voters)|h$eligible_voters==0)), "; nv>ev:", sum(h$number_voters>h$eligible_voters,na.rm=T), "\n")}

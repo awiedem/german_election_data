@@ -1,0 +1,6 @@
+suppressMessages(library(dplyr)); options(width=250,tibble.width=Inf)
+setwd("/Users/hanno/Documents/GitHub/german_election_data")
+u <- as_tibble(readRDS("data/county_elections/final/county_elec_unharm.rds"))
+t <- u%>%filter(!is.na(number_voters),eligible_voters>0)%>%group_by(state,election_year)%>%summarise(n=n(),ev=sum(eligible_voters),nv=sum(number_voters),to=nv/ev,.groups="drop")
+print(t%>%tidyr::pivot_wider(id_cols=election_year,names_from=state,values_from=to)%>%mutate(across(-election_year,~round(.,3)))%>%arrange(election_year),n=60)
+print(t%>%tidyr::pivot_wider(id_cols=election_year,names_from=state,values_from=ev)%>%arrange(election_year),n=60)

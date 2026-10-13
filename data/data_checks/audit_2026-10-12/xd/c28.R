@@ -1,0 +1,12 @@
+suppressMessages(library(dplyr));setwd("/Users/hanno/Documents/GitHub/german_election_data")
+fu<-readRDS("data/federal_elections/municipality_level/final/federal_muni_unharm.rds")
+cw<-readRDS("data/crosswalks/final/ags_crosswalks.rds")
+nm<-fu%>%filter(!is.na(ags_name))%>%distinct(ags)
+na<-fu%>%filter(is.na(ags_name))
+cat("NA-name rows:",nrow(na),"; AGS with name in another year:",sum(na$ags%in%nm$ags),"; present in ags_crosswalks names:",sum(na$ags%in%sprintf("%08.0f",cw$ags)),"\n")
+print(table(na$state_name)[1:6]);print(as.data.frame(na%>%count(state_name)%>%arrange(desc(n))%>%head(5)))
+mh<-readRDS("data/municipal_elections/final/municipal_harm.rds")
+# municipal_harm election_date coverage
+print(as.data.frame(mh%>%filter(!is.na(election_date))%>%count(state_name,election_year)%>%head(10)))
+mu<-readRDS("data/municipal_elections/final/municipal_unharm.rds"); cat("unharm date NA",sum(is.na(mu$election_date)),"\n")
+print(names(mh)[1:12])

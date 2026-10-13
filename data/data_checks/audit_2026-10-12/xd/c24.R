@@ -1,0 +1,5 @@
+suppressMessages(library(dplyr));setwd("/Users/hanno/Documents/GitHub/german_election_data")
+a<-readRDS("data/state_elections/final/state_harm.rds");b<-readRDS("data/state_elections/final/state_harm_21.rds")
+x<-a%>%group_by(state,election_year)%>%summarise(ev_a=sum(eligible_voters,na.rm=T),vv_a=sum(valid_votes,na.rm=T),n_a=n(),.groups="drop")%>%inner_join(b%>%group_by(state,election_year)%>%summarise(ev_b=sum(eligible_voters,na.rm=T),vv_b=sum(valid_votes,na.rm=T),n_b=n(),.groups="drop"),by=c("state","election_year"))%>%mutate(dv=vv_a/vv_b-1,de=ev_a/ev_b-1)
+cat("state-years in both:",nrow(x),"; legacy-only years:",nrow(distinct(a,state,election_year))-nrow(x),"\n")
+print(as.data.frame(x%>%filter(abs(dv)>.005|(abs(de)>.005&ev_b>0))),digits=3)

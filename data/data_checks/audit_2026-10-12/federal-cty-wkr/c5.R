@@ -1,0 +1,6 @@
+suppressMessages(library(dplyr))
+m <- readRDS("data/federal_elections/municipality_level/final/federal_muni_unharm.rds")
+u <- readRDS("data/federal_elections/county_level/final/federal_cty_unharm.rds")
+x <- m %>% group_by(year=election_year) %>% summarise(elig=sum(eligible_voters,na.rm=T), elig_orig=sum(eligible_voters_orig,na.rm=T), nv=sum(number_voters,na.rm=T))
+y <- u %>% group_by(year) %>% summarise(elig_c=sum(eligible_voters), nv_c=sum(number_voters))
+print(left_join(x,y) %>% mutate(r=elig/elig_c, ro=elig_orig/elig_c) %>% as.data.frame)

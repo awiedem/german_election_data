@@ -1,0 +1,5 @@
+suppressMessages(library(dplyr))
+u <- readRDS("data/municipal_elections/final/municipal_unharm.rds")
+print(u %>% filter(is.na(election_date)) %>% select(ags,ags_name,election_year,state,election_type))
+x <- u %>% group_by(state,election_year) %>% summarise(d=format(first(election_date)),n=n(),ty=paste(unique(election_type),collapse="|"),.groups="drop")
+options(width=200); print(as.data.frame(x), max=2000)

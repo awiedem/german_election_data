@@ -1,0 +1,13 @@
+suppressMessages({library(readxl);library(dplyr);library(tidyr)})
+x<-as.data.frame(read_excel("dl/ltw_erg_ab46_oF.xlsx",sheet="Ergebnisse",col_names=FALSE,.name_repair="minimal"))
+body<-x[7:nrow(x),]; body<-body[!is.na(body[[2]])&body[[2]]!="",]
+nm<-c("hilf","land","nr","wahltag","bem","elig","voters","stimmen_ges","invalid","valid_zettel","valid","seats","seats_f")
+npc<-(ncol(body)-13)/4; cat("party blocks",npc,"\n")
+names(body)<-c(nm,paste0(rep(c("pname","ergeb","sg","sf"),npc),rep(seq_len(npc),each=4)))
+for(c in setdiff(names(body),c("hilf","land",grep("pname",names(body),value=TRUE)))) body[[c]]<-suppressWarnings(as.numeric(body[[c]]))
+body$date<-as.Date(body$wahltag,origin="1899-12-30"); body$year<-as.integer(format(body$date,"%Y"))
+saveRDS(body,"bl_wide.rds")
+long<-lapply(seq_len(npc),function(i) data.frame(land=body$land,date=body$date,year=body$year,party=body[[paste0("pname",i)]],votes=body[[paste0("ergeb",i)]],valid=body$valid,stringsAsFactors=FALSE))|>bind_rows()|>filter(!is.na(party),!is.na(votes))
+saveRDS(long,"bl_long.rds")
+print(head(body[,c("land","date","bem","elig","voters","stimmen_ges","invalid","valid_zettel","valid")],25))
+print(table(body$bem,useNA="a")); print(sort(table(long$party),decreasing=TRUE)[1:40])

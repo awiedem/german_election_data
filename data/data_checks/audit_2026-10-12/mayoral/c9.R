@@ -1,0 +1,7 @@
+suppressMessages({library(dplyr);library(data.table)})
+u<-readRDS("data/mayoral_elections/final/mayoral_unharm.rds"); setDT(u)
+cc<-readRDS("data/mayoral_elections/final/mayoral_candidates.rds"); setDT(cc)
+print(u[ags%in%c("03152001","03404000","03353031")&election_year==2013,.(ags,ags_name,election_date,round,valid_votes,winner_party,winner_voteshare)])
+print(cc[ags=="03152001"&election_year==2013,.(election_date,election_date_sw,candidate_party,candidate_voteshare_hw,candidate_voteshare_sw,has_stichwahl)])
+print(u[state=="03",.N,by=.(election_date)][order(election_date)][election_year<-NULL][,.(election_date,N)][format(election_date,"%Y")%in%c("2013","2014")])
+print(u[state=="03"&election_year==2013,.N,by=.(election_date,round)])

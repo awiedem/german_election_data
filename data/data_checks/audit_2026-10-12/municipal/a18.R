@@ -1,0 +1,6 @@
+suppressMessages(library(dplyr))
+u <- readRDS("data/municipal_elections/final/municipal_unharm.rds")
+options(width=250)
+print(u %>% filter(state=="12") %>% group_by(election_year) %>% summarise(n=n(),fdpNA=mean(is.na(fdp)),fdp_seats=sum(seats_fdp>0,na.rm=T),fwNA=mean(is.na(freie_wahler)),gruNA=mean(is.na(gruene)),linkeNA=mean(is.na(linke_pds)),afdNA=mean(is.na(afd))) %>% as.data.frame)
+print(u %>% filter(ags=="12054000") %>% select(election_year,cdu_csu,spd,linke_pds,gruene,fdp,afd,freie_wahler,other,seats_fdp,seats_cdu_csu) %>% as.data.frame)
+# generic: parties where seats>0 but share NA by state-year (all)

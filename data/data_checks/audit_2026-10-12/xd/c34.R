@@ -1,0 +1,15 @@
+suppressMessages(library(dplyr));setwd("/Users/hanno/Documents/GitHub/german_election_data")
+r<-function(x)readRDS(paste0("data/",x,".rds"))
+cmp<-function(u,h,nm,by=c("state","election_year")){
+ a<-u%>%group_by(across(all_of(by)))%>%summarise(ev=sum(eligible_voters,na.rm=T),nv=sum(number_voters,na.rm=T),vv=sum(valid_votes,na.rm=T),.groups="drop")
+ b<-h%>%group_by(across(all_of(by)))%>%summarise(hev=sum(eligible_voters,na.rm=T),hnv=sum(number_voters,na.rm=T),hvv=sum(valid_votes,na.rm=T),.groups="drop")
+ x<-inner_join(a,b,by=by)%>%mutate(dev=hev/ev-1,dnv=hnv/nv-1,dvv=hvv/vv-1)
+ bad<-x%>%filter(abs(dev)>.003|abs(dnv)>.003|abs(dvv)>.003); cat("\n##",nm,": cells",nrow(x),"bad",nrow(bad),"\n"); print(as.data.frame(bad%>%mutate(across(c(dev,dnv,dvv),~round(.x,4)))%>%select(all_of(by),ev,hev,dev,dnv,dvv)%>%head(25)))}
+cmp(r("state_elections/final/state_unharm"),r("state_elections/final/state_harm_21"),"state 21")
+cmp(r("state_elections/final/state_unharm"),r("state_elections/final/state_harm_25"),"state 25")
+cmp(r("european_elections/final/european_muni_unharm"),r("european_elections/final/european_muni_harm"),"eu")
+cmp(r("municipal_elections/final/municipal_unharm"),r("municipal_elections/final/municipal_harm"),"municipal 21")
+cmp(r("municipal_elections/final/municipal_unharm"),r("municipal_elections/final/municipal_harm_25"),"municipal 25")
+fu<-r("federal_elections/municipality_level/final/federal_muni_unharm")
+cmp(fu%>%mutate(eligible_voters=eligible_voters_orig),r("federal_elections/municipality_level/final/federal_muni_harm_21")%>%mutate(eligible_voters=eligible_voters_orig),"fed21 (orig ev)")
+cmp(fu%>%mutate(eligible_voters=eligible_voters_orig),r("federal_elections/municipality_level/final/federal_muni_harm_25")%>%mutate(eligible_voters=eligible_voters_orig),"fed25 (orig ev)")

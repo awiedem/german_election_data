@@ -1,0 +1,7 @@
+suppressMessages(library(dplyr))
+j<-read.csv(file.path("/private/tmp/claude-501/-Users-hanno-Documents-GitHub-german-election-data/adfc9cc1-5d71-47c2-9e9e-f58b91334ee3/scratchpad/audit/verif-sh","tot.csv"),colClasses=c(state="character"))
+options(width=200)
+print(j%>%filter(state%in%c("07"))%>%select(election_year,n,va,valid_votes,el,electorate)%>%mutate(d=va/valid_votes-1))
+w<-readRDS("data/state_elections/final/ltw_wkr_unharm.rds");print(names(w)[1:15])
+x<-readRDS("data/state_elections/final/state_unharm.rds")
+print(x%>%filter(state=="07",election_year<=1996)%>%group_by(election_year)%>%summarise(n=n(),va=sum(valid_votes),nNA=sum(is.na(valid_votes)),min=min(valid_votes),sumcdu=sum(cdu*valid_votes,na.rm=T)/sum(valid_votes)))

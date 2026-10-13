@@ -1,0 +1,7 @@
+suppressMessages(library(dplyr))
+u<-readRDS("data/european_elections/final/european_muni_unharm.rds")
+x<-u%>%mutate(raw=number_voters/eligible_voters)
+print(x%>%filter(raw>1)%>%count(election_year,county)%>%arrange(desc(n))%>%head(8))
+print(x%>%filter(election_year==2024,county=="16074")%>%summarise(n=n(),over=sum(raw>1),el=sum(eligible_voters),nv=sum(number_voters),t=nv/el))
+print(x%>%filter(election_year==2024,county=="16074")%>%arrange(desc(raw))%>%select(ags,eligible_voters,number_voters,raw)%>%head(5))
+print(x%>%filter(raw>1.05)%>%count(election_year))

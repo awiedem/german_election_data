@@ -1,0 +1,28 @@
+suppressMessages({library(dplyr);library(data.table)})
+u<-readRDS("data/mayoral_elections/final/mayoral_unharm.rds"); setDT(u)
+h<-readRDS("data/mayoral_elections/final/mayoral_harm.rds"); setDT(h)
+cat("unharm",nrow(u),"harm",nrow(h),"\n")
+print(u[,.N,by=election_type]); print(h[,.N,by=election_type])
+cat("harm key dup (ags,date,type,round):",sum(duplicated(h[,.(ags,election_date,election_type,round)])),"\n")
+cat("harm ags nchar:",paste(unique(nchar(h$ags))),"; harm state mismatch:",sum(substr(h$ags,1,2)!=h$state),"\n")
+cat("harm ags that are not 2021-valid? n distinct",uniqueN(h$ags),"\n")
+# which unharm rows disappear
+chk<-u[,.(ags,election_date,election_type,round)]
+miss<-chk[!h,on=.(ags,election_date,election_type,round)]
+cat("unharm rows whose (ags,date,type,round) not in harm:",nrow(miss),"\n")
+print(miss[,.N,by=election_type]); print(miss[,.(N=.N),by=.(st=substr(ags,1,2))][order(st)])
+# totals: eligible/valid sum compare for rows in both
+cat("sum valid unharm",sum(u$valid_votes,na.rm=T)," harm",sum(h$valid_votes,na.rm=T),"\n")
+cat("sum winner_votes unharm",sum(u$winner_votes,na.rm=T)," harm",sum(h$winner_votes,na.rm=T),"\n")
+cat("harm non-integer counts:",sum(h$valid_votes!=round(h$valid_votes),na.rm=T),"of",sum(!is.na(h$valid_votes)),"\n")
+cat("harm voteshare>1:",sum(h$winner_voteshare>1,na.rm=T)," turnout>1:",sum(h$turnout>1,na.rm=T),"\n")
+cat("flags:\n"); print(h[,lapply(.SD,sum,na.rm=T),.SDcols=patterns("^flag_")])
+print(h[,.(n=.N),by=n_predecessors][order(n_predecessors)])
+cat("harm: valid+inv vs voters mismatch >1%:",sum(abs(h$valid_votes+h$invalid_votes-h$number_voters)>0.01*h$number_voters,na.rm=T),"\n")
+cat("harm: voters>eligible:",sum(h$number_voters>h$eligible_voters+1e-6,na.rm=T),"\n")
+cat("harm turnout vs voters/elig >0.01:",sum(abs(h$turnout-h$number_voters/h$eligible_voters)>0.01,na.rm=T),"\n")
+cat("harm vs vs winner_votes/valid >0.01:",sum(abs(h$winner_voteshare-h$winner_votes/h$valid_votes)>0.01,na.rm=T),"\n")
+cat("pct_only flags by state\n");print(h[flag_pct_only==1,.N,by=state])
+cat("RLP in harm: counts NA?",h[state=="07",.(N=.N,na=sum(is.na(eligible_voters)))],"\n")
+cat("RLP flag_pct_only==0 but counts NA: ",nrow(h[state=="07"&flag_pct_only==0&is.na(valid_votes)]),"\n")
+cat("Bayern flag_pct_only: ",nrow(h[state=="09"&flag_pct_only==1]),"\n")

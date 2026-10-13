@@ -1,0 +1,17 @@
+suppressMessages(library(dplyr)); options(width=250,tibble.width=Inf)
+setwd("/Users/hanno/Documents/GitHub/german_election_data")
+l <- as_tibble(readRDS("data/landrat_elections/final/landrat_unharm.rds"))
+cd <- readRDS("data/landrat_elections/final/landrat_candidates.rds")
+for (a in c("03152000","03360000","03452000","03459000")) print(l%>%filter(ags==a,election_year==2011)%>%select(ags_name,election_date,round,eligible_voters,valid_votes,winner_party,winner_votes,winner_voteshare))
+print(cd%>%filter(ags=="03152000",election_year==2011)%>%select(candidate_name,candidate_party,candidate_votes_hw,candidate_voteshare_hw,candidate_votes_sw,is_winner,has_stichwahl,n_candidates_hw))
+print(l%>%filter(ags=="12060000",election_year==2026))
+print(l%>%filter(ags%in%c("10044000","10045000"),election_year%in%c(2012,2014,2024)))
+print(l%>%filter(ags=="09673000",election_year==1952))
+# candidates incomplete
+cc <- cd%>%filter(!is.na(valid_votes))%>%group_by(ags,election_date)%>%summarise(sv=sum(candidate_votes_hw,na.rm=T),vv=first(valid_votes),nc=n(),n_hw=first(n_candidates_hw),st=first(state),yr=first(election_year),.groups="drop")%>%mutate(r=sv/vv)
+print(cc%>%filter(sv>0)%>%group_by(st)%>%summarise(n=n(),bad=sum(abs(r-1)>0.01),bad5=sum(abs(r-1)>0.05),minr=min(r),maxr=max(r)))
+print(cc%>%filter(r>1.01)%>%head())
+print(cc%>%filter(sv==0)%>%count(st))
+print(cc%>%filter(st=="09",abs(r-1)>0.01)%>%count(yr>=1990))
+print(cc%>%filter(st=="03",abs(r-1)>0.01)%>%head(5))
+# stichwahl row for those with has_stichwahl but no stichwahl in landrat

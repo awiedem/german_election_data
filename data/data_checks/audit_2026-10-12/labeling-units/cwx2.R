@@ -1,0 +1,6 @@
+suppressMessages(library(dplyr))
+cw <- readRDS("data/crosswalks/final/ags_crosswalks.rds")
+s <- cw |> group_by(ags, year) |> summarise(p=sum(pop_cw), n=n(), a=sum(area_cw), .groups="drop")
+b <- s |> filter(abs(p-1)>1e-6); print(summary(b$p)); print(table(round(b$p,2))|>head(15)); print(table(b$year)); print(head(b,10))
+print(table(substr(sprintf("%08.0f",b$ags),1,2)))
+ex <- b[which.max(abs(b$p-1)),]; print(cw |> filter(ags==ex$ags, year==ex$year))

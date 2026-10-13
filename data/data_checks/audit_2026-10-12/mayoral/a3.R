@@ -1,0 +1,12 @@
+suppressMessages({library(dplyr);library(data.table)})
+u<-readRDS("data/mayoral_elections/final/mayoral_unharm.rds"); setDT(u)
+c<-readRDS("data/mayoral_elections/final/mayoral_candidates.rds"); setDT(c)
+print(u[state=="05",.N,by=.(election_year,round)][order(election_year,round)])
+print(c[state=="05"&election_year==2009,.(n=uniqueN(paste(ags,election_date)),sw=sum(has_stichwahl)),by=NULL])
+print(c[state=="05"&election_year==2009&ags=="05113000",.(candidate_name,candidate_party,candidate_voteshare_hw,candidate_voteshare_sw,has_stichwahl,is_winner)])
+print(u[state=="05"&election_year==2009&ags=="05113000"])
+print(u[state=="05"&election_year==2009,.(n=.N,hwle50=sum(winner_voteshare<=.5)),by=round])
+# Duisburg 2009 true: Sauerland won in first round? 
+print(u[state=="16"&election_year==2010&round=="hauptwahl"&winner_voteshare<=.5,.N])
+print(u[state=="16"&election_year==2010,.N,by=round])
+print(u[state=="03"&election_year==2011,.N,by=round])

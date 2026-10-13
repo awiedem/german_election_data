@@ -1,0 +1,8 @@
+suppressMessages(library(dplyr))
+u <- readRDS("data/municipal_elections/final/municipal_unharm.rds")
+h <- readRDS("data/municipal_elections/final/municipal_harm.rds")
+print(u %>% filter(substr(ags,1,2)=="16", election_year==2024, substr(ags,6,8)=="000") %>% select(ags,ags_name))
+print(u %>% filter(grepl("Erfurt|Jena|Gera|Suhl|Weimar|Eisenach",ags_name), substr(ags,1,2)=="16") %>% count(ags,ags_name,election_year) %>% filter(election_year>=2019))
+print(h %>% filter(substr(ags,1,2)=="16", election_year==2024, ags %in% c("16051000","16052000","16053000","16054000","16055000")) %>% nrow())
+e <- u %>% filter(ags=="16051000") %>% select(election_year,eligible_voters,linke_pds,seats_linke_pds,cdu_csu,spd,gruene,afd,fdp,freie_wahler,other)
+print(e)

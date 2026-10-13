@@ -1,0 +1,8 @@
+suppressMessages(library(dplyr))
+f<-function(x) readRDS(file.path("data/mayoral_elections/final",paste0(x,".rds")))
+p<-f("mayor_panel"); c<-f("mayoral_candidates")
+print(names(p)); print(names(c)[1:50])
+x<-p%>%filter(n_candidates==1,winner_voteshare<.9); cat(nrow(x),"\n"); print(table(substr(x$ags,1,2)))
+cat("<0.6\n");print(table(substr(p$ags[p$n_candidates==1&p$winner_voteshare<.6],1,2)))
+print(p%>%filter(ags=="03153007")%>%select(election_date,n_candidates,winner_voteshare,winning_margin))
+print(all.equal(p$winning_margin[p$n_candidates==1],p$winner_voteshare[p$n_candidates==1]))

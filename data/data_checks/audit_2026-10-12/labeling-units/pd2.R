@@ -1,0 +1,5 @@
+suppressMessages(library(dplyr))
+d <- readRDS("data/covars_municipality/final/ags_area_pop_emp_2023.rds"); cat("cov2023 ratio:", median(d$pop_density_ags/(d$population_ags/d$area_ags), na.rm=T), "\n")
+d <- readRDS("data/covars_county/final/cty_area_pop_emp.rds"); cat("cty ratio:", median(d$pop_density_cty/(d$population_cty/d$area_cty), na.rm=T), "\n")
+r <- readRDS("data/federal_elections/municipality_level/final/federal_muni_raw.rds"); print(r |> filter(ags=="11000000", election_year==2021) |> select(pop, area, pop_weight, area_weight, eligible_voters) |> head(3)); print(summary(r$pop)); print(summary(r$area)); print(summary(r$pop_weight))
+ce <- readRDS("data/county_elections/final/county_elec_harm_21_muni.rds"); print(ce |> filter(ags=="11000000") |> select(election_year, area, population) |> head(2)); print(summary(ce$population))

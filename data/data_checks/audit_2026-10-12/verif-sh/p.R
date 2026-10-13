@@ -1,0 +1,10 @@
+suppressMessages(library(dplyr))
+x<-readRDS("data/state_elections/final/state_unharm.rds")
+w<-function(s,y,p){d<-x%>%filter(state==s,election_year==y);if(!p%in%names(d)) return(NA);if(all(is.na(d[[p]]))) return(NA_real_);round(100*sum(d[[p]]*d$valid_votes,na.rm=T)/sum(d$valid_votes,na.rm=T),2)}
+for(y in c(1954,1966,1990)) cat("BY",y,"other",w("09",y,"other"),"npd",w("09",y,"npd"),"rep",w("09",y,"die_republikaner_rep"),"\n")
+for(y in c(1996,2000,2005,2009,2012)) cat("SH",y,"ssw",w("01",y,"ssw"),"other",w("01",y,"other"),"\n")
+for(y in c(1990,1994)) cat("NI",y,"rep",w("03",y,"rep"),"other",w("03",y,"other"),"\n")
+cat(names(x)[names(x)%in%c("csu","spd","fdp","gruene")],"\n")
+d<-x%>%filter(state=="09",election_year==1954); cat(names(d)[sapply(d,function(c) is.numeric(c)&&any(!is.na(c)))],"\n")
+e<-bundeslaendeR::ltw_elections%>%filter(state=="BY",format(election_date,"%Y")=="1954")%>%mutate(p=round(100*party_vote_count/valid_votes,2))%>%select(partyname_short,p);print(as.data.frame(e))
+e<-bundeslaendeR::ltw_elections%>%filter(state=="SH",format(election_date,"%Y")%in%c("2000","2005","2009"),partyname_short=="SSW")%>%mutate(p=round(100*party_vote_count/valid_votes,2))%>%select(election_date,p);print(as.data.frame(e))

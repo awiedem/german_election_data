@@ -1,0 +1,7 @@
+suppressMessages(library(dplyr))
+h25 <- readRDS("data/state_elections/final/state_harm_25.rds")
+fr <- intersect(c("npd","rep","afd","dvu","republikaner","pro_deutschland","schill","die_rechte","iii_weg"),names(h25))
+cat(fr,"\n")
+cat("all NA & fr==0:",sum(rowSums(!is.na(h25[,fr]))==0 & h25$far_right==0),"\n")
+cat("far_right NA:",sum(is.na(h25$far_right)),"\n")
+b<-h25%>%filter(state=="09",election_year==1994);cat("BY94 far_right",unique(b$far_right)[1:3]," rep nonNA",sum(!is.na(b$rep)),"\n")

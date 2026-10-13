@@ -1,0 +1,6 @@
+suppressMessages(library(dplyr))
+setwd("/Users/hanno/Documents/GitHub/german_election_data")
+l <- readRDS("data/landrat_elections/final/landrat_unharm.rds")
+cd <- readRDS("data/landrat_elections/final/landrat_candidates.rds")
+str(l); print(table(l$state, l$election_year))
+str(cd, list.len=40)

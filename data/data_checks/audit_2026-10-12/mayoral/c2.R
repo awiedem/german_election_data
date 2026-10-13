@@ -1,0 +1,16 @@
+suppressMessages({library(dplyr);library(data.table)})
+p<-readRDS("/private/tmp/claude-501/-Users-hanno-Documents-GitHub-german-election-data/adfc9cc1-5d71-47c2-9e9e-f58b91334ee3/scratchpad/audit/mayoral/p.rds"); setDT(p)
+setorder(p,ags,election_date)
+p[,prev_party:=shift(winner_party),by=ags]; p[,prev_pid:=shift(person_id),by=ags]
+cat("incumbent=1 & prev differs\n"); x<-p[which(is_incumbent==1&prev_pid!=person_id)]; print(x[,.N,by=state]); print(x[1:6,.(ags,election_date,person_id,prev_pid,term_number,person_id_method)])
+cat("party_switch by whether same person\n"); print(p[,.(n=.N,sw=mean(party_switch==1,na.rm=T)),by=.(same=(person_id==prev_pid))])
+cat("party_switch=1 with identical-looking party (tolower strip)\n")
+norm<-function(x)gsub("[^a-zäöü]","",tolower(x))
+print(p[which(party_switch==1),.(n=.N,same_norm=sum(norm(winner_party)==norm(prev_party),na.rm=T))])
+print(p[which(party_switch==1)][1:10,.(ags,election_date,prev_party,winner_party,person_id==prev_pid)])
+print(p[which(party_switch==1),.N,by=state][order(state)])
+# same-person switch share
+print(p[which(person_id==prev_pid),.(n=.N,sw=sum(party_switch==1,na.rm=T))])
+print(p[which(person_id==prev_pid&party_switch==1)][1:8,.(ags,election_date,prev_party,winner_party)])
+cat("term_start_date != election_date by state\n"); print(p[which(term_start_date!=election_date),.N,by=state])
+print(p[which(term_start_date!=election_date)][1:6,.(ags,election_date,term_start_date,tenure_start,years_in_office,term_number,person_id_method)])

@@ -1,0 +1,11 @@
+suppressMessages(library(dplyr))
+setwd("/Users/hanno/Documents/GitHub/german_election_data")
+su<-readRDS("data/state_elections/final/state_unharm.rds")
+x<-su%>%filter(state=="12")%>%group_by(election_year)%>%summarise(n=n(),ev=sum(eligible_voters,na.rm=T),nv=sum(number_voters,na.rm=T),vv=sum(valid_votes,na.rm=T),t=nv/ev)
+print(as.data.frame(x))
+j<-readRDS("/private/tmp/claude-501/-Users-hanno-Documents-GitHub-german-election-data/adfc9cc1-5d71-47c2-9e9e-f58b91334ee3/scratchpad/audit/xd/j_fs.rds")%>%filter(state=="12",sy==1999)
+cat("BB1999 matched",nrow(j)," ratio outside .8-1.2:",sum(j$r<.8|j$r>1.2),"; outside .67-1.5:",sum(j$r<.67|j$r>1.5),"\n")
+print(as.data.frame(j%>%filter(r<.8|r>1.2)%>%summarise(se=sum(se),fe=sum(fe))))
+# other years BB ratio
+j2<-readRDS("/private/tmp/claude-501/-Users-hanno-Documents-GitHub-german-election-data/adfc9cc1-5d71-47c2-9e9e-f58b91334ee3/scratchpad/audit/xd/j_fs.rds")%>%filter(state=="12")%>%group_by(sy)%>%summarise(n=n(),bad=sum(r<.8|r>1.2))
+print(as.data.frame(j2))

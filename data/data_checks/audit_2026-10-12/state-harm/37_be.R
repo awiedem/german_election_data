@@ -1,0 +1,8 @@
+suppressMessages({library(dplyr)}); options(width=250)
+w <- readRDS("data/state_elections/final/ltw_wkr_unharm.rds"); u <- readRDS("data/state_elections/final/state_unharm.rds")
+x <- w %>% filter(state=="11", election_year==2021) %>% mutate(dd=valid_votes+invalid_votes-number_voters)
+print(x %>% group_by(stimme) %>% summarise(n=n(), nv=sum(number_voters), vv=sum(valid_votes), iv=sum(invalid_votes), dd=sum(dd), mx=max(abs(dd))))
+print(head(x %>% select(wkr_nr,wkr_name,stimme,eligible_voters,number_voters,valid_votes,invalid_votes,dd),4))
+cat("Berlin unharm (state-level 2021):\n"); print(u %>% filter(state=="11", election_year==2021) %>% select(ags,eligible_voters,number_voters,valid_votes,invalid_votes))
+cat("official BE 2021 AGH: Wähler 2,3xx; Zweitstimmen gültig 1,?; (from bl)\n")
+suppressMessages(library(bundeslaendeR)); b <- as.data.frame(ltw_elections) %>% filter(state=="BE", election_date==as.Date("2021-09-26")) %>% slice(1) %>% select(electorate,number_of_voters,valid_votes,ausgefallene_stimmen_be,ungueltige_stimmen_except_hh_hb); print(b)

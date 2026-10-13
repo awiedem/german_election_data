@@ -1,0 +1,13 @@
+suppressMessages(library(dplyr))
+u <- readRDS("data/municipal_elections/final/municipal_unharm.rds")
+cat("key dups (ags,year,date,type):", sum(duplicated(u[,c("ags","election_year","election_date","election_type")])),"\n")
+cat("key dups (ags,year):", sum(duplicated(u[,c("ags","election_year")])),"\n")
+cat("nchar:\n"); print(table(nchar(u$ags)))
+cat("state prefix mismatch:", sum(substr(u$ags,1,2)!=as.character(u$state)),"\n")
+print(table(u$election_type, useNA="a"))
+u$sname <- u$state_name
+print(table(u$state_name, as.character(u$state)))
+cat("year vs date year mismatch:", sum(as.integer(format(u$election_date,"%Y"))!=u$election_year, na.rm=T), " NA date:", sum(is.na(u$election_date)),"\n")
+print(u %>% filter(as.integer(format(election_date,"%Y"))!=election_year) %>% count(state,election_year,election_date) %>% head(30))
+cat("dates per state-year:\n")
+print(u %>% group_by(state,election_year) %>% summarise(nd=n_distinct(election_date), d=paste(unique(format(election_date)),collapse=","),.groups="drop") %>% filter(nd>1) %>% as.data.frame)

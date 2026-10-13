@@ -1,0 +1,25 @@
+suppressMessages(library(dplyr))
+u <- readRDS("data/municipal_elections/final/municipal_unharm.rds")
+h <- readRDS("data/municipal_elections/final/municipal_harm.rds")
+h25 <- readRDS("data/municipal_elections/final/municipal_harm_25.rds")
+cat(nrow(u),nrow(h),nrow(h25),"\n")
+print(names(u))
+print(names(h))
+u$st <- substr(u$ags,1,2)
+# MUN-01
+sh <- u %>% filter(st=="01") %>% mutate(vv=valid_votes/number_voters)
+print(sh %>% group_by(election_year) %>% summarise(n=n(),med=median(vv,na.rm=T),cdu_na=mean(is.na(cdu_csu)),oth1=sum(other>=0.999,na.rm=T)))
+print(sh %>% filter(ags=="01051002") %>% select(election_year,eligible_voters,number_voters,valid_votes,cdu_csu,spd,gruene,fdp,linke_pds,other))
+print(table(sh$election_type, sh$election_year))
+# MUN-02
+th <- u %>% filter(st=="16")
+print(th %>% group_by(election_year) %>% summarise(n=n(),el=sum(eligible_voters,na.rm=T)))
+print(th %>% filter(ags %in% c("16051000","16052000","16053000","16054000","16055000","16056000")) %>% count(ags,election_year))
+# MUN-03
+t19 <- th %>% filter(election_year==2019)
+cat("TH2019 linke NA:",mean(is.na(t19$linke_pds)),nrow(t19),"seats>0:",sum(t19$seats_linke_pds>0,na.rm=T),"\n")
+print(th %>% group_by(election_year) %>% summarise(na=mean(is.na(linke_pds)), s=sum(seats_linke_pds>0,na.rm=T)))
+# MUN-04
+bb <- u %>% filter(st=="12")
+print(bb %>% group_by(election_year) %>% summarise(n=n(),na=mean(is.na(gruene)),s=sum(seats_gruene>0,na.rm=T)))
+print(bb %>% filter(ags=="12054000") %>% select(election_year,cdu_csu,spd,gruene,fdp,other))

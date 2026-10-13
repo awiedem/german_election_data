@@ -1,0 +1,26 @@
+suppressMessages({library(dplyr);library(tidyr)})
+w <- readRDS("data/federal_elections/wahlkreis_level/final/federal_wkr_unharm.rds")
+l <- readRDS("data/federal_elections/wahlkreis_level/final/federal_wkr_unharm_long.rds")
+cat("long dup key:", sum(duplicated(l[,c("election_year","wkr_nr","stimme","party")])),"\n")
+print(table(l$stimme)); print(sort(unique(l$party))[1:200])
+cat("votes NA:",sum(is.na(l$votes)),"share NA:",sum(is.na(l$vote_share)),"\n")
+pc <- names(w)[which(names(w)=="50plus"):which(names(w)=="other")]
+wl <- w %>% select(election_year,wkr_nr,stimme,valid_votes,all_of(pc)) %>% pivot_longer(all_of(pc),names_to="party",values_to="sh") %>% filter(!is.na(sh))
+cat("wide nonNA cells:",nrow(wl)," long rows:",nrow(l),"\n")
+j <- full_join(wl, l %>% select(election_year,wkr_nr,stimme,party,votes,vote_share), by=c("election_year","wkr_nr","stimme","party"))
+cat("wide-only:",sum(is.na(j$votes)),"long-only:",sum(is.na(j$sh)),"\n")
+print(j %>% filter(is.na(votes)) %>% count(party) %>% arrange(desc(n)) %>% head(10) %>% as.data.frame)
+print(j %>% filter(is.na(sh)) %>% count(party) %>% arrange(desc(n)) %>% head(10) %>% as.data.frame)
+jj <- j %>% filter(!is.na(sh),!is.na(votes))
+cat("max |share diff|:", max(abs(jj$sh-jj$vote_share)), " max |votes - sh*valid|:", max(abs(jj$votes-jj$sh*jj$valid_votes)),"\n")
+print(jj %>% filter(abs(sh-vote_share)>1e-6) %>% head())
+# long: sum votes vs valid_votes
+s <- l %>% group_by(election_year,wkr_nr,stimme) %>% summarise(sv=sum(votes,na.rm=T), vv=first(valid_votes), ss=sum(vote_share,na.rm=T),.groups="drop")
+print(s %>% summarise(maxdiff=max(abs(sv-vv)), n_off=sum(abs(sv-vv)>1), minss=min(ss), maxss=max(ss)))
+print(s %>% filter(abs(sv-vv)>1) %>% head(10) %>% as.data.frame)
+# votes non-integer?
+cat("non-integer votes:", sum(abs(l$votes-round(l$votes))>1e-6,na.rm=T),"\n")
+# 'other' as party in long
+print(l %>% filter(party=="other") %>% group_by(election_year) %>% summarise(n=n(), m=mean(vote_share)) %>% as.data.frame)
+cat("wide-only cells sh==0 share:", mean(j$sh[is.na(j$votes)]==0),"; any >0:", sum(j$sh[is.na(j$votes)]>0),"\n")
+print(j %>% filter(is.na(votes), sh>0) %>% head(10) %>% as.data.frame)

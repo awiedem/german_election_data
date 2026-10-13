@@ -1,0 +1,7 @@
+suppressMessages({library(dplyr)}); options(width=250)
+l <- readRDS("data/state_elections/final/state_harm.rds")
+cat("rows with NA state:", sum(is.na(l$state)), " nchar ags:"); print(table(nchar(l$ags), useNA="ifany"))
+x <- l %>% filter(is.na(state)); print(x %>% count(election_year) %>% head(5)); print(head(x[c("ags","election_year","valid_votes","eligible_voters","state_name")],5))
+cat("legacy by year range:", range(l$election_year[!is.na(l$state)]), " pre-1990 rows:", sum(l$election_year<1990), "\n")
+cat("legacy state-years w/o state:", n_distinct(l$election_year[is.na(l$state)]), "\n")
+cat("dup ags-year:", sum(duplicated(l[c("ags","election_year")])), "\n")

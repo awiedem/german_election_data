@@ -1,0 +1,10 @@
+suppressMessages(library(dplyr))
+options(width=250,scipen=99)
+d<-"data/federal_elections/municipality_level/final/"
+u<-readRDS(paste0(d,"federal_muni_unharm.rds"))
+print(table(u$flag_naive_turnout_above_1,useNA="a"))
+x<-u|>mutate(t=number_voters/eligible_voters_orig)
+print(x|>filter(t>1)|>select(ags,ags_name,election_year,eligible_voters_orig,number_voters_orig,number_voters,turnout,t,flag_naive_turnout_above_1)|>head(12)|>as.data.frame())
+cat("rows t>1:",sum(x$t>1,na.rm=T)," of which turnout==1:",sum(x$t>1&x$turnout==1,na.rm=T)," flagged:",sum(x$t>1&x$flag_naive_turnout_above_1==1,na.rm=T),"\n")
+print(x|>filter(t>1)|>summarise(max=max(t),n_gt1.1=sum(t>1.1)))
+print(sum(x$turnout==1,na.rm=T))

@@ -1,0 +1,7 @@
+suppressMessages(library(dplyr))
+cv <- readRDS("data/covars_municipality/final/ags_area_pop_emp.rds")
+print(cv |> filter(ags_21=="12065251", year %in% 1999:2002) |> as.data.frame())
+print(sum(is.infinite(cv$pop_density_ags),na.rm=T)); print(sum(cv$area_ags==0,na.rm=T))
+print(cv |> filter(is.infinite(pop_density_ags)) |> head(3) |> as.data.frame())
+cv2 <- cv |> arrange(ags_21,year) |> group_by(ags_21) |> mutate(r=population_ags/lag(population_ags)) |> ungroup()
+print(cv2 |> filter(r>2, is.finite(r)) |> as.data.frame() |> head(10))

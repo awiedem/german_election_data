@@ -1,0 +1,11 @@
+suppressMessages(library(dplyr))
+options(width=250)
+u <- readRDS("data/municipal_elections/final/municipal_unharm.rds") %>% filter(!state%in%c("02","04","11"), !(state=="15" & election_year %in% 2005:2008))
+u$vv <- u$valid_votes/u$number_voters
+j <- u %>% arrange(ags,election_year) %>% group_by(ags) %>% mutate(pe=lag(eligible_voters),pt=lag(turnout),pvv=lag(vv),py=lag(election_year)) %>% ungroup() %>% filter(!is.na(pe))
+a <- j %>% filter(eligible_voters/pe>2.5 | eligible_voters/pe<0.4, pe>200)
+cat("eligible jumps >2.5x/<0.4x:",nrow(a),"\n"); print(a %>% count(state,election_year) %>% as.data.frame)
+print(a %>% filter(election_year>=2000) %>% select(ags,ags_name,election_year,pe,eligible_voters) %>% head(15) %>% as.data.frame)
+b <- j %>% filter(abs(turnout-pt)>0.35, eligible_voters>1000); cat("turnout jump>35pp:",nrow(b),"\n"); print(b %>% select(ags,ags_name,election_year,pt,turnout,eligible_voters) %>% arrange(-abs(turnout-pt)) %>% head(20) %>% as.data.frame)
+cv <- j %>% filter(state %in% c("08","06","12","14","15","16","13","03"), vv/pvv>2|vv/pvv<0.5, eligible_voters>2000); cat("vv ratio jumps (multi-vote states):",nrow(cv),"\n"); print(cv %>% count(state,election_year) %>% as.data.frame)
+print(cv %>% select(ags,ags_name,election_year,pvv,vv,eligible_voters) %>% head(15) %>% as.data.frame)

@@ -1,0 +1,7 @@
+suppressMessages(library(dplyr))
+x<-readRDS("data/state_elections/final/state_unharm.rds")
+print(x%>%filter(state=="11",election_year>=2021,ags=="11000000")%>%select(ags,election_year,valid_votes,gruene,spd,graue,other)%>%as.data.frame())
+print(x%>%filter(state=="11",election_year>=2021)%>%count(election_year))
+h<-readRDS("data/state_elections/final/state_harm_25.rds")
+d<-h%>%filter(state=="11",election_year>=2021);print(names(d)[1:12])
+print(d%>%group_by(election_year)%>%summarise(v=sum(valid_votes),g=sum(gruene*valid_votes,na.rm=T)/sum(valid_votes),s=sum(spd*valid_votes,na.rm=T)/sum(valid_votes)))

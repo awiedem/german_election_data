@@ -1,0 +1,13 @@
+suppressMessages(library(dplyr)); options(width=250,tibble.width=Inf)
+setwd("/Users/hanno/Documents/GitHub/german_election_data")
+u <- as_tibble(readRDS("data/county_elections/final/county_elec_unharm.rds"))
+u <- u%>%select(ags,ags_name,county,state,election_year,eligible_voters,number_voters,valid_votes,invalid_votes,turnout)
+print(colSums(is.na(u)))
+print(u%>%group_by(state)%>%summarise(n=n(),naElig=sum(is.na(eligible_voters)),naNV=sum(is.na(number_voters)),naValid=sum(is.na(valid_votes)),naInv=sum(is.na(invalid_votes)),naTO=sum(is.na(turnout)),zeroValid=sum(valid_votes==0,na.rm=T),zeroElig=sum(eligible_voters==0,na.rm=T)))
+chk <- function(d,lab){cat(lab,nrow(d),"\n"); if(nrow(d)>0) print(d%>%select(ags,ags_name,election_year,eligible_voters,number_voters,valid_votes,invalid_votes,turnout)%>%head(8)); print(d%>%count(state))}
+chk(u%>%filter(number_voters>eligible_voters),"voters>elig")
+chk(u%>%filter(valid_votes>number_voters),"valid>voters")
+chk(u%>%filter(!is.na(invalid_votes),abs(valid_votes+invalid_votes-number_voters)>0.5),"v+i != nv")
+chk(u%>%filter(!is.na(turnout),eligible_voters>0,abs(turnout-number_voters/eligible_voters)>0.001),"turnout mismatch")
+chk(u%>%filter(turnout>1|turnout<0.2),"turnout out of [.2,1]")
+chk(u%>%filter(invalid_votes<0),"invalid<0")

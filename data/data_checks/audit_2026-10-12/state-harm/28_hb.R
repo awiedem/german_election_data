@@ -1,0 +1,6 @@
+suppressMessages({library(dplyr);library(bundeslaendeR)}); options(width=250)
+u <- readRDS("data/state_elections/final/state_unharm.rds"); w <- readRDS("data/state_elections/final/ltw_wkr_unharm.rds")
+bl <- as.data.frame(ltw_elections) %>% mutate(election_date=as.Date(election_date))
+print(u %>% filter(state=="04", election_year>=1991) %>% select(ags,election_year,eligible_voters,number_voters,valid_votes,invalid_votes,turnout) %>% as.data.frame())
+print(bl %>% filter(state=="HB", election_date>=as.Date("1999-01-01")) %>% group_by(election_date) %>% summarise(el=first(electorate), nv=first(number_of_voters), vv=first(valid_votes), gs=first(gueltige_stimmzettel_hh_hb), ug=first(ungueltige_stimmzettel_hh_hb)) %>% as.data.frame())
+print(w %>% filter(state=="04", election_year %in% c(1999,2003,2007)) %>% group_by(election_year,stimme) %>% summarise(n=n(),ev=sum(eligible_voters),nv=sum(number_voters),vv=sum(valid_votes),.groups="drop") %>% as.data.frame())

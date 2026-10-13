@@ -1,0 +1,5 @@
+suppressMessages(library(dplyr));setwd("/Users/hanno/Documents/GitHub/german_election_data")
+w<-readRDS("data/federal_elections/wahlkreis_level/final/federal_wkr_unharm.rds")
+print(as.data.frame(w%>%filter(state=="11",election_year==2021,stimme=="zweitstimme")%>%select(wkr_nr,wkr_name,eligible_voters,number_voters,valid_votes,turnout)))
+print(as.data.frame(w%>%filter(state=="11",election_year==2017,stimme=="zweitstimme")%>%summarise(ev=sum(eligible_voters),nv=sum(number_voters))))
+fu<-readRDS("data/federal_elections/municipality_level/final/federal_muni_unharm.rds");print(as.data.frame(fu%>%filter(state=="11")%>%group_by(election_year)%>%summarise(ev=sum(eligible_voters_orig),nv=sum(number_voters_orig),nv2=sum(number_voters))%>%tail(3)))

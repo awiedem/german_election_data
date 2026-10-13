@@ -1,0 +1,11 @@
+suppressMessages(library(dplyr)); options(width=250)
+d <- "data/state_elections/final/"
+u <- readRDS(paste0(d,"state_unharm.rds")); h25 <- readRDS(paste0(d,"state_harm_25.rds")); h21<-readRDS(paste0(d,"state_harm_21.rds"))
+cols <- c("ags","election_year","eligible_voters","number_voters","valid_votes","invalid_votes","turnout")
+cat("SN 1994 unharm in 145241xx / 1452 area\n")
+print(u %>% filter(state=="14", election_year==1994, substr(ags,1,5) %in% c("14524","14627","14522")) %>% select(all_of(cols)) %>% arrange(ags) %>% as.data.frame() %>% head(40))
+cat("\nh25 14524170 etc\n"); print(h25 %>% filter(ags %in% c("14524170","14627020","14522490"), election_year==1994) %>% select(all_of(cols), ags_name) %>% as.data.frame())
+cat("\nh21 same\n"); print(h21 %>% filter(election_year==1994, state=="14", turnout>1) %>% select(all_of(cols)) %>% as.data.frame())
+cat("\nBB 1999 unharm\n"); print(u %>% filter(ags %in% c("12069020","12071294"), election_year==1999) %>% select(all_of(cols)) %>% as.data.frame())
+cat("\nBB 1999 state sums\n"); print(u %>% filter(state=="12", election_year==1999) %>% summarise(ev=sum(eligible_voters),nv=sum(number_voters),vv=sum(valid_votes),iv=sum(invalid_votes), n=n()))
+cat("\nSH 2022 nv<vv\n"); print(u %>% filter(ags %in% c("01054039","01054090","01058157","01062033"), election_year %in% c(2017,2022)) %>% select(all_of(cols),flag_briefwahl_only) %>% as.data.frame())

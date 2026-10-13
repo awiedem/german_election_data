@@ -1,0 +1,7 @@
+suppressMessages({library(dplyr)})
+cov<-readRDS("data/covars_municipality/final/ags_area_pop_emp.rds")
+n<-cov %>% group_by(ags_21) %>% filter(n_distinct(ags_name_21)>1) %>% ungroup()
+print(n %>% group_by(year) %>% summarise(nn=n_distinct(ags_21))%>% as.data.frame %>% head(40))
+print(n %>% filter(ags_21=="09171111") %>% select(year,ags_name_21) %>% head(40) %>% as.data.frame)
+cat("max nchar name in covars by year:\n"); print(cov %>% group_by(year) %>% summarise(mx=max(nchar(ags_name_21)),trunc=sum(nchar(ags_name_21)==13)) %>% as.data.frame %>% head(34))
+x23<-readRDS("data/covars_municipality/final/ags_area_pop_emp_2023.rds"); cat("2023 file ags_2023 w/ >1 name:",sum(duplicated(distinct(x23,ags_2023,ags_name_23)$ags_2023)),"\n")

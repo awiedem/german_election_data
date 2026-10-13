@@ -1,0 +1,7 @@
+suppressMessages(library(dplyr))
+f<-function(x) readRDS(file.path("data/mayoral_elections/final",paste0(x,".rds")))
+u<-f("mayoral_unharm"); h<-f("mayoral_harm")
+print(u%>%filter(ags%in%c("16056000","16063105"),election_year==2018)%>%select(ags,ags_name,election_date,election_type,round,valid_votes,winner_party,winner_votes))
+print(h%>%filter(grepl("Eisenach",ags_name),election_year==2018)%>%select(ags,election_date,election_type,round,valid_votes))
+cat(sum(u$state=="16"&u$election_year==2018),sum(h$state=="16"&h$election_year==2018),"\n")
+cat(sum(u$valid_votes[u$state=="16"&u$election_year==2018],na.rm=T),sum(h$valid_votes[h$state=="16"&h$election_year==2018],na.rm=T),"\n")

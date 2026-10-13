@@ -1,0 +1,15 @@
+suppressMessages(library(dplyr))
+f<-function(x) readRDS(file.path("data/mayoral_elections/final",paste0(x,".rds")))
+p<-f("mayor_panel"); c<-f("mayoral_candidates")
+x<-p%>%filter(n_candidates==1)
+cat(nrow(x),sum(is.na(x$winning_margin)),sum(abs(x$winning_margin-x$winner_voteshare)<1e-9,na.rm=T),"\n")
+y<-x%>%filter(winner_voteshare<.9)
+cat(nrow(y),sum(abs(y$winning_margin-y$winner_voteshare)<1e-9,na.rm=T),sum(is.na(y$winning_margin)),"\n")
+# candidate shares sum
+h<-c%>%filter(!is.na(candidate_voteshare_hw))%>%group_by(ags,election_date)%>%summarise(s=sum(candidate_voteshare_hw),n=n(),st=first(state),.groups="drop")
+print(table(h$st[h$s<.98]))
+print(c%>%filter(ags=="03153007",election_year==2013)%>%select(candidate_name,candidate_votes_hw,candidate_voteshare_hw,valid_votes,n_candidates_hw))
+# HE: Ja/Nein
+print(summary(y$winner_voteshare[substr(y$ags,1,2)=="06"]))
+print(summary(y$winner_voteshare[substr(y$ags,1,2)=="09"]))
+print(table(y$election_year[substr(y$ags,1,2)=="09"])[1:10])

@@ -1,0 +1,11 @@
+suppressMessages(library(dplyr)); options(width=250)
+d <- "data/state_elections/final/"
+u <- readRDS(paste0(d,"state_unharm.rds")); h25 <- readRDS(paste0(d,"state_harm_25.rds")); h21<-readRDS(paste0(d,"state_harm_21.rds"))
+cat("HH 1982 dup\n"); print(u %>% filter(state=="02", election_year==1982) %>% select(ags,election_year,election_date,eligible_voters,number_voters,valid_votes,spd,cdu))
+cat("\nunharm turnout>1\n")
+print(u %>% filter(turnout>1) %>% select(ags,state,election_year,eligible_voters,number_voters,valid_votes,turnout,flag_briefwahl_only,flag_naive_turnout_above_1) %>% arrange(desc(turnout)) %>% as.data.frame())
+cat("\nharm25 turnout>1 and flag\n")
+print(h25 %>% filter(turnout>1) %>% select(ags,state,election_year,eligible_voters,number_voters,valid_votes,turnout,flag_harm_turnout_above_1) %>% arrange(desc(turnout)) %>% as.data.frame())
+cat("flag_harm_turnout_above_1 table (h25) vs turnout>1:\n"); print(table(flag=h25$flag_harm_turnout_above_1, over=h25$turnout>1, useNA="ifany"))
+cat("\nh25 nv<vv non BY/HH/HB\n")
+print(h25 %>% filter(number_voters<valid_votes, !state %in% c("09","02","04")) %>% select(ags,state,election_year,eligible_voters,number_voters,valid_votes,invalid_votes,turnout) %>% as.data.frame())

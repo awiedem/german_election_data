@@ -1,0 +1,7 @@
+suppressMessages({library(dplyr)}); options(width=250, dplyr.print_max=400)
+h <- readRDS("data/state_elections/final/state_harm_21.rds")
+sn <- h %>% filter(state=="14")
+a <- list(); for (y in c(1999,2004,2009)) a[[as.character(y)]] <- sn %>% filter(election_year==y) %>% select(ags, ev=eligible_voters, ags_name_21)
+miss <- anti_join(a[["2009"]], a[["2004"]], by="ags"); cat("harm_21 AGS in 2009 not in 2004:", nrow(miss), "sum ev(2009):", sum(miss$ev), "\n"); print(head(miss %>% arrange(desc(ev)),12) %>% as.data.frame())
+miss2 <- anti_join(a[["1999"]], a[["2004"]], by="ags"); cat("in 1999 not 2004:", nrow(miss2), "sum ev(1999):", sum(miss2$ev), "\n"); print(head(miss2 %>% arrange(desc(ev)),12) %>% as.data.frame())
+cat("n rows harm_21 SN by year:\n"); print(sn %>% count(election_year) %>% as.data.frame())

@@ -6,6 +6,10 @@ Tracking outstanding work on the German Election Database. Last updated: 2026-09
 
 ## Open Issues
 
+### 0. Data audit of all final datasets (2026-10-12)
+
+A multi-agent audit found 13 high-severity and 32 medium-severity issues, plus labeling and documentation drift; see [audit report](docs/audit_2026-10-12.md) and `data/data_checks/audit_2026-10-12/`. Fixed on 2026-10-12: Greens merged with Die Grauen in Berlin 2021/2023, Hessen 1991 and BW 1992 (H1, M11); `pop_density_ags` unit in `state_harm_25` (H5); Rhein-Pfalz-Kreis Landrat 2017 AGS (H9). The other high-severity items are open and need decisions or new sources: Brandenburg 1999 state coverage (H2), postal votes missing in federal county 1957-65 (H3) and in eastern municipal federal data 1994-2002 (H4), Berlin 1991 and Thüringen county covariates (H6, H7), city-state parliaments in `county_council_seats` (H8), Schleswig-Holstein municipal shares that appear to be Kreistag results (H10), Thüringen 2024 kreisfreie Städte and TH 2019/BB 2014 party columns (H11, H12), and annual mayor panel forward-fill and duplicates (H13).
+
 ### 1. Historical state-election errors (GitHub #7)
 
 Brandenburg 1990 and 1994 now use verified official second-vote spreadsheets.

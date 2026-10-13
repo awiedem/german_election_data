@@ -1,0 +1,10 @@
+suppressMessages(library(dplyr))
+options(width=250,scipen=99)
+d<-"data/federal_elections/municipality_level/final/"
+u<-readRDS(paste0(d,"federal_muni_unharm.rds"));r<-readRDS(paste0(d,"federal_muni_raw.rds"))
+y<-1998;s<-"12"
+a<-r|>filter(election_year==y,state==s)|>group_by(county=substr(ags,1,5))|>summarise(rv=sum(valid_votes),rn=n(),mail=sum(valid_votes[substr(ags,6,8)=="999"]),.groups="drop")
+b<-u|>filter(election_year==y,state==s)|>group_by(county=substr(ags,1,5))|>summarise(uv=sum(valid_votes),un=n(),.groups="drop")
+print(full_join(a,b)|>mutate(d=uv-rv)|>as.data.frame())
+print(r|>filter(election_year==y,state==s,substr(ags,6,8)=="999")|>select(ags,bwbez,eligible_voters,number_voters,valid_votes,unique_mailin,joint_mailin)|>head(5)|>as.data.frame())
+print(r|>filter(election_year==y,state==s)|>count(bw=substr(ags,6,8)=="999"))

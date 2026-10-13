@@ -1,0 +1,12 @@
+suppressMessages(library(dplyr))
+u <- readRDS("data/federal_elections/municipality_level/final/federal_muni_unharm.rds")
+cty <- readRDS("data/federal_elections/county_level/final/federal_cty_unharm.rds")
+m <- u |> group_by(state, election_year) |> summarise(nv=sum(number_voters,na.rm=T), ev=sum(eligible_voters_orig,na.rm=T), .groups="drop")
+c <- cty |> group_by(state, election_year=year) |> summarise(cnv=sum(number_voters,na.rm=T), cev=sum(eligible_voters,na.rm=T), .groups="drop")
+j <- inner_join(m,c,by=c("state","election_year")) |> mutate(rnv=nv/cnv-1, rev=ev/cev-1)
+print(j |> filter(election_year %in% c(1994,1998,2002), state %in% c("12","13","14","15","16")) |> as.data.frame())
+print(j |> filter(election_year %in% c(1994,1998,2002)) |> group_by(election_year) |> summarise(nat=sum(nv)/sum(cnv)-1))
+print(j |> filter(election_year>=2005) |> summarise(max(abs(rnv))))
+# F4
+print(u |> filter(ags=="07131003") |> select(election_year, eligible_voters_orig, number_voters_orig, number_voters, valid_votes, unique_mailin) |> as.data.frame())
+print(sum(u$number_voters/u$eligible_voters_orig>1.5, na.rm=T))

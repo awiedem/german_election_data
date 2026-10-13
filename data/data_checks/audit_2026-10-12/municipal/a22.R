@@ -1,0 +1,5 @@
+suppressMessages(library(dplyr))
+u <- readRDS("data/municipal_elections/final/municipal_unharm.rds")
+options(width=250)
+print(u %>% filter(ags=="01051002") %>% select(election_year,eligible_voters,number_voters,valid_votes,cdu_csu,spd,linke_pds,gruene,fdp,other,seats_cdu_csu) %>% as.data.frame)
+print(u %>% filter(state=="01",election_year==2008, eligible_voters<400) %>% summarise(across(c(cdu_csu,spd,linke_pds,gruene,fdp),~mean(!is.na(.)))))

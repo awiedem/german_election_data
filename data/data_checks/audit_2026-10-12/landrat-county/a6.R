@@ -1,0 +1,10 @@
+suppressMessages(library(dplyr)); options(width=250,tibble.width=Inf)
+setwd("/Users/hanno/Documents/GitHub/german_election_data")
+l <- as_tibble(readRDS("data/landrat_elections/final/landrat_unharm.rds"))
+cd <- readRDS("data/landrat_elections/final/landrat_candidates.rds")
+print(l%>%filter(state=="07")%>%distinct(ags,ags_name)%>%arrange(ags),n=60)
+print(l%>%filter(ags%in%c("07337000","07338000"))%>%select(ags,ags_name,election_date,winner_party,winner_voteshare))
+print(cd%>%filter(ags%in%c("07337000","07338000"),election_year==2017)%>%select(ags,ags_name,election_date,candidate_name,candidate_party,candidate_votes_hw,candidate_voteshare_hw))
+# name consistency per ags
+n <- l%>%filter(!is.na(ags_name))%>%group_by(ags)%>%summarise(nn=n_distinct(ags_name),nm=paste(unique(ags_name),collapse=" | "))%>%filter(nn>1); print(n,n=40)
+print(l%>%distinct(state,ags)%>%count(state))

@@ -1,0 +1,11 @@
+suppressMessages(library(dplyr))
+f<-function(x) readRDS(file.path("data/mayoral_elections/final",paste0(x,".rds")))
+u<-f("mayoral_unharm"); cd<-f("mayoral_candidates")
+h<-u%>%filter(round=="hauptwahl",!flag_superseded,winner_voteshare<=.5)
+s<-u%>%filter(round=="stichwahl")%>%select(ags,sd=election_date)
+j<-h%>%left_join(s,by="ags",relationship="many-to-many")%>%mutate(d=as.numeric(sd-election_date))%>%
+ group_by(ags,election_date)%>%summarise(has=any(d>0&d<=70,na.rm=T),.groups="drop")
+h2<-h%>%inner_join(j,by=c("ags","election_date"))%>%filter(!has)
+cat(nrow(h2),"\n");print(table(h2$state,h2$election_year))
+print(h2%>%filter(state=="16")%>%select(ags,ags_name,election_date,winner_party,winner_voteshare,winner_votes,valid_votes)%>%head(6))
+print(h2%>%filter(state=="03")%>%select(ags,ags_name,election_date,winner_party,winner_voteshare)%>%head(6))

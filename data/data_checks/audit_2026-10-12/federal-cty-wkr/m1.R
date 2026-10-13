@@ -1,0 +1,6 @@
+suppressMessages(library(dplyr))
+m <- readRDS("data/federal_elections/municipality_level/final/federal_muni_unharm.rds")
+print(m %>% group_by(election_year) %>% summarise(turn_pooled=sum(number_voters)/sum(eligible_voters), turn_orig=sum(number_voters_orig)/sum(eligible_voters_orig), mean_turnout_col=mean(turnout,na.rm=T), n_gt1=sum(turnout>1,na.rm=T)) %>% as.data.frame)
+x <- m %>% filter(election_year==2021) %>% mutate(cty=substr(ags,1,5)) %>% group_by(cty) %>% summarise(e=sum(eligible_voters), eo=sum(eligible_voters_orig)) 
+print(x %>% mutate(r=e/eo) %>% arrange(desc(r)) %>% head(5) %>% as.data.frame)
+print(m %>% filter(election_year==1980) %>% summarise(e=sum(eligible_voters), eo=sum(eligible_voters_orig), cntmunis=n(), n_ne=sum(eligible_voters!=eligible_voters_orig)))

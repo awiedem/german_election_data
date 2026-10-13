@@ -1,0 +1,7 @@
+suppressMessages({library(dplyr);library(bundeslaendeR)}); options(width=250)
+bl <- as.data.frame(ltw_elections)
+u <- readRDS("data/state_elections/final/state_unharm.rds")
+g <- u %>% filter(state=="01") %>% group_by(election_date) %>% summarise(vv=sum(valid_votes,na.rm=T), ssw=100*sum(ssw*valid_votes,na.rm=T)/sum(valid_votes,na.rm=T), npd=100*sum(npd*valid_votes,na.rm=T)/sum(valid_votes,na.rm=T), other=100*sum(other*valid_votes,na.rm=T)/sum(valid_votes,na.rm=T))
+b <- bl %>% filter(state=="SH", election_date>="1983-01-01", partyname_short %in% c("SSW","NPD")) %>% select(election_date, partyname_short, party_vshare) %>% tidyr::pivot_wider(names_from=partyname_short, values_from=party_vshare, values_fill=NA) 
+print(as.data.frame(b)); print(as.data.frame(g))
+print(unique(bl$partyname_short[bl$state=="SH"]))

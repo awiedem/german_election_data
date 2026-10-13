@@ -1,0 +1,11 @@
+suppressMessages(library(dplyr))
+f<-function(x) readRDS(file.path("data/mayoral_elections/final",paste0(x,".rds")))
+ah<-f("mayor_panel_annual_harm"); a<-f("mayor_panel_annual")
+cat(nrow(ah),nrow(a),"\n"); print(names(ah)); 
+k<-ah%>%count(ags_21,year)%>%filter(n>1); cat("dupgroups",nrow(k),"extra rows",sum(k$n-1),"\n")
+print(table(substr(ah$ags_21[duplicated(ah[,c("ags_21","year")])],1,2)))
+cat("max ysince",max(a$years_since_election,na.rm=T),sum(a$years_since_election>12,na.rm=T),"\n")
+print(table(substr(a$ags[a$years_since_election>12],1,2)))
+u<-f("mayoral_unharm")
+cat("NRW2009\n");x<-u%>%filter(substr(ags,1,2)=="05",election_year==2009);print(table(x$election_round,useNA="a"))
+print(names(u))

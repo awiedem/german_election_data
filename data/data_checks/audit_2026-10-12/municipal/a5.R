@@ -1,0 +1,12 @@
+suppressMessages(library(dplyr))
+u <- readRDS("data/municipal_elections/final/municipal_unharm.rds")
+cw <- readRDS("data/crosswalks/final/ags_1990_to_2025_crosswalk.rds")
+cwc <- cw %>% distinct(ags,year) %>% mutate(st=substr(ags,1,2))
+ncw <- cwc %>% count(st,year,name="n_cw")
+u <- u %>% filter(!state %in% c("02","04","11"))
+res <- u %>% mutate(year=pmin(election_year,2025)) %>% group_by(st=as.character(state),year,election_year) %>% summarise(n=n(),.groups="drop") %>% left_join(ncw,by=c("st","year")) %>% mutate(ratio=n/n_cw)
+# unmatched ags
+um <- u %>% mutate(year=pmin(election_year,2025)) %>% left_join(cwc %>% mutate(inc=1),by=c("ags","year")) %>% group_by(st=as.character(state),election_year) %>% summarise(n_notincw=sum(is.na(inc)),.groups="drop")
+res <- res %>% left_join(um,by=c("st","election_year"))
+options(width=200)
+print(as.data.frame(res %>% filter(election_year>=1990, (ratio<0.9|ratio>1.02|n_notincw>5))),digits=3)

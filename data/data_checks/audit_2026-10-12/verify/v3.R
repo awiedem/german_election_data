@@ -1,0 +1,16 @@
+suppressMessages({library(dplyr);library(bundeslaendeR)}); options(width=200)
+u <- readRDS("data/state_elections/final/state_unharm.rds")
+bl <- as.data.frame(ltw_elections) %>% mutate(election_date=as.Date(election_date))
+tot <- function(st,code) { a<-u%>%filter(state==code)%>%group_by(election_year,election_date)%>%summarise(n=n(),el=sum(eligible_voters,na.rm=T),nv=sum(number_voters,na.rm=T),vv=sum(valid_votes,na.rm=T),.groups="drop")
+ b<-bl%>%filter(state==st)%>%group_by(election_date)%>%summarise(el_b=first(electorate),nv_b=first(number_of_voters),vv_b=first(valid_votes),.groups="drop")
+ inner_join(a,b,by="election_date")%>%mutate(d_el=el/el_b-1,d_nv=nv/nv_b-1,d_vv=vv/vv_b-1)}
+print(names(bl)[1:15])
+print(as.data.frame(tot("RP","07")%>%select(election_year,n,vv,vv_b,d_vv)))
+print(as.data.frame(tot("BB","12")%>%filter(election_year%in%c(1999,2004))))
+print(as.data.frame(tot("SN","14")%>%filter(election_year%in%c(1999,2004,2009))))
+print(as.data.frame(tot("HB","04")%>%filter(election_year%in%c(1995,1999,2003,2007))))
+# SSW
+b<-bl%>%filter(state=="SH",election_date>=as.Date("2000-01-01"),election_date<=as.Date("2010-01-01"),grepl("SSW|NPD",partyname_short))%>%select(election_date,partyname_short,party_vshare); print(b)
+b<-bl%>%filter(state=="BE",election_date==as.Date("2021-09-26"),grepl("GR",partyname_short))%>%select(partyname_short,party_vote_count,party_vshare); print(b)
+print(bl%>%filter(state=="HB",election_date>=as.Date("1975-01-01"),election_date<=as.Date("1975-12-31"))%>%distinct(election_date))
+print(u%>%filter(state=="04",election_year==1975)%>%distinct(election_date))

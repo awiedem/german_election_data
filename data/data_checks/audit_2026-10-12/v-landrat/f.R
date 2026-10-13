@@ -1,0 +1,13 @@
+suppressMessages(library(dplyr))
+h <- readRDS('data/county_elections/final/county_elec_harm_21_cty.rds'); print(names(h)[1:14]); print(grep('^area|^pop',names(h),value=TRUE))
+k <- h[h$county_code %in% c('05315') ,]; print(as.data.frame(k[,intersect(c('county_code','election_year','area','population','eligible_voters'),names(h))]))
+print(as.data.frame(h %>% filter(state=='01') %>% count(election_year)))
+print(as.data.frame(h %>% filter(state=='13') %>% count(election_year)))
+print(as.data.frame(h %>% filter(state=='15') %>% count(election_year)))
+print(h %>% filter(county_code=='01001',election_year==2018) %>% select(valid_votes))
+m <- readRDS('data/county_elections/final/county_elec_harm_21_muni.rds'); print(grep('area|^pop',names(m),value=TRUE)); print(table(m$election_year[m$state=='05']))
+print(summary(h$population)); 
+a<-h%>%group_by(county_code)%>%summarise(nd=n_distinct(population));print(table(a$nd))
+print(h%>%filter(county_code%in%c('16054','14713'))%>%select(county_code,election_year,eligible_voters,population)%>%as.data.frame())
+c <- readRDS('data/county_elections/final/county_council_seats.rds'); print(sum(c$state=='07'&c$year==2024))
+cn<-unique(c$county); print(setdiff(cn, unique(readRDS('data/county_elections/final/county_elec_unharm.rds')$county))) 

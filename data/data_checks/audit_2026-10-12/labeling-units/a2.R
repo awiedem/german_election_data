@@ -1,0 +1,13 @@
+suppressMessages(library(dplyr))
+d <- readRDS("data/federal_elections/municipality_level/final/federal_muni_unharm.rds")
+x <- d[nchar(d$county)!=5, c("ags","county","state","election_year")]; print(x, n=30)
+print(table(substr(d$ags,1,2)==d$state))
+print(table(substr(d$ags,1,5)==d$county))
+h <- readRDS("data/federal_elections/municipality_level/final/federal_muni_harm_21.rds")
+print(names(h)[1:25]); print(summary(h$ags_21)); 
+m <- readRDS("data/municipal_elections/final/municipal_harm.rds"); print(names(m)[1:20])
+cw <- readRDS("data/crosswalks/final/ags_crosswalks.rds"); str(cw[1:3,]); print(names(cw))
+print(head(unique(cw$ags[nchar(cw$ags)==5])))
+c <- readRDS("data/federal_elections/county_level/final/federal_cty_unharm.rds"); print(head(c[,1:8]))
+sh <- readRDS("data/state_elections/final/state_harm.rds"); print(sh[is.na(sh$ags),c(1:8)] |> head())
+print(table(sh$election_year[is.na(sh$ags)], sh$state_name[is.na(sh$ags)], useNA="a"))

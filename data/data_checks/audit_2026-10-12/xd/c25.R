@@ -1,0 +1,10 @@
+suppressMessages(library(dplyr));setwd("/Users/hanno/Documents/GitHub/german_election_data")
+fu<-readRDS("data/federal_elections/municipality_level/final/federal_muni_unharm.rds")
+eu<-readRDS("data/european_elections/final/european_muni_unharm.rds")
+print(as.data.frame(eu%>%group_by(election_year)%>%summarise(n=n(),ev=sum(eligible_voters,na.rm=T)/1e6,nv=sum(number_voters,na.rm=T)/1e6,vv=sum(valid_votes,na.rm=T)/1e6,tna=sum(is.na(turnout)),evNA=sum(is.na(eligible_voters)),ev0=sum(eligible_voters==0,na.rm=T))),digits=4)
+pairs<-list(c(2009,2009),c(2013,2014),c(2017,2019),c(2021,2024),c(2025,2024))
+for(p in pairs){ f<-fu%>%filter(election_year==p[1])%>%select(ags,fe=eligible_voters_orig,fn=number_voters_orig)
+ e<-eu%>%filter(election_year==p[2])%>%select(ags,ee=eligible_voters,en=number_voters,state)
+ j<-inner_join(f,e,by="ags")%>%filter(fe>0,ee>0)%>%mutate(r=ee/fe)
+ cat("\nFED",p[1],"vs EU",p[2],"n",nrow(j),"tot ratio",sum(j$ee)/sum(j$fe),"; outside .85-1.15:",sum(j$r<.85|j$r>1.15),"; <0.5 or >2:",sum(j$r<.5|j$r>2),"\n")
+ g<-j%>%group_by(state)%>%summarise(tot=sum(ee)/sum(fe),out=mean(r<.85|r>1.15),n=n());print(as.data.frame(g%>%filter(abs(tot-1)>.03|out>.05)),digits=3)}

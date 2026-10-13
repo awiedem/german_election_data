@@ -1,0 +1,10 @@
+suppressMessages(library(dplyr))
+options(width=250)
+h <- readRDS("data/municipal_elections/final/municipal_harm.rds"); h25 <- readRDS("data/municipal_elections/final/municipal_harm_25.rds")
+print(names(h25)[!names(h25)%in%names(h)]); print(names(h)[!names(h)%in%names(h25)])
+for(nm in c("h","h25")){x<-get(nm); cat("\n==",nm,"\n"); cat("ags_21 NA:",if("ags_21"%in%names(x)) sum(is.na(x$ags_21)) else "absent","\n"); print(table(nchar(x$ags)))
+ cat("dup ags,year:",sum(duplicated(x[,c("ags","election_year")])),"\n"); cat("prefix mismatch:",sum(substr(x$ags,1,2)!=as.character(x$state)),"\n")
+ print(x %>% filter(!is.na(election_type), grepl("Abgeordn|Buerger|Bürger",election_type)) %>% select(ags,ags_name,election_year,election_type) %>% head(3))
+ cat("election_date NA:",sum(is.na(x$election_date)),"\n"); cat("pop_cw sum by key range:\n"); print(summary(x$weights)); cat("turnout==1:",sum(x$turnout==1,na.rm=T),"\n")
+ print(table(x$election_year<1990))
+}

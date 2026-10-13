@@ -1,0 +1,6 @@
+suppressMessages(library(dplyr))
+d <- readRDS("data/state_elections/final/state_harm_25.rds")
+alt <- intersect(c("b90_gr","buendnis_90","bue90_gruene","grue_nf","gruene_buendnis_90","b90_gruene"), names(d)); cat("alt green cols:", alt, "\n")
+gcols <- grep("gr[uü]n|b90|buendnis_90|bue90|grue", names(d), value=TRUE); cat("all green-like:", gcols, "\n")
+r <- d |> group_by(state_name, election_year) |> summarise(n=n(), gruene_nonNA=sum(!is.na(gruene)), across(all_of(setdiff(gcols,"gruene")), ~sum(!is.na(.)), .names="n_{.col}"), .groups="drop") |> filter(gruene_nonNA < n)
+print(as.data.frame(r))

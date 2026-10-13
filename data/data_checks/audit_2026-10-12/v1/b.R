@@ -1,0 +1,10 @@
+suppressMessages(library(dplyr))
+u <- readRDS("data/federal_elections/municipality_level/final/federal_muni_unharm.rds")
+cty <- readRDS("data/federal_elections/county_level/final/federal_cty_unharm.rds")
+x <- u |> filter(!is.na(turnout), eligible_voters>0, eligible_voters_orig>0)
+x$d_alloc <- abs(x$turnout - x$number_voters/x$eligible_voters)
+x$d_orig <- abs(x$turnout - x$number_voters/x$eligible_voters_orig)
+x$d_oo <- abs(x$turnout - x$number_voters_orig/x$eligible_voters_orig)
+print(x |> group_by(election_year) |> summarise(n=n(), alloc=mean(d_alloc), mixed=mean(d_orig,na.rm=T), oo=mean(d_oo,na.rm=T), mx=max(d_alloc)) |> as.data.frame())
+# ratio >1 eligible/pop 2021
+cv <- readRDS("data/covariates/final/ags_area_pop_emp.rds"); print(names(cv))

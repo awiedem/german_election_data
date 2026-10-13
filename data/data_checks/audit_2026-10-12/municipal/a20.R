@@ -1,0 +1,5 @@
+suppressMessages(library(dplyr))
+u <- readRDS("data/municipal_elections/final/municipal_unharm.rds")
+options(width=250)
+print(u %>% filter(state=="01") %>% group_by(election_year) %>% summarise(linke_nonNA=sum(!is.na(linke_pds)),linke_zero=sum(linke_pds==0,na.rm=T),linke_med=median(linke_pds,na.rm=T),fw_nonNA=sum(!is.na(freie_wahler)),fw_med=median(freie_wahler,na.rm=T),pir=sum(!is.na(piraten)),afd=sum(!is.na(afd)),gru=sum(!is.na(gruene)),fdp=sum(!is.na(fdp)),cdu=sum(!is.na(cdu_csu)),spd=sum(!is.na(spd)),other_med=median(other,na.rm=T),n=n()) %>% as.data.frame)
+print(u %>% filter(ags %in% c("01002000","01003000"),election_year>=2013) %>% select(ags,election_year,cdu_csu,spd,linke_pds,gruene,fdp,afd,freie_wahler,piraten,other,seats_cdu_csu,seats_spd,seats_linke_pds,seats_gruene,seats_fdp,seats_afd,seats_freie_wahler) %>% as.data.frame)

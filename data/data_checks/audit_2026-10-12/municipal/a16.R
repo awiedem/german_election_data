@@ -1,0 +1,10 @@
+suppressMessages(library(dplyr))
+u <- readRDS("data/municipal_elections/final/municipal_unharm.rds")
+options(width=250)
+sc <- grep("^seats_",names(u),value=T); pc <- sub("seats_","",sc)
+S <- as.matrix(u[,sc]); P <- as.matrix(u[,pc])
+bad <- which(rowSums(!is.na(S) & S>0 & is.na(P))>0)
+x <- u[bad,] %>% filter(state=="16",election_year==2019)
+for(i in 1:5){ r<-x[i,]; cat(r$ags,r$ags_name,"\n"); print(unlist(r[,c(pc,sc)])[!is.na(unlist(r[,c(pc,sc)]))]) }
+which_p <- apply(S[bad,]>0 & is.na(P[bad,]),1,function(z) paste(pc[which(z)],collapse="+"))
+print(table(which_p, u$state[bad]))

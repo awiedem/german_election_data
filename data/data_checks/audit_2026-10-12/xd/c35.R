@@ -1,0 +1,6 @@
+suppressMessages(library(dplyr));setwd("/Users/hanno/Documents/GitHub/german_election_data")
+s<-readRDS("data/state_elections/final/state_unharm.rds")
+x<-s%>%filter(state=="04",election_year<=1995)
+print(as.data.frame(x%>%group_by(election_year)%>%summarise(n=n(),vv0=sum(valid_votes==0,na.rm=T),vvNA=sum(is.na(valid_votes)),inv0=sum(invalid_votes==0,na.rm=T),flag=sum(flag_no_valid_votes,na.rm=T))%>%tail(4)))
+h<-readRDS("data/state_elections/final/state_harm_21.rds");print(as.data.frame(h%>%filter(state=="04",election_year==1991)%>%select(ags,eligible_voters,number_voters,valid_votes,invalid_votes,turnout,cdu_csu,spd)%>%head(3)))
+print(as.data.frame(x%>%filter(election_year==1991)%>%select(ags,eligible_voters,number_voters,valid_votes,invalid_votes,turnout,cdu,spd)%>%head(3)))

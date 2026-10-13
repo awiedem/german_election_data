@@ -1,0 +1,21 @@
+suppressMessages(library(dplyr)); options(width=250,tibble.width=Inf)
+setwd("/Users/hanno/Documents/GitHub/german_election_data")
+u <- as_tibble(readRDS("data/county_elections/final/county_elec_unharm.rds"))
+nm <- names(u)
+meta <- c("ags","ags_name","county","state","election_year","eligible_voters","number_voters","valid_votes","invalid_votes","turnout")
+agg <- c("waehlergruppen","einzelbewerber")
+pc <- setdiff(nm,c(meta,agg,grep("^flag",nm,value=T)))
+cat("n party cols",length(pc),"\n")
+M <- as.matrix(u[pc]); cat("max party value",max(M,na.rm=T),"min",min(M,na.rm=T),"\n")
+cat("count cols >1 max:", sum(apply(M,2,max,na.rm=T)>1), "\n")
+u$sumsh <- rowSums(M,na.rm=TRUE)
+u$nparty <- rowSums(!is.na(M)); 
+print(u%>%group_by(state)%>%summarise(n=n(),med=median(sumsh),p01=quantile(sumsh,.01),p99=quantile(sumsh,.99),lt95=sum(sumsh<.95),gt105=sum(sumsh>1.05),zero=sum(sumsh==0),allNA=sum(nparty==0)))
+# with aggregates
+u$sum2 <- u$sumsh + rowSums(u[agg],na.rm=T)
+print(u%>%group_by(state)%>%summarise(med2=median(sum2),gt105=sum(sum2>1.05)))
+# are waehlergruppen included in party columns? correlation
+print(summary(u$waehlergruppen)); print(summary(u$einzelbewerber))
+print(u%>%filter(sumsh>1.05)%>%select(ags,ags_name,election_year,sumsh,waehlergruppen,einzelbewerber)%>%arrange(-sumsh)%>%head(25))
+print(u%>%filter(sumsh<0.9,valid_votes>0)%>%select(ags,ags_name,election_year,sumsh,valid_votes)%>%arrange(sumsh)%>%head(25))
+saveRDS(u%>%select(ags,state,election_year,sumsh,sum2),file.path(Sys.getenv("PWD"),"u_sums.rds"))

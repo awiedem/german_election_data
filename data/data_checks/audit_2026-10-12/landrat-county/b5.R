@@ -1,0 +1,18 @@
+suppressMessages(library(dplyr)); options(width=250,tibble.width=Inf)
+setwd("/Users/hanno/Documents/GitHub/german_election_data")
+u <- as_tibble(readRDS("data/county_elections/final/county_elec_unharm.rds"))
+nm <- names(u)
+meta <- c("ags","ags_name","county","state","election_year","eligible_voters","number_voters","valid_votes","invalid_votes","turnout")
+agg <- c("waehlergruppen","einzelbewerber")
+pc <- setdiff(nm,c(meta,agg,grep("^flag",nm,value=T)))
+M <- as.matrix(u[pc])
+s2 <- rowSums(M,na.rm=T)+rowSums(u[agg],na.rm=T)
+u$s2 <- s2
+d <- u%>%filter(valid_votes>0)
+print(d%>%group_by(state)%>%summarise(n=n(),dev2=sum(abs(s2-1)>0.02),dev10=sum(abs(s2-1)>0.1),mn=min(s2),mx=max(s2)))
+print(d%>%filter(abs(s2-1)>0.1)%>%count(state,election_year)%>%arrange(-n)%>%head(20))
+print(d%>%filter(abs(s2-1)>0.1)%>%select(ags,ags_name,election_year,s2,valid_votes)%>%arrange(s2)%>%head(15))
+# unused columns
+cs <- colSums(!is.na(M)&M>0); cat("cols never >0:",sum(cs==0),"; cols with <=2 nonzero rows:",sum(cs<=2),"\n"); print(names(cs)[cs==0])
+cat("cols with <=3 nonzero:", sum(cs<=3),"\n")
+print(grep("freie|^fw|^fwg|wähl|w_hl|waehl|einzel|piraten|gr_n|gruene|grune|linke|pds|spd|cdu|csu|fdp|f_d_p|afd|npd|rep",nm,value=T))

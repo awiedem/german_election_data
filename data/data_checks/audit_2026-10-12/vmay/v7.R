@@ -1,0 +1,12 @@
+suppressMessages(library(dplyr))
+f<-function(x) readRDS(file.path("data/mayoral_elections/final",paste0(x,".rds")))
+u<-f("mayoral_unharm"); c<-f("mayoral_candidates"); p<-f("mayor_panel")
+w<-u$winner_party
+cat(length(unique(w)),length(unique(c$candidate_party)),"\n")
+print(sum(w%in%c("FDP"),na.rm=T)); print(sum(w=="F.D.P.",na.rm=T))
+print(sapply(c("kein Wahlvorschlag","Kein Wahlvorschlag","Ohne Wahlvorschlag"),function(s)sum(w==s,na.rm=T)))
+print(sum(grepl("^Sozialdemokratische Partei",w)))
+print(table(substr(u$ags[!is.na(w)&w==""],1,2)))
+print(sum(c$candidate_party=="",na.rm=T)); print(sum(is.na(c$candidate_party)))
+print(max(nchar(w),na.rm=T))
+th<-u%>%filter(state=="16",grepl("^[A-ZÄÖÜ][a-zäöüß-]+, [A-Z]",winner_party)); cat("TH names",nrow(th),"\n"); print(head(th$winner_party,3))

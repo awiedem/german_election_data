@@ -1,0 +1,10 @@
+suppressMessages({library(dplyr);library(bundeslaendeR)}); options(width=250, dplyr.print_max=400)
+u <- readRDS("data/state_elections/final/state_unharm.rds"); w <- readRDS("data/state_elections/final/ltw_wkr_unharm.rds"); h25<-readRDS("data/state_elections/final/state_harm_25.rds")
+bl <- as.data.frame(ltw_elections) %>% mutate(election_date=as.Date(election_date))
+cat("SN n municipalities by year (unharm):\n"); print(u %>% filter(state=="14") %>% count(election_year) %>% as.data.frame())
+cat("SN totals u vs official\n")
+for (dt in c("1999-09-19","2004-09-19","2009-08-30")) { a<-u%>%filter(state=="14",election_date==as.Date(dt)); b<-bl%>%filter(state=="SN",election_date==as.Date(dt))%>%slice(1); cat(dt, "n",nrow(a)," ev u",sum(a$eligible_voters,na.rm=T)," bl",b$electorate," | vv u",sum(a$valid_votes,na.rm=T)," bl",b$valid_votes, "\n") }
+cat("\nSN 2004 wkr sums\n"); print(w %>% filter(state=="14", election_year==2004, stimme=="zweitstimme") %>% summarise(n=n(), ev=sum(eligible_voters), nv=sum(number_voters), vv=sum(valid_votes)))
+cat("\nSN 2004 AGS 2004 vs 1999 sets\n"); a4<-u%>%filter(state=="14",election_year==2004)$ags; a9<-u%>%filter(state=="14",election_year==1999)$ags; cat("in 1999 not 2004:",length(setdiff(a9,a4)),"in 2004 not 1999:",length(setdiff(a4,a9)),"\n")
+cat("\nHB\n"); print(u %>% filter(state=="04", election_year>=1991) %>% select(ags,election_year,eligible_voters,number_voters,valid_votes,invalid_votes,turnout) %>% as.data.frame())
+print(bl %>% filter(state=="HB", election_date>=as.Date("1999-01-01")) %>% group_by(election_date) %>% summarise(el=first(electorate), nv=first(number_of_voters), vv=first(valid_votes), r=first(election_remarks_wahlleiter)) %>% as.data.frame())

@@ -1,0 +1,8 @@
+suppressMessages(library(dplyr)); options(width=250,tibble.width=Inf)
+setwd("/Users/hanno/Documents/GitHub/german_election_data")
+hc <- as_tibble(readRDS("data/county_elections/final/county_elec_harm_21_cty.rds"))
+h <- as_tibble(readRDS("data/county_elections/final/county_elec_harm_21_muni.rds"))
+print(setdiff(names(hc),names(h))); print(tail(names(hc),20)); print(tail(names(h),25))
+print(summary(hc$spd)); print(summary(hc$cdu)); print(hc%>%select(county_code,election_year,spd,cdu,csu,afd,valid_votes)%>%head(5))
+print(table(sapply(hc,class)))
+print(head(sapply(hc,function(x) if(is.numeric(x)) max(x,na.rm=T) else NA)[order(-sapply(hc,function(x) if(is.numeric(x)) max(x,na.rm=T) else 0))],10))

@@ -1,0 +1,23 @@
+suppressMessages(library(dplyr))
+u <- readRDS("data/municipal_elections/final/municipal_unharm.rds")
+options(width=250)
+sc <- grep("^seats_",names(u),value=T); pc <- sub("seats_","",sc)
+S <- as.matrix(u[,sc]); P <- as.matrix(u[,pc])
+u$tot_seats <- rowSums(S,na.rm=T); u$nseat <- rowSums(!is.na(S))
+cat("rows with any seats:", sum(u$nseat>0),"\n")
+print(u %>% filter(nseat>0) %>% count(state,election_year) %>% as.data.frame)
+# seats>0 but share NA / share positive seat NA
+bad1 <- rowSums(!is.na(S) & S>0 & is.na(P)); cat("seats>0 with NA share:", sum(bad1>0),"\n")
+print(u[bad1>0,] %>% count(state,election_year))
+# negative or non-integer seats
+cat("neg/noninteger seats:", sum(S<0,na.rm=T), sum(abs(S-round(S))>1e-9,na.rm=T),"\n")
+# seat share vs vote share big deviation (only for rows with seats)
+d <- u %>% filter(nseat>0, tot_seats>0)
+Pd <- as.matrix(d[,pc]); Sd <- as.matrix(d[,sc]); Sd[is.na(Sd)] <- 0; Pd0 <- Pd; Pd0[is.na(Pd0)] <- 0
+dev <- abs(Sd/d$tot_seats - Pd0)
+d$maxdev <- apply(dev,1,max)
+cat("maxdev>0.25:", sum(d$maxdev>0.25),"of",nrow(d),"\n")
+print(d %>% filter(maxdev>0.25) %>% count(state,election_year) %>% as.data.frame)
+print(d %>% filter(maxdev>0.4) %>% select(ags,ags_name,election_year,tot_seats,maxdev) %>% head(15) %>% as.data.frame)
+cat("tot_seats distribution\n"); print(summary(d$tot_seats))
+print(d %>% group_by(state,election_year) %>% summarise(ts_med=median(tot_seats),ts_min=min(tot_seats),ts_max=max(tot_seats),n=n(),.groups="drop") %>% as.data.frame)

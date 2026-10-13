@@ -1,0 +1,10 @@
+suppressMessages(library(dplyr))
+u <- readRDS("data/municipal_elections/final/municipal_unharm.rds")
+options(width=200)
+th <- u %>% filter(state=="16", substr(ags,1,2)=="16", ags %in% sprintf("160%02d000",51:56))
+print(th %>% count(ags,ags_name,election_year) %>% tidyr::pivot_wider(names_from=election_year,values_from=n))
+# kreisfreie cities with national ags xx[0-9][0-9]000 where 3rd-5th <100? check largest cities missing by state-year
+big <- u %>% group_by(ags) %>% summarise(maxe=max(eligible_voters,na.rm=T),.groups="drop") %>% filter(maxe>100000)
+yrs <- u %>% distinct(state,election_year)
+chk <- yrs %>% inner_join(big %>% mutate(state=substr(ags,1,2)),by="state",relationship="many-to-many") %>% anti_join(u,by=c("ags","election_year"))
+print(as.data.frame(chk %>% filter(election_year>=1990) %>% group_by(state,election_year) %>% summarise(n=n(),ex=paste(head(ags,4),collapse=","),.groups="drop")),row.names=F)

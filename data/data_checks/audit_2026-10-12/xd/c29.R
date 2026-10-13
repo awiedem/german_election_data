@@ -1,0 +1,8 @@
+suppressMessages(library(dplyr));setwd("/Users/hanno/Documents/GitHub/german_election_data")
+w<-readRDS("data/federal_elections/wahlkreis_level/final/federal_wkr_unharm.rds");print(names(w)[1:14])
+fc<-readRDS("data/federal_elections/county_level/final/federal_cty_unharm.rds")
+print(table(w$stimme,useNA="a"));w<-w%>%filter(stimme=="zweitstimme"|is.na(stimme));x<-w%>%group_by(state,election_year)%>%summarise(wev=sum(eligible_voters,na.rm=T),wnv=sum(number_voters,na.rm=T),wvv=sum(valid_votes,na.rm=T),.groups="drop")
+y<-fc%>%group_by(state,election_year=year)%>%summarise(cev=sum(eligible_voters,na.rm=T),cnv=sum(number_voters,na.rm=T),cvv=sum(valid_votes,na.rm=T),.groups="drop")
+j<-inner_join(x,y,by=c("state","election_year"))%>%mutate(dev=wev/cev-1,dnv=wnv/cnv-1,dvv=wvv/cvv-1)
+cat("matched",nrow(j),"of",nrow(x),"\n");print(as.data.frame(j%>%filter(abs(dev)>.002|abs(dnv)>.002|abs(dvv)>.002)),digits=3)
+print(as.data.frame(anti_join(x,y,by=c("state","election_year"))%>%count(election_year)))

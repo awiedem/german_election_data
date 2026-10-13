@@ -1,0 +1,8 @@
+suppressMessages(library(dplyr))
+u <- readRDS("data/municipal_elections/final/municipal_unharm.rds")
+options(width=250)
+s <- u %>% filter(state=="01",election_year %in% c(2008,2013), eligible_voters<400) %>% arrange(election_year) 
+print(s %>% group_by(election_year) %>% summarise(n=n(),linke=sum(!is.na(linke_pds)),pir=sum(!is.na(piraten)),cdu=sum(!is.na(cdu_csu))))
+print(s %>% filter(!is.na(linke_pds)) %>% select(ags,ags_name,election_year,eligible_voters,cdu_csu,spd,linke_pds,gruene,fdp,other) %>% head(12) %>% as.data.frame)
+cat("SH 2018/2023 other==1:", u %>% filter(state=="01",election_year%in%c(2018,2023)) %>% group_by(election_year) %>% summarise(n=n(), oth1=sum(other>=0.9999,na.rm=T), cduNA=sum(is.na(cdu_csu))) %>% as.data.frame %>% capture.output() %>% paste(collapse="\n"),"\n")
+print(u %>% filter(state=="01",election_year%in%c(2013,2018,2023)) %>% mutate(sz=cut(eligible_voters,c(0,1000,5000,20000,1e7))) %>% group_by(election_year,sz) %>% summarise(cdu_present=mean(!is.na(cdu_csu)),other1=mean(other>.9999),.groups="drop") %>% as.data.frame)

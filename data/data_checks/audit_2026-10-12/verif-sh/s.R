@@ -1,0 +1,5 @@
+suppressMessages(library(dplyr))
+x<-readRDS("data/state_elections/final/state_unharm.rds")
+d<-x%>%filter(state=="08",election_year==2026)
+for(p in c("gruene","cdu","afd","spd","fdp","linke_pds")) cat(p,round(100*sum(d[[p]]*d$valid_votes,na.rm=T)/sum(d$valid_votes),2),"\n")
+cat(sum(d$eligible_voters),sum(d$number_voters)/sum(d$eligible_voters),"\n")

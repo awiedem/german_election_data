@@ -1,0 +1,13 @@
+suppressMessages(library(dplyr))
+l <- readRDS('data/landrat_elections/final/landrat_unharm.rds')
+d <- l[duplicated(l[,c('ags','election_year','round')])|duplicated(l[,c('ags','election_year','round')],fromLast=TRUE),]
+print(count(d,state_name))
+print(sum(duplicated(l[,c('ags','election_year','round')])))
+print(as.data.frame(l %>% filter(round=='stichwahl', is.na(eligible_voters)) %>% select(ags,ags_name,election_date)))
+print(n_distinct(l$ags[l$state!='09']))
+k<-l%>%group_by(ags)%>%summarise(n=n_distinct(ags_name,na.rm=TRUE),nm=paste(unique(ags_name),collapse=' | '))%>%filter(n>1);print(as.data.frame(k))
+cd <- readRDS('data/landrat_elections/final/landrat_candidates.rds'); print(dim(cd)); print(names(cd))
+print(cd[cd$ags=='03158000' & cd$election_date=='2013-09-22',] %>% as.data.frame() %>% select(any_of(c('candidate_name','candidate_party','candidate_votes','n_candidates_hw','has_stichwahl','round'))))
+print(l[l$ags=='03158000'&l$election_date=='2013-09-22',c('valid_votes','round')])
+print(as.data.frame(l[l$ags=='07337000'&l$election_date=='2017-03-05',]))
+print(cd[cd$ags=='07337000'&cd$election_date=='2017-03-05',] %>% as.data.frame() %>% select(any_of(c('candidate_name','candidate_party','candidate_votes','candidate_voteshare'))))

@@ -1,0 +1,7 @@
+suppressMessages(library(dplyr))
+h <- readRDS("data/federal_elections/county_level/final/federal_cty_harm.rds")
+x <- h %>% mutate(r=eligible_voters/population)
+print(x %>% filter(r>0.88) %>% select(county_code,election_year,population,eligible_voters,r) %>% arrange(desc(r)) %>% head(25) %>% as.data.frame)
+cat(nrow(filter(x,r>0.88)),"rows r>0.88;", nrow(filter(x,r>0.95)),"rows>0.95\n")
+print(x %>% filter(county_code %in% c("14521")) %>% select(election_year,population,eligible_voters,r) %>% as.data.frame)
+print(x %>% filter(r>0.95) %>% count(substr(county_code,1,2), election_year) %>% as.data.frame)
