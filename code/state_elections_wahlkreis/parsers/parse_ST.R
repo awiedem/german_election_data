@@ -102,6 +102,17 @@ f_2021 <- c(F01="CDU", F02="AfD", F03="DIE LINKE", F04="SPD", F05="GRÜNE",
             F19="Klimaliste ST", F21="ÖDP", F22="Die Humanisten",
             F23="Gesundheitsforschung", F24="PIRATEN", F25="WiR2020")
 
+# 2026  (DSB_LT_2026.pdf, endgültiges Ergebnis, Stand 22.09.2026). D21 = all
+# Einzelbewerber summed into ONE column, as in the source.
+d_2026 <- c(D01="CDU", D02="AfD", D03="Die Linke", D04="SPD", D05="FDP",
+            D06="GRÜNE", D07="FREIE WÄHLER", D09="Tierschutzpartei",
+            D10="Gartenpartei", D11="Die PARTEI", D12="TIERSCHUTZALLIANZ",
+            D13="HEIMAT", D15="BSW", D19="PdF", D20="Volt", D21="EB")
+f_2026 <- c(F01="CDU", F02="AfD", F03="Die Linke", F04="SPD", F05="FDP",
+            F06="GRÜNE", F07="FREIE WÄHLER", F08="dieBasis",
+            F09="Tierschutzpartei", F10="Gartenpartei", F11="Die PARTEI",
+            F12="TIERSCHUTZALLIANZ", F15="BSW", F19="PdF", F20="Volt")
+
 party_maps <- list(
   "1990" = list(d = d_1990, f = f_1990),
   "1994" = list(d = d_1994, f = f_1994),
@@ -110,13 +121,19 @@ party_maps <- list(
   "2006" = list(d = d_2006, f = f_2006),
   "2011" = list(d = d_2011, f = f_2011),
   "2016" = list(d = d_2016, f = f_2016),
-  "2021" = list(d = d_2021, f = f_2021)
+  "2021" = list(d = d_2021, f = f_2021),
+  "2026" = list(d = d_2026, f = f_2026)
 )
 
-# File layout family: "old" (1990-2002) vs "new" (2006-2021)
+# File layout family: "old" (1990-2002) vs "new" (2006-2021) vs "2026"
 #   old:  WDATUM;SART;LT WKR;AGS;NAME;A;B;C;D;Dxx...;E;F;Fxx...
 #   new:  ERGART;DATUM;LEER;LEER;LEER;SART;NR;NAME;A;B;E;F;Fxx...;C;D;Dxx...;WKSIEGER
+#   2026: "ERGART";"DATUM";"SART";"NR";"NAME";"WAHLLOKAL";"A.x";"B.x";"E.x";"F.x";
+#         "Fxx.party"...;"C.x";"D.x";"Dxx.party"...;"GEWÄHLT" -- UTF-8, quoted, and
+#         THREE rows per unit keyed by Wahllokal (U = Urne, B = Brief, "" = total).
+#         Only the "" rows are kept; U + B == total was checked on the raw file.
 layout_old <- c("1990", "1994", "1998", "2002")
+layout_2026 <- c("2026")
 
 files <- c(
   "1990" = "ST_1990_Landtagswahl_Wahlkreis.csv",
@@ -126,7 +143,8 @@ files <- c(
   "2006" = "ST_2006_Landtagswahl_Wahlkreis.csv",
   "2011" = "ST_2011_Landtagswahl_Wahlkreis.csv",
   "2016" = "ST_2016_Landtagswahl_Wahlkreis.csv",
-  "2021" = "ST_2021_Landtagswahl_Wahlkreis.csv"
+  "2021" = "ST_2021_Landtagswahl_Wahlkreis.csv",
+  "2026" = "ST_2026_Landtagswahl_Wahlkreis.csv"
 )
 
 # ---------------------------------------------------------------------
@@ -149,10 +167,18 @@ parse_date <- function(x) {
   out
 }
 
-read_raw <- function(path) {
-  # ISO-8859-1, semicolon, keep everything character, do not let fread guess
-  raw <- readLines(path, encoding = "latin1", warn = FALSE)
-  raw <- iconv(raw, from = "latin1", to = "UTF-8")
+read_raw <- function(path, utf8 = FALSE) {
+  # ISO-8859-1 (UTF-8 from 2026), semicolon, keep everything character, do not
+  # let fread guess
+  raw <- readLines(path, encoding = if (utf8) "UTF-8" else "latin1", warn = FALSE)
+  if (utf8) {
+    raw[1] <- sub("^﻿", "", raw[1])
+    # 2026 quotes every field; no field contains ';' (checked), so the quotes
+    # can simply be dropped before the plain split below
+    raw <- gsub('"', "", raw, fixed = TRUE)
+  } else {
+    raw <- iconv(raw, from = "latin1", to = "UTF-8")
+  }
   # split on ';'
   hdr <- strsplit(raw[1], ";", fixed = TRUE)[[1]]
   body <- raw[-1]
@@ -170,8 +196,10 @@ read_raw <- function(path) {
 
 # normalise a header name to bare code (strip trailing spaces, and for 2021
 # the "F01 - CDU" style -> "F01")
-hdr_code <- function(nm) {
+hdr_code <- function(nm, dot = FALSE) {
   nm <- trimws(nm)
+  # 2026 writes "F01.CDU" / "A.Wahlberechtigte": keep the token before the first "."
+  if (dot) nm <- sub("\\..*$", "", nm)
   toupper(sub("\\s*-.*$", "", nm))   # keep token before first " - "
 }
 
@@ -180,12 +208,20 @@ hdr_code <- function(nm) {
 # ---------------------------------------------------------------------
 parse_year <- function(year) {
   path <- file.path(raw_dir, files[[year]])
-  df   <- read_raw(path)
+  is_old  <- year %in% layout_old
+  is_2026 <- year %in% layout_2026
+  df   <- read_raw(path, utf8 = is_2026)
   pm   <- party_maps[[year]]
-  is_old <- year %in% layout_old
 
   # locate structural columns
-  if (is_old) {
+  if (is_2026) {
+    # ERGART;DATUM;SART;NR;NAME;WAHLLOKAL;... -- keep the Urne+Brief total rows
+    df <- df[trimws(df[[6]]) == "", , drop = FALSE]
+    sart_col <- names(df)[3]
+    nr_col   <- names(df)[4]
+    name_col <- names(df)[5]
+    date_col <- names(df)[2]
+  } else if (is_old) {
     sart_col <- names(df)[2]            # SART / Satzart
     nr_col   <- names(df)[3]            # LT WKR ...
     name_col <- names(df)[5]            # NAME / Name
@@ -200,7 +236,7 @@ parse_year <- function(year) {
   }
 
   # map header codes -> column index
-  codes <- hdr_code(names(df))
+  codes <- hdr_code(names(df), dot = is_2026)
 
   col_for <- function(code) {
     idx <- which(codes == code)
@@ -263,7 +299,10 @@ parse_year <- function(year) {
     row = wkr_rows,
     election_year = as.integer(year),
     election_date = edate[wkr_rows],
-    wkr_nr  = trimws(df[[nr_col]][wkr_rows]),
+    # 2026 writes "001"; give it the 2-digit form 2021 uses (1990-2016 are
+    # unpadded; 01_ltw_wkr_unharm.R pads every year to one width anyway)
+    wkr_nr  = if (is_2026) sprintf("%02d", as.integer(df[[nr_col]][wkr_rows]))
+              else trimws(df[[nr_col]][wkr_rows]),
     wkr_name = trimws(df[[name_col]][wkr_rows]),
     eligible_voters = clean_num(df[[ix_A]][wkr_rows]),
     number_voters   = clean_num(df[[ix_B]][wkr_rows]),
@@ -357,6 +396,9 @@ for (yr in names(files)) {
   cat(sprintf("[%s] n_wkr=%d  max|sum-valid|=%g over %d (wkr,stimme)  state_total_match=%s  fails=%d\n",
               yr, n_wkr, max_disc, n_grp, state_match, nrow(fails)))
   if (nrow(fails) > 0) print(fails)
+  if (n_wkr == 0 || max_disc > 0 || !state_match)
+    stop(sprintf("ST %s: Wahlkreis validation failed (n_wkr=%d, max|sum-valid|=%g, state match=%s)",
+                 yr, n_wkr, max_disc, state_match))
 }
 
 final <- rbindlist(all_long, use.names = TRUE)

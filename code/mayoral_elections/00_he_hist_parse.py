@@ -62,11 +62,51 @@ Quirks handled (each observed in the file):
     (Hessen) 2024-01-19 -> 2025-01-19, and Herborn's decisive round mislabeled
     hauptwahl in he_parsed but correctly Stichwahl 2025-05-25 here.
 
+Names 1993-2012 + 2013 winners (Hessami 2018; October 2026). The parsed names of
+Hessami (2018, REStat, doi:10.7910/DVN/FZWOMK, CC0) — every candidate of every
+Bürgermeister/OB round 1993-2012 — are grafted from he_hessami_parsed.csv
+(00_he_hessami_parse.py). The two files list each round's Wahlvorschläge in the
+same order with identical votes, so the graft is positional and asserts the
+votes. collected.dta adds the names of the 11 winners of 2013 elections, each
+checked against the workbook's winner party, gender and term counters.
+PRIVACY: the elected person's name is public; every other Hessami name goes to
+the gitignored he_hist_restricted_names.csv (name_withheld = TRUE here), which
+01b joins into the restricted twin only.
+
+Runoff pairing (`pair_id`, October 2026). Stage 01b used to pair a Stichwahl
+candidate with "their" Hauptwahl row by name, else party, else rank; with
+redacted names and several `Einzelbewerbung` Wahlvorschläge that is ambiguous,
+so 190 runoff results were published as separate runoff-only rows (109 of them
+carrying the winner) and one was put on the wrong candidate. Every Stichwahl
+Wahlvorschlag now carries the `pair_id` of the Hauptwahl Wahlvorschlag of the
+same person, decided in this order (`pair_method`):
+  name               the same person's name in both rounds (Hessami / public)
+  verified_external  pinned in data/mayoral_elections/metadata/
+                     he_runoff_pairing_verified.csv from named results
+                     (hessenschau, ekom21 votemanager, archived HSL pages;
+                     one Landrat runner-up, Offenbach 2009, by elimination
+                     after the named winner — marked in the file)
+  party              a Träger label unique in the runoff and among the
+                     first-round top three
+  elimination        the one remaining runoff candidate = the one remaining
+                     first-round top-two candidate
+  ballot_order       two remaining: matched in ballot order
+Validated on 1993-2012 against Hessami's names without using them: 570/573
+runoff candidates right (party 441/441, elimination 95/96, ballot order 34/36).
+Every runoff (1993-2026, BM/OB and Landrat) that names cannot settle and that
+needs elimination or ballot order — 105 cycles — was checked against named
+results and is pinned; the parser fails on any unpinned inference. Ballot order
+was wrong in 1 of 23 such cycles (Alheim 2020); no runoff in them involved a
+withdrawal. The winner's
+gender, recorded by HSL on the decisive round only, is carried to their
+Hauptwahl row through the same link (01b keeps the Hauptwahl row).
+
 Output: `he_hist_parsed.csv`, candidate-level long (same schema as he_parsed.csv
-plus `winner_n_terms` / `winner_n_reelections` from the Amtszeiten columns; the
-R stages ignore the extras). Landratswahl rows are split to the landrat dataset
-by stage 01. Run AFTER 00_he_parse.py / 00_he_parse_xlsx.py /
-00_he_kommunalwahl2026_scrape.py:
+plus `winner_n_terms` / `winner_n_reelections` from the Amtszeiten columns, and
+`ballot_position`, `pair_id`, `pair_method`, `name_source`, `name_withheld`).
+Landratswahl rows are split to the landrat dataset by stage 01. Run AFTER
+00_he_parse.py / 00_he_parse_xlsx.py / 00_he_kommunalwahl2026_scrape.py /
+00_he_hessami_parse.py:
     python3 code/mayoral_elections/00_he_hist_parse.py
 """
 
@@ -86,8 +126,16 @@ XLSX = os.path.join(RAW_DIR, "Direktwahlen_in_Hessen_seit_1993.xlsx")
 HE_PARSED = os.path.join(RAW_DIR, "he_parsed.csv")       # winner names (XLSX+PDF)
 HE_PDF_PARSED = os.path.join(RAW_DIR, "he_pdf_parsed.csv")  # 2024 snapshot names
 HE_2026 = os.path.join(RAW_DIR, "he2026_parsed.csv")     # 2026 candidate names
+HESSAMI = os.path.join(RAW_DIR, "he_hessami_parsed.csv")  # 1993-2012 names (gitignored)
+HESSAMI_COLLECTED = os.path.join(RAW_DIR, "he_hessami_collected_parsed.csv")
+PAIR_PINS = os.path.join(ROOT, "data", "mayoral_elections", "metadata",
+                         "he_runoff_pairing_verified.csv")
 OUT = os.environ.get(
     "GERDA_HE_HIST_OUT", os.path.join(RAW_DIR, "he_hist_parsed.csv")
+)
+# Names withheld from the public file (losing candidates from Hessami 2018).
+OUT_RESTRICTED = os.environ.get(
+    "GERDA_HE_RESTRICTED_OUT", os.path.join(RAW_DIR, "he_hist_restricted_names.csv")
 )
 
 STATE, STATE_NAME = "06", "Hessen"
@@ -111,7 +159,13 @@ FIELDS = ["ags", "ags_name", "state", "state_name", "election_year", "election_d
           "invalid_votes", "turnout", "candidate_name", "candidate_last_name",
           "candidate_first_name", "candidate_gender", "candidate_party",
           "candidate_votes", "candidate_voteshare", "is_winner", "candidate_rank",
-          "n_candidates", "winner_n_terms", "winner_n_reelections", "source_file"]
+          "n_candidates", "winner_n_terms", "winner_n_reelections", "source_file",
+          "ballot_position", "pair_id", "pair_method", "name_source", "name_withheld",
+          "flag_decisive_round_missing"]
+RESTRICTED_FIELDS = ["ags", "election_date", "round", "ballot_position", "candidate_votes",
+                     "candidate_name", "candidate_last_name", "candidate_first_name",
+                     "name_source"]
+GENERIC_TRAEGER = {"", "Einzelbewerbung", "Einzelbewerber", "Einzelbewerberin"}
 
 GENDER = {"männlich": "m", "weiblich": "w"}
 
@@ -158,7 +212,7 @@ def parse_hist():
             votes = r[j + 1]
             if votes is not None:
                 wvs.append({"party": traeger, "votes": int(votes),
-                            "pct": float(r[j + 2])})
+                            "pct": float(r[j + 2]), "pos": len(wvs) + 1})
             j += 3
         assert wvs, f"no Wahlvorschläge at {ags} {date}"
         # winner: only on decisive rows (Träger column filled); the winner is the
@@ -322,6 +376,7 @@ def graft_snapshot(rounds, path, label, append_absent=False):
             candidate["name"] = name
             candidate["last"] = row.get("candidate_last_name", "").strip()
             candidate["first"] = row.get("candidate_first_name", "").strip()
+            candidate["name_src"] = "public_snapshot"
             stats["grafted"] += 1
 
             if candidate is target["winner"]:
@@ -372,6 +427,7 @@ def graft_hessenschau(rounds):
                 w["name"] = h["candidate_name"].strip()
                 w["last"] = h["candidate_last_name"].strip()
                 w["first"] = h["candidate_first_name"].strip()
+                w["name_src"] = "public_snapshot"
                 grafted += 1
             elif h["candidate_last_name"].strip() and \
                     h["candidate_last_name"].strip().lower() not in w["last"].lower():
@@ -386,47 +442,280 @@ def graft_hessenschau(rounds):
     return grafted, skipped
 
 
-def propagate_stichwahl_names(rounds):
-    """Propagate candidate names between Hauptwahl and Stichwahl records.
+def graft_hessami(rounds):
+    """Attach the Hessami (2018) names 1993-2012 (gitignored input).
 
-    Stage 01b pairs the two rounds by public identity.  A name published only
-    for the runoff must therefore also be present on the corresponding first-
-    round record; otherwise one real candidate becomes two wide rows.  Copy
-    only when the candidate's Träger is unique in BOTH rounds (redacted
-    ``Einzelbewerbung`` twins remain deliberately unmatched).
+    Positional: the k-th named candidate of a Hessami round is the k-th
+    Wahlvorschlag of the same workbook round, and their votes must agree. Public
+    snapshot names, where present, are kept and compared.
     """
+    if not os.path.exists(HESSAMI):
+        print("  he_hessami_parsed.csv not found — no 1993-2012 names grafted "
+              "(run 00_he_hessami_parse.py; see raw/hessen/hessami_2018/README.md)")
+        return None
+    by_key = {(rd["ags"], rd["date"], rd["round"]): rd for rd in rounds}
+    groups = defaultdict(list)
+    for row in csv.DictReader(open(HESSAMI, encoding="utf-8")):
+        groups[(row["ags"], row["election_date"], row["round"])].append(row)
+    stats = Counter()
+    for key, rows in groups.items():
+        target = by_key.get(key)
+        assert target is not None, f"Hessami round absent from the workbook: {key}"
+        rows.sort(key=lambda r: int(r["ballot_position"]))
+        assert len(rows) == len(target["wvs"]), f"candidate count differs at {key}"
+        for row, w in zip(rows, target["wvs"]):
+            assert int(row["candidate_votes"]) == w["votes"], f"votes differ at {key}"
+            w["hessami"] = row               # kept for pairing (incl. typo tiers)
+            if "name" in w:
+                if _norm_person_name(w["name"]) != _norm_person_name(row["candidate_name"]):
+                    stats["conflict_with_public"] += 1
+                    print(f"  WARNING: Hessami name differs from public name at {key} "
+                          f"pos {w['pos']}")
+                else:
+                    stats["already_public"] += 1
+                continue
+            w.update(name=row["candidate_name"], last=row["candidate_last_name"],
+                     first=row["candidate_first_name"], name_src="hessami_2018")
+            stats["grafted"] += 1
+        stats["rounds"] += 1
+    return stats
+
+
+def graft_collected_2013(rounds):
+    """Name the 11 winners of 2013 elections from Hessami's collected.dta.
+
+    Accepted only if the municipality has exactly one decisive 2013 round, the
+    source date (where given) is that round's date, gender and party (where
+    given) equal the workbook's, and the official term counters agree with the
+    previous named winner: a re-election must carry the same name, a first term
+    a different one.
+    """
+    if not os.path.exists(HESSAMI_COLLECTED):
+        print("  he_hessami_collected_parsed.csv not found — no 2013 winner names")
+        return 0
     by_ags = defaultdict(list)
     for rd in rounds:
         by_ags[rd["ags"]].append(rd)
     n = 0
+    for row in csv.DictReader(open(HESSAMI_COLLECTED, encoding="utf-8")):
+        if row["year"] != "2013":
+            continue
+        dec = [rd for rd in by_ags[row["ags"]]
+               if rd["winner"] is not None and rd["date"][:4] == "2013"]
+        assert len(dec) == 1, f"collected 2013: {row['ags']} has {len(dec)} decisive 2013 rounds"
+        rd = dec[0]
+        assert not row["source_date"] or row["source_date"] == rd["date"], row["ags"]
+        assert row["winner_gender"] == rd["gender"], f"collected 2013 gender: {row['ags']}"
+        assert not row["winner_party"] or row["winner_party"] == rd["winner"]["party"], row["ags"]
+        prev = max((x for x in by_ags[row["ags"]]
+                    if x["winner"] is not None and x["date"] < rd["date"]
+                    and "name" in x["winner"]), key=lambda x: x["date"], default=None)
+        if prev is not None and isinstance(rd["n_reelect"], int):
+            same = _norm_person_name(prev["winner"]["name"]) == _norm_person_name(row["candidate_name"])
+            assert same == (rd["n_reelect"] > 0), \
+                f"collected 2013: name vs term counter disagree at {row['ags']}"
+        w = rd["winner"]
+        if "name" in w:
+            assert _norm_person_name(w["name"]) == _norm_person_name(row["candidate_name"])
+            continue
+        w.update(name=row["candidate_name"], last=row["candidate_last_name"],
+                 first=row["candidate_first_name"], name_src="hessami_2018_collected")
+        n += 1
+    assert n == 11, f"expected 11 named 2013 winners from collected.dta, got {n}"
+    return n
+
+
+def load_pins():
+    pins = defaultdict(dict)
+    if not os.path.exists(PAIR_PINS):
+        print(f"  WARNING: {PAIR_PINS} not found — no verified runoff pairings")
+        return pins
+    for r in csv.DictReader(open(PAIR_PINS, encoding="utf-8")):
+        key = (r["ags"], r["first_round_date"], r["runoff_date"])
+        pins[key][int(r["runoff_ballot_position"])] = int(r["first_round_ballot_position"])
+    return pins
+
+
+def cycle_pairs(rounds):
+    """(Hauptwahl, Stichwahl) cycles — the SAME rule as 01b's date pairing: the
+    closest preceding Hauptwahl within 0-120 days, at most one Stichwahl (the
+    earliest) per Hauptwahl. Unpaired Stichwahlen are orphans (Bad Camberg 2005)."""
+    by_ags = defaultdict(list)
+    for rd in rounds:
+        by_ags[rd["ags"]].append(rd)
+    pairs = {}
     for rd in rounds:
         if rd["round"] != "stichwahl":
             continue
-        hw = [x for x in by_ags[rd["ags"]]
-              if x["round"] == "hauptwahl" and x["date"] < rd["date"]
-              and (int(rd["date"][:4]) - int(x["date"][:4])) <= 1]
-        hw = max(hw, key=lambda x: x["date"], default=None)
-        if hw is None or (_days_between(hw["date"], rd["date"]) >= 60):
-            continue
+        hws = [x for x in by_ags[rd["ags"]] if x["round"] == "hauptwahl"
+               and 0 <= _days_between(x["date"], rd["date"]) <= 120]
+        if hws:
+            hw = max(hws, key=lambda x: x["date"])
+            if id(hw) not in pairs or pairs[id(hw)][1]["date"] > rd["date"]:
+                pairs[id(hw)] = (hw, rd)
+    return list(pairs.values())
+
+
+def _hkey_variant(sw_row, hw_row):
+    """Hessami cross-round name variants (5 known: a typo in one round, a given
+    name added or swapped): same last name, or same Träger + given name with a
+    last name at most 2 edits away."""
+    sl, hl = sw_row["name_key"].split("|")[0], hw_row["name_key"].split("|")[0]
+    if sl and sl == hl:
+        return True
+    sf = (sw_row["name_key"].split("|")[1].split(" ") or [""])[0]
+    hf = (hw_row["name_key"].split("|")[1].split(" ") or [""])[0]
+    return (sw_row["candidate_party_source"] == hw_row["candidate_party_source"]
+            and sf and sf == hf and _edit_distance(sl, hl) <= 2)
+
+
+def _edit_distance(a, b):
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        prev = cur
+    return prev[-1]
+
+
+def pair_rounds(rounds, pins):
+    """Give every Wahlvorschlag a `pair_id`; Stichwahl ones get the id of the
+    same person's Hauptwahl Wahlvorschlag (see the module docstring)."""
+    for rd in rounds:
         for w in rd["wvs"]:
-            if sum(1 for v in rd["wvs"] if v["party"] == w["party"]) != 1:
+            tag = "" if rd["round"] == "hauptwahl" else "sw"
+            w["pair_id"] = f"{rd['ags']}_{rd['date']}_{tag}{w['pos']}"
+            w["pair_method"] = ""
+    stats = Counter()
+    used_pins = set()
+    for hw, sw in cycle_pairs(rounds):
+        ranked = sorted(hw["wvs"], key=lambda w: -w["votes"])
+        out = {}
+
+        def take(s, w, method):
+            out[id(s)] = (w, method)
+
+        # 1) names in both rounds (Hessami: exact key, then the variant tiers)
+        for s in sw["wvs"]:
+            if "name" in s:
+                c = [w for w in hw["wvs"] if "name" in w
+                     and _norm_person_name(w["name"]) == _norm_person_name(s["name"])]
+                if len(c) != 1 and "hessami" in s:
+                    c = [w for w in hw["wvs"] if "hessami" in w
+                         and _hkey_variant(s["hessami"], w["hessami"])]
+                if len(c) == 1 and all(c[0] is not v[0] for v in out.values()):
+                    take(s, c[0], "name")
+        # 2) verified pins
+        pin = pins.get((hw["ags"], hw["date"], sw["date"]))
+        if pin:
+            used_pins.add((hw["ags"], hw["date"], sw["date"]))
+            for s in sw["wvs"]:
+                w = next(x for x in hw["wvs"] if x["pos"] == pin[s["pos"]])
+                if id(s) in out:
+                    assert out[id(s)][0] is w, f"pin contradicts names at {hw['ags']} {hw['date']}"
+                else:
+                    take(s, w, "verified_external")
+        # 3) distinctive party label (unique in the runoff and among the top 3)
+        used = {id(v[0]) for v in out.values()}
+        for s in sw["wvs"]:
+            if id(s) in out or s["party"] in GENERIC_TRAEGER:
                 continue
-            cands = [v for v in hw["wvs"] if v["party"] == w["party"]]
-            if len(cands) != 1:
+            if sum(1 for t in sw["wvs"] if t["party"] == s["party"]) != 1:
                 continue
-            h = cands[0]
-            if "name" in w and "name" not in h:
-                h.update(name=w["name"], last=w["last"], first=w["first"])
+            c = [w for w in ranked[:3] if w["party"] == s["party"] and id(w) not in used]
+            if len(c) == 1:
+                take(s, c[0], "party")
+                used.add(id(c[0]))
+        # 4) elimination / ballot order among the remaining first-round leaders
+        rest = [s for s in sw["wvs"] if id(s) not in out]
+        pool = [w for w in ranked if id(w) not in used][:len(rest)]
+        if len(rest) == 1 and len(pool) == 1:
+            take(rest[0], pool[0], "elimination")
+        elif len(rest) >= 2:
+            for s, w in zip(sorted(rest, key=lambda s: s["pos"]),
+                            sorted(pool, key=lambda w: w["pos"])):
+                take(s, w, "ballot_order")
+        for s in sw["wvs"]:
+            if id(s) in out:
+                w, method = out[id(s)]
+                s["pair_id"], s["pair_method"] = w["pair_id"], method
+                s["paired_hw"], w["paired_sw"] = w, s
+                stats[method] += 1
+                # every runoff is settled by names, a verified pin or a distinctive
+                # party label; an unverified inference must not happen
+                if method in ("elimination", "ballot_order"):
+                    stats["unverified_inference"] += 1
+                    print(f"  WARNING: runoff pairing by {method} without names or a pin: "
+                          f"{hw['ags']} {hw['date']}/{sw['date']} pos {s['pos']}")
+            else:
+                stats["unpaired"] += 1
+                print(f"  WARNING: runoff Wahlvorschlag left unpaired: {sw['ags']} "
+                      f"{sw['date']} pos {s['pos']}")
+    unused = set(pins) - used_pins
+    assert not unused, f"pinned runoff pairings that matched no cycle: {sorted(unused)}"
+    return stats
+
+
+def propagate_pair_names(rounds):
+    """Copy a name across the two rounds of one person (via the pair link), so a
+    name published for one round also labels the other."""
+    n = 0
+    for rd in rounds:
+        if rd["round"] != "stichwahl":
+            continue
+        for s in rd["wvs"]:
+            h = s.get("paired_hw")
+            if h is None:
+                continue
+            if "name" in s and "name" not in h:
+                h.update(name=s["name"], last=s["last"], first=s["first"],
+                         name_src=s["name_src"])
                 n += 1
-            elif "name" in h and "name" not in w:
-                w.update(name=h["name"], last=h["last"], first=h["first"])
+            elif "name" in h and "name" not in s:
+                s.update(name=h["name"], last=h["last"], first=h["first"],
+                         name_src=h["name_src"])
                 n += 1
-            elif "name" in h and "name" in w and \
-                    _norm_person_name(h["name"]) != _norm_person_name(w["name"]):
-                print(f"  WARNING: round-name conflict at {rd['ags']} "
-                      f"{hw['date']}/{rd['date']} party={w['party']}: "
-                      f"HW='{h['name']}' SW='{w['name']}'")
+            elif "name" in h and "name" in s and \
+                    _norm_person_name(h["name"]) != _norm_person_name(s["name"]):
+                print(f"  note: round-name variant at {rd['ags']} {rd['date']} pos "
+                      f"{s['pos']} (kept per round)")
     return n
+
+
+def mark_failed_rounds(rounds):
+    """A Hauptwahl with no winner and no runoff seated nobody: a sole candidate
+    who failed the Ja/Nein vote (< 50 % Ja), followed months later by a Neuwahl
+    that is its own cycle. Without a flag, 01b's winner repair crowned the failed
+    candidate (Driedorf 2016-03-06: 49.7 % Ja; Morschen 2022-03-06: 48.7 % Ja)."""
+    in_cycle = {id(hw) for hw, _ in cycle_pairs(rounds)}
+    failed = [rd for rd in rounds if rd["round"] == "hauptwahl"
+              and rd["winner"] is None and id(rd) not in in_cycle]
+    keys = sorted((rd["ags"], rd["date"]) for rd in failed)
+    assert keys == [("06532007", "2016-03-06"), ("06634015", "2022-03-06")], keys
+    for rd in failed:
+        assert len(rd["wvs"]) == 1 and rd["wvs"][0]["votes"] / rd["valid"] < 0.5
+        rd["no_winner"] = True
+    return keys
+
+
+def mark_cycle_winners(rounds):
+    """The cycle winner = the decisive round's winner; with a runoff, also the
+    same person's Hauptwahl Wahlvorschlag, which also receives the winner's
+    gender (HSL records it on the decisive round only)."""
+    n_gender = 0
+    for rd in rounds:
+        w = rd["winner"]
+        if w is None:
+            continue
+        w["cycle_winner"] = True
+        h = w.get("paired_hw")
+        if h is not None:
+            h["cycle_winner"] = True
+            if rd["gender"]:
+                h["winner_gender"] = rd["gender"]
+                n_gender += 1
+    return n_gender
 
 
 def _days_between(d1, d2):
@@ -437,13 +726,23 @@ def _days_between(d1, d2):
 
 
 def emit(rounds, appended):
-    out = []
+    """Public rows + the withheld names (losing candidates named only by
+    Hessami 2018), which go to the restricted side file."""
+    out, restricted = [], []
     for rd in rounds:
         ranked = sorted(rd["wvs"], key=lambda w: -w["votes"])
         rank_of = {id(w): i + 1 for i, w in enumerate(ranked)}
         for w in rd["wvs"]:
             is_w = rd["winner"] is not None and w is rd["winner"]
             share = round(w["votes"] / rd["valid"], 6) if rd["valid"] else ""
+            src = w.get("name_src", "")
+            withheld = src == "hessami_2018" and not w.get("cycle_winner", False)
+            if withheld:
+                restricted.append({
+                    "ags": rd["ags"], "election_date": rd["date"], "round": rd["round"],
+                    "ballot_position": w["pos"], "candidate_votes": w["votes"],
+                    "candidate_name": w["name"], "candidate_last_name": w["last"],
+                    "candidate_first_name": w["first"], "name_source": src})
             out.append({
                 "ags": rd["ags"], "ags_name": rd["name"],
                 "state": STATE, "state_name": STATE_NAME,
@@ -452,10 +751,12 @@ def emit(rounds, appended):
                 "eligible_voters": rd["eligible"], "number_voters": rd["voters"],
                 "valid_votes": rd["valid"], "invalid_votes": rd["invalid"],
                 "turnout": rd["turnout"],
-                "candidate_name": w.get("name", ""),
-                "candidate_last_name": w.get("last", ""),
-                "candidate_first_name": w.get("first", ""),
-                "candidate_gender": rd["gender"] if is_w else "",
+                "candidate_name": "" if withheld else w.get("name", ""),
+                "candidate_last_name": "" if withheld else w.get("last", ""),
+                "candidate_first_name": "" if withheld else w.get("first", ""),
+                # HSL records the elected person's gender on the decisive round;
+                # mark_cycle_winners() carries it to their Hauptwahl row.
+                "candidate_gender": rd["gender"] if is_w else w.get("winner_gender", ""),
                 "candidate_party": w["party"],
                 "candidate_votes": w["votes"], "candidate_voteshare": share,
                 "is_winner": "TRUE" if is_w else "FALSE",
@@ -463,13 +764,19 @@ def emit(rounds, appended):
                 "winner_n_terms": rd["n_terms"] if is_w else "",
                 "winner_n_reelections": rd["n_reelect"] if is_w else "",
                 "source_file": SOURCE,
+                "ballot_position": w["pos"],
+                "pair_id": w["pair_id"], "pair_method": w["pair_method"],
+                "name_source": "" if withheld else src,
+                "name_withheld": "TRUE" if withheld else "FALSE",
+                "flag_decisive_round_missing": "TRUE" if rd.get("no_winner") else "FALSE",
             })
     for r in appended:                      # he_parsed rows the hist file lacks
         out.append({**{k: "" for k in FIELDS},
-                    **{k: r.get(k, "") for k in FIELDS if k in r}})
+                    **{k: r.get(k, "") for k in FIELDS if k in r},
+                    "name_withheld": "FALSE"})
     out.sort(key=lambda x: (x["ags"], str(x["election_date"]), x["round"],
                             int(x["candidate_rank"] or 99)))
-    return out
+    return out, restricted
 
 
 def main():
@@ -529,20 +836,47 @@ def main():
     hs_grafted, hs_skipped = graft_hessenschau(rounds)
     print(f"  candidate names grafted: {hs_grafted} | skipped: {hs_skipped}")
 
-    n_prop = propagate_stichwahl_names(rounds)
-    print(f"  Stichwahl candidate names propagated to their Hauptwahl row: {n_prop}")
+    print("\n--- grafting 1993-2012 candidate names from Hessami (2018) ---")
+    h_stats = graft_hessami(rounds)
+    if h_stats is not None:
+        print(f"  rounds: {h_stats['rounds']} | names grafted: {h_stats['grafted']} | "
+              f"already public: {h_stats['already_public']} | conflicts: "
+              f"{h_stats['conflict_with_public']}")
+        assert h_stats["rounds"] == 1793 and h_stats["conflict_with_public"] == 0, h_stats
+        n_2013 = graft_collected_2013(rounds)
+        print(f"  2013 winner names from collected.dta (validated): {n_2013}")
 
-    out = emit(rounds, appended)
+    print("\n--- runoff pairing (pair_id) ---")
+    p_stats = pair_rounds(rounds, load_pins())
+    print(f"  Stichwahl Wahlvorschläge by method: {dict(sorted(p_stats.items()))}")
+    assert p_stats["unpaired"] == 0 and p_stats["unverified_inference"] == 0, p_stats
+    n_prop = propagate_pair_names(rounds)
+    print(f"  names carried across the two rounds of one person: {n_prop}")
+    n_gender = mark_cycle_winners(rounds)
+    print(f"  runoff winners whose gender is carried to their Hauptwahl row: {n_gender}")
+    failed = mark_failed_rounds(rounds)
+    print(f"  failed single-candidate Ja/Nein Hauptwahlen (no winner): {failed}")
+
+    out, restricted = emit(rounds, appended)
     by_type = Counter(x["election_type"] for x in out)
     named = sum(1 for x in out if x["candidate_name"])
-    print(f"\n  candidate rows: {len(out)} ({named} with a name) | by type: "
-          f"{dict(by_type)}")
+    print(f"\n  candidate rows: {len(out)} ({named} with a public name, "
+          f"{len(restricted)} names withheld) | by type: {dict(by_type)}")
+    # Privacy invariant: a withheld name never reaches the public file.
+    assert all(not (x["name_withheld"] == "TRUE" and x["candidate_name"]) for x in out)
+    assert all(x["is_winner"] == "FALSE" for x in out if x["name_withheld"] == "TRUE")
 
     with open(OUT, "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=FIELDS)
         w.writeheader()
         w.writerows(out)
     print(f"  wrote {len(out)} rows -> {OUT}")
+    if h_stats is not None:
+        with open(OUT_RESTRICTED, "w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=RESTRICTED_FIELDS)
+            w.writeheader()
+            w.writerows(restricted)
+        print(f"  wrote {len(restricted)} withheld names -> {OUT_RESTRICTED} (gitignored)")
 
 
 if __name__ == "__main__":

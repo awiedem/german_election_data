@@ -2017,6 +2017,13 @@ if (length(th_have) > 0) {
           colClasses = list(character = c("ags", "ags_name", "state", "state_name",
             "election_date", "candidate_party", "candidate_name")))))
 
+  # The database writes a named candidate's Wahlvorschlag as "Nachname, Vorname"
+  # or "Nachname, Vorname (Träger)"; winner_party takes the Träger, or NA when
+  # the source gives none -- not the name (known issues §16).
+  source("code/mayoral_elections/th_wahlvorschlag.R")
+  from_db <- th_raw$source == "wahlen.thueringen.de"
+  th_raw$candidate_party[from_db] <- split_th_wahlvorschlag(th_raw$candidate_party[from_db])$party
+
   th_clean <- th_raw %>%
     mutate(election_date = as.Date(election_date),
            election_year = as.integer(election_year)) %>%
@@ -2036,6 +2043,15 @@ if (length(th_have) > 0) {
       winner_votes = as.numeric(candidate_votes),
       winner_voteshare = as.numeric(candidate_voteshare)
     )
+
+  # The elected person of a declined round ("Wahl nicht angenommen") was never
+  # seated, so that round has no winner (see the Thüringen block in 01b).
+  th_declined <- paste(th_raw$ags, th_raw$election_date, th_raw$round)[
+    from_db & grepl("nicht angenommen", th_raw$winner_name_raw)]
+  di <- paste(th_clean$ags, th_clean$election_date, th_clean$round) %in% th_declined
+  th_clean$winner_party[di] <- NA
+  th_clean$winner_votes[di] <- NA
+  th_clean$winner_voteshare[di] <- NA
 
   cat("Thüringen: Processed", nrow(th_clean), "round-results across",
       length(unique(th_clean$election_year)), "years\n")

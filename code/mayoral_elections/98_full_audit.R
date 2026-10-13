@@ -511,6 +511,76 @@ if (file.exists(mpa_f)) {
   }
 }
 
+# G7. Candidate name fields must hold a person's name parts. Three defect
+# classes reached the October-2026 release (reported by the candidate_biographies
+# register linkage) and are fixed in 01b:
+#   - a number as surname: a Niedersachsen votes line with < 100 votes was read
+#     as a new Lfd.-Nr. line, so the percentage became a phantom candidate
+#     (26 rows) and the real candidate above it lost votes, party, birth year;
+#   - a name ending in a comma: the given name was wrapped onto the next line,
+#     pushed into the Beruf field, or clipped in the PDF (5 NI rows);
+#   - a nobility name split after its title: Bayern 2026 "Graf von X Vorname"
+#     came out as surname "Graf", given name "von X Vorname" (5 rows).
+# Calibration: 26 / 5 / 5 on the release of 2026-09-28, 0 / 0 / 0 after the fix.
+num_nm <- mc[grepl("^[0-9 .,%]+$", candidate_last_name) | grepl("^[0-9 .,%]+$", candidate_name)]
+if (nrow(num_nm)) rep("ERROR","cand.name_numeric",
+  sprintf("%d candidate rows whose name is a number (a votes/percentage line read as a candidate)", nrow(num_nm)),
+  num_nm[, .N, .(st = sn[substr(ags,1,2)], election_year)]) else
+  ok("cand.name_numeric","no candidate name is a number")
+comma_nm <- mc[grepl(",\\s*$", candidate_name)]
+if (nrow(comma_nm)) rep("ERROR","cand.name_trailing_comma",
+  sprintf("%d candidate names end in a comma (given name lost)", nrow(comma_nm)),
+  comma_nm[, .(ags, election_date, st = sn[substr(ags,1,2)])]) else
+  ok("cand.name_trailing_comma","no candidate name ends in a comma")
+# The second pass (same month) made the particle check dataset-wide and added the
+# unsplit "Nachname, Vorname" surname. Further splitters had the particle in the
+# given name: BW Komm.ONE "Vorname Graf von X" / "Vorname van X" (6 rows), MV
+# 2001 "X, Vorname, zu" (1); the RLP OB and Landrat sheets have no Vorname
+# column, so "Nachname, Vorname" stayed whole in the surname (201 mayoral + 274
+# Landrat rows), and one Bayern 2026 by-election is written with a comma.
+# Aliases in brackets or quotes ("Hubert (gen. Hubert vom Venn)") are not name
+# parts and are ignored. Lowercase particles, plus the capitalised De/Van/Du of
+# Dutch and Romance surnames; "Vom Wähler vorgeschlagene Personen" (a BW write-in
+# total, not a person) is deliberately not matched.
+# Calibration: 7 / 202 mayoral and 0 / 274 Landrat on f7b021d, 0 after.
+lc_f <- "data/landrat_elections/final/landrat_candidates.rds"
+name_sets <- list(mayoral = mc)
+if (file.exists(lc_f)) name_sets$landrat <- as.data.table(readRDS(lc_f))
+for (nm_set in names(name_sets)) {
+  d <- name_sets[[nm_set]]
+  given <- gsub('"[^"]*"', "", gsub("\\([^()]*(\\([^()]*\\)[^()]*)*\\)", "", d$candidate_first_name))
+  part <- d[grepl("(^|[ ,])(von|vom|zu|zum|zur|van|de|du|der|den|ten|ter|De|Van|Du)( |,|$)|-(von|zu|van|de) ",
+                  given)]
+  if (nrow(part)) rep("ERROR", paste0("cand.particle_split.", nm_set),
+    sprintf("%d %s given names hold a surname particle (surname split at the wrong word)", nrow(part), nm_set),
+    part[, .(ags, election_date, st = sn[substr(ags,1,2)])]) else
+    ok(paste0("cand.particle_split.", nm_set), sprintf("no %s given name holds a surname particle", nm_set))
+  cm <- d[grepl(",", candidate_last_name, fixed = TRUE)]
+  if (nrow(cm)) rep("ERROR", paste0("cand.surname_comma.", nm_set),
+    sprintf("%d %s surnames contain a comma (\"Nachname, Vorname\" not split)", nrow(cm), nm_set),
+    cm[, .N, .(st = sn[substr(ags,1,2)], election_year)]) else
+    ok(paste0("cand.surname_comma.", nm_set), sprintf("no %s surname contains a comma", nm_set))
+}
+
+# G8. Thüringen names its elected persons as the Wahlvorschlag, "Nachname,
+# Vorname (Träger)". Stored whole, the name became the party (and, in the panel,
+# winner_party), with the bracket in the given name (known issues §16). The party
+# must be the Träger or NA, never "Nachname, Vorname". (A list named after its
+# candidate, such as "Wenzl" in Eisenach 2012, is a genuine Träger.)
+# Calibration: 647 candidate rows / 624 panel rows on the release of 2026-10-02, 0 after.
+th <- mc[substr(ags,1,2) == "16" & !is.na(candidate_last_name) & !is.na(candidate_party)]
+th_own <- th[mapply(function(p, l) grepl(paste0(l, ","), p, fixed = TRUE), candidate_party, candidate_last_name)]
+if (nrow(th_own)) rep("ERROR", "cand.th_party_is_name",
+  sprintf("%d Thüringen candidate rows carry their own name as the party", nrow(th_own)),
+  th_own[, .N, .(election_year)]) else
+  ok("cand.th_party_is_name", "no Thüringen candidate carries their own name as the party")
+th_wp <- merge(mp[substr(ags,1,2) == "16" & !is.na(winner_party), .(ags, election_date, winner_party)],
+               th[is_winner %in% TRUE, .(ags, election_date, candidate_last_name)], by = c("ags", "election_date"))
+th_wp <- th_wp[mapply(function(p, l) grepl(paste0(l, ","), p, fixed = TRUE), winner_party, candidate_last_name)]
+if (nrow(th_wp)) rep("ERROR", "panel.th_winner_party_is_name",
+  sprintf("%d Thüringen mayor_panel rows have a person's name as winner_party", nrow(th_wp))) else
+  ok("panel.th_winner_party_is_name", "no Thüringen winner_party is a person's name")
+
 cat("\n========== F. Coverage by state ==========\n")
 print(mu[election_type %in% mtypes, .(elec=uniqueN(paste(ags,election_date)), munis=uniqueN(ags),
         yrs=paste0(min(election_year),"-",max(election_year))), .(st=sn[substr(ags,1,2)])][order(st)])

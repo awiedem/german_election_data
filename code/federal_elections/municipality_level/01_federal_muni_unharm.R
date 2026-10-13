@@ -2728,6 +2728,106 @@ df <- df |>
   dplyr::mutate(state_name = haschaR::state_id_to_names(substr(ags, 1, 2))) |>
   dplyr::relocate(ags, election_year, election_date, ags_name, state_name, state)
 
+# Gemeinden counted inside a neighbour (2021, 2025) ------------------------
+
+# In 2021 and 2025 the Wahlbezirksstatistik counts some small Gemeinden inside
+# a neighbour. The Leitband marks the donor "X (in Y enthalten)" and the
+# receiver "Y (einschl. X, ...)"; a donor either has a result row of zeros or no
+# row at all (then it is named only in its receiver's "einschl." list). In 2021
+# all of VG Altenahr was counted in Altenahr, "zusammengelegt wegen
+# Flutkatastrophe". Until 2026-09 the zero rows were published as a result of 0
+# and the row-less donors were missing. Now every donor is a row with NA counts
+# and shares, and donors and receivers carry flag_pooled = 1, as in the state
+# and European data.
+btw_leitband_gemeinden <- function(year) {
+  f <- sprintf("data/federal_elections/municipality_level/raw/BTW%02d/btw%02d_wbz_leitband.csv",
+               year %% 100, year %% 100)
+  l <- readLines(f, warn = FALSE, encoding = "UTF-8")
+  if (year == 2025) l <- iconv(l, "latin1", "UTF-8")  # the 2025 file is Latin-1
+  l <- gsub('"', "", sub("^﻿", "", l))
+  l <- l[startsWith(l, "60;")]
+  x <- data.table::tstrsplit(l, ";")
+  tibble(ags = paste0(x[[3]], x[[4]], x[[5]], x[[7]]), name = trimws(x[[9]]))
+}
+# The 11 other Gemeinden of VG Altenahr (2021), and two donors that 2021's
+# Rodershausen row lists only in abbreviated form ("Ü.eisenb., Waldh.-Falk.").
+btw_pooled_pinned <- tibble(
+  year = 2021,
+  ags  = c("07131002", "07131011", "07131017", "07131027", "07131029", "07131036",
+           "07131039", "07131040", "07131047", "07131049", "07131068",
+           "07232127", "07232130"),
+  name = c("Ahrbrück", "Berg", "Dernau", "Heckenbach", "Hönningen", "Kalenborn",
+           "Kesseling", "Kirchsahr", "Lind", "Mayschoß", "Rech",
+           "Übereisenbach", "Waldhof-Falkenstein")
+)
+# Gemeinden of each election's own territorial status, to find donors that have
+# no row: 2021 from the 31.12.2021 Gemeindeverzeichnis, 2025 from the 2025 codes.
+btw_universe <- list(
+  "2021" = read_rds("data/covars_municipality/final/ags_area_pop_emp.rds") |>
+    filter(year == 2021, population_ags > 0) |>
+    transmute(ags = ags_21, name = ags_name_21),
+  "2025" = read_rds("data/crosswalks/final/crosswalk_ags_2024_to_2025.rds") |>
+    filter(population > 0) |>
+    distinct(ags = ags_25, name = ags_name_25)
+)
+
+pooled_all <- list()
+for (yr in c(2021, 2025)) {
+  lb <- btw_leitband_gemeinden(yr)
+  present <- df$ags[df$election_year == yr]
+  receivers <- lb |> filter(grepl("einschl", name))
+  listed <- lb |> filter(grepl("enthalten", name))
+  # Every listed donor is a row of zeros; nothing else is.
+  zero_rows <- df$ags[df$election_year == yr & df$eligible_voters == 0]
+  stopifnot(setequal(zero_rows, listed$ags))
+  # Donors without a row: populated Gemeinden of the year that are absent. Each
+  # must be pinned above or named in an "einschl." list of its own Kreis.
+  unlisted <- btw_universe[[as.character(yr)]] |> filter(!ags %in% present)
+  named <- mapply(function(a, n) {
+    stub <- substr(sub(",.*$", "", n), 1, 6)
+    any(startsWith(receivers$ags, substr(a, 1, 5)) & grepl(stub, receivers$name, fixed = TRUE))
+  }, unlisted$ags, unlisted$name)
+  pinned <- btw_pooled_pinned$ags[btw_pooled_pinned$year == yr]
+  if (any(!named & !unlisted$ags %in% pinned)) {
+    print(unlisted[!named & !unlisted$ags %in% pinned, ])
+    stop("BTW ", yr, ": Gemeinden without a result that no receiver names")
+  }
+  stopifnot(all(pinned %in% unlisted$ags))
+  pooled_all[[as.character(yr)]] <- bind_rows(
+    tibble(election_year = yr, ags = listed$ags, role = "donor_listed"),
+    tibble(election_year = yr, ags = unlisted$ags, role = "donor_unlisted"),
+    tibble(election_year = yr, ags = receivers$ags, role = "receiver")
+  )
+  cat(sprintf("BTW %d: %d donors with a zero row, %d without a row, %d receivers\n",
+              yr, nrow(listed), nrow(unlisted), nrow(receivers)))
+}
+pooled_all <- bind_rows(pooled_all)
+
+# Donor rows: NA instead of zeros, and added where the source has none. The
+# Gemeinde's area/population and its mail-in district indicators stay;
+# everything describing the vote goes NA.
+count_share_cols <- setdiff(
+  names(df)[vapply(df, is.numeric, logical(1))],
+  c("election_year", "pop", "area", "pop_weight", "area_weight", "voters_weight",
+    "blocked_weight", "unique_mailin", "unique_multi_mailin")
+)
+donor_key <- paste(pooled_all$election_year, pooled_all$ags)[startsWith(pooled_all$role, "donor")]
+is_donor <- paste(df$election_year, df$ags) %in% donor_key
+df[is_donor, count_share_cols] <- NA
+missing_donors <- pooled_all |> filter(role == "donor_unlisted")
+df <- bind_rows(
+  df,
+  missing_donors |>
+    transmute(ags, election_year = as.numeric(election_year),
+              election_date = lubridate::ymd(ifelse(election_year == 2021, "2021-09-26", "2025-02-23")),
+              state = substr(ags, 1, 2), county = substr(ags, 1, 5)) |>
+    left_join(ags21_name_lookup, by = "ags") |>
+    mutate(state_name = haschaR::state_id_to_names(state))
+) |>
+  mutate(flag_pooled = as.integer(paste(election_year, ags) %in% paste(pooled_all$election_year, pooled_all$ags))) |>
+  arrange(election_year, ags)
+stopifnot(!anyDuplicated(paste(df$election_year, df$ags)))
+
 # Diagnosis ---------------------------------------------------------------
 
 # diagnose_web_report(df)
@@ -2749,6 +2849,8 @@ df <- read_rds("data/federal_elections/municipality_level/final/federal_muni_unh
 
 # number of ags with unique_mailin == 0 in each election
 n_joint <- df |>
+  # donors without a source row (flag_pooled, 2021/2025) carry no mail-in data
+  dplyr::filter(!(flag_pooled == 1 & is.na(unique_mailin))) |>
   group_by(election_year) |>
   summarise(
     n = n_distinct(ags),

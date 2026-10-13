@@ -209,7 +209,14 @@ standardise_candidates <- function(dt) {
     # step at the end of this script keys on it — without it, "no candidate
     # flagged" is read as "the source is silent" and the leader of an
     # inconclusive Hauptwahl gets crowned.
-    "flag_decisive_round_missing"
+    "flag_decisive_round_missing",
+    # INTERNAL, never published. `pair_key`: a Stage-0 parser's explicit link
+    # between a Stichwahl candidate and the same person's Hauptwahl row; when
+    # set it outranks the name/party/rank match key in the wide pivot (Hessen,
+    # 00_he_hist_parse.py). `name_restricted`: the name came from a source we
+    # publish only for elected persons (Hessen losers named by Hessami 2018);
+    # it is kept in the restricted twin and stripped from the public file.
+    "pair_key", "name_restricted"
   )
 
   # Add missing columns as NA
@@ -248,7 +255,9 @@ standardise_candidates <- function(dt) {
       is_winner = as.logical(is_winner),
       flag_superseded = as.logical(flag_superseded),
       flag_shared_ags = as.logical(flag_shared_ags),
-      flag_decisive_round_missing = as.logical(flag_decisive_round_missing)
+      flag_decisive_round_missing = as.logical(flag_decisive_round_missing),
+      pair_key = na_if_blank(pair_key),
+      name_restricted = dplyr::coalesce(as.logical(name_restricted), FALSE)
     ) %>%
     select(all_of(output_cols))
 
@@ -1071,8 +1080,18 @@ process_rlp_candidates <- function(rlp_file, sheet_name, sheet_type) {
                                 NA_character_)
       } else {
         kandidat_name <- as.character(row[[col_kandidat]])
-        nachname <- kandidat_name
-        vorname <- NA_character_
+        # The OB sheet has no Vorname column but writes "Nachname, Vorname" in
+        # the one name cell. Copied whole into the surname, all 201 OB candidate
+        # rows had no first name (so 136 had no gender either), and particle
+        # surnames came out as "van X, Vorname". Split at the comma; titles
+        # come off the parts only (candidate_name keeps the source string).
+        if (!is.na(kandidat_name) && grepl(",", kandidat_name, fixed = TRUE)) {
+          nachname <- strip_name_titles(sub(",.*$", "", kandidat_name))
+          vorname <- strip_name_titles(sub("^[^,]*,", "", kandidat_name))
+        } else {
+          nachname <- kandidat_name
+          vorname <- NA_character_
+        }
       }
 
       geschlecht <- if (!is.na(col_geschlecht) && col_geschlecht <= ncol(row)) {
@@ -1322,11 +1341,17 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
     # Find candidate block start lines: "^\s+\d+\s+\S" (number followed by name)
     # Exclude lines that start with year-like 4-digit numbers (birth year lines)
     # and lines containing "Wahlberechtigte", "Wähler", etc.
+    # The text after the Lfd.-Nr. must NOT start with a digit: a candidate who
+    # polled fewer than 100 votes has a votes line ("      75       4.4") that
+    # otherwise reads as Lfd.-Nr. 75 followed by a name. That line became a
+    # candidate called "4.4" (2006: "13,8") who took the real candidate's birth
+    # year and party, while the real candidate above it lost votes, party and
+    # birth year — 26 phantom rows in 20 NI elections until October 2026.
     cand_start_indices <- c()
     for (idx in seq_along(page_lines)) {
       l <- page_lines[idx]
       # Match: leading spaces, then a 1-2 digit number, then spaces, then text (name)
-      if (grepl("^\\s{2,}\\d{1,2}\\s{2,}\\S", l) &&
+      if (grepl("^\\s{2,}\\d{1,2}\\s{2,}[^\\s0-9]", l, perl = TRUE) &&
           !grepl("Wahlberechtigte|Wähler|Ungültige|Gültige|Wahlbeteiligung|Zusammen|Bewerberin|Lfd|Geburtsjahr|Partei", l)) {
         cand_start_indices <- c(cand_start_indices, idx)
       }
@@ -1387,6 +1412,37 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
       if (grepl("-$", cand_name) && ci + 1 <= length(page_lines)) {
         cont <- str_trim(page_lines[ci + 1])
         if (grepl("^[A-Za-zÄÖÜäöüß.'-]+$", cont)) cand_name <- paste0(cand_name, cont)
+      }
+      # Comma-wrapped name: the 2006 long-name layout breaks after the comma and
+      # puts the given name on the line BELOW the Lfd.-Nr. line, in the name
+      # column ("Doppel-Nachname," / "Vorname"). Reading only the line above
+      # published four candidates with no first name. The given name must sit
+      # left of the Beruf column, so a wrapped Beruf is never taken for it.
+      if (grepl(",$", cand_name) && ci + 1 <= length(page_lines)) {
+        cont_raw <- page_lines[ci + 1]
+        cont <- str_trim(cont_raw)
+        cont_col <- regexpr("[^ ]", cont_raw)[1]
+        prof_col <- if (!is.na(profession)) regexpr(profession, name_line, fixed = TRUE)[1] else -1L
+        if (grepl("^[A-Za-zÄÖÜäöüßé.' -]+$", cont) && cont_col > 0 &&
+            (prof_col < 0 || cont_col < prof_col)) {
+          cand_name <- paste(cand_name, cont)
+        }
+      }
+      # A name cell can also be CLIPPED in the PDF itself: Ilsede 2021 prints
+      # only "Surname," and pdf_data() holds no given name on the line. The page
+      # header names the elected person and the runoff pair in full, as
+      # "<Vorname> <Name>, <Wahlvorschlag>" (post-2006 layout only — 2006 prints
+      # "Herr/Frau <Name>, <Vorname>"), so take the given name from there when
+      # exactly one header entry ends in this surname.
+      if (grepl(",$", cand_name) && !german_nums) {
+        sur <- str_trim(sub(",$", "", cand_name))
+        hdr_end <- which(grepl("Wahlberechtigte", page_lines))[1]
+        hdr <- if (!is.na(hdr_end) && hdr_end > 1) str_squish(paste(page_lines[seq_len(hdr_end - 1)], collapse = " ")) else ""
+        hm <- str_match_all(hdr, paste0("(?:gelten:|zwischen|\\bund)\\s+([\\p{L}.' -]+?)\\s+\\Q",
+                                        sur, "\\E\\s*,"))[[1]]
+        given <- unique(str_trim(hm[, 2]))
+        given <- given[!grepl("^(Herr|Frau)$", given)]
+        if (length(given) == 1) cand_name <- paste(cand_name, given)
       }
 
       # Parse name into last, first
@@ -1740,6 +1796,17 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
       profession <- str_trim(nm[3])
       vote_str <- gsub("\\.", "", nm[4])
       votes <- as.numeric(vote_str)
+      # Three or more spaces after the comma ("Nachname,   Dr. Vorname",
+      # Langenhagen 2006) end the lazy name group at the comma, so the given
+      # name leads the Beruf field. Move it back: otherwise the runoff row has
+      # no first name and no longer pairs with the same person's Hauptwahl row.
+      if (grepl(",$", cand_name)) {
+        pf <- str_split(profession, "\\s{3,}", n = 2)[[1]]
+        if (length(pf) == 2) {
+          cand_name <- paste(cand_name, pf[1])
+          profession <- str_trim(pf[2])
+        }
+      }
 
       name_parts <- str_split(cand_name, ",\\s*")[[1]]
       last_name <- str_trim(name_parts[1])
@@ -2368,8 +2435,8 @@ if (file.exists(mv_file)) {
 # from wahlen.thueringen.de) + th_ob_parsed.csv (kreisfreie-Stadt OB from raw
 # files). Candidate names are mostly redacted (§50 ThürKWO) so candidate_party
 # carries the Wahlvorschlag (party / Einzelbewerber label); candidate_name is
-# populated only where the Wahlvorschlag is itself a person name (and for the
-# OB Info files 2006-2024, which list named candidates).
+# populated only where the Wahlvorschlag names a person (and for the OB Info
+# files 2006-2024, which list named candidates). See th_wahlvorschlag.R.
 
 cat("\n=== Processing Thüringen mayoral elections (BM + OB) ===\n")
 
@@ -2382,6 +2449,28 @@ if (length(th_have) > 0) {
     fread(f, encoding = "UTF-8",
           colClasses = list(character = c("ags", "ags_name", "state", "state_name",
             "election_date", "candidate_party", "candidate_name")))))
+
+  # The database writes a named candidate's Wahlvorschlag as "Nachname, Vorname"
+  # or "Nachname, Vorname (Träger)", and 00_th_scrape.py copied that string into
+  # both candidate_name and candidate_party. Split it: the name without the
+  # bracket, the Träger as the party (NA when the source gives none). Joint lists
+  # such as "SPD, CDU, UWS" are not names (known issues §16).
+  source("code/mayoral_elections/th_wahlvorschlag.R")
+  from_db <- th_raw$source == "wahlen.thueringen.de"
+  th_wv <- split_th_wahlvorschlag(th_raw$candidate_party[from_db])
+  th_raw$candidate_name[from_db] <- ifelse(th_wv$person, th_wv$name, "")
+  th_raw$candidate_party[from_db] <- th_wv$party
+
+  # A round whose elected person declined ("Wahl nicht angenommen; Neuwahlen
+  # erforderlich": 16077047, Stichwahl 2026-03-15) seated nobody, like the failed
+  # Hessen Ja/Nein votes. Flag it and the Hauptwahl of its cycle (within 60 days
+  # before) so the winner repair below leaves the cycle without a winner.
+  th_raw$flag_decisive_round_missing <- FALSE
+  for (i in which(from_db & grepl("nicht angenommen", th_raw$winner_name_raw))) {
+    d <- as.Date(th_raw$election_date[i])
+    th_raw$flag_decisive_round_missing[th_raw$ags == th_raw$ags[i] &
+      as.Date(th_raw$election_date) <= d & as.Date(th_raw$election_date) >= d - 60] <- TRUE
+  }
 
   th_candidates <- th_raw %>%
     mutate(
@@ -2401,12 +2490,16 @@ if (length(th_have) > 0) {
     ) %>%
     ungroup() %>%
     mutate(
-      # Names are usually "Last, First" (OB Info files; Einzelbewerber Wahlvorschläge).
+      # Names are "Last, First" (OB Info files; named Wahlvorschläge, split above).
       # Most BM candidate_name is NA (redacted by §50 ThürKWO) -> no person tracking.
+      # Academic titles leave the surname; candidate_name keeps the source string.
       candidate_last_name = ifelse(grepl(",", candidate_name),
-                                   trimws(sub(",.*$", "", candidate_name)), NA_character_),
+                                   trimws(sub("^((Dr|Prof)\\.( [a-z]+\\.)* )+", "",
+                                              sub(",.*$", "", candidate_name))), NA_character_),
+      # The OB Info files write "Name, Vorname, Dr." -- the title leaves the given name.
       candidate_first_name = ifelse(grepl(",", candidate_name),
-                                    trimws(sub("^[^,]*,\\s*", "", candidate_name)), NA_character_),
+                                    trimws(sub(",\\s*((Dr|Prof)\\.[^,]*)$", "",
+                                               sub("^[^,]*,\\s*", "", candidate_name))), NA_character_),
       candidate_gender = NA_character_, candidate_birth_year = NA_real_,
       candidate_profession = NA_character_, office_type = NA_character_
     ) %>%
@@ -2416,7 +2509,8 @@ if (length(th_have) > 0) {
       invalid_votes, turnout, candidate_name, candidate_last_name,
       candidate_first_name, candidate_gender, candidate_party,
       candidate_votes, candidate_voteshare, candidate_birth_year,
-      candidate_profession, office_type, n_candidates, candidate_rank, is_winner
+      candidate_profession, office_type, n_candidates, candidate_rank, is_winner,
+      flag_decisive_round_missing
     )
 
   th_clean <- standardise_candidates(th_candidates)
@@ -2555,6 +2649,35 @@ if (file.exists(bw_file)) {
       filter(tok_match(.sl, .sf, .cn)) %>%
       distinct(ags, election_date, candidate_name, .keep_all = TRUE) %>%
       select(ags, election_date, candidate_name, .graft_gender, .graft_birth)
+    # The register also settles the SURNAME of an elected candidate, which the
+    # Komm.ONE string "Vorname Nachname" cannot: a two-word surname without a
+    # particle ("Vorname A B"), a compound in front of a particle ("Vorname A von
+    # B") and a cell written "Nachname Vorname" (08127089, 2023) are all split
+    # wrongly by any rule. Where the register surname differs from the Stage-0
+    # split and occurs verbatim in candidate_name, take it, and the rest of the
+    # string (titles removed) as the given name. Matching as for the graft above.
+    reg_split <- bk %>%
+      transmute(ags, election_date, candidate_name, .cn = norm_tok(candidate_name),
+                .split_last = norm_tok(candidate_last_name)) %>%
+      inner_join(bw_stala %>%
+                   filter(!is.na(candidate_last_name)) %>%
+                   transmute(ags, election_date, .reg_last = candidate_last_name,
+                             .sl = norm_tok(candidate_last_name),
+                             .sf = sub(" .*", "", norm_tok(candidate_first_name))) %>%
+                   distinct(ags, election_date, .sl, .sf, .keep_all = TRUE),
+                 by = c("ags", "election_date"), relationship = "many-to-many") %>%
+      filter(tok_match(.sl, .sf, .cn), .split_last != .sl,
+             str_detect(candidate_name, fixed(.reg_last))) %>%
+      distinct(ags, election_date, candidate_name, .keep_all = TRUE) %>%
+      transmute(ags, election_date, candidate_name, .reg_last,
+                .reg_first = strip_name_titles(str_squish(str_remove(candidate_name, fixed(.reg_last)))))
+    bk <- bk %>%
+      left_join(reg_split, by = c("ags", "election_date", "candidate_name")) %>%
+      mutate(candidate_last_name = coalesce(.reg_last, candidate_last_name),
+             candidate_first_name = if_else(!is.na(.reg_last), .reg_first, candidate_first_name))
+    cat(sprintf("  register surname replaced the Komm.ONE split for %d candidate rows\n",
+                sum(!is.na(bk$.reg_last))))
+
     bk <- bk %>%
       left_join(graft, by = c("ags", "election_date", "candidate_name")) %>%
       mutate(
@@ -2805,7 +2928,7 @@ if (file.exists(st_stala_file)) {
     # Gemeinden share one AGS on one day (flag_shared_ags). Without ags_name the
     # second Gemeinde's ELECTED MAYOR was ranked against the other Gemeinde's
     # candidates, demoted to a loser, and then stripped of his name by
-    # anonymise_st_losers() — three real mayors erased from the person record
+    # anonymise_losers() — three real mayors erased from the person record
     # (Blaha/Heideloh, Feuerborn/Cosa, Blankau/Dannefeld). The name is used ONLY
     # where the source flags the AGS as shared: the StaLA and portal files spell
     # five Gemeinde names differently, so an unconditional ags_name key would
@@ -2824,7 +2947,7 @@ if (file.exists(st_stala_file)) {
       # winner's birth year (2,330 winner rows). Blanking them here threw the
       # gender away and forced 04_*.R to PREDICT it from the first name, which
       # both mislabels people (8 verified disagreements with the register) and
-      # leaves 307 ST winners genderless. anonymise_st_losers() further down
+      # leaves 307 ST winners genderless. anonymise_losers() further down
       # still strips both for non-winners, so the licence position is unchanged.
       candidate_gender = recode_gender(candidate_gender),
       candidate_birth_year = ifelse(is_winner %in% TRUE,
@@ -2880,7 +3003,35 @@ if (file.exists(he_file)) {
                   colClasses = list(character = c("ags", "ags_name", "state",
                     "state_name", "election_date", "candidate_party",
                     "candidate_name", "candidate_last_name",
-                    "candidate_first_name", "candidate_gender", "round")))
+                    "candidate_first_name", "candidate_gender", "round",
+                    "pair_id", "pair_method", "name_source", "name_withheld",
+                    "flag_decisive_round_missing")))
+  for (cl in c("pair_id", "name_withheld", "ballot_position",
+               "flag_decisive_round_missing")) {
+    if (!cl %in% names(he_raw)) he_raw[[cl]] <- NA   # snapshot-only fallback file
+  }
+
+  # Names of Hessen LOSING candidates 1993-2012 (Hessami 2018) are not in the
+  # public intermediate; 00_he_hist_parse.py writes them to a gitignored side
+  # file. Join them here so the wide pivot and the restricted twin see them;
+  # `name_restricted` makes the anonymisation step below strip them again from
+  # the published file. Without the side file the public pipeline is unchanged.
+  he_restricted_file <- "data/mayoral_elections/raw/hessen/he_hist_restricted_names.csv"
+  he_raw[, name_restricted := FALSE]
+  if (file.exists(he_restricted_file)) {
+    he_rn <- fread(he_restricted_file, encoding = "UTF-8",
+                   colClasses = list(character = c("ags", "election_date", "round",
+                     "candidate_name", "candidate_last_name", "candidate_first_name")))
+    he_raw[, ballot_position := as.integer(ballot_position)]
+    he_raw[he_rn, on = .(ags, election_date, round, ballot_position),
+           `:=`(candidate_name = i.candidate_name,
+                candidate_last_name = i.candidate_last_name,
+                candidate_first_name = i.candidate_first_name,
+                name_restricted = TRUE)]
+    stopifnot(sum(he_raw$name_restricted) == nrow(he_rn),
+              all(he_raw$name_restricted == (he_raw$name_withheld %in% "TRUE")))
+    cat("Hessen: joined", nrow(he_rn), "withheld (restricted-only) candidate names\n")
+  }
 
   he_candidates <- he_raw %>%
     mutate(
@@ -2895,6 +3046,15 @@ if (file.exists(he_file)) {
       # fallback rows (~57 units the XLSX omits) have no n_candidates (NA).
       n_candidates = suppressWarnings(as.integer(n_candidates)),
       candidate_gender = if_else(nzchar(candidate_gender), candidate_gender, NA_character_),
+      # Titles stay in candidate_name (verbatim) but not in the split parts; the
+      # public snapshots disagree on where "Dr." goes (cleanup, October 2026).
+      candidate_last_name = strip_name_titles(candidate_last_name),
+      candidate_first_name = strip_name_titles(candidate_first_name),
+      pair_key = na_if_blank(pair_id),
+      # a sole candidate who failed the Ja/Nein vote seated nobody (Driedorf
+      # 2016-03-06, Morschen 2022-03-06; a Neuwahl followed) — see
+      # flag_decisive_round_missing in standardise_candidates()
+      flag_decisive_round_missing = flag_decisive_round_missing %in% "TRUE",
       candidate_birth_year = NA_real_,
       candidate_profession = NA_character_,
       office_type = case_when(
@@ -2908,7 +3068,8 @@ if (file.exists(he_file)) {
       invalid_votes, turnout, candidate_name, candidate_last_name,
       candidate_first_name, candidate_gender, candidate_party,
       candidate_votes, candidate_voteshare, candidate_birth_year,
-      candidate_profession, office_type, n_candidates, candidate_rank, is_winner
+      candidate_profession, office_type, n_candidates, candidate_rank, is_winner,
+      pair_key, name_restricted, flag_decisive_round_missing
     )
 
   he_clean <- standardise_candidates(he_candidates)
@@ -2935,11 +3096,62 @@ cat("\n=== Processing Bayern Kommunalwahl 2026 ===\n")
 
 by26_file <- "data/mayoral_elections/raw/bayern/by2026_parsed.csv"
 
+# Bayern Mandatsträger names are "Lastname Firstname" with no comma, so the
+# surname is normally the first token. A nobility name breaks that rule: the
+# title and the particle are part of the surname ("Graf von X Firstname",
+# "Freifrau A von X Firstname", "Gräfin A-von B Firstname"), and splitting
+# after the first token published "Graf" as the surname and "von X Firstname"
+# as the given name. When a particle is present the surname therefore runs to
+# the token AFTER the last particle, provided a given name is left over and that
+# token is not an academic title ("X von Dr. Firstname" is the sorted
+# form of "von X" and keeps the particle as the last surname token).
+# Names without a particle are split exactly as before.
+# Two more cases the first-token rule gets wrong:
+#   - an entry written "Nachname, Vorname" (a later by-election, 09171114
+#     2026-05-17) is split at the comma;
+#   - a two-word surname with no particle or hyphen ("A B Firstname") looks
+#     exactly like "Surname Firstname Secondname", so no rule can decide it.
+#     Those are pinned, each against a public source, in
+#     data/mayoral_elections/metadata/candidate_name_splits_verified.csv, keyed
+#     on (ags, verbatim name); a pin that no longer matches the source stops the
+#     run instead of going stale silently.
+by26_particles <- c("von", "vom", "zu", "zum", "zur", "van", "de", "der", "den")
+name_pins_file <- "data/mayoral_elections/metadata/candidate_name_splits_verified.csv"
+name_pins <- fread(name_pins_file, encoding = "UTF-8", colClasses = "character")
+split_by26_name <- function(x) {
+  out <- matrix(NA_character_, length(x), 2)
+  for (i in seq_along(x)) {
+    if (is.na(x[i])) next
+    if (grepl(",", x[i], fixed = TRUE)) {
+      out[i, ] <- trimws(c(sub(",.*$", "", x[i]), sub("^[^,]*,", "", x[i])))
+      next
+    }
+    toks <- strsplit(trimws(x[i]), "\\s+")[[1]]
+    is_p <- tolower(toks) %in% by26_particles |
+      grepl("-(von|vom|zu|zum|zur|van|de)$", toks, ignore.case = TRUE)
+    p <- max(c(0L, which(is_p)))
+    if (p == 0L) {
+      out[i, ] <- c(sub("^(\\S+).*$", "\\1", x[i]), trimws(sub("^\\S+\\s*", "", x[i])))
+      next
+    }
+    k <- if (p + 2L <= length(toks) && !grepl("^(Dr|Prof)\\.", toks[p + 1L])) p + 1L else p
+    out[i, ] <- c(paste(toks[seq_len(k)], collapse = " "),
+                  paste(toks[-seq_len(k)], collapse = " "))
+  }
+  out
+}
+
 if (file.exists(by26_file)) {
   by26_raw <- fread(by26_file, encoding = "UTF-8",
                     colClasses = list(character = c("ags", "ags_name", "state",
                       "state_name", "election_date", "candidate_party",
                       "candidate_name", "round")))
+  by_pins <- name_pins[state == "09"]
+  stale_pins <- by_pins[!paste(ags, candidate_name) %in% paste(by26_raw$ags, by26_raw$candidate_name)]
+  if (nrow(stale_pins) > 0) {
+    stop("Bayern 2026 name pin(s) no longer match the source: ",
+         paste(stale_pins$ags, collapse = ", "), " (", name_pins_file, ")")
+  }
 
   by26_candidates <- by26_raw %>%
     mutate(
@@ -2953,11 +3165,13 @@ if (file.exists(by26_file)) {
       candidate_rank = as.integer(candidate_rank),
       n_candidates = as.integer(n_candidates),
       candidate_name = if_else(nzchar(candidate_name), candidate_name, NA_character_),
-      # Bayern Mandatsträger names are "Lastname Firstname" (no comma).
-      candidate_last_name = if_else(!is.na(candidate_name),
-                                    sub("^(\\S+).*$", "\\1", candidate_name), NA_character_),
-      candidate_first_name = if_else(!is.na(candidate_name),
-                                     trimws(sub("^\\S+\\s*", "", candidate_name)), NA_character_),
+      # Bayern Mandatsträger names are "Lastname Firstname" (no comma); see
+      # split_by26_name() above for surnames with a nobility particle.
+      candidate_last_name = split_by26_name(candidate_name)[, 1],
+      candidate_first_name = split_by26_name(candidate_name)[, 2],
+      .pin = match(paste(ags, candidate_name), paste(by_pins$ags, by_pins$candidate_name)),
+      candidate_last_name = if_else(!is.na(.pin), by_pins$candidate_last_name[.pin], candidate_last_name),
+      candidate_first_name = if_else(!is.na(.pin), by_pins$candidate_first_name[.pin], candidate_first_name),
       candidate_gender = if_else(nzchar(candidate_gender), candidate_gender, NA_character_),
       candidate_party = if_else(nzchar(candidate_party), candidate_party, NA_character_),
       candidate_profession = NA_character_,
@@ -3081,7 +3295,10 @@ mayoral_candidates <- bind_rows(all_candidate_data) %>%
     # for every other source, absence of the flag means "as far as we know the
     # deciding round is here".
     flag_decisive_round_missing =
-      dplyr::coalesce(as.logical(flag_decisive_round_missing), FALSE)
+      dplyr::coalesce(as.logical(flag_decisive_round_missing), FALSE),
+    # internal (see standardise_candidates); FALSE for every block that does
+    # not set them
+    name_restricted = dplyr::coalesce(as.logical(name_restricted), FALSE)
   )
 
 # ============================================================================
@@ -3172,6 +3389,9 @@ add_match_key <- function(df) {
   df %>%
     mutate(
       match_key = case_when(
+        # an explicit Stage-0 link wins (Hessen: runoff names are often redacted
+        # and several Wahlvorschläge share the label "Einzelbewerbung")
+        !is.na(pair_key)        ~ paste0("__pair__", pair_key),
         !is.na(candidate_name)  ~ normalise_match_key(candidate_name),
         !is.na(candidate_party) ~ paste0("__party__", normalise_match_key(candidate_party)),
         TRUE ~ paste0("__rank__", candidate_rank)
@@ -3301,6 +3521,9 @@ first_non_na <- function(x) {
 hw_election_stats <- hw_rows %>%
   group_by(ags, election_date) %>%
   summarise(
+    # the cycle's year is the Hauptwahl's: a runoff in January otherwise filed
+    # the runoff-only row under the next year (Beselich 06533001 2009/2010)
+    hw_election_year   = min(election_year),
     hw_eligible_voters = first_non_na(eligible_voters),
     hw_number_voters   = first_non_na(number_voters),
     hw_valid_votes     = first_non_na(valid_votes),
@@ -3317,6 +3540,7 @@ if (nrow(sw_only) > 0) {
     mutate(
       election_date_sw = election_date,
       election_date = hw_date,
+      election_year = dplyr::coalesce(hw_election_year, election_year),
       has_stichwahl = TRUE,
       candidate_votes_sw = candidate_votes,
       candidate_voteshare_sw = candidate_voteshare,
@@ -3337,7 +3561,7 @@ if (nrow(sw_only) > 0) {
     ) %>%
     select(-match_key, -round, -hw_date,
            -candidate_votes, -candidate_voteshare,
-           -candidate_rank, -n_candidates,
+           -candidate_rank, -n_candidates, -hw_election_year,
            -hw_eligible_voters, -hw_number_voters, -hw_valid_votes,
            -hw_invalid_votes, -hw_turnout)
   wide <- bind_rows(wide, sw_only_wide)
@@ -3393,7 +3617,8 @@ mayoral_candidates <- wide %>%
     candidate_votes_sw, candidate_voteshare_sw, candidate_rank_sw,
     n_candidates_sw,
     is_winner, flag_superseded, flag_shared_ags, flag_decisive_round_missing,
-    candidate_birth_year, candidate_profession, office_type
+    candidate_birth_year, candidate_profession, office_type,
+    name_restricted   # internal; dropped after the anonymisation below
   )
 
 # Enforce exactly ONE is_winner per election. The HW<->SW candidate matching can
@@ -3562,6 +3787,8 @@ if (any(lr_misfiled)) {
 # keep landrat_candidates byte-identical to before.
 landrat_candidates <- mayoral_candidates %>% filter(election_type == "Landratswahl") %>%
   select(-flag_superseded, -flag_shared_ags, -flag_decisive_round_missing)
+stopifnot(!any(landrat_candidates$name_restricted))   # Hessami names no Landräte
+landrat_candidates <- landrat_candidates %>% select(-name_restricted)
 mayoral_candidates <- mayoral_candidates %>% filter(election_type %in% mayoral_types)
 
 cat("\nDataset split:\n")
@@ -3569,7 +3796,7 @@ cat("  mayoral_candidates:", nrow(mayoral_candidates), "rows\n")
 cat("  landrat_candidates:", nrow(landrat_candidates), "rows\n")
 
 # ============================================================================
-# ANONYMISATION — Sachsen-Anhalt (state 15)
+# ANONYMISATION — Sachsen-Anhalt (state 15) and Thüringen (16)
 # ============================================================================
 # The Statistisches Landesamt Sachsen-Anhalt supplies its Bürgermeisterwahlen
 # data with full candidate names for SCIENTIFIC USE ONLY. Only anonymised data
@@ -3587,20 +3814,28 @@ cat("  landrat_candidates:", nrow(landrat_candidates), "rows\n")
 # candidate name. Downstream, 04_candidate_characteristics.R derives gender and
 # name-origin FROM the name, so stripping here also keeps those NA for losers
 # (matching Bayern, whose losers are NA throughout).
+#
+# Thüringen (16) follows the same rule (decision of 2026-10-03). Its Landesamt
+# names every candidate of a recent election but withdraws the losers' names
+# after a period (§ 50 Abs. 2 ThürKWO: "nicht mehr möglich"), naming only the
+# elected person from then on. The official OB and Landrat files name losers
+# too. GERDA publishes the elected person and keeps the others in the
+# restricted twin.
+withheld_loser_states <- c("15", "16")   # Sachsen-Anhalt, Thüringen
 st_personal_cols <- c("candidate_name", "candidate_last_name",
                       "candidate_first_name", "candidate_title",
                       "candidate_gender", "candidate_birth_year",
                       "candidate_profession")
 
-anonymise_st_losers <- function(df, label) {
+anonymise_losers <- function(df, label) {
   if (!all(c("ags", "is_winner") %in% names(df)) || !nrow(df)) return(df)
-  idx <- substr(as.character(df$ags), 1, 2) == "15" & !(df$is_winner %in% TRUE)
+  idx <- substr(as.character(df$ags), 1, 2) %in% withheld_loser_states & !(df$is_winner %in% TRUE)
   n_before <- sum(idx & !is.na(df$candidate_last_name) &
                     nzchar(trimws(as.character(df$candidate_last_name))))
   for (cl in intersect(st_personal_cols, names(df))) {
     df[[cl]][idx] <- NA
   }
-  cat("  ", label, ": anonymised ", sum(idx), " ST non-winner rows (",
+  cat("  ", label, ": anonymised ", sum(idx), " ST/TH non-winner rows (",
       n_before, " carried a name)\n", sep = "")
   df
 }
@@ -3618,22 +3853,39 @@ write_restricted_candidates <- function(df, dir, stem) {
   write_rds(df, file.path(dir, paste0(stem, ".rds")), compress = "gz")
   fwrite(df, file.path(dir, paste0(stem, ".csv")))
   cat("  ", file.path(dir, stem), ".{rds,csv}: ", nrow(df), " rows (",
-      sum(substr(as.character(df$ags), 1, 2) == "15" &
+      sum(substr(as.character(df$ags), 1, 2) %in% withheld_loser_states &
             !(df$is_winner %in% TRUE) & !is.na(df$candidate_last_name)),
-      " named ST non-winners retained)\n", sep = "")
+      " named ST/TH non-winners retained)\n", sep = "")
 }
 
+# ---- Hessen: names published for elected persons only ----------------------
+# Hessami (2018, CC0) names every candidate 1993-2012. Losing candidates are
+# private individuals, so GERDA publishes the elected person's name and keeps the
+# others in the restricted twin, as for Sachsen-Anhalt (decision of 2026-10-01).
+# `name_restricted` marks the rows whose name came only from that source; it is
+# set in the HE block above and never published.
+anonymise_restricted_names <- function(df, label) {
+  idx <- df$name_restricted %in% TRUE & !(df$is_winner %in% TRUE)
+  for (cl in intersect(st_personal_cols, names(df))) df[[cl]][idx] <- NA
+  cat("  ", label, ": withheld ", sum(idx), " restricted-source names (Hessen ",
+      "non-winners named by Hessami 2018)\n", sep = "")
+  df
+}
+stopifnot(!any(mayoral_candidates$name_restricted & mayoral_candidates$is_winner %in% TRUE))
+
 cat("\n=== Writing RESTRICTED (un-anonymised) candidate twins ===\n")
-write_restricted_candidates(mayoral_candidates,
+write_restricted_candidates(mayoral_candidates %>% select(-name_restricted),
                             "data/mayoral_elections/final_restricted",
                             "mayoral_candidates_restricted")
 write_restricted_candidates(landrat_candidates,
                             "data/landrat_elections/final_restricted",
                             "landrat_candidates_restricted")
 
-cat("\n=== Anonymising Sachsen-Anhalt losing candidates (StaLA licence) ===\n")
-mayoral_candidates <- anonymise_st_losers(mayoral_candidates, "mayoral_candidates")
-landrat_candidates <- anonymise_st_losers(landrat_candidates, "landrat_candidates")
+cat("\n=== Anonymising Sachsen-Anhalt and Thüringen losing candidates ===\n")
+mayoral_candidates <- anonymise_losers(mayoral_candidates, "mayoral_candidates")
+landrat_candidates <- anonymise_losers(landrat_candidates, "landrat_candidates")
+mayoral_candidates <- anonymise_restricted_names(mayoral_candidates, "mayoral_candidates") %>%
+  select(-name_restricted)
 
 # ============================================================================
 # SAVE DATA

@@ -129,6 +129,17 @@ df <- gerda_read_election_source("data/municipal_elections/final/municipal_unhar
       (str_sub(ags, 1, 2) == "07" & election_year %in% rp_pre1990_years)
   )
 
+# joint lists credited to a party in the harmonised files only (Potsdam 2014
+# CDU/ANW, Frankfurt (Oder) 2014 Greens); see
+# code/municipality_elections/harm_joint_list_credits.R
+source("code/municipality_elections/harm_joint_list_credits.R")
+df <- apply_joint_list_credits(df)
+
+# flag_majority_vote is 1/0 in Thüringen and Rheinland-Pfalz and NA elsewhere
+# (source does not say); a target is 1 if any predecessor voted by Mehrheitswahl.
+# max(na.rm = TRUE) would turn an all-NA group into -Inf.
+max_or_na <- function(x) if (all(is.na(x))) NA_integer_ else as.integer(max(x, na.rm = TRUE))
+
 # look at how many observations for each state and year
 df |>
   group_by(state, election_year) |>
@@ -190,9 +201,7 @@ df <- df |>
       id == "01059187_2008" ~ "01059011", # Boren
       # 03361013_2001 is NOT remapped: see the year_cw override below.
       id == "05313000_2009" ~ "05334002", # Aachen
-      id == "05313000_2014" ~ "05334002", # Aachen
-      id == "05313000_2020" ~ "05334002", # Aachen
-      id == "05313000_2025" ~ "05334002", # Aachen
+      # Aachen 2014/2020/2025 carry 05334002 in municipal_unharm since October 2026
       # Rheinland-Pfalz: the StaLA Sonderauswertung reports the whole 1969-2019
       # series on 2025 boundaries, so these five Gemeinden appear under codes
       # that only enter the crosswalk part-way through its span (07140502/03/04
@@ -482,13 +491,18 @@ ags_names_25 <- df_cw |>
 # Weighted sums
 sums <- df_cw |>
   filter(election_year < 2025) |>  # Only harmonize years before 2025
+  mutate(.vw = is.na(number_voters) & !is.na(valid_votes)) |>
   group_by(ags_25, election_year) |>
-  summarize_at(
+  summarise(
     # 1+2+3: Weighted sum
-    vars(eligible_voters:valid_votes),
-    ~ sum(.x * pop_cw, na.rm = TRUE)
+    across(eligible_voters:valid_votes, ~ sum(.x * pop_cw, na.rm = TRUE)),
+    # a predecessor with votes but a withheld voter count (NA in municipal_unharm,
+    # see voter_count_corrections.csv) makes the target's count unknown, not 0
+    .withheld = any(.vw & pop_cw > 0),
+    .groups = "drop"
   ) |>
-  ungroup() |>
+  mutate(number_voters = if_else(.withheld, NA_real_, number_voters)) |>
+  select(-.withheld) |>
   left_join(ags_names_25, by = "ags_25") |>
   rename(
     ags = ags_25, year = election_year, ags_name = ags_name_25
@@ -520,15 +534,37 @@ means <- df_cw %>%
 flags <- df_cw |>
   filter(election_year < 2025) |>  # Only harmonize years before 2025
   group_by(ags_25, election_year) |>
-  summarize_at(
+  summarise(
     # for all that start with replaced_ take maximum
-    vars(starts_with("replaced_"), flag_unsuccessful_naive_merge),
-    ~ max(.x, na.rm = TRUE)
+    across(c(starts_with("replaced_"), flag_unsuccessful_naive_merge), ~ max(.x, na.rm = TRUE)),
+    flag_majority_vote = max_or_na(flag_majority_vote),
+    .groups = "drop"
   ) |>
   rename(
     ags = ags_25, year = election_year
-  ) |>
-  ungroup()
+  )
+
+## Election date and type ---------------------------------------------------
+
+# Neither is a count, so neither can be summed: take them from the predecessor
+# that contributes most of the target's electorate. Until 2026-09 only sums /
+# means / flags were aggregated, so election_date and election_type came out
+# NA for every row before 2025 although municipal_unharm has both everywhere.
+# flag_mixed_election_date = 1 where the predecessors voted on different days.
+# (Same helper as in 02_municipal_harm.R -- keep the two copies in sync.)
+harm_meta <- function(d, target, weight) {
+  d |>
+    mutate(.w = coalesce(eligible_voters * .data[[weight]], 0)) |>
+    group_by(.data[[target]], election_year) |>
+    summarise(
+      election_date = election_date[which.max(.w)],
+      election_type = election_type[which.max(.w)],
+      flag_mixed_election_date = as.integer(n_distinct(election_date, na.rm = TRUE) > 1),
+      .groups = "drop"
+    ) |>
+    rename(ags = all_of(target), year = election_year)
+}
+meta <- harm_meta(df_cw |> filter(election_year < 2025, !is.na(ags_25)), "ags_25", "pop_cw")
 
 ## Population & area: weighted sums ----------------------------------------
 
@@ -561,6 +597,7 @@ glimpse(ags25)
 df_harm <- sums |>
   left_join_check_obs(means, by = c("ags", "year")) |>
   left_join_check_obs(flags, by = c("ags", "year")) |>
+  left_join_check_obs(meta, by = c("ags", "year")) |>
   left_join_check_obs(area_pop, by = c("ags", "year")) |>
   # Convert ags to numeric for compatibility
   mutate(ags = as.numeric(ags)) |>
@@ -597,6 +634,21 @@ glimpse(df_harm)
 # remove ags == NA
 df_harm <- df_harm |>
   filter(!is.na(ags))
+
+# Crosswalk columns carried in by the bound 2025+ rows are empty in every row
+# of the output (`ags` already holds the 2025 code); drop them.
+leftover_cols <- intersect(c("ags_21", "ags_25", "pop_cw", "area_cw", "weights"), names(df_harm))
+stopifnot(all(vapply(df_harm[leftover_cols], function(x) all(is.na(x)), logical(1))))
+df_harm <- df_harm |> select(-all_of(leftover_cols))
+
+# Every row now carries its election type, and its date unless the source has
+# none (four Sachsen-Anhalt by-election rows in 2005/2006, NA in
+# municipal_unharm too).
+na_date <- df_harm |> filter(is.na(election_date))
+stopifnot(!anyNA(df_harm$election_type),
+          all(substr(na_date$ags, 1, 2) == "15" & na_date$election_year %in% c(2005, 2006)))
+df_harm <- df_harm |>
+  mutate(flag_mixed_election_date = coalesce(flag_mixed_election_date, 0L))
 
 glimpse(df_harm)
 

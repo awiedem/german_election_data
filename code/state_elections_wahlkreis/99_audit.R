@@ -20,7 +20,7 @@ city <- c("02","04")  # HH, HB multi-vote: valid_votes may exceed number_voters
 long <- fread(file.path(FIN,"ltw_wkr_unharm_long.csv"), colClasses=list(character=c("wkr_nr","state")))
 wide <- fread(file.path(FIN,"ltw_wkr_unharm.csv"),       colClasses=list(character=c("wkr_nr","state")))
 meta <- c("flag_no_valid_votes","flag_naive_turnout_above_1","flag_wkr_boundaries_recomputed",
-          "state","election_year","election_date",
+          "flag_wkr_changed_since_prev","state","election_year","election_date",
           "wkr_nr","wkr_name","stimme","eligible_voters","number_voters","valid_votes","invalid_votes",
           "turnout","other","cdu_csu")
 pc <- setdiff(names(wide), meta)
@@ -30,6 +30,25 @@ need_long <- c("state","state_abbr","election_year","election_date","wkr_nr","wk
                "eligible_voters","number_voters","valid_votes","invalid_votes","turnout","party","votes","vote_share")
 if(all(need_long %in% names(long))) ok("long has all expected columns") else bad(paste("long missing:",paste(setdiff(need_long,names(long)),collapse=",")))
 if(is.character(long$wkr_nr) && is.character(wide$wkr_nr)) ok("wkr_nr is character (leading zeros preserved)") else bad("wkr_nr not character")
+# One wkr_nr width per state, in every year (padded in 01_ltw_wkr_unharm.R), so a
+# Wahlkreis number is spelled the same way in each election. Calibration: on the
+# file published before September 2026 this fired on SH, NW, MV, SN and ST, which
+# wrote "1" in some years and "01" / "001" in others.
+wdt <- unique(wide[, .(state, w = nchar(wkr_nr))])[, .(widths = paste(sort(w), collapse = "/")), by = state]
+mixed <- wdt[grepl("/", widths)]
+if(nrow(mixed)==0) ok("wkr_nr has one width per state across all years") else
+  bad(sprintf("%d states write wkr_nr at more than one width: %s", nrow(mixed),
+              paste(sprintf("%s (%s)", sc[mixed$state], mixed$widths), collapse = ", ")))
+# ...and that width is the pinned one: a state switching wholesale (BB "001" ->
+# "01") would pass the check above but break every join users already have.
+WKR_FMT <- c(SH="^[0-9]{2}$", HH="^[0-9]{2}$", NI="^[0-9]{3}$", HB="^[0-9]{2}$",
+             NW="^[0-9]{3}$", HE="^[0-9]{2}$", RP="^[0-9]{3}$", BW="^[0-9]{2}$",
+             BY="^[0-9]{3}$", SL="^[0-9]{3}$", BE="^[0-9]{2}-[0-9]{2}$", BB="^[0-9]{3}$",
+             MV="^[0-9]{2}$", SN="^[0-9]{2}$", ST="^[0-9]{2}$", TH="^[0-9]{3}$")
+fmt_bad <- wide[, .(n_bad = sum(!grepl(WKR_FMT[[sc[[state[1]]]]], wkr_nr))), by = state][n_bad > 0]
+if(nrow(fmt_bad)==0) ok("wkr_nr matches the pinned per-state format (3 digits NI/NW/RP/BY/SL/BB/TH, BE BB-WW, else 2)") else {
+  bad("wkr_nr differs from the pinned per-state format:"); print(fmt_bad[, .(state, abbr = sc[state], n_bad)])
+}
 if(!any(is.na(as.Date(wide$election_date)))) ok("all election_date parse as Date") else bad("some election_date unparseable")
 
 sec("2. STATE CODES")
@@ -188,7 +207,7 @@ mvf <- list(list(1994,"01","Greifswald"), list(1998,"21","Mecklenburg-Strelitz I
             list(2011,"36","Uecker-Randow II"))
 for(f in mvf){
   mvw <- wide[state=="13" & election_year==f[[1]]]
-  got <- unique(mvw[as.integer(wkr_nr)==as.integer(f[[2]])]$wkr_name)
+  got <- unique(mvw[wkr_nr==f[[2]]]$wkr_name)
   if(identical(got,f[[3]])) ok(sprintf("MV %d WK %s = '%s'",f[[1]],f[[2]],f[[3]]))
   else bad(sprintf("MV %d WK %s = %s (expected '%s')",f[[1]],f[[2]],paste(got,collapse="/"),f[[3]]))
 }
@@ -454,6 +473,71 @@ s2 <- 100*shr("08", 2001L, "cdu", "einzelstimme")
 if (abs(s1 - 49.4) <= 0.1 && abs(s2 - 44.8) <= 0.1) {
   ok(sprintf("SL 1994 SPD %.1f%% and BW 2001 CDU %.1f%% match the official statewide shares", s1, s2))
 } else bad(sprintf("share pins off: SL 1994 SPD %.2f (49.4), BW 2001 CDU %.2f (44.8)", s1, s2))
+
+sec("23. flag_wkr_changed_since_prev (territory vs the same-numbered WK at the previous election)")
+# 1 = re-cut since the state's previous election, 0 = same territory, NA = not
+# assessed. Only ST 2026 is assessed: the Feb-2025 LWG amendment moved the Gemeinde
+# Niedere Boerde (15083390) from WK 08 Wolmirstedt to WK 07 Haldensleben; nothing
+# else changed (LWG Anlage 2021 vs 2025, StaLA Wahlbezirk files, StaLA
+# Vergleichstabellen 2026). Calibrated on the published file before the column
+# existed: the first check fails there, and the electorate check below shows the
+# +10 % / -13 % jump in WK 07 / 08 that the September-2026 audit found.
+cf  <- "flag_wkr_changed_since_prev"
+if (cf %in% names(wide) && cf %in% names(long) && all(wide[[cf]] %in% c(0L,1L,NA))) {
+  ok("flag present in wide and long, values 0/1/NA only")
+} else bad("flag_wkr_changed_since_prev missing or not 0/1/NA")
+if (cf %in% names(wide)) {
+  lw <- merge(unique(long[, .(state,election_year,wkr_nr,stimme,fl=get(cf))]),
+              wide[, .(state,election_year,wkr_nr,stimme,fw=get(cf))],
+              by=c("state","election_year","wkr_nr","stimme"))
+  if (nrow(lw[!(fl==fw | (is.na(fl) & is.na(fw)))])==0 && nrow(lw)==nrow(wide)) {
+    ok("long and wide carry the same flag for every (state,year,wkr,stimme)")
+  } else bad("flag differs between long and wide")
+  assessed <- unique(wide[!is.na(get(cf)), .(state,election_year)])
+  st26 <- wide[state=="15" & election_year==2026L]
+  if (nrow(st26)==0) {
+    wn("ST 2026 not in the dataset - flag pattern checks skipped")
+  } else {
+    if (nrow(assessed)==1 && assessed$state=="15" && assessed$election_year==2026L) {
+      ok("only ST 2026 is assessed; every other state-year is NA")
+    } else { bad("unexpected state-years carry a non-NA flag"); print(assessed) }
+    chg <- sort(unique(st26[get(cf)==1, wkr_nr]))
+    if (nrow(st26)==82 && !anyNA(st26[[cf]]) && identical(chg, c("07","08"))) {
+      ok("ST 2026: WK 07 Haldensleben and WK 08 Wolmirstedt flagged 1, the other 39 (incl. WK 35 Halle I) 0")
+    } else bad(sprintf("ST 2026 flag pattern wrong (rows=%d, NA=%d, flagged WK: %s)",
+                       nrow(st26), sum(is.na(st26[[cf]])), paste(chg, collapse=",")))
+  }
+}
+# Electorate arithmetic: putting 2021 on the 2026 boundaries (Niedere Boerde's
+# 2021 electorate of 5,815 moved from WK 08 to WK 07, as the StaLA's own
+# Vergleichstabellen 2026 do) must bring WK 07/08 inside the range of the 39
+# unchanged Wahlkreise. Pins the explanation, so a later re-parse that shifted a
+# WK total would show up here. 5,525 = its 2026 electorate (cross-check below).
+NB_ELIG <- c(`2021`=5815, `2026`=5525)
+ev <- dcast(wide[state=="15" & election_year %in% c(2021L,2026L) & stimme=="zweitstimme",
+                 .(wkr_nr, y=paste0("e", election_year), eligible_voters)],
+            wkr_nr ~ y, value.var="eligible_voters")
+if (all(c("e2021","e2026") %in% names(ev)) && nrow(ev)==41 && !anyNA(ev)) {
+  ev[, raw_chg := e2026/e2021 - 1]
+  ev[, e2021_on26 := e2021 + fcase(wkr_nr=="07", NB_ELIG[["2021"]], wkr_nr=="08", -NB_ELIG[["2021"]], default=0)]
+  ev[, lfl_chg := e2026/e2021_on26 - 1]
+  rng <- range(ev[!(wkr_nr %in% c("07","08")), raw_chg])
+  moved <- ev[wkr_nr %in% c("07","08")]
+  if (all(moved$lfl_chg >= rng[1] & moved$lfl_chg <= rng[2]) &&
+      all(moved$raw_chg < rng[1] | moved$raw_chg > rng[2])) {
+    ok(sprintf("ST electorate 2021->2026: WK 07 %+.1f%% / WK 08 %+.1f%% as published, %+.1f%% / %+.1f%% with 2021 on 2026 boundaries - inside the %+.1f%%..%+.1f%% of the 39 unchanged WK",
+               100*moved$raw_chg[1], 100*moved$raw_chg[2], 100*moved$lfl_chg[1], 100*moved$lfl_chg[2],
+               100*rng[1], 100*rng[2]))
+  } else { bad("the Niedere Boerde transfer no longer explains the WK 07/08 electorate change"); print(ev) }
+} else wn("ST 2021 and 2026 not both present with 41 Wahlkreise - electorate check skipped")
+if (exists("mun")) {   # state_unharm, read in section 21
+  nb <- mun[ags=="15083390" & election_year %in% c(2021L,2026L), .(election_year, eligible_voters)]
+  if (nrow(nb)==2 && all(nb$eligible_voters == NB_ELIG[as.character(nb$election_year)])) {
+    ok("state_unharm: Niedere Boerde electorate 5,815 (2021) / 5,525 (2026) = the pinned transfer")
+  } else if (nrow(nb[election_year==2026L])==0) {
+    wn("state_unharm has no ST 2026 row for Niedere Boerde - cross-check skipped")
+  } else { bad("state_unharm Niedere Boerde electorate differs from the pinned transfer"); print(nb) }
+}
 
 cat(sprintf("\n=================  AUDIT SUMMARY: %d FAIL, %d WARN  =================\n", fail, warn))
 quit(status = if(fail>0) 1 else 0)

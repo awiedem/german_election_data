@@ -44,7 +44,7 @@ failure, so a broken parse cannot reach the R stages.
 
 ### Schema (wide)
 `flag_no_valid_votes, flag_naive_turnout_above_1` (front) · meta: `state` (2-digit AGS code),
-`election_year, election_date, wkr_nr` (character, leading zeros), `wkr_name, stimme,
+`election_year, election_date, wkr_nr` (character, zero-padded to one width per state — see below), `wkr_name, stimme,
 eligible_voters, number_voters, valid_votes, invalid_votes, turnout` · then sorted party-share
 columns · `other` · `cdu_csu`.
 
@@ -53,10 +53,35 @@ columns · `other` · `cdu_csu`.
 election day. Hessen 2013 (106 of its 110 rows) and BaWü 2001 (11 of 70 rows — the
 source-starred Wahlkreise); 0 for every other state-year. See the Hessen and BaWü notes below.
 
+`flag_wkr_changed_since_prev` records whether a Wahlkreis covers the same territory as the
+**same-numbered** Wahlkreis at the state's previous Landtagswahl: 1 = re-cut, 0 = same
+territory, **NA = not assessed** (every state-year except Sachsen-Anhalt 2026). It is set in
+`01_ltw_wkr_unharm.R` from a small pinned table (`wkr_changed_assessed`) and only for an
+election whose Wahlkreiseinteilung was checked against official sources. It is never inferred
+from electorate swings. **ST 2026:** the *Achtes Gesetz zur Änderung des Wahlgesetzes* of
+7 Feb 2025 (GVBl. LSA S. 316) moved the Gemeinde **Niedere Börde** (15083390; 5,815 eligible
+voters in 2021, 5,525 in 2026) from WK 08 Wolmirstedt to WK 07 Haldensleben. WK 07 and 08
+are flagged 1 and the other 39 are 0. WK 35 Halle I lost 9 % of its electorate on
+unchanged territory, which is population change and not a re-cut. Evidence and method: the
+Sachsen-Anhalt raw README. The two flags answer different questions:
+`flag_wkr_boundaries_recomputed` = "are these figures on election-day boundaries?";
+`flag_wkr_changed_since_prev` = "is WK *n* this year the same area as WK *n* last time?".
+
 **`wkr_name` is per election year.** States renumber their Wahlkreise, so the same `wkr_nr`
 can be a different constituency in a different year (Brandenburg WK 11 = Oranienburg I in
 1990, Havelland I in 1994/1999, Uckermark I from 2004). Key on `(state, election_year,
 wkr_nr)`; never join across years on the number alone.
+
+**`wkr_nr` has one format per state, the same in every year.** Numbers are zero-padded to a
+fixed width: 3 digits in NI, NW, RP, BY, SL, BB and TH; 2 digits in SH, HH, HB, HE, BW, MV, SN
+and ST. Berlin's is `BB-WW` (Bezirk-Wahlkreis, e.g. `01-01`). For SH, NW, MV, SN and ST the
+width is that of the state's largest Wahlkreis number; the other states keep the width all
+their years already used. The parsers keep each source's own spelling, and
+`01_ltw_wkr_unharm.R` pads centrally (`wkr_width`). It stops if a number is wider than its
+state's width or if padding would merge two Wahlkreise. Until September 2026 some years were
+unpadded (`"1"` … `"45"`): SH 2000–2017, NW 2000–2012, SN 2014–2024, ST 1990–2016 and MV in
+every year. The other years of SH, NW, SN and ST were padded, so the same Wahlkreis was `"1"`
+in one year and `"01"` in another.
 
 `stimme ∈ {erststimme, zweitstimme, einzelstimme}`. **einzelstimme** = single-vote systems:
 Baden-Württemberg through 2021 and Saarland. The two-vote split begins when a state introduced a
@@ -81,10 +106,10 @@ einzelstimme; later years are erst/zweit). Bayern's constituency is the **Stimmk
 | Schleswig-Holstein | 2000,★2005,2009,2017,2022 |
 | Saarland | ★1980,★1985,★1990,★1994,★1999,★2004,★2009,★2012,★2017,2022 |
 | Sachsen | 1994,1999,★2004,★2009,2014,2019,2024 |
-| Sachsen-Anhalt | 1990,1994,1998,2002,2006,2011,2016,2021 |
+| Sachsen-Anhalt | 1990,1994,1998,2002,2006,2011,2016,2021,2026 |
 | Thüringen | 1990,1994,1999,2004,2009,2014,2019,2024 |
 
-103 elections · 9,818 wide rows · 166,016 long rows · 443 party columns · 1980–2026.
+104 elections · 9,900 wide rows · 166,938 long rows · 443 party columns · 1980–2026.
 What remains missing and why (OCR-class scans, corrupt raw, percentages-only, absent
 raw, or no constituency level): `docs/ltw_wkr_recoverability.md`.
 
@@ -202,7 +227,10 @@ Family notes (full detail in each script's docstring):
 - Each parser was checked by an independent verifier agent.
 
 ### Audit (raw → final), June 2026
-- `99_audit.R` — **59 deterministic internal checks in 21 sections** (schema, types, integrity,
+- `99_audit.R` — **73 deterministic internal checks in 23 sections** as of September 2026
+  (on the release build with ST 2026: 0 FAIL, 2 WARN — §8 now lists Berlin 2016 Spandau-2 plus
+  seven Berlin 2021 Wahlkreise where valid + invalid Erststimmen fall 1.0–2.9 % short of the
+  voters, and §21 64 of 546 comparisons; the text below describes the August state) (schema, types, integrity,
   shares, turnout, coverage, normalization splits, long↔wide, plus §17-20 added August 2026:
   Wahlkreis-name completeness and per-year fixtures, the Hessen 2013/2018 statewide fixtures,
   `flag_wkr_boundaries_recomputed`, and §21 a cross-pipeline roll-up against the
@@ -216,9 +244,28 @@ Family notes (full detail in each script's docstring):
   §17-20 were calibrated against the pre-change published file: §17 fires on 1,064 rows
   (704 Brandenburg placeholders + 360 blank Mecklenburg-Vorpommern names), §19 on Hessen
   having only 2023, §20 on the flag column being absent — and all fall silent afterwards.
+
+  §23 (September 2026) checks `flag_wkr_changed_since_prev`. It asserts that the flag is
+  0/1/NA and the same in long and wide, that only ST 2026 is assessed, and that exactly WK 07/08
+  are flagged there. Its electorate check shows WK 07 +10.0 % / WK 08 −12.7 % from 2021 to 2026
+  as published, and −4.7 % / −1.0 % once 2021 is put on the 2026 boundaries (Niedere Börde's
+  2021 electorate moved, as the StaLA's own *Vergleichstabellen* do). That lands inside the
+  −9.1 % … −0.6 % of the 39 unchanged Wahlkreise. It also checks that `state_unharm` carries the
+  same Niedere Börde electorate. Calibrated on the published file before the column existed,
+  where it fails. The rebuilt file changes nothing else: every pre-existing column is
+  identical, row for row.
   A full old-vs-new diff confirmed the change is surgical: 0 rows lost, exactly 220 gained
   (Hessen 2013 + 2018, 55 Wahlkreise × 2 Stimmen each), and on the 7,607 pre-existing rows
   the only column that moved is `wkr_name`, only in Brandenburg and Mecklenburg-Vorpommern.
+
+  §1 gained two checks in September 2026: `wkr_nr` has one width per state across all years,
+  and that width is the pinned one (3 digits NI/NW/RP/BY/SL/BB/TH, BE `BB-WW`, 2 digits
+  elsewhere). Calibrated on the published file before the fix, where the first fires on exactly
+  SH, NW, MV, SN and ST. The §18 MV name fixtures now compare `wkr_nr` as a string. Old-vs-new
+  diff of that rebuild: 0 rows gained or lost, no value outside `wkr_nr` changed, and `wkr_nr`
+  was rewritten in 972 wide / 21,615 long rows (wide: SH 72, NW 594, MV 126, SN 54, ST 126),
+  always to the same integer. Within those states rows now sort numerically (`"2"` used to sort
+  after `"19"`).
 - An adversarial multi-agent audit independently re-derived every state from raw (not trusting the
   parsers) and compared aggregated statewide shares + Direktmandat winners against **official published
   results** (Landeswahlleiter / Wikipedia) — matched within ≤0.06 pp for all audited states. It found and
@@ -251,6 +298,8 @@ when summing all party columns (that double-counts the Union → ~1.3). Sum the 
 - Boundaries are each election's **own** Wahlkreis definitions (unharmonized). Wahlkreise are redrawn
   between elections and are NOT comparable across time without harmonization (not attempted — see the
   project notes: clean cross-time harmonization is infeasible without per-year Wahlkreis geometries).
+  Where it has been checked, `flag_wkr_changed_since_prev` says whether a same-numbered Wahlkreis kept
+  its territory (so far only ST 2026 vs 2021; NA elsewhere means *unknown*, not *unchanged*).
 - A few genuinely distinct 1990-East coalition lists (e.g. `buendnis_90` standalone, `b_dkp_kpd`) are
   kept as their own party columns by design.
 - **MV 1994–2011 `wkr_name` is empty** (5 elections × 36 Wahlkreise): the constituency is identified by

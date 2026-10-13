@@ -355,7 +355,7 @@ def main():
     # --- emit ------------------------------------------------------------
     rows = []
     for nr in sorted(wk_nrs):
-        wkr_nr = str(nr)          # unpadded, matching the 2009 (also 40-WK) convention
+        wkr_nr = str(nr)          # unpadded like the 2009 source; 01_ltw_wkr_unharm.R pads to "01"
         wkr_name = wk_a[nr]["name"]
         for s in stimmen:
             r = tb[(nr, s)]

@@ -566,7 +566,11 @@ for (s in sort(unique(named_panel$state))) {
 # source term count intentionally resumes rather than restarting:
 #   Maintal: Erhard Rohrbach, 1995 -> 2003/2009
 #   Frankenberg (Eder): Rüdiger Heß, 1998 -> 2012/2017
-# Waldems' 1999 election was repeated in 2000 and therefore remains adjacent.
+#   Waldems: Rudolf Dörr, 1993 -> 2000. The council declared the 1999 election
+#     invalid; Dörr, mayor since 1993, won the May 2000 Neuwahl (term counter 2,
+#     0 re-elections). Until October 2026 the panel joined the 2000 term to the
+#     1999 winner instead; the Hessami (2018) names and the municipality's
+#     history (dewiki "Waldems") show the 2000 winner is the 1993 mayor.
 cat("\n=== Processing Hessen: official person term sequences ===\n")
 
 he_source <- fread(
@@ -597,8 +601,24 @@ he_winners <- winners_named |>
 
 he_return_links <- c(
   "06435019|2003-09-28" = "1995-01-29",  # Erhard Rohrbach, Maintal
-  "06635011|2012-02-26" = "1998-03-15"   # Rüdiger Heß, Frankenberg
+  "06635011|2012-02-26" = "1998-03-15",  # Rüdiger Heß, Frankenberg
+  "06439016|2000-05-21" = "1993-05-02"   # Rudolf Dörr, Waldems
 )
+
+# A decisive round WITHOUT an official term counter, in a municipality-year that
+# has a counted one, was superseded and is not a term: Bad Karlshafen's one-vote
+# 2017-05-21 Stichwahl, repeated in one Wahlbezirk on 2017-11-05. (Every other
+# HSL decisive round carries a counter; recent hessenschau-only cycles have none
+# but never share a year with a counted one.)
+he_superseded <- he_winners |>
+  group_by(ags, election_year) |>
+  filter(is.na(source_person_term_number) & any(!is.na(source_person_term_number))) |>
+  ungroup()
+stopifnot(nrow(he_superseded) == 1,
+          he_superseded$ags == "06633002",
+          he_superseded$decisive_date == as.Date("2017-05-21"))
+he_winners <- he_winners |>
+  anti_join(he_superseded |> select(ags, decisive_date), by = c("ags", "decisive_date"))
 
 assign_he_group <- function(d, ags_value) {
   d <- d |> arrange(election_date, decisive_date)
@@ -628,12 +648,8 @@ assign_he_group <- function(d, ags_value) {
     } else if (!is.na(nt) && nt == 1L) {
       local_id[i] <- new_id()
     } else if (!is.na(nt) && nt > 1L && !is.na(nr) && nr == 0L) {
-      # Only Waldems 2000 remains after the two explicit return links: the
-      # 1999 election was followed by a Neuwahl of the same mayor in 2000.
-      if (!(ags_value == "06439016" && d$decisive_date[i] == as.Date("2000-05-21"))) {
-        stop("Unexpected non-consecutive Hessen term sequence at ", row_key)
-      }
-      local_id[i] <- local_id[i - 1L]
+      # A return after another mayor must be pinned in he_return_links above.
+      stop("Unexpected non-consecutive Hessen term sequence at ", row_key)
     } else {
       # Very recent hessenschau cycles absent from the HSL transmission have
       # no counter. Link only when the same normalized public name was already
@@ -713,13 +729,23 @@ cat("\n=== Building panel columns ===\n")
 # Remove rows without person_id and deduplicate
 # When the same person has multiple elections in the same ags+year (HW + SW),
 # keep only the latest date (the final/decisive round).
+# HESSEN IS EXEMPT from both year-level dedups below: its rows are one decisive
+# round per cycle by construction (00_he_hist_parse.py pairs the rounds), and
+# HSL's official term counters show that a municipality can hold two genuine
+# terms in one year — a repeated election (Alsbach-Hähnlein 2007, Babenhausen
+# 2002) or a by-election after an early exit (Biebesheim am Rhein 1993, Bad
+# Nauheim 1999, Burghaun 2014). The year-level dedups dropped those terms.
 panel <- panel |>
   filter(!is.na(person_id)) |>
-  distinct(person_id, ags, election_date, .keep_all = TRUE) |>
+  distinct(person_id, ags, election_date, .keep_all = TRUE)
+panel_he <- panel |> filter(state == "06")
+stopifnot(!anyDuplicated(panel_he[c("ags", "election_date")]))
+panel <- panel |>
+  filter(state != "06") |>
   arrange(person_id, ags, election_year, desc(election_date)) |>
   distinct(person_id, ags, election_year, .keep_all = TRUE)
 
-cat("After person-level dedup:", nrow(panel), "rows\n")
+cat("After person-level dedup:", nrow(panel) + nrow(panel_he), "rows\n")
 
 # When multiple persons are both marked as winners in the same ags+year
 # (HW winner vs SW winner from separate records), keep only the one with
@@ -729,7 +755,11 @@ n_before <- nrow(panel)
 panel <- panel |>
   arrange(ags, election_year, desc(winner_voteshare)) |>
   distinct(ags, election_year, .keep_all = TRUE)
-cat("After ags-year dedup:", nrow(panel), "(dropped", n_before - nrow(panel), "dup winners)\n")
+cat("After ags-year dedup:", nrow(panel) + nrow(panel_he), "(dropped",
+    n_before - nrow(panel), "dup winners)\n")
+he_same_year <- panel_he |> count(ags, election_year) |> filter(n > 1)
+cat("Hessen municipality-years with two counted terms (kept):", nrow(he_same_year), "\n")
+panel <- bind_rows(panel, panel_he)
 
 # Term number within each person in each municipality
 panel <- panel |>
@@ -1161,7 +1191,13 @@ finalize_panel <- function(p, version = "harm") {
   max_year <- max(p$election_year, na.rm = TRUE)
   cat(sprintf("  Open terms run to %d\n", max_year))
 
+  # A term followed by another election in the SAME year (Hessen repeat and
+  # by-elections, kept in the election panel above) holds office for none of
+  # the calendar years: that year belongs to the later term. It gets no annual
+  # row, which keeps one mayor per municipality-year. Every other term gets at
+  # least its election year, as before.
   p_annual <- p |>
+    filter(is.na(next_election_year) | next_election_year > election_year) |>
     mutate(
       term_end_year = case_when(
         !is.na(next_election_year) ~ pmax(next_election_year - 1L, election_year),

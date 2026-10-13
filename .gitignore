@@ -95,10 +95,30 @@ data/mayoral_elections/raw/sachsen_anhalt/st_stala_parsed.csv
 data/mayoral_elections/raw/sachsen_anhalt/st_bmbm_parsed.csv
 data/mayoral_elections/raw/sachsen_anhalt/st_bm_parsed.csv
 
+# Thüringen mayoral/Landrat RAW + intermediate files name LOSING candidates. The
+# Landesamt withdraws those names after a period (§ 50 Abs. 2 ThürKWO) and GERDA
+# publishes only the elected persons (decision of 2026-10-03). These stay on disk
+# so the pipeline runs; they are not redistributed. Untracked on 2026-10-03, so
+# earlier commits still contain them. The party-level "Daten*.xls" carry no names.
+data/mayoral_elections/raw/thueringen/LRInfo*.xlsx
+data/mayoral_elections/raw/thueringen/LSInfo*.xlsx
+data/mayoral_elections/raw/thueringen/th_ob_parsed.csv
+data/mayoral_elections/raw/thueringen_bm/th_bm_scraped.csv
+data/landrat_elections/raw/thueringen_parsed.rds
+
+# Hessen mayoral candidate names 1993-2012 (Hessami 2018, CC0) name LOSING
+# candidates, who are private individuals. GERDA publishes the elected persons'
+# names only; the other names reach the restricted twin alone. The source files,
+# the parsed names and the withheld-name side file therefore stay out of git.
+data/mayoral_elections/raw/hessen/hessami_2018/*.dta
+data/mayoral_elections/raw/hessen/he_hessami_parsed.csv
+data/mayoral_elections/raw/hessen/he_hessami_collected_parsed.csv
+data/mayoral_elections/raw/hessen/he_hist_restricted_names.csv
+
 # RESTRICTED (scientific-use-only) twins of the published candidate datasets.
 # Identical to data/{mayoral,landrat}_elections/final/*_candidates.* except that
 # the Sachsen-Anhalt losing candidates keep their names, gender, birth year and
-# profession — the fields anonymise_st_losers() strips from the published files
+# profession — the fields anonymise_losers() strips from the published files
 # under the same StaLA licence as the raw block above. Written by
 # 01b_mayoral_candidates.R / landrat 01_landrat_combine.R and enriched by
 # 04_candidate_characteristics.R. For the project's own analysis only; NEVER
@@ -109,3 +129,8 @@ data/landrat_elections/final_restricted/
 # into the tracked gender_guesser_lookup.csv / name_origin_lookup.rds).
 data/mayoral_elections/processed/*_restricted.csv
 data/mayoral_elections/processed/*_restricted.rds
+
+# Brandenburg municipal-election report whose imprint requires consent for
+# electronic distribution (like the B VII 3-6 issues of 2002/2003/2008); the
+# manifest stays tracked.
+data/municipal_elections/raw/brandenburg/lds_reports/SB_B7-3-5_5j-08_BB.pdf

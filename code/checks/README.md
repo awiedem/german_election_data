@@ -76,6 +76,16 @@ This folder contains scripts to check data quality and diagnose issues in the Ge
   - Validates the `mayoral_unharm` dataset
   - Checks coverage by state, AGS format, vote count consistency, and candidate-level data integrity
 
+### Council Elections (municipal and county)
+
+- **`checks_council_cross_dataset.R`** - Compares `municipal_unharm`, `county_elec_unharm`
+  and `state_unharm` against each other, which catches a dataset holding the wrong
+  election or a party column holding another party's votes (both pass every
+  within-dataset audit). Errors when municipal shares equal the Kreistag's for a
+  state-year, or when a council result correlates negatively with the nearest
+  Landtagswahl. **Exits 1 on any ERROR.** Calibrated on the Sachsen-Anhalt 2024
+  municipal and Sachsen 2024 Kreistag defects (2026-09).
+
 ### Other Checks
 
 - **`checks_muni_incomplete_elections.R`** - Checks for incomplete election coverage

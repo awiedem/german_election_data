@@ -66,6 +66,29 @@ for (cc in c("eligible_voters", "number_voters", "valid_votes", "invalid_votes")
 raw[, state := state_code[state_abbr]]                       # overwrite with 2-digit code
 stopifnot(!any(is.na(raw$state)))
 
+## wkr_nr: one format per state, the same in every year ------------------------
+## The parsers keep each source's own spelling, and until September 2026 four
+## states wrote the same Wahlkreis two ways across years ("1" in one year, "01"
+## in another): SH, NW, SN and ST; MV was unpadded in every year. Numbers are
+## zero-padded here to one width per state. For those five it is the width of the state's largest Wahlkreis
+## number (NW 151 -> 3); every other state keeps the width all its years already
+## used (NI, RP, SL, BB and TH "001"; BY's Stimmkreis codes are 3-digit by
+## construction; HH, HB, HE and BW "01"). Berlin is "BB-WW" (Bezirk-Wahlkreis)
+## and is only checked. A number wider than its state's width stops the build
+## instead of widening the column in one year.
+wkr_width <- c(SH = 2L, HH = 2L, NI = 3L, HB = 2L, NW = 3L, HE = 2L, RP = 3L,
+               BW = 2L, BY = 3L, SL = 3L, BB = 3L, MV = 2L, SN = 2L, ST = 2L,
+               TH = 3L)
+is_be <- raw$state_abbr == "BE"
+stopifnot(setequal(names(wkr_width), setdiff(names(state_code), "BE")),
+          grepl("^[0-9]{2}-[0-9]{2}$", raw$wkr_nr[is_be]),
+          grepl("^[0-9]+$", raw$wkr_nr[!is_be]))
+n_wkr_keys <- uniqueN(raw[, .(state_abbr, election_year, wkr_nr)])
+raw[!is_be, wkr_nr := sprintf("%0*d", wkr_width[state_abbr], as.integer(wkr_nr))]
+stopifnot(nchar(raw$wkr_nr[!is_be]) == wkr_width[raw$state_abbr[!is_be]],
+          uniqueN(raw[, .(state_abbr, election_year, wkr_nr)]) == n_wkr_keys)  # no two WK merged
+rm(is_be, n_wkr_keys)
+
 ## flag_wkr_boundaries_recomputed --------------------------------------------
 ## 1 = the row's Wahlkreis figures were recomputed by the statistical office onto
 ## a LATER election's Wahlkreiseinteilung, so they are not on the boundaries that
@@ -81,13 +104,47 @@ raw[, flag_wkr_boundaries_recomputed := as.integer(flag_wkr_boundaries_recompute
 chk_flag <- raw[, uniqueN(flag_wkr_boundaries_recomputed),
                 by = .(state, election_year, wkr_nr, stimme)]
 stopifnot(all(chk_flag$V1 == 1))   # must be constant within a row of the wide table
+
+## flag_wkr_changed_since_prev -----------------------------------------------
+## Is this Wahlkreis the same territory as the SAME-numbered Wahlkreis at the
+## state's previous Landtagswahl? 1 = territory differs, 0 = same territory,
+## NA = not assessed. Not the same thing as flag_wkr_boundaries_recomputed, which
+## marks figures back-cast onto a LATER Einteilung. Set only where an official
+## source was checked; never inferred from electorate swings (ST 2026 WK 35 Halle I
+## lost 9 % of its electorate on unchanged territory).
+##   ST 2026 vs 2021: the Achtes Gesetz zur Aenderung des Wahlgesetzes vom
+##   7.2.2025 (GVBl. LSA S. 316) moved the Gemeinde Niedere Boerde (15083390)
+##   from WK 08 Wolmirstedt to WK 07 Haldensleben; the other 39 Wahlkreise are
+##   unchanged. Established from the LWG Anlage (2021 vs Stand 21.02.2025), the
+##   StaLA Wahlbezirk files of both years and the StaLA Vergleichstabellen 2026;
+##   see data/state_elections/raw/Landtagswahlen_Wahlkreis/Sachsen-Anhalt/README.md.
+wkr_changed_assessed <- data.table(
+  state_abbr = "ST", election_year = 2026L, prev_year = 2021L, n_wkr = 41L,
+  changed = list(c("07", "08"))
+)
+raw[, flag_wkr_changed_since_prev := NA_integer_]
+for (i in seq_len(nrow(wkr_changed_assessed))) {
+  a <- wkr_changed_assessed[i]
+  cur  <- unique(raw[state_abbr == a$state_abbr & election_year == a$election_year, wkr_nr])
+  prev <- unique(raw[state_abbr == a$state_abbr & election_year == a$prev_year, wkr_nr])
+  if (length(cur) == 0) {
+    message(sprintf("flag_wkr_changed_since_prev: %s %d not in the data - left NA",
+                    a$state_abbr, a$election_year))
+    next
+  }
+  stopifnot(length(cur) == a$n_wkr,
+            all(a$changed[[1]] %in% cur),
+            setequal(as.integer(cur), as.integer(prev)))  # same numbering both years
+  raw[state_abbr == a$state_abbr & election_year == a$election_year,
+      flag_wkr_changed_since_prev := as.integer(wkr_nr %in% a$changed[[1]])]
+}
 raw[, party := normalise_party_v(party_raw)]
 
 #### Long output: normalised party, counts + share ####
 key_cols <- c("state", "state_abbr", "election_year", "election_date",
               "wkr_nr", "wkr_name", "stimme",
               "eligible_voters", "number_voters", "valid_votes", "invalid_votes",
-              "flag_wkr_boundaries_recomputed")
+              "flag_wkr_boundaries_recomputed", "flag_wkr_changed_since_prev")
 long <- raw[, .(votes = sum(votes, na.rm = TRUE),
                 votes_na = all(is.na(votes))),       # track genuinely-absent (no candidate)
             by = c(key_cols, "party")]
@@ -101,7 +158,8 @@ setorder(long, state, election_year, stimme, wkr_nr, party)
 #### Wide output: party SHARES, GERDA-style ####
 meta_cols <- c("state", "election_year", "election_date", "wkr_nr", "wkr_name",
                "stimme", "eligible_voters", "number_voters", "valid_votes",
-               "invalid_votes", "turnout", "flag_wkr_boundaries_recomputed")
+               "invalid_votes", "turnout", "flag_wkr_boundaries_recomputed",
+               "flag_wkr_changed_since_prev")
 # Explicit id formula (meta only) — one row per (state,year,wkr,stimme).
 # Using "..." would wrongly fold `votes`/`vote_share` into the row key and explode rows.
 id_form <- as.formula(paste(paste(meta_cols, collapse = " + "), "~ party"))
@@ -126,7 +184,7 @@ wide[, turnout := ifelse(!is.na(turnout) & turnout > 1.5, NA_real_, turnout)]
 
 #### Column ordering: flags, meta, sorted party shares, other, cdu_csu ####
 front_flags <- c("flag_no_valid_votes", "flag_naive_turnout_above_1",
-                 "flag_wkr_boundaries_recomputed")
+                 "flag_wkr_boundaries_recomputed", "flag_wkr_changed_since_prev")
 final_order <- c(front_flags, setdiff(meta_cols, front_flags),
                  sort(pcols), "other", "cdu_csu")
 final_order <- final_order[final_order %in% names(wide)]
@@ -154,6 +212,11 @@ cat(sprintf("\nflag_no_valid_votes: %d | flag_naive_turnout_above_1: %d | flag_w
             sum(wide$flag_wkr_boundaries_recomputed)))
 cat("Rows with recomputed Wahlkreis boundaries, by state-year:\n")
 print(wide[flag_wkr_boundaries_recomputed == 1, .N, by = .(state, election_year)])
+cat("Territory changed since the previous election (flag_wkr_changed_since_prev), assessed state-years:\n")
+print(wide[!is.na(flag_wkr_changed_since_prev),
+           .(rows = .N, changed = sum(flag_wkr_changed_since_prev),
+             wkr_changed = paste(sort(unique(wkr_nr[flag_wkr_changed_since_prev == 1])), collapse = ",")),
+           by = .(state, election_year)])
 cat("Placeholder / missing wkr_name rows: ",
     sum(is.na(wide$wkr_name) | grepl("^Landtagswahlkreis [0-9]+$", wide$wkr_name)), "\n")
 # integrity: share of party columns summing to ~1 (excluding all-NA rows)

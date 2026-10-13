@@ -381,3 +381,55 @@ After fix: SL contributes 2 rows to `landrat_unharm` (the 2024 RVS election plus
 | **Total** | **218** | **369** | **1,469** |
 
 The same lesson applies to all of these: **never trust hardcoded `election_type` defaults** when the raw data has an explicit type column. Future state additions (BB, MV, ST, TH, BW, HE, etc., if/when their data lands in this pipeline) should always check whether the source distinguishes Bürgermeister / Oberbürgermeister / Landrat at the row level before defaulting.
+
+## 15. Hessen runoff pairing, failed Ja/Nein votes and panel terms (October 2026)
+
+The 1993–2012 candidate names from Hessami (2018, *REStat*, doi:10.7910/DVN/FZWOMK) gave every Hessen runoff candidate a known first-round identity. They exposed four defects in the Hessen part of the mayoral files.
+
+**1. Runoff results on the wrong row.**
+- The wide pivot paired a Stichwahl candidate with "their" Hauptwahl row by name, else party, else rank. With redacted names and several `Einzelbewerbung` Wahlvorschläge, the key was ambiguous.
+- So 190 runoff results (186 `Einzelbewerbung`) were published as runoff-only rows in 150 of 479 cycles. 109 of those rows carried the winner, so the winner's own first-round row said `is_winner = FALSE`.
+- One 2008 runoff result sat on the third-placed candidate's row.
+- **Fix:** `00_he_hist_parse.py` now emits an explicit `pair_id`, and 01b's match key uses it first. Order of evidence: names, then verified pins (`data/mayoral_elections/metadata/he_runoff_pairing_verified.csv`), then a distinctive Träger, then elimination, then ballot order.
+- **Validation:** against the Hessami names (1993–2012), the name-free rule gets 570/573 runoff candidates right. For 2013–2026, every runoff that needed elimination or ballot order was checked against named results and pinned.
+
+**2. Runoff winners without gender.** HSL records the elected person's gender on the decisive round only, so the Hauptwahl row that the pivot keeps had none. 285 Hessen mayoral and 26 Landrat winners had no gender; all now carry HSL's value.
+
+**3. Failed Ja/Nein Hauptwahlen crowned.** Driedorf 2016-03-06 (49.7 % Ja) and Morschen 2022-03-06 (48.7 % Ja) seated nobody; a Neuwahl followed months later. 01b's winner repair made the failed sole candidate the winner. They now carry `flag_decisive_round_missing` (`is_winner = NA`).
+
+**4. Panel.**
+- Waldems 2000 was joined to the 1999 winner. In fact the 1999 election was annulled and the 1993 mayor won the 2000 Neuwahl (counter: 2nd term, 0 re-elections).
+- The ags-year dedup dropped five genuine second terms in one year: Alsbach-Hähnlein 2007, Babenhausen 2002, Biebesheim am Rhein 1993, Bad Nauheim 1999 and Burghaun 2014. All carry official counters.
+- **Fix:** Hessen is exempt from the year-level dedups. Only Bad Karlshafen's superseded 2017-05-21 runoff, which has no counter, is dropped.
+
+**Also fixed in passing (all states):** the runoff-only branch of the pivot filed a January runoff under the next year. Two cycles carried two `election_year` values (Beselich 2009/10, Donauwörth 1948/49); they now take the Hauptwahl's year.
+
+`99_audit.R` section 22 pins all of the above and is calibrated: it fails on the September-2026 release.
+
+## 16. Thüringen: the Wahlvorschlag was a name, so `winner_party` was not a party (fixed, October 2026)
+
+Found in the pre-publication audit of 2026-10-02 and fixed the same day. The defect had been in every release since Thüringen was added.
+
+**What the source does.** The Landesamt database (`wahlen.thueringen.de`) redacts candidates' personal data (§ 50 Abs. 2 ThürKWO). It lists each candidate by the *Wahlvorschlag* only ("CDU", "Einzelbewerber", "Weitere Personen"). Where it names a person, the Wahlvorschlag reads "Nachname, Vorname" or "Nachname, Vorname (Träger)". It always names the elected person, and every candidate of a recent election. `00_th_scrape.py` stored that string whole as `candidate_party`.
+
+**What was wrong.**
+- `mayoral_candidates`: in 647 Thüringen rows (624 winners, mostly 2020–2026) the party was the candidate's own name. In 272 of them the given name also carried the bracket ("Vorname (CDU)").
+- `mayor_panel`: `winner_party` was a person's name in 624 of 647 Thüringen rows. So `party_switch` and `is_new_party_mayor` compared names, not parties.
+- 17 joint lists or group labels ("SPD, CDU, UWS", "FFW, ATG", "Bi, Zukunft Kammerforst") were read as "Nachname, Vorname". They became fake persons, 10 of them winners in `mayor_panel`.
+- 8 elected persons were not recognised as names, because their names contain "ß" or a title ("Dr.").
+- The kreisfreie-Stadt OB files write "Name, Vorname, Dr.", so 37 given names ended in a title.
+
+**Fix.** `code/mayoral_elections/th_wahlvorschlag.R` splits the string in stages 01 and 01b; the scraped intermediate is unchanged.
+- **Name:** the name loses the bracket, and academic titles leave the name parts.
+- **Party:** the Träger in the bracket becomes `candidate_party`. When there is no bracket, the party is `NA`, because the source does not say which party nominated the elected person. It may not be "Einzelbewerber": the same election can list a separate, redacted "Einzelbewerber".
+- **Groups:** a string is a person only if every name word is capitalised and lower-case after the first letter. That rule excludes the joint lists; one group that passes it is pinned as not a person.
+- **Genuine labels kept:** a list named after its candidate, such as "Wenzl" (Eisenach 2012) or "MarcoSeidel" (Tanna 2021), is a genuine Träger and stays.
+
+**Effect (Thüringen only; every other state and both Landrat files are unchanged).**
+- `mayoral_candidates`: 761 named rows (770 before, −17 non-persons, +8 winners). All 761 now have a gender (570 before).
+- `mayor_panel`: 645 rows (647). `winner_party` is a party or group in 294 rows and `NA` in 351. `party_switch` is TRUE in 9 rows (35 before) and `is_new_party_mayor` in 277 (630).
+- `mayor_panel_annual`: 2,775 Thüringen rows (2,851).
+- `mayoral_unharm` / `mayoral_harm`: `winner_party` changed in 669 Thüringen rows.
+- Thüringen person groupings are unchanged, but the IDs are sequential, so 472 panel rows carry a new `person_id` label.
+
+`98_full_audit.R` G8 fails if a Thüringen party contains "Nachname,", in `mayoral_candidates` or as the winner's party in `mayor_panel`. Calibration: 647 / 624 on the release of 2026-10-02, 0 after.

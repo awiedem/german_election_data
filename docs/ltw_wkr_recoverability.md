@@ -56,7 +56,7 @@ partial source exists but was deliberately not used (reason given).
 | Rheinland-Pfalz | 2001-2026 complete | — | 1991 (absent), 1996 (ocr: the raw README's "text layer present" claim is wrong — sampled pages have none) |
 | Saarland | 2022 | 1980, 1985, 1990, 1994, 1999, 2004, 2009, 2012, 2017 | — (pre-1980 exists only as Kreis-level scans) |
 | Sachsen | 1994, 1999, 2014, 2019, 2024 | 2004, 2009 | 1990 (ocr: unusable OCR layer) |
-| Sachsen-Anhalt | 1990-2021 complete | — | — |
+| Sachsen-Anhalt | 1990-2026 complete | — | — |
 | Schleswig-Holstein | 2000, 2009, 2017, 2022 | 2005 | 1992, 1996 (ocr: text layer exists but is noisy OCR that garbles digits, e.g. "lt22" for 422), 2012 (shares: the Wahlkreis xls files carry percentages for 7 selected parties, no counts anywhere; the two report PDFs were not assessed further) |
 | Thüringen | 1990-2024 complete | — | — |
 
@@ -67,9 +67,10 @@ figure. The report recomputed the 2001 figures of 11 of the 70 Wahlkreise onto t
 boundaries; those rows carry `flag_wkr_boundaries_recomputed = 1` (same convention as
 Hessen 2013).
 
-Bottom line of the table: the dataset now covers 103 elections (was 75). Of the 128
-post-1990 elections that structurally exist (133 minus the five Hamburg years with no
-Wahlkreise), 101 are covered (79%); Saarland 1980/1985 come on top. Everything still
+Bottom line of the table: the dataset now covers 104 elections (was 75). Of the 129
+post-1990 elections that structurally exist (134 minus the five Hamburg years with no
+Wahlkreise; counted up to Sachsen-Anhalt 2026 — Berlin and MV voted on 20 Sept 2026 and
+are not yet certified), 102 are covered (79%); Saarland 1980/1985 come on top. Everything still
 missing needs OCR, re-downloading, or new sourcing — nothing clean remains unparsed.
 
 ## Evidence for the classification
@@ -126,5 +127,8 @@ Macintosh glyph order; zero unresolved characters).
   total exactly.
 - **`flag_wkr_boundaries_recomputed`**: marks rows whose figures the statistical office
   back-cast onto a later election's constituency boundaries (HE 2013; BW 2001 in part).
+- **`flag_wkr_changed_since_prev`**: 1 where a Wahlkreis covers different territory than the
+  same-numbered Wahlkreis at the state's previous election, 0 where it is the same, NA where
+  not assessed (only ST 2026 is assessed: WK 07/08 re-cut, the other 39 unchanged).
 - **erststimme / zweitstimme / einzelstimme**: constituency-candidate vote / party-list
   vote / the single vote in one-vote systems (BW through 2021, SL).

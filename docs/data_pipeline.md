@@ -320,15 +320,16 @@ This unified script processes all 16 German states (1946–2026), replacing the 
 - **Percentage-only data:** HB 1946–1995 (converted BIFF→XLSX with graphical headers) and HB 2011 (hardcoded from official Faltblatt PDF) only have vote share percentages — `valid_votes`/`invalid_votes` are NA.
 - **RP 1979–2016:** Added from Landeswahlleiter file (`LW_RLP_1979_2021.xlsx`), Landesstimmen only, no turnout metadata. 2021 retains separate source with full turnout data. Note: source data is missing 5–6 municipalities for 1979–2001 (founded after 1979), causing 0.07–0.31% shortfall vs official Landesergebnisse. From 2006 onward, deviations are ≤0.16%; 2011/2016 match exactly.
 - **HH 2025:** Added from Statistik Nord Landesliste Gesamtstimmen (`BUE2025_e01_Landesliste.xlsx`).
+- **ST 2026 / RP 2026 (September 2026):** ST from the StaLA Gemeinde CSV (endgültig, 22.09.2026; three rows per Gemeinde by `Wahllokal`, only the total is kept; postal votes are booked in each Gemeinde). RP from the Landeswahlleiter's `LW_2026_Endergebnis_Stimmbezirksebene.xlsx` (endgültig, 02.04.2026) -- **not** its CSV twin, whose 13-digit keys are in Excel scientific notation. Both reconcile exactly with the source's own Land row. RP 2026 lists 58 Ortsgemeinden counted inside a neighbour of the same Verbandsgemeinde; they are kept as published (NA counts on the donor, pooled unit on the receiver; pairs in `data/state_elections/metadata/rp_2026_pooled_municipalities.csv`).
 
-**Output:** `state_unharm.rds` / `state_unharm.csv` (~148,000 rows, ~450 columns, 16 states, ~70 election years)
+**Output:** `state_unharm.rds` / `state_unharm.csv` (153,030 rows, 369 columns, 16 states, ~70 election years; September 2026)
 
 ### 5.2 Harmonization to 2021
 
 **Script:** `code/state_elections/02b_state_harm_21.R`
 
-Harmonizes all state elections (1990–2025) to 2021 administrative boundaries using population-weighted crosswalks. Uses the weighted-sum-of-counts method (matching the federal pipeline):
-1. Imputes weight for rows with NA `valid_votes` (e.g., HB pre-1999 percentage-only data) from `number_voters` or `eligible_voters`
+Harmonizes all state elections (1990–2026) to 2021 administrative boundaries using population-weighted crosswalks. Uses the weighted-sum-of-counts method (matching the federal pipeline):
+1. Imputes weight for rows with NA `valid_votes` (e.g., HB pre-1999 percentage-only data) from `number_voters` or `eligible_voters` (a row with no electorate either gets a unit weight that only carries its -- also missing -- shares, and is reset to NA before aggregation, so it never adds a phantom valid vote; a row with no known party share gets `other` and `cdu_csu` NA, not 1 and 0)
 2. Converts shares to counts: `party_share × valid_votes`
 3. Applies weighted sum: `sum(counts × pop_cw)`
 4. Reconverts to shares: `counts / valid_votes`
@@ -340,7 +341,7 @@ Harmonizes all state elections (1990–2025) to 2021 administrative boundaries u
 
 **Derived columns:** `far_right`, `far_left`, `far_left_w_linke`, `total_vote_share`, `perc_total_votes_incogruence`, `flag_total_votes_incongruent`, `flag_unsuccessful_naive_merge`
 
-**Output:** `state_harm_21.rds` / `state_harm_21.csv` (~81,600 rows, ~462 columns)
+**Output:** `state_harm_21.rds` / `state_harm_21.csv` (85,046 rows, 374 columns)
 
 ### 5.3 Harmonization to 2023
 
@@ -348,7 +349,7 @@ Harmonizes all state elections (1990–2025) to 2021 administrative boundaries u
 
 Same method as `02b_state_harm_21.R`, targeting 2023 boundaries using `ags_1990_to_2023_crosswalk.rds`. Includes the same AGS corrections, fuzzy time matching, self-mapping, weight imputation, and derived columns.
 
-**Output:** `state_harm_23.rds` / `state_harm_23.csv` (~81,500 rows, ~462 columns)
+**Output:** `state_harm_23.rds` / `state_harm_23.csv` (84,955 rows, 374 columns)
 
 ### 5.4 Harmonization to 2025
 
@@ -356,7 +357,7 @@ Same method as `02b_state_harm_21.R`, targeting 2023 boundaries using `ags_1990_
 
 Same method, targeting 2025 boundaries using `ags_1990_to_2025_crosswalk.rds` (chained 1990→2021→2023→2025).
 
-**Output:** `state_harm_25.rds` / `state_harm_25.csv` (~81,400 rows, ~462 columns)
+**Output:** `state_harm_25.rds` / `state_harm_25.csv` (84,819 rows, 374 columns)
 
 ### 5.5 Data quality documentation
 
@@ -364,9 +365,9 @@ See `docs/state_pipeline_audit.md` for comprehensive documentation of known data
 
 ### 5.6 Constituency (Wahlkreis) level
 
-A separate pipeline, `code/state_elections_wahlkreis/`, builds Landtagswahl results at the constituency level — the geographic unit below the state and below the Kreis (Wahlkreis in most states, Stimmkreis in Bayern, Wahlbereich in Bremen). It follows the same numbered-stage pattern: per-state Stage-0 parsers (R for machine-readable sources; nine self-validating Python scripts for elections that exist only as clean text-layer report PDFs) emit long intermediates into `data/state_elections/processed/wahlkreis/`, and `01_ltw_wkr_unharm.R` binds them into `ltw_wkr_unharm{,_long}` in `data/state_elections/final/` (103 elections, 1980–2026, all 16 states, as of August 2026).
+A separate pipeline, `code/state_elections_wahlkreis/`, builds Landtagswahl results at the constituency level — the geographic unit below the state and below the Kreis (Wahlkreis in most states, Stimmkreis in Bayern, Wahlbereich in Bremen). It follows the same numbered-stage pattern: per-state Stage-0 parsers (R for machine-readable sources; nine self-validating Python scripts for elections that exist only as clean text-layer report PDFs) emit long intermediates into `data/state_elections/processed/wahlkreis/`, and `01_ltw_wkr_unharm.R` binds them into `ltw_wkr_unharm{,_long}` in `data/state_elections/final/` (104 elections, 1980–2026, all 16 states, as of September 2026).
 
-Every Stage-0 parser must reproduce its source's own printed statewide totals exactly by summing the extracted Wahlkreise, and `99_audit.R` (22 sections) re-checks the final files, including a cross-pipeline reconciliation against `state_unharm` — the check that found the pooled-Briefwahl defect described in section 5.5's audit doc. Wahlkreis boundaries are each election's own (no cross-time harmonization; `wkr_nr`/`wkr_name` are keyed per election year). Full pipeline documentation: `code/state_elections_wahlkreis/README.md`; per-election recoverability of the remaining gaps: `docs/ltw_wkr_recoverability.md`.
+Every Stage-0 parser must reproduce its source's own printed statewide totals exactly by summing the extracted Wahlkreise, and `99_audit.R` (23 sections) re-checks the final files, including a cross-pipeline reconciliation against `state_unharm` — the check that found the pooled-Briefwahl defect described in section 5.5's audit doc. Wahlkreis boundaries are each election's own (no cross-time harmonization; `wkr_nr`/`wkr_name` are keyed per election year). Full pipeline documentation: `code/state_elections_wahlkreis/README.md`; per-election recoverability of the remaining gaps: `docs/ltw_wkr_recoverability.md`.
 
 ---
 
@@ -466,7 +467,7 @@ The two share an identical schema. `02_mayoral_harm.R` only consumes the mayoral
 - BW covers the most recent election per Gemeinde as of 31.12.2024 (1,101 Gemeinden, ~2016–2024) — see the BW Stage-0 parser below
 - BB is a **2010–2026 series** (429 round-results, 142 Gemeinden): primary is the Landeswahlleiter workbook supplied on request (`BB_Buergermeisterwahlen_ab2010_Landeswahlleiter.xlsx`, Stand 31.07.2026, parsed by `00_bb_lwl_parse.py` → `bb_lwl_parsed.csv`), which also merges in the older portal scrape (`00_bb_scrape.py` → `bb_bm_parsed.csv`, current cycle only) for the 2 elections the workbook omits. Scope = hauptamtliche BM/OB of the amtsfreie Gemeinden/Städte + 4 kreisfreie Städte; amtsangehörige ehrenamtliche BM excluded. Carries party + all candidates + HW/SW, plus the source's own elected-person record (`is_winner`, filled for the decisive round from 2018 on). Source caveats: mandatory digital transmission only from 2014 (2010–2013 incomplete) and results back-cast onto the **current Gebietsstand 01.01.2026**, so BB `*_unharm` rows are already on current boundaries. **Run order: `00_bb_scrape.py` (optional, cached) then `00_bb_lwl_parse.py`.** See per-state classifier notes in the project `CLAUDE.md`
 - ST is a HYBRID of three sources, primary = the StaLA **historical** file `2026_0661_BM-Wahl_ab_1994.xlsx` ("Bürgermeisterwahlen in Sachsen-Anhalt ab 1994", Stand 13.07.2026), parsed by `00_st_hist_parse.py` → **4139 Hauptwahlen + 404 Stichwahlen, 1994–2026, 2057 historical AGS → 218 current Gemeinden**, with per-candidate votes for both rounds, winner gender/birth year/Amtsantritt and StaLA's own "AGS am Wahltag → AGS aktuell" crosswalk. The older Dezernat-13 extract (`bmbm.csv`, Stand 26.02.2025, parsed by `00_st_stala_parse.py` → `st_bmbm_parsed.csv`) remains **authoritative for the 270 election-rounds it covers**: it is the cleaner record, since diffing the two over the shared window exposed ~16 surname typos, a swapped name field, a vote typo (Halle 2025), a wrong runoff participant (Landsberg 2022) and a missing decisive round (Oebisfelde-Weferlingen 2023) in the historical file. The historical file in turn fixes bmbm's known Genthin 2024 corruption (its 8th candidate, 96 votes), which is grafted back in. The Landeswahlleiter portal (`00_st_scrape.py`) is now a no-op fallback. The merge lives in `00_st_hist_parse.py` (bmbm verbatim → historical elsewhere → candidate graft on ANY-of-(last, first, votes) mismatch → date-typo rounds dropped by a round+Gültige+vote-multiset fingerprint). It also repairs source defects: 3 duplicate records, 46 rows whose "AGS am Wahltag" wrongly held the post-merger code (recovered from `ags_crosswalks.csv` by name+year, guarded on harmonising to the same municipality; 6 remain flagged via `flag_shared_ags`), 4 same-day and 9 already-won "Stichwahlen", and one duplicated candidate slot. **Run order: `00_st_stala_parse.py` then `00_st_hist_parse.py`.**
-- HE is a FULL 1993–2026 historical series (`00_he_hist_parse.py` on the HSL-supplied file `Direktwahlen_in_Hessen_seit_1993.xlsx`, Stand 17.07.2026): every Wahlvorschlag with votes + full counts + winner party/gender, candidate names redacted by HSL. Winner names are grafted from the earlier B VII m snapshot parsers (`00_he_parse.py` for the 2024 PDF, `00_he_parse_xlsx.py` for the May-2026 XLSX → `he_parsed.csv`, now the fallback/name donor) and 2026 candidate names from the hessenschau scrape. Landrat rows (all 21 Kreise since 1993) are split to the landrat dataset. OB classifier = 5 kreisfreie Städte (AGS ending `000`) + 7 pinned Sonderstatusstädte; Hanau's post-2026 kreisfrei code 415000 folds into `06435014`. See the per-state notes in `CLAUDE.md`
+- HE is a FULL 1993–2026 historical series (`00_he_hist_parse.py` on the HSL-supplied file `Direktwahlen_in_Hessen_seit_1993.xlsx`, Stand 17.07.2026): every Wahlvorschlag with votes + full counts + winner party/gender, candidate names redacted by HSL. Winner names are grafted from the earlier B VII m snapshot parsers (`00_he_parse.py` for the 2024 PDF, `00_he_parse_xlsx.py` for the May-2026 XLSX → `he_parsed.csv`, now the fallback/name donor) and 2026 candidate names from the hessenschau scrape. Names 1993–2012 (and 11 winners of 2013) come from Hessami (2018, REStat, doi:10.7910/DVN/FZWOMK) via `00_he_hessami_parse.py`; winners are public, losing candidates go to the gitignored `he_hist_restricted_names.csv` and reach only the restricted twin. Every runoff Wahlvorschlag carries the `pair_id` of the same person's first-round row (see `docs/mayoral_elections_known_issues.md` §15). Landrat rows (all 21 Kreise since 1993) are split to the landrat dataset. OB classifier = 5 kreisfreie Städte (AGS ending `000`) + 7 pinned Sonderstatusstädte; Hanau's post-2026 kreisfrei code 415000 folds into `06435014`. See the per-state notes in `CLAUDE.md`
 
 **Key characteristics:**
 - **Candidate-level data:** Unlike all other pipelines that track party vote shares, mayoral elections have candidate-level results (name, party affiliation, vote count, runoff status).
@@ -636,8 +637,8 @@ Each parser must return one normalized row per county, use five-digit county cod
 **Coverage:** 2009, 2014, 2019, 2024 (all European Parliament elections since 2009)
 
 **Output:**
-- `data/european_elections/final/european_muni_unharm.{rds,csv}` — 44,722 rows × 87 columns (71 party columns)
-- `data/european_elections/final/european_muni_harm.{rds,csv}` — 42,986 rows × 90 columns (harmonized to 2021 boundaries)
+- `data/european_elections/final/european_muni_unharm.{rds,csv}` — 44,730 rows × 87 columns (71 party columns)
+- `data/european_elections/final/european_muni_harm.{rds,csv}` — 42,994 rows × 90 columns (harmonized to 2021 boundaries)
 
 ### Raw data
 
@@ -657,38 +658,40 @@ Config-driven loop processes each year identically despite format differences:
 1. **Read raw data** with `fread(colClasses = "character")` to preserve German thousands separators (Saarland uses "." as thousands separator, e.g., "1.510" = 1,510).
 2. **Construct 8-digit AGS** from Land + Regierungsbezirk + Kreis + Gemeinde.
 3. **Remap Bezirksart (BA):** BA=6 (Sonderwahlbezirke) → BA=0, BA=8 (unspecified voters) → BA=0.
-4. **Filter NI Samtgemeinde aggregates** (Gemeinde suffix ≥ 400).
+4. **Keep every Niedersachsen row.** Each row of the files is one ballot district, so none is an aggregate. NI codes with Gemeinde suffix ≥ 400 are Samtgemeinde-level (or Kreis-wide) Briefwahl districts (BA=5, suffix 9xx, `999` in 2014, no electorate), which step 6 allocates like any other shared mail-in district, and the gemeindefreie Bezirke Lohheide (`03351501`) and Osterheide (`03358501`), which are real municipalities. Until September 2026 this step dropped all of them: 47,798 / 80,907 / 102,505 / 163,216 valid votes (2009/2014/2019/2024), plus about 1,000 eligible voters of the two gemeindefreie Bezirke. Membership in a pool comes from `Kennziffer Briefwahlzugehörigkeit` (BWBez), not from the `Verbandsgemeinde` column: in the Heidekreis, pools mix Samtgemeinde members, Einheitsgemeinden and Osterheide under Kreis-level codes.
 5. **Distribute Gem=999 dummy rows:** Remap BA from 0 to 5 so they enter the shared Briefwahl pool and are distributed proportionally rather than kept as spurious municipalities.
-6. **Briefwahl (mail-in) allocation:** Same logic as the federal pipeline — municipalities with their own BA=5 rows sum all BA types; municipalities without own mail-in receive proportional shares from shared mail-in districts, weighted by eligible voters within each `(county, BWBez)` group.
-7. **Remove zero-voter municipalities** (gemeindefreie Gebiete with eligible_voters=0 and number_voters=0).
+6. **Briefwahl (mail-in) allocation:** All municipalities of a Kreis that form a joint Briefwahlvorstand carry the same 2-digit `Kennziffer Briefwahlzugehörigkeit` (BWBez; `0`/`00` = none), per the Bundeswahlleiterin's Hinweise. Every BA=5 row with a nonzero BWBez is therefore pooled per `(county, BWBez)` and distributed, weighted by eligible voters, over every municipality with polling stations under that key; a key with a single municipality hands it all of its votes, and BA=5 rows under `0`/`00` stay with their municipality. This matters where a joint board's districts are booked on the lead municipality's own code as well as on the board's 9xx/999 code (Sachsen 14628 in 2009; Thüringen Verwaltungsgemeinschaften in 2014 and 2024) or where a member's own BA=5 rows are empty (Mecklenburg-Vorpommern 13074 in 2019, Baden-Württemberg 08237 in 2024). Until September 2026 such a lead kept all its BA=5 rows and the board's pooled districts went to the other members only, which pushed 13 of them above 100 % turnout. In all 11 keys the pooled postal voters match the Wahlschein holders (A2) of the whole group — 0.84–0.94 per holder (14628: 0.91 without the Sonderwahlbezirk in its pool), as in ordinary pools (median ≈0.91) — and not those of either side alone. `allocate_pool()` uses largest-remainder rounding, so allocated voter counts are whole numbers that add up to exactly the pool's; invalid votes and Wahlschein voters are split in proportion to the allocated voters, so `number_voters = valid_votes + invalid_votes` in every municipality. Party votes are the allocated valid votes split in the pool's party proportions and are not rounded (until September 2026 each party was rounded separately, so party votes missed `valid_votes` by up to 0.25 % per state). The script stops if a pool has no municipality to go to.
+7. **Remove zero-voter municipalities** (gemeindefreie Gebiete with eligible_voters=0 and number_voters=0), then **reconcile with the raw file**: per state, eligible voters, voters, valid and invalid votes (and A1/A2/A3/B1) must equal the ballot-district file exactly and party votes to floating-point precision, or the script stops.
 8. **Normalise party names** via `normalise_party_eu()` (~90 mappings covering all raw party names across all 4 years).
-9. **Combine years**, fill missing party columns with 0, compute vote shares (`party / number_voters`) and turnout.
+9. **Combine years**, fill missing party columns with 0, compute vote shares (`party / valid_votes`, `NA` where `valid_votes` is 0) and turnout. The script stops if any year lacks its valid-vote column, any ballot district lacks a turnout count or has party votes that do not sum to its valid votes, or any municipality's shares do not sum to 1. A blank party cell is a party not on that ballot (CSU in 11 Rheinland-Pfalz districts in 2019) and counts as 0.
 
 **Key statistics per year:**
 
 | Year | Municipalities | Parties | Eligible voters | Turnout |
 |------|---------------|---------|-----------------|---------|
-| 2009 | 12,125 | 32 | 62,221,702 | 43.2% |
-| 2014 | 11,127 | 25 | 61,997,706 | 48.0% |
-| 2019 | 10,838 | 41 | 61,599,193 | 61.2% |
-| 2024 | 10,632 | 35 | 61,962,000 | 64.5% |
+| 2009 | 12,127 | 32 | 62,222,873 | 43.3% |
+| 2014 | 11,129 | 25 | 61,998,824 | 48.1% |
+| 2019 | 10,840 | 41 | 61,600,263 | 61.4% |
+| 2024 | 10,634 | 35 | 61,963,020 | 64.7% |
+
+Eligible voters, voters and valid votes equal the ballot-district files' totals exactly; for 2019 and 2024 these are the official results (2024: 40,114,939 voters, 39,810,489 valid).
 
 ### Stage 2 — `02_european_muni_harm.R`
 
 Harmonizes all years to 2021 municipality boundaries using population-weighted crosswalks:
 
-1. **Convert vote shares to counts** (`share × number_voters`), aggregate Berlin Bezirke per year.
+1. **Convert vote shares to counts** (`share × valid_votes`), aggregate Berlin Bezirke per year.
 2. **Crosswalk year mapping:** 2009→2009, 2014→2014, 2019→2019, 2024→2020.
 3. **Join crosswalk** by `(ags, year)`. Year-1 fallback for unmatched AGS (splits matched/unmatched first per CLAUDE.md fallback pattern).
 4. **Identity codes** for AGS that exist unchanged in 2021 boundaries.
 5. **Manual merger mappings** for post-2020 mergers: Jahnatal (SN, 2 predecessors), Uder (TH, 11 predecessors), Berga-Wünschendorf (TH, 2 predecessors).
-6. **Weighted aggregation** by `(ags_21, election_year)`, recompute vote shares and turnout.
+6. **Weighted aggregation** by `(ags_21, election_year)`, recompute vote shares (`party / valid_votes`) from the unrounded weighted counts, then round the voter counts and recompute turnout. Rounding each party's weighted votes before dividing (as until September 2026) made shares miss 1; the script now stops if any row's shares do not sum to 1.
 
-**Harmonized municipality counts:** 10,787 (2009) / 10,785 (2014) / 10,783 (2019) / 10,631 (2024).
+**Harmonized municipality counts:** 10,789 (2009) / 10,787 (2014) / 10,785 (2019) / 10,633 (2024).
 
 ### Vote share denominator
 
-European elections use `number_voters` as the vote share denominator, consistent with the federal pipeline. Party shares sum to approximately `valid_votes / number_voters` (< 1.0 due to invalid votes).
+European elections use `valid_votes` as the vote share denominator, like the state and municipal pipelines, in both the unharmonized and the harmonized file (Stage 2 converts shares to counts and back with the same denominator). Releases before September 2026 used `number_voters`; an older share converts as `share × number_voters / valid_votes`. All four raw files report valid votes for every ballot district, and there party votes sum exactly to them. They do so in both output files too, so party shares sum to exactly 1 in every row. In municipalities that receive shared mail-in votes the allocated party votes are not whole numbers, so `share × valid_votes` is fractional there (as it is throughout the harmonized file).
 
 ---
 
@@ -698,8 +701,8 @@ European elections use `number_voters` as the vote share denominator, consistent
 |---|---|---|---|---|---|---|
 | **Raw data source** | Ballot-district CSVs/TXTs | County-level CSVs | GENESIS API | 16 state Excel/CSVs | State Excel/CSVs | Ballot-district CSVs |
 | **Geographic unit** | Municipality (8-digit AGS) | County (5-digit) | Municipality (8-digit AGS) | Municipality (8-digit AGS) | Municipality (8-digit AGS) | Municipality (8-digit AGS) |
-| **Time span** | 1980–2025 | 1953–2021 | 1946–2025 | 1990–2025 | Varies by state | 2009–2024 |
-| **Vote share denominator** | `number_voters`† | `number_voters`† | `valid_votes` | `valid_votes` | N/A (candidate-level) | `number_voters`† |
+| **Time span** | 1980–2025 | 1953–2021 | 1946–2026 | 1990–2026 | Varies by state | 2009–2024 |
+| **Vote share denominator** | `number_voters`† | `number_voters`† | `valid_votes` | `valid_votes` | N/A (candidate-level) | `valid_votes` |
 | **Turnout formula** | `number_voters / eligible_voters_orig` | `number_voters / eligible_voters` | `number_voters / eligible_voters` | `number_voters / eligible_voters` | N/A | `number_voters / eligible_voters` |
 | **Harm method** | Weighted sum of counts | Weighted sum of counts | Weighted mean of shares (02) / Weighted sum of counts (02b, 04, 05) | Hybrid: weighted sum (counts) + weighted mean (shares) | None | Weighted sum of counts |
 | **Target boundaries** | 2021 and 2025 | 2021 | 2021, 2023, and 2025 | 2021 and 2025 | N/A | 2021 |
@@ -708,12 +711,12 @@ European elections use `number_voters` as the vote share denominator, consistent
 | **Quality flags** | `flag_unsuccessful_naive_merge`, `flag_total_votes_incongruent`, `flag_naive_turnout_above_1` | `flag_unsuccessful_naive_merge` | Present | Zero-vote indicator flags | N/A | `flag_turnout_above_1`, `flag_unsuccessful_naive_merge`, `flag_aggregated` |
 | **Pipeline completeness** | Complete (raw → harm_21, harm_25) | Complete (unharm → harm) | Complete (unharm → harm_21, harm_23, harm_25) | Complete (unharm → harm_21, harm_25) | Partial (unharm only) | Complete (unharm → harm_21) |
 
-† In the harmonized datasets, vote shares are recomputed as `party / total_votes` where `total_votes` = row sum of all party columns. This may differ slightly from `valid_votes` due to rounding during harmonization.
+† In the harmonized federal datasets, vote shares are recomputed as `party / total_votes` where `total_votes` = row sum of all party columns. This may differ slightly from `valid_votes` due to rounding during harmonization.
 
 ### Key methodological divergences
 
 **1. Vote share denominator:**
-The federal pipeline uses `number_voters` (all voters, including those who cast invalid ballots) as the denominator for vote shares in the unharmonized data. State and municipal pipelines use `valid_votes` (excluding invalid ballots). In harmonized federal data, the denominator becomes `total_votes` (the sum of all individual party vote columns after harmonization).
+The federal pipeline uses `number_voters` (all voters, including those who cast invalid ballots) as the denominator for vote shares in the unharmonized data. State, municipal and European pipelines use `valid_votes` (excluding invalid ballots); the European pipeline switched from `number_voters` in September 2026. In harmonized federal data, the denominator becomes `total_votes` (the sum of all individual party vote columns after harmonization).
 
 **2. Harmonization method:**
 This is the most consequential divergence across pipelines:
