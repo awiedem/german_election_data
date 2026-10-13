@@ -64,9 +64,9 @@ known <- c(
   # count. The true count is not in the record.
   "12062240_2008" = "source: postal voters partly missing (Hohenleipisch, 3.005)",
   "12067481_2008" = "source: postal voters partly missing (Storkow (Mark), 3.005)",
-  # small excesses found 2026-10-08, not yet investigated
-  "13072002_2024" = "not yet investigated (Alt Bukow, 3.004)",
-  "15256027_1994" = "not yet investigated (Freyburg (Unstrut), 3.016)"
+  # small excesses found 2026-10-08; both offices confirmed the published figures
+  "13072002_2024" = "Alt Bukow, 3.004: the Landeswahlleitung M-V confirmed the announced figures (e-mail 2026-10-13); kept as published",
+  "15256027_1994" = "Freyburg (Unstrut), 3.016: the StaLA Sachsen-Anhalt confirmed its documents show these figures (Vorgang 2026_1086, 2026-10-13); kept as published"
 )
 
 # outputs from before October 2026 have no flag column

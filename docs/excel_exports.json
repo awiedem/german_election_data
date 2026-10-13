@@ -3149,11 +3149,11 @@
       "iii_weg",
       "other"
     ],
-    "source_sha256": "3eea1096402e83a89b8520de78eeee34326a60c6d420905592216e41f605ff99",
-    "rds_sha256": "9af8b987e8921fadc06b50dda28a00f39d966ce5fdf04f5faa0de8c2fa7fb8e8",
+    "source_sha256": "b46fa67c7de5b269c9d592e4e1e4ce72194054687c0c44828527ff08ea1185e6",
+    "rds_sha256": "6f32fd604a2cc380b239a7fa194b0667aa1bc1f07e0d1b7caca28f370c2d0083",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "adffb7f9dd7c726da14d3eabe17b5dd33a812b513a441d3e1c8b82973458a41f",
-    "bytes": 11032730,
+    "xlsx_sha256": "bbc56a7101f46ad7ee35bfd0a4c7c44944cb7b5217af2c2fc9a14452063cdab6",
+    "bytes": 11032766,
     "source": "data/municipal_elections/final/municipal_harm.csv"
   },
   "data/municipal_elections/final/municipal_harm_25": {
@@ -3177,11 +3177,11 @@
       "iii_weg",
       "other"
     ],
-    "source_sha256": "b29d8a092395955f28f5884f644febc34d9800272e3681c4510651943c759c82",
-    "rds_sha256": "baf7f909acb7004cc3af91f2badce732c188da997d7b77b7e4febdc2a9ad4fa1",
+    "source_sha256": "7c677ab110969fb0d82ff13cb6856acf88dd6f5dc06550892ce3b71937616b0a",
+    "rds_sha256": "69cf3901bcb746aae93d5e2082c8d3896d5f662c4335f63cdfa32337d5a6a4f7",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "1341eb95ce7fdcc106d829fa61c6d92b3682ea8ea83e347732d365b86e42b7f7",
-    "bytes": 12606971,
+    "xlsx_sha256": "2c5b328670084b0417ac59d6c9c62005deacc9cfa8890bfa235470a9716773bb",
+    "bytes": 12607008,
     "source": "data/municipal_elections/final/municipal_harm_25.csv"
   },
   "data/municipal_elections/final/municipal_unharm": {
@@ -3205,11 +3205,11 @@
       "iii_weg",
       "other"
     ],
-    "source_sha256": "a921b52d902dca3d238f02545237ccb64459f5d9f37083aab5179da729699da4",
-    "rds_sha256": "370bd876235aa44ee64d354267d0cfd77b3ef9a5c4a7431c8ee16d75ca5230d7",
+    "source_sha256": "f9d85e20f66e8bbb071908c1d930abec3f0ba7f52d176db58f9b704c7a76ba3f",
+    "rds_sha256": "f6e4551a03e15a6f4b06ce3c6a107836af3e9fa6be8a82986fa8736f7e181aa3",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "85c23458548f0571153829d6aa594715cdcbe65bea67029bf5c45026b86fcb4c",
-    "bytes": 13737976,
+    "xlsx_sha256": "704c72bfff6188d1848b98e5daec75e23a41270c0ec58807ae7d649a018013e7",
+    "bytes": 13737986,
     "source": "data/municipal_elections/final/municipal_unharm.csv"
   },
   "data/state_elections/final/ltw_wkr_unharm": {
