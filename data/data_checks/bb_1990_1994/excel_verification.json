@@ -1,0 +1,85 @@
+{
+  "passed": true,
+  "workbooks": [
+    {
+      "dataset": "data/state_elections/final/state_unharm",
+      "rows": 150560,
+      "populated_cells": 4034605,
+      "sampled_rows": [
+        1,
+        2,
+        3,
+        4,
+        75281,
+        150561
+      ],
+      "selected_rows": 5645,
+      "selected_populated_cells": 146110,
+      "selected_blank_cells": 1936895
+    },
+    {
+      "dataset": "data/state_elections/final/state_harm_21",
+      "rows": 82530,
+      "populated_cells": 2975217,
+      "sampled_rows": [
+        1,
+        2,
+        3,
+        4,
+        41266,
+        82531
+      ],
+      "selected_rows": 2279,
+      "selected_populated_cells": 83281,
+      "selected_blank_cells": 775902
+    },
+    {
+      "dataset": "data/state_elections/final/state_harm_23",
+      "rows": 82438,
+      "populated_cells": 2995063,
+      "sampled_rows": [
+        1,
+        2,
+        3,
+        4,
+        41220,
+        82439
+      ],
+      "selected_rows": 2273,
+      "selected_populated_cells": 83077,
+      "selected_blank_cells": 773844
+    },
+    {
+      "dataset": "data/state_elections/final/state_harm_25",
+      "rows": 82303,
+      "populated_cells": 3017749,
+      "sampled_rows": [
+        1,
+        2,
+        3,
+        4,
+        41152,
+        82304
+      ],
+      "selected_rows": 2269,
+      "selected_populated_cells": 85194,
+      "selected_blank_cells": 770219
+    },
+    {
+      "dataset": "data/state_elections/final/state_harm",
+      "rows": 69670,
+      "populated_cells": 2357241,
+      "sampled_rows": [
+        1,
+        2,
+        3,
+        4,
+        34836,
+        69671
+      ],
+      "selected_rows": 1561,
+      "selected_populated_cells": 43201,
+      "selected_blank_cells": 651444
+    }
+  ]
+}

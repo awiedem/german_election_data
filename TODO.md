@@ -1,52 +1,36 @@
 # GERDA TODO / Status
 
-Tracking outstanding work on the German Election Database. Last updated: 2026-08-19.
+Tracking outstanding work on the German Election Database. Last updated: 2026-09-28.
 
 ---
 
 ## Open Issues
 
-### 1. OCR-induced vote share deviations in old state elections (GitHub #7)
+### 1. Historical state-election errors (GitHub #7)
 
-Cross-validation against `bundeslaendeR` (Stelzle) identifies six state × party combinations with >1pp deviation from Bundeswahlleiter state totals after Vincent's April 2026 fixes (commit `29fd40e`). All six stem from OCR extraction of scanned PDFs.
+Brandenburg 1990 and 1994 now use verified official second-vote spreadsheets.
+The 1990 reconstruction preserves election-day municipalities: 22 municipalities
+that voted in Mecklenburg-Vorpommern are excluded, and Brunow/Dambeck are restored
+from the original report. Both elections retain in-person coverage; pooled postal
+votes are reconciled separately and are not allocated. The user approved these
+geographic and postal-vote choices on 2026-09-28.
 
-| Case | Before Vincent's fix | After Vincent's fix | Problem addressed |
-|---|---|---|---|
-| BB 1994 SPD | -3.76pp | -3.93pp | No |
-| BB 1990 SPD | -2.45pp | -2.45pp | No |
-| BB 1990 Grüne | +2.02pp | +2.02pp | No |
-| SH 1983 CDU | +1.65pp | +1.65pp | Repaired 2026-09-23; compare in-person totals only |
-| NRW 1970 CDU | -1.20pp | -1.20pp | No |
-| BB 1990 CDU | -1.10pp | -1.10pp | No |
-| BB 1994 Linke/PDS | -1.03pp | <1pp | Yes |
+All 13 parties in 1990 and all 12 in 1994 reconcile with official statewide totals
+when the separately retained postal counts are included. There are 1,792 municipal
+records in 1990 (previously 1,793, including two false OCR identifiers) and 1,693 in
+1994 (previously 1,644). See [repair notes](docs/sources/bb_1990_1994.md) and
+`data/data_checks/bb_1990_1994/` for verification results and downstream coverage.
 
-**Root causes by election:**
-- **BB 1990 / BB 1994**: Erststimmen/Zweitstimmen row disambiguation on dense right-page tables. No labels distinguish E% from Z% rows on the right page; neither position counting, Tesseract, nor vision models (GPT-5.4-mini, Gemini 2.5 Flash) reliably pick the correct row. Detailed problem analysis: `docs/ocr_extraction_problem.qmd`.
-- **SH 1983**: Repaired from the source scan on 2026-09-23: 1,128 records and all in-person totals reconcile exactly. Municipality results exclude postal votes; no postal allocation is performed. Overall municipal turnout remains unavailable. See `data/state_elections/derived/sh_1983/README.md`.
-- **NRW 1970**: Scattered OCR digit errors across ~90 Kreise from Tesseract extraction of scanned PDF.
+NRW 1966/1970 and SH 1983 were repaired in the September historical release.
+SH 1983 still requires comparison with in-person totals, not totals including postal votes.
 
-**Tried and not working well enough:**
-- PaddleOCR (too slow on Apple Silicon)
-- pdfplumber column parsing (column alignment issues)
-- GPT-5.4-mini single-page and page-pair extraction (E/Z confusion)
-- Gemini 2.5 Flash with VV context and structured output (~same error rate)
-- Tesseract + HMM Viterbi row-state decoding (works on clean pages but Tesseract fails to parse enough rows on ~30% of pages)
-- Hybrid GPT (left) + Tesseract/HMM (right) with Gemini fallback (SPD still -5.6pp)
+### 2. Follow-up on GitHub #7
 
-**Validated approach docs:** `/Users/hanno/.claude/projects/-Users-hanno-Documents-GitHub-german-election-data/memory/ocr_pipeline_approach.md`
-
-**Next to try:**
-- Constrained optimization with Wahlkreis-level subtotals as local anchors (would need machine-readable Bundeswahlleiter Wahlkreis data — Robert Stelzle may have access)
-- Manual verification on the ~100-200 problematic municipalities per election
-- Targeted re-extraction of the specific PDF pages that cause the most error
-
----
-
-### 2. Requests from GitHub #7 (Robert Stelzle)
-
-- [x] ✅ **Extend `code/checks/checks_state_harm.R` with bundeslaendeR cross-check** — flags state×party pairs with >1pp deviation and writes full deviations table to `data/data_checks/bundeslaendeR_deviations.csv`. Currently surfaces the 6 known OCR-induced deviations.
-- [x] ✅ Move `flag_*` variables to the front of `state_unharm` — done in `01b_state_unharm_raw.R` (now at positions 10–12, previously 174–176)
-- [ ] Reply to Robert with status update on remaining deviations
+- [x] Implement the `bundeslaendeR` comparison and move quality flags to the front.
+- [x] Replace the Brandenburg OCR inputs and document the historical geography.
+- [ ] Review the repaired exports and prepared reply in `docs/sources/bb_1990_1994.md`.
+- [ ] Investigate the remaining Rheinland-Pfalz 2006 `linke_pds` comparison (2.557 percentage points) and the external BB 1994 BFWG/BürgerBündnis mapping; keep #7 open.
+- [ ] Commit, push, and post the reply only after Hanno requests publication.
 
 ---
 

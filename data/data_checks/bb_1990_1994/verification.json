@@ -1,0 +1,12 @@
+{
+  "baseline_sha256": "8df5b7662a8a0883b7061207c76c3c2eb34080280e172ad0dba0822763314ff8",
+  "unchanged_unharm_rows": 147075,
+  "repaired_municipalities": [1792, 1693],
+  "source_party_reconciliations": 25,
+  "output_sha256": {
+    "state_unharm": "40f4f9b7c009dd8caa5580b9e5de2029752d8ae7f36d232c09a0563d8cc512d1",
+    "state_harm_21": "0992ac30b7b8f09fb92522302e01e5f6befcc346420909740b59396a34f36325",
+    "state_harm_23": "64bc1e78f60d2642c4345aa5ed81859d5b2362a072c5a8333af0c26cbfb51580",
+    "state_harm_25": "661c89877554c91bce0c8dbbd669377d54de4b15671fdc1a99440554e294bf6e"
+  }
+}

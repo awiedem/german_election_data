@@ -13,6 +13,7 @@
 
 #### Setup ####
 rm(list = ls())
+set.seed(20260928)
 
 packages <- c("readxl", "xml2", "here", "janitor", "tidyverse", "data.table", "digest")
 for (pkg in packages) {
@@ -25,6 +26,7 @@ setwd(here())
 raw_path <- "data/state_elections/raw/Landtagswahlen"
 source("code/shared/state_mapping.R")
 source("code/shared/state_missingness.R")
+source("code/state_elections/bb_verified.R")
 source("code/shared/harmonization_audit.R")
 
 ## Meta columns (non-party) present in every row ----------------------------
@@ -1158,8 +1160,8 @@ cat("Sachsen total:", nrow(all_states[["sn"]]), "rows\n\n")
 ###############################################################################
 ####                       BRANDENBURG (12)                                ####
 ###############################################################################
-## 7 elections: 1994, 1999, 2004, 2009, 2014, 2019, 2024
-## (1990 file is PDF → skip; 1994/1999 use OCR CSVs)
+## 8 elections: 1990, 1994, 1999, 2004, 2009, 2014, 2019, 2024
+## 1990/1994 use verified polling-station XLSX; 1999 retains its OCR CSV.
 ##
 ## Five format variants:
 ##   2004: XLS, 44 Tab5-Wk## sheets (one per Wahlkreis). Each municipality has
@@ -1198,130 +1200,9 @@ for (yr in names(bb_dates)) {
 
   safe_num <- function(x) as.numeric(na_if(na_if(x, "-"), "x"))
 
-  if (yr == "1990") {
-    ## ==================================================================
-    ## 1990: OCR-extracted CSV (from scanned PDF, see 00_bb_1990_extract.py)
-    ## ==================================================================
-    ocr_path <- here(raw_path, "Brandenburg", "bb_1990_ocr.csv")
-    raw90 <- read.csv(ocr_path, colClasses = "character")
-
-    ## Map OCR column names to standard party names
-    ## In 1990, Bündnis 90 and Grüne ran as separate parties (merger was 1993)
-    party_map <- c(
-      spd = "spd", cdu = "cdu", pds_ll = "linke_pds",
-      buendnis_90 = "buendnis_90", fdp = "fdp",
-      chrl = "chr_l", dbu = "dbu", dfp = "dfp", dsu = "dsu",
-      gruene = "gruene", rep = "rep", domowina = "domowina", npd = "npd"
-    )
-
-    result <- tibble(
-      ags             = raw90$ags,
-      eligible_voters = as.numeric(raw90$eligible_voters),
-      number_voters   = as.numeric(raw90$number_voters),
-      invalid_votes   = as.numeric(raw90$invalid_votes),
-      valid_votes     = as.numeric(raw90$valid_votes)
-    )
-
-    ## Add party vote counts and shares
-    for (ocr_col in names(party_map)) {
-      std_name <- party_map[[ocr_col]]
-      votes <- as.numeric(raw90[[ocr_col]])
-      votes[is.na(votes)] <- 0
-      result[[paste0(std_name, "_n")]] <- votes
-      result[[std_name]] <- votes / result$valid_votes
-    }
-
-    ## Compute other
-    mapped_n_cols <- paste0(unique(party_map), "_n")
-    mapped_n_cols <- mapped_n_cols[mapped_n_cols %in% names(result)]
-    result <- result |>
-      mutate(
-        other_n = valid_votes - rowSums(across(all_of(mapped_n_cols)), na.rm = TRUE),
-        other_n = pmax(other_n, 0, na.rm = TRUE),
-        other   = other_n / valid_votes
-      )
-
-    ## Add metadata
-    result <- result |>
-      mutate(
-        election_year = 1990L,
-        state = "12",
-        election_date = as.Date(bb_dates["1990"]),
-        turnout = number_voters / eligible_voters,
-        cdu_csu = cdu
-      ) |>
-      select(-ends_with("_n"))
-
-  } else if (yr == "1994") {
-    ## ==================================================================
-    ## 1994: OCR-extracted CSV (from scanned PDF, see 00_bb_1994_ocr.py)
-    ## ==================================================================
-    ocr_path <- here(raw_path, "Brandenburg", "bb_1994_ocr.csv")
-    raw94 <- read.csv(ocr_path, colClasses = "character")
-
-    ## Fix OCR-misread AGS codes (single-digit errors in scanned PDF)
-    ## Verified against PDF pages and BBSR crosswalk/federal data
-    ocr_ags_fixes <- c(
-      "12063146" = "12063148",  # Ketzin, Stadt (PDF p138 confirms)
-      "12064226" = "12064228",  # Hoppegarten/Mü.
-      "12064246" = "12064248",  # Klein Neuendorf
-      "12065162" = "12065152",  # Kappe (EV=151 matches federal)
-      "12067025" = "12067028",  # Bahro
-      "12067045" = "12067048",  # Birkholz
-      "12068049" = "12068044",  # Bork/Lellichow (PDF p40 confirms)
-      "12068309" = "12068300",  # Luhme (federal EV=128 ≈ OCR 127)
-      "12073126" = "12073128"   # Eickstedt
-    )
-    fix_mask <- raw94$ags %in% names(ocr_ags_fixes)
-    if (any(fix_mask)) {
-      raw94$ags[fix_mask] <- ocr_ags_fixes[raw94$ags[fix_mask]]
-      cat("  Fixed", sum(fix_mask), "OCR-misread AGS codes in BB 1994\n")
-    }
-
-    ## Map OCR column names to standard party names
-    party_map <- c(
-      spd = "spd", cdu = "cdu", pds = "linke_pds",
-      fdp = "fdp", gruene_b90 = "gruene", bfwg = "freie_wahler",
-      rep = "rep", eb = "einzelbewerber"
-    )
-
-    result <- tibble(
-      ags             = raw94$ags,
-      eligible_voters = as.numeric(raw94$eligible_voters),
-      number_voters   = as.numeric(raw94$number_voters),
-      invalid_votes   = as.numeric(raw94$invalid_votes),
-      valid_votes     = as.numeric(raw94$valid_votes)
-    )
-
-    ## Add party vote counts and shares
-    for (ocr_col in names(party_map)) {
-      std_name <- party_map[[ocr_col]]
-      votes <- as.numeric(raw94[[ocr_col]])
-      votes[is.na(votes)] <- 0
-      result[[paste0(std_name, "_n")]] <- votes
-      result[[std_name]] <- votes / result$valid_votes
-    }
-
-    ## Compute other (buerger, dsu, graue, kpd, odp, uwvb)
-    mapped_n_cols <- paste0(unique(party_map), "_n")
-    mapped_n_cols <- mapped_n_cols[mapped_n_cols %in% names(result)]
-    result <- result |>
-      mutate(
-        other_n = valid_votes - rowSums(across(all_of(mapped_n_cols)), na.rm = TRUE),
-        other_n = pmax(other_n, 0, na.rm = TRUE),
-        other   = other_n / valid_votes
-      )
-
-    ## Add metadata
-    result <- result |>
-      mutate(
-        election_year = 1994L,
-        state = "12",
-        election_date = as.Date(bb_dates["1994"]),
-        turnout = number_voters / eligible_voters,
-        cdu_csu = cdu
-      ) |>
-      select(-ends_with("_n"))
+  if (yr %in% c("1990", "1994")) {
+    ## Verified second-vote spreadsheets; original geography, no pooled postal allocation.
+    result <- if (yr == "1990") gerda_bb_1990_verified()$data else gerda_bb_1994_verified()$data
 
   } else if (yr == "1999") {
     ## ==================================================================

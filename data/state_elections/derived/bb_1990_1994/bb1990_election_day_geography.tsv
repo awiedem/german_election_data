@@ -1,0 +1,1813 @@
+source_ags	source_municipality	election_day_ags	disposition	evidence
+12051000	Brandenburg an	12001000	retain_BB_1990_ballot	PDF043100 Brandenburg/Havel Stadt; renamed display
+12051000	Göttin	12017140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12051000	Klein Kreutz	12017250	retain_BB_1990_ballot	exact name and PDF EV/NV
+12051000	Schmerzke	12017460	retain_BB_1990_ballot	exact name and PDF EV/NV
+12052000	Branitz	12019050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12052000	Cottbus, Stadt	12002000	retain_BB_1990_ballot	exact name and county
+12052000	Dissenchen	12019110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12052000	Döbbrick	12019120	retain_BB_1990_ballot	exact name and county
+12052000	Kahren	12019350	retain_BB_1990_ballot	exact name and PDF EV/NV
+12052000	Merzdorf	12019530	retain_BB_1990_ballot	exact name and PDF EV/NV
+12052000	Sielow	12019700	retain_BB_1990_ballot	exact name and PDF EV/NV
+12052000	Willmersdorf	12019780	retain_BB_1990_ballot	exact name and PDF EV/NV
+12053000	Frankfurt/Oder,	12004000	retain_BB_1990_ballot	truncated name and county
+12054000	Eiche	12038100	retain_BB_1990_ballot	exact name and PDF EV/NV
+12054000	Grube        --	12038230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12054000	Potsdam, Stadt	12005000	retain_BB_1990_ballot	exact name and county
+12060004	Ahrensfelde	12016010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060008	Altenhof	12020010	retain_BB_1990_ballot	exact name and county
+12060012	Althüttendorf	12020020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060016	Basdorf	12016020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060020	Bernau, Stadt	12016030	retain_BB_1990_ballot	exact name and county
+12060020	Birkholz	12016050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060024	Biesenthal, Sta	12016040	retain_BB_1990_ballot	truncated name and county
+12060028	Blumberg	12016060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060032	Börnicke	12016070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060036	Britz	12020040	retain_BB_1990_ballot	exact name and county
+12060040	Brodowin	12020050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060044	Chorin	12020060	retain_BB_1990_ballot	exact name and county
+12060048	Danewitz	12016080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060052	Eberswalde-Fino	12020070	retain_BB_1990_ballot	truncated name and county
+12060052	Sommerfelde	12020330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060052	Tornow	12020360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060056	Eiche	12016090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060060	Eichhorst	12020080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060064	Finowfurt	12020100	retain_BB_1990_ballot	exact name and county
+12060068	Friedrichswalde	12020110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060072	Golzow	12020120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060076	Groß Schönebeck	12016100	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12060080	Groß Ziethen	12020130	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060084	Grüntal	12020140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060088	Hirschfelde	12016110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060092	Hohenfinow	12020150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060096	Hohensaaten	12012210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060100	Joachimsthal, S	12020160	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12060104	Klein Ziethen	12020170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060108	Klosterfelde	12016130	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060112	Krummensee	12016140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060116	Ladeburg	12016150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060120	Lanke	12016160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060124	Lichterfelde	12020190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060128	Liepe	12020200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060132	Lindenberg	12016170	retain_BB_1990_ballot	exact name and county
+12060136	Lobetal	12016180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060140	Löhme	12016190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060144	Lüdersdorf	12020210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060148	Lunow	12020220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060152	Marienwerder	12016200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060156	Mehrow	12016210	retain_BB_1990_ballot	exact name and county
+12060160	Melchow	12020230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060164	Neuehütte	12020240	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060168	Neugrimnitz	12020250	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060172	Niederfinow	12020260	retain_BB_1990_ballot	exact name and county
+12060176	Oderberg, Stadt	12020270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060180	Parlow-Glambeck	12020280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060184	Parstein	12020290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060188	Prenden	12016220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060192	Rüdnitz	12016230	retain_BB_1990_ballot	exact name and county
+12060196	Ruhlsdorf	12016240	retain_BB_1990_ballot	exact name and county
+12060200	Sandkrug	12020300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060204	Schönerlinde	12016260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060208	Schönfeld	12016270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060212	Schönow	12016280	retain_BB_1990_ballot	exact name and county
+12060216	Schönwalde	12016290	retain_BB_1990_ballot	exact name and county
+12060220	Schwanebeck	12016300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060224	Seefeld	12016310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060228	Senftenhütte	12020310	retain_BB_1990_ballot	exact name and county
+12060232	Serwest	12020320	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060236	Sophienstädt	12016320	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060240	Spechthausen	12020340	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060244	Stolzenhagen	12016330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060248	Stolzenhagen	12020350	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060252	Tempelfelde	12016340	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060256	Tiefensee	12012440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060260	Trampe	12020370	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060264	Tuchen-Klobbick	12020380	retain_BB_1990_ballot	truncated name and county
+12060268	Wandlitz	12016350	retain_BB_1990_ballot	exact name and county
+12060272	Weesow	12016360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060276	Werbellin	12020390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060280	Werneuchen, Sta	12016370	retain_BB_1990_ballot	truncated name and county
+12060284	Willmersdorf	12016380	retain_BB_1990_ballot	exact name and PDF EV/NV
+12060288	Zepernick	12016390	retain_BB_1990_ballot	exact name and county
+12060292	Zerpenschleuse	12016400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061004	Alt Zauche	12031020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061008	Alt-Schadow	12031010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061012	Beesdau	12032030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061016	Bergen	12032040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061020	Bestensee	12029010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061024	Biebersdorf	12031030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061028	Bindow	12029020	retain_BB_1990_ballot	exact name and county
+12061032	Blasdorf	12014070	retain_BB_1990_ballot	exact name and county
+12061036	Blossin	12029040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061040	Bornsdorf	12032060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061044	Briesen	12029050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061048	Briesensee	12031040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061052	Brusendorf	12029060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061056	Butzen	12031060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061060	Byhleguhre	12031070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061064	Byhlen	12031080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061068	Cahnsdorf	12032070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061072	Caminchen	12031090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061076	Dannenreich	12029070	retain_BB_1990_ballot	exact name and county
+12061080	Diepensee	12029090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061084	Doberburg	12014150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061088	Dolgenbrodt	12029100	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061092	Dollgen	12031100	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061096	Drahnsdorf	12032090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061100	Duben	12032110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061104	Dürrenhofe	12031110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061108	Egsdorf	12032120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061112	Eichwalde	12029120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061116	Falkenberg	12032130	retain_BB_1990_ballot	exact name and county
+12061120	Falkenhain	12032140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061124	Freesdorf	12032150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061128	Freidorf	12029130	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061132	Freiwalde	12031120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061136	Friedersdorf	12029140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061140	Fürstlich Drehn	12032100	retain_BB_1990_ballot	PDF061010 Drehna; identical EV354 NV256
+12061144	Gallun	12029150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061148	Gehren	12032170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061152	Gießmannsdorf	12032180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061156	Glienig	12032190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061160	Glietz	12031140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061164	Golßen, Stadt	12032220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061168	Görsdorf	12032210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061172	Goschen	12014240	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061176	Goßmar	12032230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061180	Goyatz-Guhlen	12031150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061184	Gräbendorf	12029160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061188	Gröditsch	12031160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061192	Groß Köris	12029170	retain_BB_1990_ballot	exact name and county
+12061196	Groß Leine	12031170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061200	Groß Leuthen	12031180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061204	Groß Wasserburg	12031210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061208	Großziethen	12029180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061212	Gussow	12029190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061216	Halbe	12029200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061220	Hohenbrück-Neu	12031240	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12061224	Jamlitz	12014320	retain_BB_1990_ballot	exact name and county
+12061228	Jessern	12031250	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061232	Jetsch	12032240	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061236	Kablow	12029220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061240	Karche-Zaacko	12032260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061244	Kasel-Golzig	12032270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061248	Kiekebusch	12029230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061252	Klein Leine	12031260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061256	Kolberg	12029270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061260	Königs Wusterha	12029250	retain_BB_1990_ballot	truncated name and county
+12061264	Krausnick	12031280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061268	Kreblitz	12032290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061272	Krugau	12031290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061276	Kümmritz	12032310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061280	Kuschkow	12031300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061284	Laasow	12031310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061288	Lamsfeld-Groß L	12031320	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12061292	Langengrassau	12032320	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061296	Leeskow	12014430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061300	Leibchel	12031330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061304	Leibsch	12031340	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061308	Lieberose, Stad	12014450	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12061312	Löpten	12029280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061316	Hartmannsdorf	12031230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061316	Lubolz	12031200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061316	Lübben/Spreewal	12031350	retain_BB_1990_ballot	truncated name and county
+12061316	Radensdorf	12031430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061320	Luckau, Stadt	12032340	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061324	Mahlsdorf	12032350	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061328	Märkisch Buchho	12029290	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12061332	Mittenwalde, St	12029300	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12061336	Mochow	12031360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061340	Motzen	12029310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061344	Münchehofe	12029320	retain_BB_1990_ballot	exact name and county
+12061348	Neu Lübbenau	12031390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061352	Neu Zauche	12031400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061356	Neuendorf am Se	12031370	retain_BB_1990_ballot	truncated name and county
+12061360	Niederlehme	12029340	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061364	Niewitz	12031410	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061368	Oderin	12029350	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061372	Pätz	12029360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061376	Pitschen-Pickel	12032400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061380	Plattkow	12014580	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061384	Pretschen	12031420	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061388	Prieros	12029370	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061392	Ragow	12029380	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061396	Reichwalde	12032420	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061400	Ressen-Zaue	12031440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061404	Rietzneuendorf-	12031450	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12061408	Rotberg	12029390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061412	Sacrow-Waldow	12031460	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061416	Schenkendorf	12029400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061420	Schiebsdorf	12032480	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061424	Schlabendorf	12032490	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061428	Schlepzig	12031470	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061432	Schönefeld	12029410	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061436	Schönwalde	12031480	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061440	Schuhlen-Wiese	12031490	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061444	Schulzendorf b.	12029420	retain_BB_1990_ballot	truncated name and county
+12061448	Schwerin	12029430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061452	Selchow	12029440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061456	Sellendorf	12032510	retain_BB_1990_ballot	exact name and county
+12061460	Senzig	12029450	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061464	Siegadel	12031500	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061468	Speichrow	12014720	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061472	Staakow	12031510	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061476	Straupitz	12031520	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061480	Streganz	12029460	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061484	Telz	12048560	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061488	Terpt	12032520	retain_BB_1990_ballot	exact name and county
+12061492	Teupitz, Stadt	12029470	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061496	Töpchin	12029490	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061500	Trebitz	12014770	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061504	Uckro	12032530	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061508	Ullersdorf	12014780	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061512	Waldow/Brand	12031540	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061516	Waldrehna	12032540	retain_BB_1990_ballot	PDF061054 Walddrehna; identical EV912 NV648
+12061520	Waltersdorf	12029510	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061524	Waltersdorf	12032550	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061528	Waßmannsdorf	12029520	retain_BB_1990_ballot	exact name and county
+12061532	Weißack	12032570	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061536	Wernsdorf	12024470	retain_BB_1990_ballot	exact name and county
+12061540	Wildau	12029530	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061544	Willmersdorf-St	12032590	retain_BB_1990_ballot	truncated name and county
+12061548	Wittmannsdorf-B	12031550	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12061552	Wolzig	12029540	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061556	Wüstermarke	12032600	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061560	Wußwerk	12031560	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061564	Zeesen	12029550	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061568	Zernsdorf	12029560	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061572	Zeuthen	12029570	retain_BB_1990_ballot	exact name and county
+12061576	Zieckau	12032620	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061580	Zöllmersdorf	12032630	retain_BB_1990_ballot	exact name and PDF EV/NV
+12061584	Zützen	12032640	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062004	Ahlsdorf	12027010	retain_BB_1990_ballot	exact name and county
+12062008	Altenau	12013010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062012	Arenzhain	12022010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062016	Arnsnesta	12027020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062020	Babben	12022020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062024	Bad Liebenwerda	12013020	retain_BB_1990_ballot	truncated name and county
+12062024	Dobra	12013080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062024	Kosilenzien	12013220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062024	Kröbeln	12013260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062024	Lausitz	12013280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062024	Maasdorf	12013290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062024	Möglenz	12013330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062024	Neuburxdorf	12013350	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062024	Oschätzchen	12013360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062024	Prieschka	12013390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062024	Thalberg	12013470	retain_BB_1990_ballot	exact name and county
+12062024	Theisa	12013480	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062024	Zeischa	12013540	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062024	Zobersdorf	12013560	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062028	Bahnsdorf	12027030	retain_BB_1990_ballot	exact name and county
+12062032	Bahren	12022050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062036	Beiersdorf	12013030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062040	Bernsdorf	12027040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062044	Betten	12022040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062048	Beutersitz	12013040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062052	Beyern	12027050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062056	Bönitz	12013050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062060	Borken	12027080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062064	Brandis	12027090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062068	Breitenau	12022060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062072	Brenitz	12022070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062076	Brottewitz	12013060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062080	Buchhain	12022080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062084	Buckau	12027100	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062088	Crinitz	12022090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062092	Doberlug-Kirchh	12022110	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12062096	Dollenchen	12022120	retain_BB_1990_ballot	exact name and county
+12062100	Döllingen	12013090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062104	Domsdorf	12013100	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062108	Drasdo	12027110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062112	Dübrichen	12022140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062116	Dubro	12027120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062120	Eichholz-Drößig	12022150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062124	Elsterwerda, St	12013120	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12062124	Kraupa	12013250	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062128	Falkenberg/Elst	12027130	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12062132	Fermerswalde	12027140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062136	Fichtenberg	12013130	retain_BB_1990_ballot	PDF060113 Fichtenberg-Altenau; identical EV492 NV289
+12062140	Finsterwalde, S	12022160	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12062140	Sorno	12022560	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062144	Fischwasser	12022170	retain_BB_1990_ballot	exact name and county
+12062148	Frankena	12022180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062152	Frankenhain	12027150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062156	Freileben	12027170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062160	Friedersdorf	12022190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062164	Friedersdorf	12027180	retain_BB_1990_ballot	PDF061418 EV87 NV60
+12062168	Gahro	12022210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062172	Göllnitz	12022220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062176	Gorden	12013140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062180	Goßmar	12022230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062184	Gräfendorf	12027200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062188	Grassau	12027210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062192	Gröbitz	12022240	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062196	Gröden	12013150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062200	Großkrausnik	12022260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062204	Großrössen	12027220	retain_BB_1990_ballot	exact name and county
+12062208	Großthiemig	12013160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062212	Gruhno	12022270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062216	Haida	12013170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062220	Hennersdorf	12022280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062224	Herzberg/Elster	12027240	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12062228	Hillmersdorf	12027250	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062232	Hirschfeld	12013180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062236	Hohenbucko	12027260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062240	Hohenleipisch	12013190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062244	Jagsal	12027280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062248	Jeßnigk	12027290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062252	Kahla	12013200	retain_BB_1990_ballot	exact name
+12062256	Kauxdorf	12013210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062260	Kleinkrausnik	12022300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062264	Knippelsdorf	12027310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062268	Kolochau	12027340	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062272	Kölsa	12027320	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062276	Körba	12027330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062280	Koßdorf	12013230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062288	Langennaundorf	12027360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062292	Lebusa	12027370	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062296	Lichterfeld	12022320	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062300	Lieskau	12022330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062304	Lindena	12022340	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062308	Lindthal	12022350	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062312	Löhsten	12027380	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062316	Lugau	12022360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062320	Mahdel	12027390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062324	Malitschkendorf	12027400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062328	Martinskirchen	12013300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062332	Marxdorf	12013310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062336	Massen	12022370	retain_BB_1990_ballot	exact name and county
+12062340	Merzdorf	12013320	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062344	Mühlberg/Elbe,	12013340	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12062348	Münchhausen	12022390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062352	Naundorf	12027410	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062360	Nexdorf	12022400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062364	Oelsig	12027420	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062368	Oppelhain	12022410	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062372	Osteroda	12027430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062376	Pahlsdorf	12022430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062380	Plessa	12013370	retain_BB_1990_ballot	exact name and county
+12062384	Polzen	12027440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062388	Ponnsdorf	12022450	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062392	Prestewitz	12013380	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062400	Prießen	12022460	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062404	Prösen	12013400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062408	Proßmarke	12027450	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062412	Rahnisdorf	12027460	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062416	Rehfeld	12027480	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062420	Reichenhain	12013410	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062424	Rothstein	12013420	retain_BB_1990_ballot	exact name and county
+12062428	Rückersdorf	12022480	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062432	Saathain	12013430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062436	Sallgast	12022490	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062440	Saxdorf	12013440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062444	Schacksdorf	12022500	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062448	Schadewitz	12022510	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062452	Schilda	12022520	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062456	Schlieben, Stad	12027490	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12062460	Schmerkendorf	12027500	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062464	Schönborn	12022530	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062468	Schönewalde, St	12027530	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12062472	Schönewalde	12022540	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062476	Schraden	12013450	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062480	Sonnewalde, Sta	12022550	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12062484	Staupitz	12022570	retain_BB_1990_ballot	exact name and county
+12062488	Stechau	12027540	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062492	Stolzenhain	12027550	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062496	Stolzenhain a.	12013460	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12062508	Trebbus	12022590	retain_BB_1990_ballot	exact name and county
+12062512	Tröbitz	12022600	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062516	Uebigau, Stadt	12027560	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062520	Wahrenbrück, St	12013490	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12062524	Wainsdorf	12013500	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062528	Wehrhain	12027570	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062532	Werchau	12027580	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062536	Werenzhain	12022610	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062540	Wiederau	12027590	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062544	Wiepersdorf	12027600	retain_BB_1990_ballot	exact name and county
+12062548	Wildenau	12027610	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062552	Wildgrube	12013510	retain_BB_1990_ballot	exact name and PDF EV/NV
+12062556	Winkel	12013520	retain_BB_1990_ballot	exact name and county
+12062560	Zeckerin	12022620	retain_BB_1990_ballot	exact name and county
+12062568	Züllsdorf	12027620	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063004	Bamme	12041020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063008	Barnewitz	12041030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063012	Berge	12034010	retain_BB_1990_ballot	exact name and county
+12063016	Bergerdamm	12034020	retain_BB_1990_ballot	exact name and county
+12063020	Böhne	12041040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063024	Börnicke	12034030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063028	Brädikow	12034040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063032	Bredow	12034050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063036	Brieselang	12034060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063040	Buchow-Karpzow	12034070	retain_BB_1990_ballot	exact name and county
+12063044	Buckow b. Nennh	12041050	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12063048	Buschow	12041070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063052	Bützer	12041060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063056	Dallgow	12034080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063060	Damme	12041080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063064	Döberitz	12041090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063068	Elstal	12034090	retain_BB_1990_ballot	exact name and county
+12063072	Etzin	12034100	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063076	Falkenrehde	12034110	retain_BB_1990_ballot	exact name and county
+12063080	Falkensee, Stad	12034120	retain_BB_1990_ballot	truncated name and county
+12063084	Ferchesar	12041100	retain_BB_1990_ballot	exact name and county
+12063088	Friesack, Stadt	12034130	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063092	Garlitz	12041110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063096	Görne	12041120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063100	Göttlin	12041130	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063104	Gräningen	12041140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063108	Groß Behnitz	12034140	retain_BB_1990_ballot	exact name and county
+12063112	Großderschau	12041150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063116	Großwudicke	12041160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063120	Grünefeld	12034150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063124	Grütz	12041170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063128	Gülpe	12041180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063132	Haage	12034160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063136	Hohennauen	12041190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063140	Hoppenrade	12034170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063144	Jerchel	12041200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063148	Ketzin, Stadt	12034180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063152	Kienberg	12034190	retain_BB_1990_ballot	exact name and county
+12063156	Klein Behnitz	12034200	retain_BB_1990_ballot	exact name and county
+12063160	Kleßen	12041220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063164	Kotzen	12041230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063168	Kriele	12041240	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063172	Landin	12041250	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063176	Liepe	12041260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063180	Lietzow	12034220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063184	Markee	12034230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063188	Milow	12041270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063192	Mögelin	12041280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063196	Möthlitz	12041290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063200	Möthlow	12041300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063204	Mützlitz	12041310	retain_BB_1990_ballot	exact name and county
+12063208	Nauen, Stadt	12034240	retain_BB_1990_ballot	exact name and county
+12063212	Nennhausen	12041320	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063216	Nitzahn	12041340	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063220	Paaren i. Glien	12034250	retain_BB_1990_ballot	exact name and county
+12063224	Parey	12041350	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063228	Paulinenaue	12034260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063232	Pausin	12034270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063236	Perwenitz	12034280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063240	Pessin	12034290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063244	Premnitz, Stadt	12041360	retain_BB_1990_ballot	exact name and county
+12063248	Priort	12034300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063252	Rathenow, Stadt	12041380	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063256	Retzow	12034310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063260	Rhinow, Stadt	12041390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063264	Ribbeck	12034320	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063268	Schönholz-Neuwe	12041330	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12063272	Schönwalde	12034330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063276	Selbelang	12034350	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063280	Semlin	12041410	retain_BB_1990_ballot	exact name and county
+12063284	Senzke	12034360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063288	Spaatz	12041420	retain_BB_1990_ballot	exact name and county
+12063292	Stechow	12041430	retain_BB_1990_ballot	exact name and county
+12063296	Steckelsdorf	12041440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063300	Stölln	12041450	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063304	Strodehne	12041460	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063308	Tietzow	12034370	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063312	Tremmen	12034380	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063316	Vieritz	12041470	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063320	Vietznitz	12034390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063324	Wachow	12034400	retain_BB_1990_ballot	exact name and county
+12063328	Wagenitz	12034410	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063332	Wansdorf	12034420	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063336	Warsow	12034430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063340	Wassersuppe	12041480	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063344	Wernitz	12034440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063348	Witzke	12041490	retain_BB_1990_ballot	exact name and county
+12063352	Wolsier	12041500	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063356	Wustermark	12034450	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063360	Wutzetz	12034460	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063364	Zachow	12034470	retain_BB_1990_ballot	exact name and county
+12063368	Zeestow	12034480	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063372	Zollchow	12041510	retain_BB_1990_ballot	exact name and PDF EV/NV
+12063376	Zootzen	12034490	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064004	Alt Mahlisch	12042030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064008	Alt Tucheband	12042040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064012	Alt Zeschdorf	12042050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064016	Altbarnim	12042010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064020	Altfriedland	12042020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064024	Altglietzen	12012010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064028	Altlandsberg, S	12045010	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12064032	Altreetz	12012040	retain_BB_1990_ballot	exact name and county
+12064036	Alttrebbin	12012050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064040	Altwriezen/Beau	12012060	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12064044	Altranft	12012030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064044	Bad Freienwalde	12012070	retain_BB_1990_ballot	truncated name and county
+12064048	Batzlow	12045020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064052	Beiersdorf	12012080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064056	Bleyen	12042060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064060	Bliesdorf	12012100	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064064	Bollersdorf	12045030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064068	Bralitz	12012110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064072	Bruchmühle	12045040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064076	Brunow	12012120	retain_BB_1990_ballot	exact name and county
+12064080	Buchholz	12045050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064084	Buckow/Märkisch	12045060	retain_BB_1990_ballot	PDF050906 Buckow/Märk.Schweiz; identical EV1521 NV993
+12064088	Buschdorf	12042080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064092	Carzig	12042090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064096	Dahlwitz-Hoppeg	12045070	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12064100	Dannenberg/Mark	12012130	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064104	Diedersdorf	12042100	retain_BB_1990_ballot	exact name and county
+12064108	Döbberin	12042110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064112	Dolgelin	12042120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064116	Eggersdorf b. M	12045080	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12064120	Eichwerder	12012140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064124	Falkenberg/Mark	12012150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064128	Falkenhagen	12042130	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064132	Frankenfelde	12012160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064136	Fredersdorf	12045100	retain_BB_1990_ballot	exact name and county
+12064136	Vogelsdorf -->	12045350	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064140	Freudenberg	12012170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064144	Friedersdorf	12042140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064148	Friedrichsaue	12042150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064152	Garzau	12045110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064156	Garzin	12045120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064160	Genschmar	12042160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064164	Gielsdorf	12045130	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064168	Gieshof-Zelline	12042170	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12064172	Golzow	12042180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064176	Gorgast	12042190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064180	Gross Neuendorf	12042200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064184	Grunow	12045140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064188	Gusow	12042210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064192	Güstebieser Loo	12012180	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12064196	Haselberg	12012190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064200	Hathenow	12042220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064204	Heckelberg	12012200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064208	Hennickendorf	12045150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064212	Hermersdorf-Obe	12045160	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12064216	Herzfelde	12045170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064220	Hohenwutzen	12012220	retain_BB_1990_ballot	exact name and county
+12064224	Hönow	12045180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064228	Hoppegarten b.	12045200	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12064232	Ihlow	12045210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064236	Jahnsfelde	12042230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064240	Kiehnwerder	12042240	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064244	Kienitz	12042250	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064248	Klein Neuendorf	12042270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064252	Klosterdorf	12045220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064256	Kruge/Gersdorf	12012250	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064260	Kunersdorf/Metz	12012260	retain_BB_1990_ballot	PDF050526 Kunersdorf precincts EV166+95 NV100+53
+12064264	Küstrin-Kietz	12042260	retain_BB_1990_ballot	PDF050826 Kietz; identical EV782 NV457
+12064268	Lebus, Stadt	12042280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064272	Letschin	12042290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064276	Leuenberg	12012270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064280	Libbenichen	12042300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064284	Lichtenow	12045230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064288	Lietzen	12042310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064292	Lüdersdorf/Bies	12012280	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12064296	Mädewitz	12012350	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064300	Mallnow	12042320	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064304	Manschnow	12042330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064308	Marxdorf	12042340	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064312	Möglin	12012300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064316	Müncheberg, Sta	12045240	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12064320	Münchehofe b. D	12045250	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12064324	Neu Mahlisch	12042370	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064328	Neubarnim	12042360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064332	Neuenhagen	12012310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064336	Neuenhagen b. B	12045260	retain_BB_1990_ballot	truncated name and county
+12064340	Neuhardenberg	12042350	retain_BB_1990_ballot	PDF050835 Marxwalde; identical EV2481 NV1417
+12064344	Neuküstrinchen	12012320	retain_BB_1990_ballot	exact name and county
+12064348	Neulewin	12012330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064352	Neulietzegörick	12012340	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12064356	Neureetz	12012370	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064360	Neurüdnitz	12012380	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064364	Neutrebbin	12042390	retain_BB_1990_ballot	exact name and county
+12064368	Niederjesar	12042400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064372	Ortwig	12042410	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064376	Petershagen	12042420	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064380	Eggersdorf b. S	12045090	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12064380	Petershagen	12045280	retain_BB_1990_ballot	PDF050928 Petershagen multiple precincts; other Petershagen050842 EV250 NV174
+12064384	Platkow	12042430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064388	Podelzig	12042440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064392	Prötzel	12045290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064396	Quappendorf	12042450	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064400	Rathsdorf	12012390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064404	Rathstock	12042460	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064408	Rehfelde	12045300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064412	Reichenberg	12045310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064416	Reichenow	12045320	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064420	Reitwein	12042470	retain_BB_1990_ballot	exact name and county
+12064424	Ringenwalde	12045330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064428	Rüdersdorf b. B	12024370	retain_BB_1990_ballot	PDF050737 Rüdersdorf register
+12064432	Sachsendorf	12042480	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064436	Schiffmühle	12012400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064440	Schönfließ	12042490	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064444	Schulzendorf	12012410	retain_BB_1990_ballot	exact name and county
+12064448	Seelow, Stadt	12042500	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064452	Sietzing	12042510	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064456	Sophienthal	12042530	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064460	Steinbeck	12012420	retain_BB_1990_ballot	exact name and county
+12064464	Steintoch	12042540	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064468	Sternebeck/Harn	12012430	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12064472	Hohenstein	12045190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064472	Strausberg, Sta	12045340	retain_BB_1990_ballot	truncated name and county
+12064476	Trebnitz	12042550	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064480	Treplin	12042560	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064484	Waldsieversdorf	12045360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064488	Wegendorf	12045370	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064492	Werbig	12042570	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064496	Werder	12045380	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064500	Wesendahl	12045390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064504	Wölsickendorf/W	12012450	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12064508	Worin	12042590	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064512	Wriezen, Stadt	12012460	retain_BB_1990_ballot	exact name and county
+12064516	Wulkow b. Booße	12042610	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12064520	Wulkow b. Trebn	12042620	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12064524	Wuschewier	12042630	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064528	Wustrow	12012470	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064532	Zäckericker Loo	12012480	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12064536	Zechin	12042640	retain_BB_1990_ballot	exact name and PDF EV/NV
+12064540	Zinndorf	12045400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065004	Altlüdersdorf	12025020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065008	Altthymen	12025030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065012	Badingen	12025040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065016	Bärenklau	12036010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065020	Barsdorf	12025050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065024	Baumgarten	12025060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065028	Beetz	12036020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065032	Bergsdorf	12025070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065036	Birkenwerder	12036050	retain_BB_1990_ballot	PDF register041405 Birkenwerder b. Berlin
+12065040	Blumenow	12025080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065044	Bötzow	12036060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065048	Bredereiche	12025090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065052	Burgwall	12025120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065056	Dannenwalde	12025130	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065060	Dollgow	12025140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065064	Eichstädt	12036080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065068	Falkenthal	12025150	retain_BB_1990_ballot	exact name and county
+12065072	Flatow	12036090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065076	Freienhagen	12036100	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065080	Friedrichsthal	12036110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065084	Fürstenberg, St	12025160	retain_BB_1990_ballot	truncated name and county
+12065088	Germendorf	12036120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065092	Glambeck	12025170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065096	Glienicke/Nordb	12036130	retain_BB_1990_ballot	truncated name and county
+12065100	Gransee, Stadt	12025180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065104	Grieben	12025190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065108	Groß-Ziethen	12036140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065112	Großmutz	12025200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065116	Großwoltersdorf	12025210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065120	Grüneberg	12025220	retain_BB_1990_ballot	exact name and county
+12065124	Gutengermendorf	12025230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065128	Hammer	12036150	retain_BB_1990_ballot	exact name and county
+12065132	Häsen	12025240	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065136	Hennigsdorf b.	12036160	retain_BB_1990_ballot	truncated name and county
+12065140	Himmelpfort	12025250	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065144	Bergfelde	12036030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065144	Borgsdorf/Nordb	12036070	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12065144	Hohen Neuendorf	12036180	retain_BB_1990_ballot	truncated name and county
+12065148	Hohenbruch	12036170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065152	Kappe	12025270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065156	Kleinmutz	12025290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065160	Kraatz-Buberow	12025300	retain_BB_1990_ballot	exact name and county
+12065164	Kremmen, Stadt	12036190	retain_BB_1990_ballot	exact name and county
+12065168	Kreuzbruch	12036200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065172	Krewelin	12025310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065176	Kurtschlag	12025320	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065180	Leegebruch	12036210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065184	Lehnitz/Nordbah	12036220	retain_BB_1990_ballot	truncated name and county
+12065188	Liebenthal	12036230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065192	Liebenwalde, St	12036240	retain_BB_1990_ballot	truncated name and county
+12065196	Löwenberg	12025340	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065200	Malz	12036250	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065204	Marienthal	12025350	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065208	Marwitz	12036260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065212	Menz	12025360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065216	Meseberg	12025370	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065220	Mildenberg	12025380	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065224	Mühlenbeck	12036270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065228	Nassenheide	12036280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065232	Neu-Vehlefanz	12036310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065236	Neuendorf	12036290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065240	Neuglobsow	12025390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065244	Neuholland	12036300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065248	Neulögow	12025400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065252	Neulöwenberg	12025410	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065256	Oranienburg, St	12036320	retain_BB_1990_ballot	truncated name and county
+12065260	Ribbeck	12025420	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065264	Rönnebeck	12025430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065268	Schildow	12036340	retain_BB_1990_ballot	exact name and county
+12065272	Schmachtenhagen	12036350	retain_BB_1990_ballot	exact name and county
+12065276	Schönermark	12025440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065280	Schönfließ	12036360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065284	Schulzendorf	12025450	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065288	Schwante	12036370	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065292	Seilershof	12025460	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065296	Sommerfeld	12036380	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065300	Sonnenberg	12025470	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065304	Staffelde	12036390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065308	Steinförde	12025480	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065312	Stolpe-Dorf	12036400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065316	Stolpe-Süd	12036410	retain_BB_1990_ballot	exact name and county
+12065320	Teschendorf	12036420	retain_BB_1990_ballot	exact name and county
+12065324	Tornow	12025490	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065328	Vehlefanz	12036430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065332	Velten, Stadt	12036440	retain_BB_1990_ballot	exact name and county
+12065336	Vogelsang	12025500	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065340	Wensickendorf	12036450	retain_BB_1990_ballot	exact name and county
+12065344	Wesendorf	12025510	retain_BB_1990_ballot	exact name and county
+12065348	Wolfsruh	12025520	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065352	Zabelsdorf	12025530	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065356	Zehdenick, Stad	12025540	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12065360	Zehlendorf	12036460	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065364	Zernikow	12025550	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065368	Zootzen	12025560	retain_BB_1990_ballot	exact name and PDF EV/NV
+12065???	Zühlsdorf	12036470	retain_BB_1990_ballot	exact name and county
+12066004	Allmosen	12043010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066008	Altdöbern	12018010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066012	Annahütte	12043020	retain_BB_1990_ballot	exact name and county
+12066016	Bahnsdorf	12043040	retain_BB_1990_ballot	exact name and county
+12066020	Barzig	12018020	retain_BB_1990_ballot	exact name and county
+12066024	Bischdorf	12018030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066028	Boblitz	12018040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066032	Bolschwitz	12018050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066036	Brieske	12043060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066040	Bronkow	12018060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066044	Buchwäldchen	12018070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066048	Buckow	12018080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066052	Calau, Stadt	12018090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066056	Craupe	12018100	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066060	Drochow	12043080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066068	Freienhufen	12043110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066072	Gollmitz	12018160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066076	Göritz	12018150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066080	Gosda	12018170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066084	Groß Beuchow	12018180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066088	Groß Jehser	12018190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066092	Groß Lübbenau	12018210	retain_BB_1990_ballot	exact name and county
+12066096	Groß-Klessow	12018200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066100	Groß-Mehßow	12018220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066104	Großkmehlen	12043120	retain_BB_1990_ballot	exact name and county
+12066108	Großkoschen	12043130	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066112	Großräschen, St	12043140	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12066116	Grünewald	12043150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066120	Guteborn	12043170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066124	Hermsdorf bei R	12043180	retain_BB_1990_ballot	PDF061118 Hermsdorf; identical EV564 NV296
+12066128	Hindenberg	12018240	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066132	Hohenbocka	12043200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066136	Hörlitz	12043190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066140	Hosena	12043210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066144	Jannowitz	12043220	retain_BB_1990_ballot	exact name and county
+12066148	Kemmen	12018270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066152	Kittlitz	12018280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066156	Klein Radden	12018290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066160	Klettwitz	12043260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066164	Koßwig	12018300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066168	Kroppen	12043280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066172	Laasow	12018320	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066176	Grünewalde	12043160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066176	Kostebrau	12043270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066176	Lauchhammer, St	12043290	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12066180	Leipe	12018350	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066184	Lindchen	12018360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066188	Lindenau	12043310	retain_BB_1990_ballot	exact name
+12066192	Lipten	12018370	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066196	Lübbenau/Spreew	12018390	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12066200	Lubochow	12018380	retain_BB_1990_ballot	exact name and county
+12066204	Lug	12018400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066208	Meuro	12043320	retain_BB_1990_ballot	PDF061132 register OCR Heuro; EV339 NV247
+12066212	Missen	12018410	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066216	Mlode	12018720	retain_BB_1990_ballot	exact name and county
+12066220	Muckwar	12018420	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066224	Naundorf	12018430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066228	Neupetershain	12018440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066232	Niemtsch	12043330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066236	Ogrosen	12018450	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066240	Ortrand, Stadt	12043340	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066244	Peickwitz	12043350	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066248	Raddusch	12018470	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066252	Ragow	12018480	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066256	Ranzow	12018490	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066260	Reddern	12018500	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066264	Repten	12018510	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066268	Ressen	12018520	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066272	Ruhland, Stadt	12043380	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066276	Saalhausen	12043390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066280	Saßleben	12018560	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066284	Schipkau	12043410	retain_BB_1990_ballot	exact name and county
+12066288	Schöllnitz	12018570	retain_BB_1990_ballot	exact name and county
+12066292	Schwarzbach	12043420	retain_BB_1990_ballot	exact name and county
+12066296	Schwarzheide/N.	12043430	retain_BB_1990_ballot	truncated name and county
+12066300	Sedlitz	12043440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066304	Senftenberg, St	12043450	retain_BB_1990_ballot	truncated name and county
+12066308	Stradow	12018600	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066312	Suschow	12018610	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066316	Tettau   ohne	12043470	retain_BB_1990_ballot	PDF061147 Tettau register
+12066320	Vetschau, Stadt	12018640	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066324	Werchow	12018660	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066328	Wormlage	12018670	retain_BB_1990_ballot	exact name and county
+12066332	Woschkow	12018680	retain_BB_1990_ballot	exact name and PDF EV/NV
+12066336	Zinnitz	12018710	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067004	Ahrensdorf	12014010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067008	Alt Golm	12024010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067012	Alt Madlitz	12024020	retain_BB_1990_ballot	exact name and county
+12067016	Alt Stahnsdorf	12014020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067020	Arensdorf -> ??	12024030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067024	Bad Saarow-Pies	12024380	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12067028	Bahro	12021010	retain_BB_1990_ballot	exact name and county
+12067032	Beerfelde	12024040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067036	Beeskow, Stadt	12014030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067036	Bornow	12014080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067036	Kohlsdorf	12014380	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067036	Krügersdorf	12014400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067036	Oegeln	12014530	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067036	Schneeberg	12014680	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067040	Berkenbrück	12024050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067044	Biegen	12024060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067048	Birkholz	12014060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067052	Bomsdorf	12021030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067056	Braunsdorf	12024070	retain_BB_1990_ballot	exact name and county
+12067060	Bremsdorf	12021040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067064	Breslack	12021050	retain_BB_1990_ballot	exact name and county
+12067068	Briescht	12014090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067072	Briesen (Mark)	12024080	retain_BB_1990_ballot	PDF050708 Briesen; identical EV1473 NV983
+12067076	Brieskow-Finken	12021060	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12067080	Buchholz	12024090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067084	Buckow	12014100	retain_BB_1990_ballot	exact name and county
+12067088	Bugk	12014110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067092	Chossewitz	12014120	retain_BB_1990_ballot	exact name and county
+12067096	Coschen	12021070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067100	Dahmsdorf	12014130	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067104	Dammendorf	12021080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067108	Demnitz	12024100	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067112	Diensdorf-Radlo	12014140	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12067116	Drahendorf	12014160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067120	Diehlo	12021090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067120	Eisenhüttenstad	12003000	retain_BB_1990_ballot	truncated name and county
+12067124	Erkner	12024110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067128	Falkenberg	12014170	retain_BB_1990_ballot	PDF050217 EV131 NV97; slash OCR as 1
+12067132	Falkenberg	12024120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067136	Friedland, Stad	12014180	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12067140	Fünfeichen	12021110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067144	Fürstenwalde/Sp	12024130	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12067144	Trebus	12024460	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067148	Giesensdorf	12014190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067152	Glienicke	12014200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067156	Göhlen	12021120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067160	Görsdorf b. Bee	12014210	retain_BB_1990_ballot	truncated name and county
+12067164	Görsdorf b. Sto	12014220	retain_BB_1990_ballot	truncated name and county
+12067168	Görzig	12014230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067172	Gosen	12024150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067176	Groß Eichholz	12014260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067180	Groß Lindow	12021130	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067184	Groß Muckrow	12014270	retain_BB_1990_ballot	exact name and county
+12067188	Groß Rietz	12014280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067192	Groß Schauen	12014290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067196	Groß-Briesen	12014250	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067200	Grünheide/Mark	12024160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067204	Grunow	12021140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067208	Günthersdorf	12014300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067212	Hangelsberg	12024170	retain_BB_1990_ballot	exact name and county
+12067216	Hartmannsdorf	12024180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067220	Hasenfelde	12024190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067224	Heinersdorf	12024200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067228	Henzendorf	12021150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067232	Herzberg	12014310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067236	Jacobsdorf	12024210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067240	Jänickendorf	12024220	retain_BB_1990_ballot	exact name and county
+12067244	Kagel	12024230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067248	Karras	12014330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067252	Kehrigk	12014340	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067256	Kienbaum	12024240	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067260	Kieselwitz	12021170	retain_BB_1990_ballot	exact name and county
+12067264	Klein Muckrow	12014360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067268	Kobbeln	12021180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067272	Kolpin	12024250	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067276	Kossenblatt	12014390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067280	Kummerow	12014410	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067284	Kummersdorf	12014420	retain_BB_1990_ballot	exact name and county
+12067288	Langewahl	12024260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067292	Lawitz	12021190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067296	Leißnitz	12014440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067300	Limsdorf	12014460	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067304	Lindenberg	12014470	retain_BB_1990_ballot	exact name and county
+12067308	Lindow	12014480	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067312	Markgrafpieske	12024270	retain_BB_1990_ballot	exact name and county
+12067316	Merz	12014490	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067320	Mittweide	12014500	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067324	Mixdorf	12021210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067328	Möbiskruge	12021220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067332	Mönchwinkel	12024280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067336	Müllrose, Stadt	12021230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067340	Neu Golm	12024300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067344	Neu Zittau	12024310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067348	Neubrück (Spree	12014510	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067352	Neuendorf im Sa	12024290	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12067356	Neuzelle	12021240	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067360	Niewisch	12014520	retain_BB_1990_ballot	exact name and county
+12067364	Ossendorf	12021250	retain_BB_1990_ballot	exact name and county
+12067368	Petersdorf b. B	12024320	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12067372	Petersdorf b. S	12024330	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12067376	Pfaffendorf	12014550	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067380	Philadelphia	12014560	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067384	Pieskow	12014570	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067388	Pillgram	12024340	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067392	Pohlitz	12021260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067396	Ragow	12014600	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067400	Ranzig	12014610	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067404	Ratzdorf	12021270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067408	Rauen	12024350	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067412	Reichenwalde	12024360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067416	Reudnitz	12014620	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067420	Rieplos	12014630	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067424	Rießen	12021280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067428	Sauen	12014650	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067432	Schadow	12014670	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067436	Schernsdorf	12021290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067440	Schöneiche b. B	12024390	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12067444	Schönfelde	12024400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067448	Schwerin	12014700	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067452	Schwerzko	12021300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067456	Selchow	12014710	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067460	Sieversdorf	12024410	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067464	Spreeau	12024420	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067468	Spreenhagen	12024430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067472	Steinhöfel	12024440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067476	Steinsdorf	12021310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067480	Storkow, Stadt	12014730	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067484	Streichwitz	12021320	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067488	Stremmen	12014740	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067492	Tauche	12014750	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067496	Tempelberg	12024450	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067500	Trebatsch	12014760	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067504	Treppeln	12021330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067508	Vogelsang	12021340	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067512	Weichensdorf	12014790	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067516	Wellmitz	12021360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067520	Wendisch Rietz	12014800	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067524	Werder	12014810	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067528	Wiesenau	12021370	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067532	Wilmersdorf	12014820	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067536	Wilmersdorf	12024480	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067540	Wochowsee	12014830	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067544	Woltersdorf	12024490	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067548	Zeust	12014840	retain_BB_1990_ballot	exact name and PDF EV/NV
+12067552	Ziltendorf	12021380	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068004	Bantikow	12030020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068008	Banzendorf	12035030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068012	Barsikow	12030040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068016	Basdorf	12035040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068020	Berlinchen	12047020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068024	Betzin	12035060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068028	Blandikow	12047040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068032	Blankenberg	12030070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068036	Blesendorf	12047050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068040	Blumenthal	12040030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068044	Bork/Lellichow	12030080	retain_BB_1990_ballot	PDF040808 Bork; identical EV118 NV81
+12068048	Braunsberg	12035070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068052	Breddin	12030090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068056	Brunn	12030110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068060	Brunne	12035080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068064	Bückwitz	12030120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068068	Christdorf	12047060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068072	Dabergotz	12035100	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068076	Darritz-Wahlend	12035110	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12068080	Dechtow	12035120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068084	Dessow	12030160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068088	Deutschhof	12035130	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068092	Dierberg	12035140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068096	Dorf-Zechlin	12035740	retain_BB_1990_ballot	PDF041274 Zechlin Dorf; identical EV235 NV169
+12068100	Dossow	12047070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068104	Dranse	12047080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068108	Dreetz	12030180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068112	Drewen	12030190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068116	Fehrbellin, Sta	12035150	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12068120	Flecken Zechlin	12035160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068124	Frankendorf	12035170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068128	Fretzdorf	12047100	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068132	Freyenstein, St	12047110	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12068136	Gadow	12047120	retain_BB_1990_ballot	exact name and county
+12068140	Ganzer	12030210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068144	Gartow	12030220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068148	Garz	12035190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068152	Giesenhorst	12030230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068156	Goldbeck	12047140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068160	Gottberg	12035210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068164	Grabow bei Blum	12040130	retain_BB_1990_ballot	PDF041313 Grabow b.Blumenthal; identical EV249 NV159
+12068168	Groß Haßlow	12047150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068172	Großzerlang	12035220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068176	Hakenberg	12035240	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068180	Heiligengrabe	12047160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068184	Heinrichsdorf	12035250	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068188	Herzberg	12035260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068192	Herzsprung	12047170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068196	Hindenberg	12035270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068200	Hohenofen	12030280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068204	Holzhausen	12030290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068208	Jabel	12047180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068212	Kagar	12035280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068216	Kantow	12030310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068220	Karwesee	12035300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068224	Katerbow	12035310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068228	Keller	12025280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068232	Kerzlin	12035320	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068236	Kleinzerlang	12035330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068240	Klosterheide	12035340	retain_BB_1990_ballot	exact name and county
+12068244	Königsberg	12047190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068248	Königshorst	12035180	retain_BB_1990_ballot	PDF041218 Friedenshorst; identical EV418 NV230
+12068252	Kötzlin	12030320	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068256	Kränzlin	12035350	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068260	Küdow-Lüchfeld	12035370	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068264	Kyritz, Stadt	12030370	retain_BB_1990_ballot	exact name and county
+12068268	Langen	12035380	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068272	Lentzke	12035390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068276	Liebenthal	12047200	retain_BB_1990_ballot	exact name and county
+12068280	Lindow, Stadt	12035410	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068284	Linow	12035420	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068288	Linum	12035430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068292	Lögow	12030390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068296	Lohm	12030400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068300	Luhme	12035440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068304	Manker	12035450	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068308	Maulbeerwalde	12047210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068312	Nackel	12030440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068316	Netzeband	12035470	retain_BB_1990_ballot	exact name and county
+12068320	Alt Ruppin, Sta	12035020	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12068320	Buskow	12035090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068320	Gnewikow	12035200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068320	Gühlen-Glienick	12035230	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12068320	Karwe	12035290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068320	Krangen	12035360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068320	Lichtenberg	12035400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068320	Molchow	12035460	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068320	Neuruppin, Stad	12035480	retain_BB_1990_ballot	truncated name and county
+12068320	Nietwerder	12035490	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068320	Radensleben	12035510	retain_BB_1990_ballot	exact name and county
+12068320	Stöffin	12035590	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068320	Wulkow	12035710	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068320	Wuthenow	12035730	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068324	Neustadt/Dosse,	12030450	retain_BB_1990_ballot	truncated name and county
+12068328	Niemerlang	12047220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068332	Papenbruch	12047230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068336	Plänitz-Leddin	12030460	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068340	Protzen	12035500	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068344	Rägelin	12035520	retain_BB_1990_ballot	exact name and county
+12068348	Rehfeld/Berlitt	12030470	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068352	Rheinsberg, Sta	12035530	retain_BB_1990_ballot	truncated name and county
+12068356	Roddahn	12030480	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068360	Rohrlack	12035540	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068364	Rosenwinkel	12040440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068368	Rossow	12047240	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068372	Rüthnick	12035550	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068376	Schönberg	12030490	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068380	Schönberg	12035560	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068384	Schönermark   +	12030500	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068388	Schwanow	12035570	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068392	Schweinrich	12047250	retain_BB_1990_ballot	exact name and county
+12068396	Seebeck-Struben	12035580	retain_BB_1990_ballot	truncated name and county
+12068400	Segeletz	12030540	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068404	Sewekow	12047260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068408	Sieversdorf	12030550	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068412	Storbeck	12035600	retain_BB_1990_ballot	exact name and county
+12068416	Stüdenitz	12030570	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068420	Tarmow	12035620	retain_BB_1990_ballot	exact name and county
+12068424	Teetz/Ganz	12030580	retain_BB_1990_ballot	PDF040858 Teetz; identical EV243 NV145
+12068428	Trieplatz	12030590	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068432	Vichel	12035630	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068436	Vielitz	12035640	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068440	Walchow	12035650	retain_BB_1990_ballot	exact name and county
+12068444	Wall	12035660	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068448	Wallitz	12035670	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068452	Walsleben	12035680	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068456	Werder	12035690	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068460	Wernikow	12047270	retain_BB_1990_ballot	exact name and county
+12068464	Wildberg	12035700	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068468	Babitz	12047010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068468	Biesen	12047030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068468	Wittstock, Stad	12047280	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12068472	Wulfersdorf	12047290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068476	Wusterhausen/Do	12030620	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12068480	Wustrau-Altfrie	12035720	retain_BB_1990_ballot	truncated name and county
+12068484	Zaatzke	12047300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068488	Zechlinerhütte	12035750	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068492	Zechow	12035760	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068496	Zempow	12047310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068500	Zernitz	12030640	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068504	Zootzen	12047320	retain_BB_1990_ballot	exact name and PDF EV/NV
+12068508	Zühlen	12035770	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069004	Alt Bork	12015010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069008	Baitz	12015020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069012	Bardenitz	12028030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069016	Beelitz, Stadt	12038020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069020	Belzig, Stadt	12015030	retain_BB_1990_ballot	exact name and county
+12069024	Benken	12015040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069028	Bensdorf	12017010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069032	Bergholz	12015050	retain_BB_1990_ballot	exact name and county
+12069036	Bergholz-Rehbrü	12038030	retain_BB_1990_ballot	truncated name and county
+12069040	Bliesendorf	12038040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069044	Bochow	12038050	retain_BB_1990_ballot	exact name and county
+12069048	Boecke	12017020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069052	Borkheide	12015060	retain_BB_1990_ballot	exact name and county
+12069056	Borkwalde	12015070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069060	Borne	12015080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069064	Brachwitz	12015090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069068	Brielow	12017030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069072	Briest	12017040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069076	Brück, Stadt	12015100	retain_BB_1990_ballot	exact name and county
+12069080	Buchholz b. Nie	12015110	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12069084	Buchholz b. Tre	12038060	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12069088	Buckau	12017050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069092	Bücknitz	12017060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069096	Busendorf	12038070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069100	Butzow	12017070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069104	Cammer	12015120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069108	Caputh	12038080	retain_BB_1990_ballot	exact name and county
+12069112	Dahnsdorf	12015130	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069116	Damelang-Freien	12015140	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12069120	Damsdorf	12017080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069124	Deetz/Havel	12017090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069128	Derwitz	12038090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069132	Deutsch Bork	12015150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069136	Dietersdorf	12028090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069140	Dippmannsdorf	12015160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069144	Dretzen	12017100	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069148	Elsholz	12038110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069152	Emstal	12017110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069156	Fahlhorst	12038120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069160	Fahrland	12038130	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069164	Feldheim	12028100	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069168	Ferch	12038140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069172	Fichtenwalde	12038150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069176	Fohrde	12017120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069180	Fredersdorf	12015170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069184	Fresdorf	12038160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069188	Garrey	12015190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069192	Geltow	12038170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069196	Glienecke	12017130	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069200	Glindow	12038180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069204	Göhlsdorf	12038190	retain_BB_1990_ballot	exact name and county
+12069208	Gollwitz	12017160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069212	Golm	12038200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069216	Golzow	12017170	retain_BB_1990_ballot	exact name and county
+12069220	Gortz	12017180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069224	Görzke	12015210	retain_BB_1990_ballot	exact name and county
+12069228	Götz	12017150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069232	Gräben	12017190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069236	Grebs	12017200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069240	Groß Briesen	12015230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069244	Groß Glienicke	12038210	retain_BB_1990_ballot	exact name and county
+12069248	Groß Kreutz	12038220	retain_BB_1990_ballot	exact name and county
+12069252	Groß Marzehns	12015240	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069260	Grubo	12015250	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069264	Güterfelde	12038240	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069268	Hagelberg	12015260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069272	Haseloff-Grabow	12015270	retain_BB_1990_ballot	exact name and county
+12069276	Hohenferchesar	12017210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069280	Hohenlobbese	12017220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069284	Jeserig	12017230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069288	Jeserig/Fläming	12015290	retain_BB_1990_ballot	exact name and county
+12069292	Jeserigerhütten	12015300	retain_BB_1990_ballot	exact name and county
+12069296	Kemnitz	12038270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069300	Ketzür	12017240	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069304	Klein Marzehns	12015310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069308	Kleinmachnow	12038280	retain_BB_1990_ballot	exact name and county
+12069312	Klepzig	12015320	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069316	Köpernitz	12017260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069320	Krahne	12017270	retain_BB_1990_ballot	exact name and county
+12069324	Kranepuhl	12015330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069328	Krielow	12038300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069332	Kuhlowitz	12015340	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069336	Langerwisch	12038310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069340	Lehnin	12017280	retain_BB_1990_ballot	exact name and county
+12069344	Lehnsdorf	12015350	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069348	Linthe	12015360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069352	Lobbese	12028240	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069356	Locktow	12015370	retain_BB_1990_ballot	exact name and county
+12069360	Lübnitz	12015380	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069364	Lühsdorf	12033270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069368	Lünow	12017290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069372	Lüsse	12015400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069376	Lütte	12015410	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069380	Marquardt	12038330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069384	Marzahna	12028280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069388	Marzahne	12017300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069392	Medewitz	12015420	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069396	Michelsdorf	12017310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069400	Michendorf	12038340	retain_BB_1990_ballot	exact name and county
+12069404	Mörz	12015440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069408	Mützdorf	12015450	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069412	Nahmitz	12017320	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069416	Neschholz	12015460	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069420	Netzen	12017330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069424	Neu Fahrland	12038350	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069428	Neuehütten	12015470	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069432	Neuendorf b. Br	12015480	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12069436	Nichel	12015500	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069440	Niebel	12033320	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069444	Niebelhorst	12033330	retain_BB_1990_ballot	exact name and county
+12069448	Niederwerbig	12015510	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069452	Niemegk, Stadt	12015520	retain_BB_1990_ballot	exact name and county
+12069456	Nudow	12038380	retain_BB_1990_ballot	exact name and county
+12069460	Oberjünne	12017340	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069464	Päwesin	12017350	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069468	Philippsthal	12038390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069472	Phöben	12038400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069476	Plötzin	12038420	retain_BB_1990_ballot	exact name and county
+12069480	Pritzerbe, Stad	12017360	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12069484	Prützke	12017370	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069488	Raben	12015530	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069492	Rädel	12017390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069496	Radewege	12017380	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069500	Rädigke	12015540	retain_BB_1990_ballot	exact name and county
+12069504	Ragösen	12015550	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069508	Reckahn	12017400	retain_BB_1990_ballot	exact name and county
+12069512	Reesdorf	12038430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069516	Reetz	12015560	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069520	Reetzerhütten	12015570	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069524	Reppinichen	12015580	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069528	Rieben	12038440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069532	Rietz	12017410	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069536	Rietz b. Treuen	12028390	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12069540	Rogäsen	12017420	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069544	Roskow	12017430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069548	Rottstock	12017440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069552	Saarmund	12038460	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069556	Salzbrunn	12038470	retain_BB_1990_ballot	exact name and county
+12069560	Satzkorn	12038480	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069564	Schäpe	12038490	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069568	Schenkenberg	12017450	retain_BB_1990_ballot	exact name and county
+12069572	Schenkenhorst	12038500	retain_BB_1990_ballot	exact name and county
+12069576	Schlalach	12015590	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069580	Schlamau	12015600	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069584	Schlunkendorf	12038510	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069588	Schmergow	12038520	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069592	Schwanebeck	12015610	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069596	Seeburg	12038550	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069600	Kähnsdorf	12038250	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069600	Neuseddin	12038360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069600	Seddin	12038540	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069604	Sputendorf b. G	12038560	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12069608	Stahnsdorf	12038570	retain_BB_1990_ballot	exact name and county
+12069612	Steinberg	12017470	retain_BB_1990_ballot	exact name and county
+12069616	Stücken	12038580	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069620	Ruhlsdorf	12038450	retain_BB_1990_ballot	exact name and county
+12069620	Teltow, Stadt	12038590	retain_BB_1990_ballot	exact name and county
+12069624	Töplitz	12038010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069628	Trechwitz	12017480	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069632	Tremsdorf	12038600	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069636	Treuenbrietzen,	12028450	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12069640	Uetz-Paaren	12038610	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069644	Viesen   OT. Ma	12017490	retain_BB_1990_ballot	PDF040349 Viesen register
+12069648	Warchau	12017500	retain_BB_1990_ballot	exact name and county
+12069652	Wenzlow	12017510	retain_BB_1990_ballot	exact name and county
+12069656	Werbig	12015630	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069660	Werder/Havel, S	12038620	retain_BB_1990_ballot	truncated name and county
+12069664	Weseram	12017520	retain_BB_1990_ballot	exact name and county
+12069668	Wiesenburg	12015640	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069672	Wildenbruch	12038630	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069676	Wilhelmshorst	12038640	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069680	Wittbrietzen	12038650	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069684	Wollin	12017530	retain_BB_1990_ballot	exact name and county
+12069688	Wust	12017540	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069692	Wusterwitz	12017550	retain_BB_1990_ballot	exact name and county
+12069696	Zauchwitz	12038660	retain_BB_1990_ballot	exact name and PDF EV/NV
+12069700	Ziesar, Stadt	12017560	retain_BB_1990_ballot	exact name and county
+12069704	Zitz	12017570	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070004	Alt Krüssow	12040010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070008	Bad Wilsnack, S	12037950	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12070012	Baek	12037020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070016	Barenthin	12030030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070020	Bendelin	12037040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070024	Bentwisch	12037050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070028	Berge	12037060	retain_BB_1990_ballot	exact name and county
+12070032	Besandten	13022040	exclude_MV_1990_ballot	exact name and county
+12070036	Beveringen	12040020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070040	Blüthen	12037070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070044	Boberow	12037080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070048	Boddin-Langnow	12040040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070052	Breese	12037090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070056	Buchholz	12040070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070060	Cumlosen	12037140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070064	Dallmin	12037150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070068	Dannenwalde	12030140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070072	Demerthin	12030150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070076	Döllen	12030170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070080	Eldenburg	13022160	exclude_MV_1990_ballot	exact name and county
+12070084	Falkenhagen	12040090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070088	Frehne	12040100	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070092	Garlin	12037200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070096	Gerdshagen	12040110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070100	Giesensdorf	12040120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070104	Glöwen	12037230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070108	Görike	12030240	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070112	Grabow-Buckow	12040140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070116	Granzow	12030250	retain_BB_1990_ballot	exact name and county
+12070120	Groß Breese	12037250	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070124	Groß Pankow	12040150	retain_BB_1990_ballot	exact name and county
+12070128	Groß Warnow	12037310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070132	Groß Welle	12030260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070136	Groß Woltersdor	12040160	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12070140	Grube	12037330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070144	Gülitz	12037340	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070148	Gumtow	12030270	retain_BB_1990_ballot	exact name and county
+12070152	Halenbeck	12040170	retain_BB_1990_ballot	exact name and county
+12070156	Helle	12040180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070160	Hoppenrade	12040190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070164	Hülsebeck	12040200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070168	Jännersdorf	12040210	retain_BB_1990_ballot	exact name and county
+12070172	Karstädt	12037390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070176	Kehrberg	12040220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070180	Kemnitz	12040230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070184	Klein Gottschow	12037410	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070188	Klein Woltersdo	12040240	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12070192	Kleinow	12037430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070196	Kletzke	12037450	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070200	Kolrep	12030330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070204	Krampfer	12037470	retain_BB_1990_ballot	exact name and county
+12070208	Krempendorf	12040250	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070212	Kribbe	12037480	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070216	Kuhbier	12040260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070220	Kuhsdorf	12040270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070224	Kunow	12030360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070228	Laaske	12040280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070232	Laaslich	12037500	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070236	Lanz	13022370	exclude_MV_1990_ballot	exact name and county
+12070240	Legde	12037510	retain_BB_1990_ballot	exact name and county
+12070244	Lenzen, Stadt	13022380	exclude_MV_1990_ballot	BBSR1990 LENZEN/ELBE STADT; incoming MV ballot excluded
+12070248	Lindenberg	12040300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070252	Lockstädt	12040310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070256	Lütkendorf	12040320	retain_BB_1990_ballot	exact name and county
+12070260	Mankmuß	12037530	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070264	Mansfeld	12040330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070268	Mellen	13022740	exclude_MV_1990_ballot	exact name and county
+12070272	Mertensdorf	12040340	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070276	Mesendorf	12040350	retain_BB_1990_ballot	PDF041335 register OCR Hasendorf; identical EV131 NV85
+12070280	Meyenburg, Stad	12040360	retain_BB_1990_ballot	truncated name and county
+12070284	Nebelin	12037590	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070288	Nettelbeck	12040370	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070292	Netzow	12037600	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070296	Dergenthin	12037180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070296	Perleberg, Stad	12037620	retain_BB_1990_ballot	truncated name and county
+12070296	Quitzow	12037690	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070296	Sükow	12037880	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070300	Pirow	12037640	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070304	Porep	12040380	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070308	Preddöhl	12040390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070312	Premslin	12037660	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070316	Pritzwalk, Stad	12040400	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12070316	Schönhagen	12040500	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070320	Pröttlin	12037670	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070324	Putlitz, Stadt	12040410	retain_BB_1990_ballot	exact name and county
+12070328	Quitzöbel	12037680	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070332	Reckenzin	12037720	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070336	Reetz	12037730	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070340	Retzin	12037740	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070344	Rohlsdorf	12040430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070348	Rühstädt	12037770	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070352	Sadenbeck	12040450	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070356	Sagast	12040460	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070360	Schmolde	12040480	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070364	Schönebeck	12040490	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070368	Schönhagen b. G	12030510	retain_BB_1990_ballot	truncated name and county
+12070372	Schrepkow	12030520	retain_BB_1990_ballot	exact name and county
+12070376	Silmersdorf	12040510	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070380	Steffenshagen	12040520	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070384	Stepenitz	12040530	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070388	Telschow-Weitge	12040540	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12070392	Triglitz	12040550	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070396	Tüchen	12040560	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070400	Vehlin	12030600	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070404	Vehlow	12030610	retain_BB_1990_ballot	exact name and county
+12070408	Vettin	12040570	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070412	Viesecke	12037920	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070416	Weisen	12037930	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070420	Wilmersdorf	12040590	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070424	Wittenberge, St	12037960	retain_BB_1990_ballot	truncated name and county
+12070428	Wolfshagen	12037970	retain_BB_1990_ballot	exact name and PDF EV/NV
+12070432	Wootz	13022690	exclude_MV_1990_ballot	exact name and county
+12070436	Wutike	12030630	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071004	Atterwasch	12026010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071008	Bagenz	12044010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071012	Bärenbrück	12019030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071016	Bärenklau	12026020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071020	Bloischdorf	12044020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071024	Bohsdorf	12044030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071028	Briesen	12019060	retain_BB_1990_ballot	exact name and county
+12071032	Burg/Spreewald	12019080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071036	Casel	12019090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071040	Dissen	12019100	retain_BB_1990_ballot	exact name and county
+12071044	Döbern, Stadt	12023030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071048	Domsdorf	12019130	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071052	Drachhausen	12019140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071056	Drebkau, Stadt	12019150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071060	Drehnow	12019160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071064	Drewitz	12026050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071068	Drieschnitz-Kah	12044050	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12071072	Fehrow	12019180	retain_BB_1990_ballot	exact name and county
+12071076	Bohrau	12023010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071076	Briesnig	12023020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071076	Forst/Lausitz,	12023060	retain_BB_1990_ballot	truncated name and county
+12071076	Groß Bademeusel	12023110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071076	Groß Jamno	12023120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071076	Mulknitz	12023240	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071076	Naundorf	12023250	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071080	Frauendorf	12019190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071084	Friedrichshain	12044060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071088	Gablenz	12019200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071092	Gahry	12023070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071096	Gallinchen	12019210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071100	Gosda	12023090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071104	Grabko	12026060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071108	Grano	12026070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071112	Graustein	12044070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071116	Greifenhain	12019240	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071120	Grießen	12026080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071124	Groß Döbbern	12019250	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071128	Groß Drewitz	12026090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071132	Groß Gaglow	12019260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071136	Groß Gastrose	12026100	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071140	Groß Kölzig	12023130	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071144	Groß Luja	12044090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071148	Groß Oßnig	12019280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071152	Groß Schacksdor	12023140	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12071156	Grötsch	12023100	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071160	Bresinchen	12026030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071160	Deulowitz	12026040	retain_BB_1990_ballot	exact name and county
+12071160	Guben, Stadt	12026260	retain_BB_1990_ballot	exact name and county
+12071160	Schlagsdorf	12026200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071164	Guhrow	12019290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071168	Haasow	12019310	retain_BB_1990_ballot	exact name and county
+12071172	Haidemühl	12044100	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071176	Heinersbrück	12023150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071180	Horno	12026110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071184	Hornow	12044110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071188	Jämlitz	12044120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071192	Jänschwalde	12026120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071196	Jehserig	12019330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071200	Jerischke	12023160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071204	Jethe	12023170	retain_BB_1990_ballot	exact name and county
+12071208	Jocksdorf	12023180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071212	Kathlow	12019360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071216	Kausche	12044150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071220	Kerkwitz	12026130	retain_BB_1990_ballot	exact name and county
+12071224	Kiekebusch	12019370	retain_BB_1990_ballot	exact name and county
+12071228	Klein Döbbern	12019380	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071232	Klein Düben	12044170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071236	Klein Kölzig	12023310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071240	Klein Loitz	12044180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071244	Babow	12019020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071244	Eichow	12019170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071244	Glinzig	12019220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071244	Gulben	12019300	retain_BB_1990_ballot	exact name
+12071244	Hähnchen	12019320	retain_BB_1990_ballot	PDF060332 Hänchen; identical EV390 NV305
+12071244	Klein Gaglow	12019390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071244	Kolkwitz	12019420	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071244	Krieschow	12019450	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071244	Limberg	12019500	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071244	Milkersdorf	12019540	retain_BB_1990_ballot	exact name and county
+12071244	Papitz	12019580	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071248	Komptendorf	12019430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071252	Koppatz	12019440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071256	Krayne	12026140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071260	Laubsdorf	12019470	retain_BB_1990_ballot	exact name and county
+12071264	Laubst	12019480	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071268	Lauschütz	12026150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071272	Leuthen	12019490	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071276	Lieskau	12044190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071280	Lübbinchen	12026160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071284	Mattendorf	12023230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071288	Maust	12019520	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071292	Müschen	12019550	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071296	Neuendorf	12019560	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071300	Neuhausen	12019570	retain_BB_1990_ballot	exact name and county
+12071304	Peitz, Stadt	12019590	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071308	Pinnow	12026170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071312	Preilack	12019600	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071316	Preschen	12023260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071320	Proschim	12044200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071324	Reicherskreuz	12026180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071328	Reuthen	12044230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071332	Roggosen	12019630	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071336	Schenkendöbern	12026190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071340	Schmogrow	12019670	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071344	Schorbus	12019680	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071348	Schwarze Pumpe	12044260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071352	Sellessen	12044270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071356	Sembten	12026220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071360	Sergen	12019690	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071364	Siewisch	12019710	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071368	Simmersdorf	12023280	retain_BB_1990_ballot	exact name and county
+12071372	Spremberg, Stad	12044280	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12071376	Staakow	12026230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071380	Striesow	12019740	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071384	Schönhöhe	12026210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071384	Tauer	12026250	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071388	Trebendorf	12023290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071392	Tschernitz	12044310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071396	Türkendorf	12044320	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071400	Turnow	12019760	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071404	Wadelsdorf	12044330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071408	Welzow, Stadt	12044340	retain_BB_1990_ballot	exact name and PDF EV/NV
+12071412	Werben	12019770	retain_BB_1990_ballot	exact name and county
+12071416	Wolfshain	12044350	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072004	Ahrensdorf	12048010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072008	Altes Lager	12028010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072012	Baruth, Stadt	12048030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072016	Blankenfelde	12048040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072020	Blankensee	12033030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072024	Blönsdorf	12028040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072028	Bochow	12028050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072032	Bollensdorf	12032050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072036	Borgisdorf	12028060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072040	Buckow	12033040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072044	Christinendorf	12048050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072048	Dahlewitz	12048070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072052	Dahme, Stadt	12032080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072056	Danna	12028070	retain_BB_1990_ballot	exact name and county
+12072060	Dennewitz	12028080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072064	Diedersdorf	12048080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072068	Dornswalde	12048090	retain_BB_1990_ballot	exact name and county
+12072072	Gadsdorf	12048110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072076	Gebersdorf	12032160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072080	Genshagen	12048120	retain_BB_1990_ballot	exact name and county
+12072084	Glau	12033110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072088	Glienick	12048130	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072092	Görlsdorf	12032200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072096	Gräfendorf	12028110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072100	Gröben	12048140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072104	Groß Kienitz	12048170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072108	Groß Machnow	12048180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072112	Groß Schulzendo	12048190	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12072116	Groß Ziescht	12048200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072120	Großbeeren	12048150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072124	Großbeuthen	12048160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072128	Grüna	12028120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072132	Herbersdorf	12028130	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072136	Hohenahlsdorf	12028140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072140	Hohengörsdorf	12028150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072144	Hohenseefeld	12028160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072148	Horstfelde	12048210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072152	Horstwalde	12048220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072156	Ihlow	12028170	retain_BB_1990_ballot	exact name and county
+12072160	Illmersdorf	12028180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072168	Jühnsdorf	12048230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072172	Jüterbog, Stadt	12028190	retain_BB_1990_ballot	exact name and county
+12072176	Kallinchen	12048250	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072180	Kemlitz	12032280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072184	Kerzendorf	12048260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072188	Klasdorf	12048270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072192	Klausdorf	12048280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072196	Klein Schulzend	12033180	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12072200	Kliestow	12033190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072204	Kloster Zinna	12028210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072208	Kummersdorf-Ale	12048320	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12072212	Kummersdorf-Gut	12048310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072216	Langenlipsdorf	12028230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072220	Liepe	12033220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072224	Ließen	12033230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072228	Lindenbrück	12048330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072232	Löwenbruch	12048340	retain_BB_1990_ballot	exact name and county
+12072236	Frankenfelde	12033090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072236	Kolzenburg	12033200	retain_BB_1990_ballot	exact name and county
+12072236	Luckenwalde, St	12033250	retain_BB_1990_ballot	truncated name and county
+12072240	Lüdersdorf	12033260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072244	Ludwigsfelde, S	12048350	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12072248	Mahlow	12048370	retain_BB_1990_ballot	exact name and county
+12072252	Malterhausen	12028260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072256	Markendorf	12028270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072260	Märkisch Wilmer	12048360	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12072264	Mehlsdorf	12032360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072268	Meinsdorf	12028290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072272	Mellensee	12048380	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072276	Merzdorf	12033300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072280	Mückendorf	12048400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072284	Nächst Neuendor	12048410	retain_BB_1990_ballot	truncated name and county
+12072288	Neuheim	12028300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072292	Neuhof b. Zinna	12028310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072296	Niebendorf-Hein	12033340	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12072300	Niedergörsdorf	12028320	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072304	Niendorf	12032370	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072308	Nonnendorf	12028330	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072312	Nunsdorf	12048430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072316	Berkenbrück	12033020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072316	Dobbrikow	12033060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072316	Dümde	12033070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072316	Felgentreu	12033080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072316	Frankenförde	12033100	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072316	Gottow	12033120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072316	Hennickendorf	12033140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072316	Holbeck	12033150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072316	Jänickendorf	12033160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072316	Kemnitz	12033170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072316	Lynow	12033280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072316	Märtensmühle	12033290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072316	Nettgendorf	12033310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072316	Ruhlsdorf	12033360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072316	Scharfenbrück	12033370	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072316	Schönefeld	12033380	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072316	Schöneweide	12033390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072316	Stülpe	12033420	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072316	Woltersdorf	12033460	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072316	Zülichendorf	12033470	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072320	Oehna	12028340	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072324	Osdorf	12048440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072328	Paplitz	12048450	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072332	Petkus	12033350	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072336	Prensdorf	12032410	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072340	Radeland	12048460	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072344	Rangsdorf	12048470	retain_BB_1990_ballot	exact name and county
+12072348	Rehagen	12048480	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072352	Reinsdorf	12028370	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072356	Riesdorf	12028380	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072360	Rietdorf	12032440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072364	Rohrbeck	12028400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072368	Rosenthal	12032450	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072372	Saalow	12048490	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072376	Schlenzer	12028410	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072380	Schöbendorf	12048510	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072384	Schöna-Kolpien	12027520	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072388	Schönefeld	12028420	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072392	Schöneiche	12048520	retain_BB_1990_ballot	exact name and county
+12072396	Schönhagen	12033400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072400	Schünow	12048530	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072404	Seehausen	12028430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072408	Sernow	12028440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072412	Siethen	12048540	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072416	Sperenberg	12048550	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072420	Stangenhagen	12033410	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072424	Thyrow	12048570	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072428	Trebbin, Stadt	12033430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072432	Wahlsdorf	12033440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072436	Waltersdorf	12028460	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072440	Welsickendorf	12028470	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072444	Werbig	12028480	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072448	Werder	12028490	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072452	Wergzahna	12028500	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072456	Wiepersdorf	12028510	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072460	Wiesenhagen	12033450	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072464	Wietstock	12048580	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072468	Wildau-Wentdorf	12032580	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072472	Wünsdorf	12048590	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072476	Zellendorf	12028520	retain_BB_1990_ballot	exact name and PDF EV/NV
+12072480	Zossen, Stadt	12048610	retain_BB_1990_ballot	exact name and county
+12073004	Altkünkendorf	12011010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073008	Angermünde, Sta	12011020	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12073012	Arendsee	12039010	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073016	Bagemühl	13028010	exclude_MV_1990_ballot	exact name and county
+12073020	Beenz	12039020	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073024	Beenz	12046020	retain_BB_1990_ballot	PDF DDR031102 EV115 NV79; slash OCR as 1
+12073028	Berkholz	12046030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073032	Berkholz-Meyenb	12011030	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12073036	Bertikow	12039030	retain_BB_1990_ballot	exact name and county
+12073040	Beutel	12046040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073044	Biesenbrow	12011040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073048	Biesendahlshof	12011050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073052	Bietikow	12039040	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073056	Blankenburg	12039050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073060	Blindow	12039060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073064	Blumberg	12011060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073068	Boitzenburg	12046050	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073072	Bölkendorf	12020030	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073076	Briest	12011080	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073080	Bruchhagen	12011090	retain_BB_1990_ballot	exact name and county
+12073084	Brüssow, Stadt	13028100	exclude_MV_1990_ballot	exact name and county
+12073088	Buchenhain	12046060	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073092	Carmzow	12039070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073096	Casekow	12011100	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073100	Criewen	12011110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073104	Crussow	12011120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073108	Damme	12039090	retain_BB_1990_ballot	exact name and county
+12073112	Dauer	12039100	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073116	Dedelow	12039110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073120	Densow	12046090	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073124	Drense	12039120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073128	Eickstedt	12039130	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073132	Fahrenholz	13036070	exclude_MV_1990_ballot	exact name and county
+12073136	Falkenhagen	12039140	retain_BB_1990_ballot	exact name and county
+12073140	Falkenwalde	12039150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073144	Felchow	12011150	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073148	Ferdinandshorst	12039160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073152	Flemsdorf	12011160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073156	Flieth	12046100	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073160	Frauenhagen	12011170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073164	Fredersdorf	12011180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073168	Friedenfelde	12046110	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073172	Friedrichsthal	12011190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073176	Funkenhagen	12046120	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073180	Fürstenwerder	12039170	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073184	Gandenitz	12046130	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073188	Gartz(Oder), St	12011200	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12073192	Geesow	12011220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073196	Gellmersdorf	12011230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073200	Gerswalde	12046140	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073204	Gollin	12046160	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073208	Gollmitz	12039190	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073212	Golm	12011250	retain_BB_1990_ballot	exact name and county
+12073216	Göritz	12039180	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073220	Görlsdorf	12011240	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073224	Gramzow	12039200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073228	Greiffenberg, S	12011260	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12073232	Groß Dölln	12046170	retain_BB_1990_ballot	exact name and county
+12073236	Groß Pinnow	12011270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073240	Groß-Fredenwald	12046180	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12073248	Grünberg	13028170	exclude_MV_1990_ballot	exact name and county
+12073252	Grunewald	12046200	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073256	Grünow	12011280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073260	Grünow	12039230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073264	Günterberg	12011290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073268	Güstow	12039240	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073272	Güterberg	13036160	exclude_MV_1990_ballot	exact name and county
+12073276	Hammelspring	12046210	retain_BB_1990_ballot	exact name and county
+12073280	Hardenbeck	12046220	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073284	Haßleben	12046230	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073288	Herzfelde	12046240	retain_BB_1990_ballot	exact name and county
+12073292	Herzsprung	12011310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073296	Hohenfelde	12011320	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073300	Hohengüstow	12039250	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073304	Hohenreinkendor	12011340	retain_BB_1990_ballot	truncated name and county
+12073308	Hohenselchow	12011350	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073312	Holzendorf	12039260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073316	Jagow	13036210	exclude_MV_1990_ballot	exact name and county
+12073320	Jakobshagen	12046260	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073324	Jamikow	12011360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073328	Kaakstedt	12046270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073332	Kerkow	12011370	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073336	Klaushagen	12046280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073340	Klinkow	12039270	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073344	Klosterwalde	12046290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073348	Kraatz	12039280	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073352	Krohnhorst	12046300	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073356	Kummerow	12011380	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073360	Landin	12011330	retain_BB_1990_ballot	exact name and county
+12073364	Lemmersdorf	13036250	exclude_MV_1990_ballot	exact name and county
+12073368	Lübbenow	13036280	exclude_MV_1990_ballot	exact name and county
+12073372	Luckow-Petersha	12011400	retain_BB_1990_ballot	PDF050140 Luckow; identical EV369 NV222
+12073376	Ludwigsburg	12039290	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073380	Lützlow	12039300	retain_BB_1990_ballot	exact name and county
+12073384	Lychen, Stadt	12046320	retain_BB_1990_ballot	exact name and county
+12073388	Meichow	12039310	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073392	Mescherin	12011410	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073396	Milmersdorf	12046340	retain_BB_1990_ballot	exact name and county
+12073400	Milow	13036310	exclude_MV_1990_ballot	exact name and county
+12073404	Mittenwalde	12046350	retain_BB_1990_ballot	exact name and county
+12073408	Mürow	12011430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073416	Nechlin	13028290	exclude_MV_1990_ballot	exact name and county
+12073420	Neukünkendorf	12011440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073424	Neurochlitz	12011450	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073428	Parmen-Weggun	12039350	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073432	Passow	12011470	retain_BB_1990_ballot	exact name and county
+12073436	Petznick	12046360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073440	Pinnow	12011490	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073444	Polßen	12011500	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073448	Potzlow	12039360	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073452	Prenzlau, Stadt	12039370	retain_BB_1990_ballot	exact name and county
+12073452	Seelübbe	12039480	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073456	Radekow	12011510	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073460	Retzow	12046410	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073464	Ringenwalde	12046390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073468	Röddelin	12046400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073472	Röpersdorf	12039390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073476	Rosow	12011520	retain_BB_1990_ballot	exact name and county
+12073480	Rutenberg	12046420	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073484	Schapow	12039400	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073488	Schenkenberg	12039410	retain_BB_1990_ballot	exact name and county
+12073492	Schmargendorf	12011530	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073496	Schmiedeberg	12011540	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073500	Schmölln	12039420	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073504	Schöneberg	12011550	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073508	Schönermark	12011560	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073512	Schönermark	12039430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073516	Schönfeld	12011570	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073520	Schönfeld	12039440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073524	Schönow	12011580	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073528	Schönwerder	12039450	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073532	Blumenhagen	12011070	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073532	Gatow	12011210	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073532	Kunow	12011390	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073532	Schwedt/Oder, S	12006000	retain_BB_1990_ballot	truncated name and county
+12073536	Seehausen	12039470	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073540	Stegelitz	12046430	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073544	Steinhöfel	12011590	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073548	Stendell	12011600	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073552	Sternhagen	12039490	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073556	Stolpe/Oder	12011610	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073560	Storkow	12046440	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073564	Tantow	12011630	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073568	Temmen	12046450	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073572	Templin, Stadt	12046460	retain_BB_1990_ballot	exact name and county
+12073576	Trebenow	13036430	exclude_MV_1990_ballot	exact name and county
+12073580	Vierraden, Stad	12011640	retain_BB_1990_ballot	truncated name and PDF EV/NV
+12073584	Vietmannsdorf	12046480	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073588	Wallmow	12039500	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073592	Warnitz	12039510	retain_BB_1990_ballot	exact name and county
+12073596	Warthe	12046490	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073600	Wartin	12011650	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073604	Welsow	12011660	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073608	Wichmannsdorf	12046500	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073612	Wilmersdorf	12011680	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073616	Wilsickow	13036460	exclude_MV_1990_ballot	exact name and county
+12073620	Wismar	13036470	exclude_MV_1990_ballot	exact name and county
+12073624	Woddow	13028470	exclude_MV_1990_ballot	exact name and county
+12073628	Wolfshagen	13036490	exclude_MV_1990_ballot	exact name and county
+12073632	Wolletz	12011690	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073636	Wollschow	13028490	exclude_MV_1990_ballot	exact name and county
+12073640	Woltersdorf	12011700	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073644	Zichow	12011710	retain_BB_1990_ballot	exact name and county
+12073648	Ziemkendorf	12039530	retain_BB_1990_ballot	exact name and PDF EV/NV
+12073652	Zützen	12011720	retain_BB_1990_ballot	exact name and PDF EV/NV

@@ -1,0 +1,13 @@
+dataset	state	election_year	status	rows
+state_harm_21	12	1990	changed	411
+state_harm_21	12	1994	changed	305
+state_harm_21	13	1990	changed	1
+state_harm_21	12	1994	added	3
+state_harm_23	12	1990	changed	408
+state_harm_23	12	1994	changed	303
+state_harm_23	13	1990	changed	1
+state_harm_23	12	1994	added	2
+state_harm_25	12	1990	changed	408
+state_harm_25	12	1994	changed	303
+state_harm_25	13	1990	changed	1
+state_harm_25	12	1994	added	2
