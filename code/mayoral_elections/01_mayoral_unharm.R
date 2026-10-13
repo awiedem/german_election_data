@@ -858,6 +858,9 @@ if (!is.null(rlp_landraete)) {
   rlp_landraete <- rlp_landraete %>%
     mutate(
       ags = paste0("07", str_pad(schluessel, width = 3, side = "left", pad = "0"), "000"),
+      # Source error: the 2017-03-05 Rhein-Pfalz-Kreis row carries key 337
+      # (Suedliche Weinstrasse); Rhein-Pfalz-Kreis is 338
+      ags = if_else(ort_name == "Rhein-Pfalz-Kreis" & ags == "07337000", "07338000", ags),
       election_type = "Landratswahl"
     )
 }

@@ -48,7 +48,9 @@ normalise_party <- function(pname) {
   if (grepl("CHRISTLICH.SOZIALE UNION", p_up))          return("csu")
   if (p_up == "SPD")                                    return("spd")
   if (grepl("SOZIALDEMOKRATISCHE PARTEI", p_up))        return("spd")
-  if (grepl("^GR[UÜ]NE|^B[UÜ]NDNIS\\s*90.*GR|^DIE GR", p_up)) return("gruene")
+  # "^DIE GR(U|Ü|UE)NE", not "^DIE GR": the latter also matched "DIE GRAUEN"
+  # and merged their votes into gruene (e.g. Berlin 2021/2023)
+  if (grepl("^GR(U|Ü|UE)NE|^B[UÜ]NDNIS\\s*90.*GR|^DIE GR(U|Ü|UE)NE", p_up)) return("gruene")
   if (grepl("^FDP|^F[.]D[.]P", p_up))                  return("fdp")
   if (grepl("^FDP/DVP", p_up))                          return("fdp")
   if (grepl("FREIE DEMOKRATISCHE PARTEI", p_up))        return("fdp")
