@@ -82,6 +82,32 @@ cw |>
 cw |> count(year)
 # homogenous 400
 
+# BBSR source errors (data audit 2026-10-12, H6/H7): the 1991 sheet gives
+# Berlin a decimal-shifted population (34,460.3 thousand), and the Thuringian
+# rows of the 2016-2018 and 2020 sheets carry merged-county totals on each
+# predecessor county, so the sum above double counts. Replace area and
+# population for these county-years with sums of the municipality covariates,
+# which agree with this file within 0.1% everywhere else. Bavaria 2018 is not
+# replaced: there the municipality areas are the ones that are too low.
+muni <- read_rds("data/covars_municipality/final/ags_area_pop_emp.rds") |>
+  mutate(county_code_21 = substr(ags_21, 1, 5)) |>
+  group_by(county_code_21, year) |>
+  summarise(area_m = sum(area_ags, na.rm = TRUE),
+            population_m = sum(population_ags, na.rm = TRUE), .groups = "drop")
+cw <- cw |>
+  left_join(muni, by = c("county_code_21", "year")) |>
+  mutate(
+    in_scope = (substr(county_code_21, 1, 2) == "16" & year %in% c(2016:2018, 2020)) |
+      (county_code_21 == "11000" & year == 1991),
+    replace = in_scope & (abs(population / population_m - 1) > 0.02 |
+                            abs(area / area_m - 1) > 0.02),
+    area = if_else(replace, area_m, area),
+    population = if_else(replace, population_m, population),
+    pop_density = population * 1000 / area
+  )
+cw |> filter(replace) |> select(county_code_21, year, area, population) |> print(n = Inf)
+cw <- cw |> select(-area_m, -population_m, -in_scope, -replace)
+
 
 
 # Get population & area for 2021
