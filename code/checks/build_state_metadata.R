@@ -52,3 +52,36 @@ d <- d[order(d$dataset, d$state, d$election_date), ]
 write.csv(d, file.path(out, "election_completeness.csv"), row.names = FALSE, na = "")
 cat("Wrote", nrow(d), "dataset-election coverage/completeness rows and",
     sum(vapply(schema, nrow, integer(1))), "column definitions.\n")
+
+# Party columns per election (suggested by Hanno Hilbig, 2026-10): one row per
+# state, election and column of state_unharm that holds a value there, so that a
+# party that stood (a value, possibly 0) can be told apart from one the source
+# does not name (no row), plus the residual `other`. Shares are statewide,
+# weighted by valid votes.
+u <- as.data.frame(readRDS("data/state_elections/final/state_unharm.rds"))
+us <- schema$state_unharm
+pcols <- us$column[us$role %in% c("party_share", "residual_share")]
+ballot <- list()
+for (idx in split(seq_len(nrow(u)), interaction(u$state, u$election_date, drop = TRUE))) {
+  d <- u[idx, ]
+  vv <- d$valid_votes
+  ## Statewide = over every row with a result. A party that stood in only part
+  ## of the state got no votes elsewhere (Bremen 2007: BIW stood in Bremerhaven
+  ## only, 0.8 % of the Land, not its 5.0 % there).
+  has_result <- !is.na(vv) & vv > 0 & rowSums(!is.na(d[pcols])) > 0
+  for (p in pcols) {
+    v <- d[[p]]
+    if (all(is.na(v))) next
+    w <- has_result
+    ballot[[length(ballot) + 1L]] <- data.frame(
+      state = d$state[1], election_year = d$election_year[1],
+      election_date = d$election_date[1], column = p,
+      role = if (p == "other") "residual_share" else "party_share",
+      rows = nrow(d), rows_with_value = sum(!is.na(v)), rows_zero = sum(v == 0, na.rm = TRUE),
+      statewide_share = if (any(w) && sum(vv[w]) > 0) round(sum(v[w] * vv[w], na.rm = TRUE) / sum(vv[w]), 6) else NA_real_)
+  }
+}
+b <- do.call(rbind, ballot)
+b <- b[order(b$state, b$election_date, b$role, -b$statewide_share), ]
+write.csv(b, file.path(out, "state_party_columns.csv"), row.names = FALSE, na = "")
+cat("Wrote", nrow(b), "party-column rows for", length(unique(paste(b$state, b$election_date))), "elections.\n")

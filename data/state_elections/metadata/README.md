@@ -30,6 +30,39 @@ add no columns to the election files and are not a new package dataset.
   the source). Donor rows carry NA counts and shares; receiver rows hold the pooled
   unit, electorate included. Written by `01b_state_unharm_raw.R` from the source file.
   The rows involved carry `flag_pooled = 1` in all four state files.
+- `st_postal_pool_members.csv`: the 61 pooled postal districts of the Sachsen-Anhalt
+  Landtagswahlen 2011 (27) and 2016 (34), keyed by Kreis code, Wahlbezirk and label as
+  printed, with the Gemeinden each serves (`member_ags`). The label names them or
+  their Verbandsgemeinde (members then from the workbook's own VG column, restricted
+  to the Landtagswahlkreis where the label says "WK n"); `basis` records how, and
+  notes the special cases (Thale's OT Allrode, Petersberg's OT Brachstedt in the
+  Landsberg pools, Apenburg-Winterfeld served by the Kalbe pool). Each member is
+  weighted by its electorate in the pool's Landtagswahlkreis, computed from the
+  source. Read by `01b_state_unharm_raw.R`, which stops if a source pool has no
+  entry here, an entry matches no pool, or a pool's voters or Wahlkreis differ from
+  `pool_voters` / `landtagswahlkreis`.
+- `postal_allocation_rules.csv`: one row per state and election of `state_unharm`
+  saying whether postal votes were pooled in the source (`postal_votes`), and if so
+  how GERDA distributed them: `allocation` (the pool level), `weight`, `counts`
+  (integer and exact, or fractional), `n_pools`, `pool_voters`, `n_receivers` and
+  `n_capped` (receivers whose share was cut to their electorate). Written by
+  `01b_state_unharm_raw.R`. "Not in the data" marks the in-person-only elections
+  (SH 1983, BB 1990/1994, MV 1990).
+- `state_postal_pools.csv`: every pooled postal district distributed, with its
+  `pool_id`, source totals (`pool_voters`, `pool_valid_votes`, `pool_invalid_votes`),
+  `weight`, `receivers` (AGS, `;`-separated) and `n_capped`. Use it to apply other
+  weights.
+- `state_postal_receivers.csv`: one row per municipality and election that received
+  pooled postal votes (exactly the rows with `flag_postal_allocated` = 1):
+  `postal_voters_allocated`, `postal_valid_votes_allocated`, their shares of the
+  row's voters and valid votes, and `postal_pool_ids`. Join to the election files on
+  `state`, `election_year`, `ags`; the allocated counts are the modelled part of the
+  row. Fractional in Thüringen and the Sachsen 2019/2024 lead-Gemeinde pools.
+- `state_party_columns.csv`: one row per state, election and party column of
+  `state_unharm` that holds a value there (`rows_with_value`, `rows_zero`, statewide
+  share weighted by valid votes), plus `other`. A party without a row was not named
+  by the source: it did not stand, or it sits in `other` (check `other`'s share).
+  Written by `code/checks/build_state_metadata.R`.
 - `ni_pooled_municipalities.csv`: the two Niedersachsen Gemeinden (Beierstedt,
   Gevensleben) that have no result of their own in the 2017 Landtagswahl source.
   The source does not name the receiver; Jerxheim is inferred because the

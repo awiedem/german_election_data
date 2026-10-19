@@ -125,6 +125,54 @@ Thüringen from 2014 on. The rest: Sachsen 1994 (3), Thüringen 1994–2009 (4, 
 Wahlschein counts), and one each in Brandenburg 1990, Baden-Württemberg 2021 and
 Mecklenburg-Vorpommern 2021; all carry `flag_harm_turnout_above_1`.
 
+## `far_right` zeros and postal allocation (October 2026)
+
+From Hanno Hilbig's notes of 2026-10-16/18, then a five-reviewer audit of the fix
+(2026-10-19). This supersedes the `far_right` list of Change 3, the "state data is
+pre-aggregated" line of the March cross-pipeline audit, and the flag count and
+turnout result of the September section above.
+
+1. **Far-right votes under unmapped labels or in `other`.** Bayern 1994-2013 print
+   "Full name (ABBR)" and REP/NPD sat in `die_republikaner_rep` / `die_heimat_heimat`
+   (`normalise_party()` now maps by the bracketed short name and logs it); SH
+   2000-2009 and Bremen 1999-2007 read only the larger lists, so NPD, DVU, REP and
+   the SSW sat in `other`. Every list is now read and checked against the valid votes.
+2. **`far_right`** adds FDVP, pro NRW / pro Deutschland and the DLVH, drops the DSU
+   (rechtskonservativ; decided 2026-10-19), and is NA where the source names no far-right party but
+   books > 0.1 % as `other` (NI 1990/1994, BY 1990, HB 2011); it can be a lower bound
+   where some are named (NRW 1990-2005, Bremen 1995/2015). Audit item M12. `far_left` and
+   `far_left_w_linke` follow the same rule (NA in 14 state-years, e.g. NRW 1990-2005).
+3. **Bremen 1999-2007** come from the Wahlbereich total rows, checked against the Land
+   row: 2003 had counted four Stadtteile twice (+11,374 valid votes, CDU +0.7 points),
+   and the 1999 Bremerhaven Ortsteile did not add up to the Wahlbereich.
+4. **`allocate_pooled_counts()`**: receivers keep `valid_votes` = their party votes and
+   `number_voters` = valid + invalid wherever the pool adds up (6,505 rows had party
+   shares not adding up to 1, 2,244 rows voters off by one or two votes; Niedersachsen
+   now passes invalid votes through the pool); a member may carry its own weight; an
+   NA receiver counts as 0 in party columns and stops the run in count columns.
+5. **Mecklenburg-Vorpommern 1994-2021** go through that function (flag set, integer
+   counts): 1994/1998 pools by Landtagswahlkreis, across the Kreis line (Stralsund +1,923
+   / +1,881 voters), A2 weights in 1994/1998/2011, 2011 members by the source's Amt
+   code (30 Gemeinden merged by 2013 had got nothing), Neukalen 2002 no longer twice;
+   2016/2021 totals now equal the source's Land row.
+6. **Sachsen-Anhalt 2011/2016** pools go to the Gemeinden their labels name
+   (`metadata/st_postal_pool_members.csv`), weighted by electorate in the pool's
+   Landtagswahlkreis (Thale -518 voters in 2011); Brücken-Hackpfüffel's 2011 postal
+   district (code with a trailing line break) is no longer dropped.
+
+7. **Hanno's suggestions (same day).** Schleswig-Holstein 2017/2022 (Amt pools by
+   Wahlkreis and A2) and Brandenburg 2004/2014/2024 now also go through
+   `allocate_pooled_counts()`, flagged and exact (SH had spread them Kreis-wide,
+   unrounded, with a voter cap). Receivers are capped at their room (eligible minus
+   voters). New metadata: `postal_allocation_rules.csv`, `state_postal_pools.csv`,
+   `state_postal_receivers.csv`, `state_party_columns.csv`.
+
+**Result.** `flag_postal_allocated`: 26,708 rows of `state_unharm` (24,063 before item 7). Rows with turnout
+> 1 in `state_harm_25`: 8 (Sachsen 1994 3, Thüringen 1994-2009 4, Baden-Württemberg
+2021 1). The Wahlkreis cross-check reports 57 comparisons off by > 0.5 %, down from 61.
+Still open: Sachsen-Anhalt 1990-2006 pools still go Kreis- (1990, 1994: Land-) wide,
+and Thüringen and the Sachsen 2019/2024 lead pools keep fractional, uncapped counts. Regression checks: `code/checks/check_state_farright_postal.R`.
+
 ## Pipeline files
 
 | Script | Stage | Description |

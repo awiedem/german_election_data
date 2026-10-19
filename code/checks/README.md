@@ -61,6 +61,18 @@ This folder contains scripts to check data quality and diagnose issues in the Ge
 - **`check_state_excel_missingness.py`** verifies workbook hashes, XML, styles,
   row/cell counts and sampled values, plus every `invalid_votes` value and blank
   against CSV in those four datasets.
+- **`check_state_farright_postal.R`** pins the October 2026 fixes from Hanno's
+  notes: REP/NPD in `rep`/`npd` for Bayern 1994--2013, every list read for SH
+  2000--2009 and Bremen 1999--2007 (official NPD/DVU/SSW shares, `other` 0),
+  `far_right` NA exactly where the source cannot identify far-right votes, MV
+  postal pools conserved, flagged, integer and with voters = valid + invalid (2016
+  and 2021 against the source's Land row), the Sachsen-Anhalt 2011/2016 pools, and
+  (second round) party votes = valid votes in every allocated row, Wahlkreis-
+  weighted partial members (Thale, Jessen, Petersberg), Stralsund 1994/1998, the
+  MV 2011 Amt members, Neukalen 2002 and Bremen 1999-2007 against the sources'
+  Land rows; (third round) the `far_left` NA set and the far-right classification
+  (pro NRW / pro Deutschland and DLVH counted, DSU not). Exits 1 on any failure;
+  each check fails on the build it fixes.
 - **`build_state_metadata.R`** regenerates the actual election coverage,
   field completeness and explicit column schema under
   `data/state_elections/metadata/`. Run after all four RDS outputs are rebuilt.

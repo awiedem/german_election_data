@@ -42,9 +42,12 @@ gerda_check_state_accounting <- function(target, output = NULL,
   raw <- readRDS("data/state_elections/final/state_unharm.rds")
   raw <- raw[raw$election_year >= 1990 &
                !(raw$state == "09" & grepl("^09[0-9]{3}444$", raw$ags)), ]
+  # A row without electorate, voters or valid votes is a placeholder: since
+  # September 2026 the harmonizers carry its valid_votes as NA, not as the unit
+  # weight 1 (NI 1990/2017, TH 2024 and the 58 RP 2026 donors).
   raw$valid_votes <- with(raw, ifelse(!is.na(valid_votes), valid_votes,
     ifelse(!is.na(number_voters) & number_voters > 0, number_voters,
-    ifelse(!is.na(eligible_voters) & eligible_voters > 0, eligible_voters, 1))))
+    ifelse(!is.na(eligible_voters) & eligible_voters > 0, eligible_voters, NA_real_))))
   for (col in counts) {
     expected <- tapply(raw[[col]], raw$election_year, sum_na)
     actual <- tapply(ledger[[col]], ledger$election_year, sum_na)

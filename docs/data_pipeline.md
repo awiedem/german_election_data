@@ -313,7 +313,7 @@ This unified script processes all 16 German states (1946–2026), replacing the 
 - **Party harmonization:** `normalise_party()` function maps 90+ raw party name patterns to standardized snake_case names aligned with the federal pipeline.
 - **~440 individual party columns:** All parties that ever ran in any state election are preserved as separate columns (vs only 8 major party groups in the old pipeline).
 - **Vote shares from source:** Computed as `party_votes / valid_votes` (not `number_voters`).
-- **Briefwahl properly allocated:** State raw data is pre-aggregated to municipalities with Briefwahl assigned to the correct municipality by the Landeswahlleiter.
+- **Briefwahl:** Most state sources assign postal votes to the municipality. Where a source counts them in a Briefwahlbezirk serving several municipalities (Kreis, Amt, Samtgemeinde, Wahlkreis or Land), `allocate_pooled_counts()` distributes them over the municipalities the pool serves and sets `flag_postal_allocated` (see the state README and the codebook for weights and the exceptions).
 - **Bayern Gesamtstimmen:** BY uses combined Erst+Zweitstimme (both count for seat allocation). `valid_votes ≈ 2 × number_voters` for BY 1950+.
 - **Baden-Württemberg 2026 (two-vote):** BW's first Landtagswahl under the new Erst-/Zweitstimme system. Added from StaLA GENESIS Flachdateien (tables 14311_0009 votes + 14311_0008 turnout) in a dedicated block; GERDA records the **Zweitstimme** (Landeslistenstimme), continuing the prior single-vote series. Party labels are resolved via the official short name in the trailing `(...)` before `normalise_party()` (so e.g. the long Die-PARTEI name is not mis-matched on "Tierschutz").
 - **OCR-extracted elections:** BB 1990/1994/1999, SH 1983, NRW 1947/1950, SL 1970/1975 were digitized from scanned PDFs. NRW 1947-1970 are county-level only (synthetic AGS `050xx000`, ~84 Kreise per year, aggregated from 150 WK for 1947/1950). The NRW source PDF contains three elections in interleaved rows (a=1947, b=1949 Bundestag, c=1950 Landtag); row identification uses party presence patterns.
@@ -725,10 +725,10 @@ This is the most consequential divergence across pipelines:
 - **Municipal:** Hybrid approach — weighted sum for raw voter counts, weighted mean for party vote shares.
 
 **3. Mail-in vote allocation:**
-The federal and European municipality pipelines handle joint mail-in voting districts. Both use ballot-district-level source data where shared Briefwahl districts must be allocated to individual municipalities. The federal pipeline uses a blocked-weight allocation method, while the European pipeline distributes proportionally by eligible voters within `(county, BWBez)` groups. County-level and state election data arrive with mail-in votes already allocated.
+The federal and European municipality pipelines handle joint mail-in voting districts. Both use ballot-district-level source data where shared Briefwahl districts must be allocated to individual municipalities. The federal pipeline uses a blocked-weight allocation method, while the European pipeline distributes proportionally by eligible voters within `(county, BWBez)` groups. County-level data arrive with mail-in votes already allocated; for state elections see the Briefwahl note in the state section.
 
 **4. Party groupings:**
-The `far_right`, `far_left`, and `cdu_csu` composite variables are defined in the federal pipeline (`00_federal_muni_raw.R`) and reused in the county pipeline. State and municipal pipelines have their own party name mappings but follow the same categorization logic.
+The `far_right`, `far_left`, and `cdu_csu` composite variables are defined in the federal pipeline (`00_federal_muni_raw.R`) and reused in the county pipeline. State and municipal pipelines have their own party name mappings. The state `far_right` adds FDVP, pro NRW / pro Deutschland and the DLVH, leaves out the DSU (which the federal and county definitions still count), and is `NA` in a state-year whose source names no far-right party but books votes as `other` (Niedersachsen 1990/1994, Bayern 1990, Bremen 2011).
 
 ---
 

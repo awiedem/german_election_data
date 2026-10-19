@@ -42,6 +42,43 @@ df <- state_source_all |>
 glimpse(df)
 table(df$election_year)
 
+# far_right is a sum over the far-right parties a source names. Where a
+# state-year's source names none of them but books part of the vote as "other",
+# a far-right vote can sit in "other" unseen (REP 3.7 % in Niedersachsen 1994
+# and 4.9 % in Bayern 1990; NPD 1.6 % in Bremen 2011), so far_right is NA there,
+# not 0. Where the source names every party ("other" at most 0.1 %, rounding),
+# a missing far-right column means none stood (Bremen 2023) and 0 is right.
+# Where a source names some far-right parties but lumps others into "other",
+# far_right is a lower bound (NRW 2005: REP named, NPD 0.9 % in "Sonstige").
+# Counted besides AfD, NPD, REP, DVU, Die Rechte, III. Weg, FAP and DDD (decided
+# 2026-10-19 from the Verfassungsschutz record and Wikipedia): FDVP (a DVU
+# split-off; Sachsen-Anhalt 2002), pro NRW / pro Deutschland (`pro_deutschland`;
+# rechtsextremistisch per Verfassungsschutz NRW 2011) and the DLVH
+# (`deutsche_liga`; founded by former NPD and REP leaders). Not counted: the
+# Schill party, the Freiheitliche Partei Deutschlands and the DSU
+# (rechtskonservativ, never under observation). far_left follows the same rule
+# (and far_left_w_linke, which contains it).
+far_right_parties <- c("afd", "npd", "rep", "die_rechte", "dvu", "iii_weg",
+                       "fap", "ddd", "fdvp", "pro_deutschland", "deutsche_liga")
+far_left_parties <- c("dkp", "kpd", "mlpd", "sgp", "psg", "kbw")
+bloc_unknown <- function(parties) {
+  df |>
+    group_by(state, election_year) |>
+    summarise(
+      named = any(!is.na(as.matrix(across(any_of(parties))))),
+      other_share = sum(other * valid_votes, na.rm = TRUE) /
+        sum(valid_votes[!is.na(other)], na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    filter(!named, other_share > 0.001)
+}
+far_right_unknown <- bloc_unknown(far_right_parties)
+far_left_unknown <- bloc_unknown(far_left_parties)
+cat("far_right NA (source names no far-right party, other > 0.1 %):",
+    paste(far_right_unknown$state, far_right_unknown$election_year, collapse = ", "), "\n")
+cat("far_left NA (source names no far-left party, other > 0.1 %):",
+    paste(far_left_unknown$state, far_left_unknown$election_year, collapse = ", "), "\n")
+
 # One column per party in the harmonized files. state_unharm keeps each source's
 # own label, so the same party can sit in two columns there (no row has both):
 # PdH = Partei der Humanisten, the ST 2011/2016 FREIE WÄHLER and Tierschutzpartei
@@ -546,12 +583,8 @@ if (nrow(zero_party_lookup) > 0) {
 }
 
 # Pooled party columns
-far_right_cols <- intersect(
-  c("afd", "npd", "rep", "die_rechte", "dvu", "iii_weg", "fap", "ddd", "dsu"),
-  names(df_harm))
-far_left_cols <- intersect(
-  c("dkp", "kpd", "mlpd", "sgp", "psg", "kbw"),
-  names(df_harm))
+far_right_cols <- intersect(far_right_parties, names(df_harm))
+far_left_cols <- intersect(far_left_parties, names(df_harm))
 
 cat("far_right cols:", paste(far_right_cols, collapse = ", "), "\n")
 cat("far_left cols:", paste(far_left_cols, collapse = ", "), "\n")
@@ -584,6 +617,17 @@ no_party_share <- rowSums(!is.na(as.data.frame(df_harm)[tvs_cols])) == 0
 df_harm[no_party_share, c("far_right", "far_left", "far_left_w_linke", "total_vote_share",
                           "perc_total_votes_incongruence", "flag_other_party_residual")] <- NA
 cat("Rows with no party share (derived columns NA):", sum(no_party_share), "\n")
+fr_unknown <- paste(df_harm$state, df_harm$election_year) %in%
+  paste(far_right_unknown$state, far_right_unknown$election_year)
+df_harm$far_right[fr_unknown] <- NA
+cat("Rows with far_right NA (far-right vote not identified in the source):",
+    sum(fr_unknown), "\n")
+fl_unknown <- paste(df_harm$state, df_harm$election_year) %in%
+  paste(far_left_unknown$state, far_left_unknown$election_year)
+df_harm$far_left[fl_unknown] <- NA
+df_harm$far_left_w_linke[fl_unknown] <- NA
+cat("Rows with far_left NA (far-left vote not identified in the source):",
+    sum(fl_unknown), "\n")
 
 glimpse(df_harm)
 
