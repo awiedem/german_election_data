@@ -7250,6 +7250,11 @@ for (ci in seq(4, 104, by = 2)) {
   if (grepl(",", pname) || grepl("^partei(los|unabh)", pname, ignore.case = TRUE) ||
       grepl("^SIGGI", pname, ignore.case = TRUE)) next
   std <- normalise_party(pname)
+  ## "DA" in this file is the Wählergemeinschaft Deutsche Allianz – Heimatbündnis
+  ## Rheinland-Pfalz (1991 only, 0.2 %), close to the DLVH's forerunner Deutsche
+  ## Allianz – Vereinigte Rechte; the official result table lists it as DLVH. It
+  ## is not the Demokratischer Aufbruch that `da` holds in Sachsen 1990.
+  if (identical(pname, "DA")) std <- "deutsche_liga"
   rp_m_parties[[as.character(ci)]] <- std
 }
 cat("  1979-2016 file: mapped", length(rp_m_parties), "Landesstimme party columns\n")

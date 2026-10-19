@@ -10,7 +10,9 @@
 # build; the voters = valid + invalid check guards what that build fixed. The
 # far_left NA and far-right classification checks (third round, same day) fail
 # on the second-round build, and those of section 7 (Hanno's suggestions) on
-# the third-round build.
+# the third-round build. The fifth-round checks (Bremen 1991/1995 far_left; HLA,
+# NL and Rheinland-Pfalz 1991's Deutsche Allianz in far_right) fail on the
+# fourth-round build.
 suppressMessages(library(data.table))
 args <- commandArgs(trailingOnly = TRUE)
 dir <- if (length(args)) args[[1]] else "data/state_elections/final"
@@ -61,7 +63,8 @@ for (yr in names(hb_dvu)) {
 # 3. far_right in the harmonized files: NA where the source names no far-right
 #    party but books votes as `other`; 0 only where the source lists every party.
 fr_na_expected <- c("03 1990", "03 1994", "04 2011", "09 1990")
-fl_na_expected <- c("01 1996", "03 1990", "03 1994", "04 2011", "04 2015", "04 2019",
+fl_na_expected <- c("01 1996", "03 1990", "03 1994", "04 1991", "04 1995",
+                    "04 2011", "04 2015", "04 2019",
                     "05 1990", "05 1995", "05 2000", "05 2005", "09 1990", "10 2022",
                     "12 1994", "12 1999")
 for (nm in names(harm)) {
@@ -90,7 +93,15 @@ for (nm in names(harm)) {
   check(sprintf("%s: far_right counts the DLVH (BW 1992 12.27 %%), not the DSU (Sachsen 1990 0.67 %%)", nm),
         near(share(h[state == "08" & election_year == 1992], "far_right"), 12.27, 0.02) &&
           near(share(h[state == "14" & election_year == 1990], "far_right"), 0.67, 0.02))
+  # Fifth round (same day): Hamburg's HLA and NL and Rheinland-Pfalz 1991's
+  # Deutsche Allianz (in deutsche_liga) count.
+  check(sprintf("%s: far_right counts HLA and NL (Hamburg 1991 1.98 %%) and RP 1991's Deutsche Allianz (2.31 %%)", nm),
+        near(share(h[state == "02" & election_year == 1991], "far_right"), 1.98, 0.02) &&
+          near(share(h[state == "07" & election_year == 1991], "far_right"), 2.31, 0.02))
 }
+check("RP 1991: Deutsche Allianz in deutsche_liga (0.23 %), no RP row in da",
+      near(share(u[state == "07" & election_year == 1991], "deutsche_liga"), 0.23, 0.01) &&
+        (!"da" %in% names(u) || all(is.na(u[state == "07"]$da))))
 
 # 4. Mecklenburg-Vorpommern: every pooled postal row distributed and flagged,
 #    integer counts, voters = valid + invalid, statewide totals as published.

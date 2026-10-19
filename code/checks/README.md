@@ -71,7 +71,9 @@ This folder contains scripts to check data quality and diagnose issues in the Ge
   weighted partial members (Thale, Jessen, Petersberg), Stralsund 1994/1998, the
   MV 2011 Amt members, Neukalen 2002 and Bremen 1999-2007 against the sources'
   Land rows; (third round) the `far_left` NA set and the far-right classification
-  (pro NRW / pro Deutschland and DLVH counted, DSU not). Exits 1 on any failure;
+  (pro NRW / pro Deutschland and DLVH counted, DSU not); (fifth round) Bremen
+  1991/1995 in the `far_left` NA set, Hamburg's HLA and NL and Rheinland-Pfalz
+  1991's Deutsche Allianz in `far_right`. Exits 1 on any failure;
   each check fails on the build it fixes.
 - **`build_state_metadata.R`** regenerates the actual election coverage,
   field completeness and explicit column schema under

@@ -18,7 +18,7 @@
   {
     "dataset": "data/state_elections/final/state_harm_21",
     "rows": 85049,
-    "populated_cells": 3359604,
+    "populated_cells": 3359596,
     "sampled_rows": [
       1,
       2,
@@ -34,7 +34,7 @@
   {
     "dataset": "data/state_elections/final/state_harm_23",
     "rows": 84957,
-    "populated_cells": 3359277,
+    "populated_cells": 3359269,
     "sampled_rows": [
       1,
       2,
@@ -50,7 +50,7 @@
   {
     "dataset": "data/state_elections/final/state_harm_25",
     "rows": 84821,
-    "populated_cells": 3353787,
+    "populated_cells": 3353779,
     "sampled_rows": [
       1,
       2,

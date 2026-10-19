@@ -167,6 +167,16 @@ turnout result of the September section above.
    voters). New metadata: `postal_allocation_rules.csv`, `state_postal_pools.csv`,
    `state_postal_receivers.csv`, `state_party_columns.csv`.
 
+8. **Hanno's unverified leads (same day).** Checked against the sources and the
+   official results: the Greens of Sachsen and Sachsen-Anhalt 1990 are in `forum`
+   and `grue_nf` (joint lists); the western `linke_pds` gaps and the explicit zeros
+   in far-right columns (Hamburg, Saarland, Rheinland-Pfalz 1991, Sachsen 2004) are
+   parties that did not stand. Fixed: `far_left` and `far_left_w_linke` are NA in
+   Bremen 1991 and 1995, which have no valid votes, so the NA rule now weights
+   `other` by voters there; `far_right` counts Hamburg's HLA and NL and Rheinland-
+   Pfalz 1991's Deutsche Allianz – Heimatbündnis, now in `deutsche_liga` instead of
+   `da` (which holds the Demokratischer Aufbruch in Sachsen 1990).
+
 **Result.** `flag_postal_allocated`: 26,708 rows of `state_unharm` (24,063 before item 7). Rows with turnout
 > 1 in `state_harm_25`: 8 (Sachsen 1994 3, Thüringen 1994-2009 4, Baden-Württemberg
 2021 1). The Wahlkreis cross-check reports 57 comparisons off by > 0.5 %, down from 61.

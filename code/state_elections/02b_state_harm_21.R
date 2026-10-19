@@ -54,21 +54,28 @@ table(df$election_year)
 # Counted besides AfD, NPD, REP, DVU, Die Rechte, III. Weg, FAP and DDD (decided
 # 2026-10-19 from the Verfassungsschutz record and Wikipedia): FDVP (a DVU
 # split-off; Sachsen-Anhalt 2002), pro NRW / pro Deutschland (`pro_deutschland`;
-# rechtsextremistisch per Verfassungsschutz NRW 2011) and the DLVH
-# (`deutsche_liga`; founded by former NPD and REP leaders). Not counted: the
+# rechtsextremistisch per Verfassungsschutz NRW 2011), the DLVH (`deutsche_liga`;
+# founded by former NPD and REP leaders; it also holds Rheinland-Pfalz 1991's
+# Deutsche Allianz – Heimatbündnis, close to the DLVH's forerunner) and, in
+# Hamburg, the HLA (Hamburger Liste für Ausländerstopp, founded by NPD
+# functionaries, 1982-1991) and the NL (Nationale Liste, neo-Nazi, banned in
+# 1995). Not counted: the
 # Schill party, the Freiheitliche Partei Deutschlands and the DSU
 # (rechtskonservativ, never under observation). far_left follows the same rule
 # (and far_left_w_linke, which contains it).
 far_right_parties <- c("afd", "npd", "rep", "die_rechte", "dvu", "iii_weg",
-                       "fap", "ddd", "fdvp", "pro_deutschland", "deutsche_liga")
+                       "fap", "ddd", "fdvp", "pro_deutschland", "deutsche_liga",
+                       "hla", "nl")
 far_left_parties <- c("dkp", "kpd", "mlpd", "sgp", "psg", "kbw")
 bloc_unknown <- function(parties) {
   df |>
     group_by(state, election_year) |>
     summarise(
       named = any(!is.na(as.matrix(across(any_of(parties))))),
-      other_share = sum(other * valid_votes, na.rm = TRUE) /
-        sum(valid_votes[!is.na(other)], na.rm = TRUE),
+      ## Weighted by valid votes, or by voters where the source has no valid
+      ## votes: Bremen 1991/1995 (PDS in `other`) gave NaN and went untested.
+      other_share = sum(other * coalesce(valid_votes, number_voters), na.rm = TRUE) /
+        sum(coalesce(valid_votes, number_voters)[!is.na(other)], na.rm = TRUE),
       .groups = "drop"
     ) |>
     filter(!named, other_share > 0.001)
