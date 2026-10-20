@@ -14,7 +14,7 @@
 # NL and Rheinland-Pfalz 1991's Deutsche Allianz in far_right) fail on the
 # fourth-round build. Of the Sachsen-Anhalt 1990-2006 checks (section 8, pools
 # by Landtagswahlkreis), all but the conservation guard fail on the fifth-round
-# build.
+# build; the Delitz am Berge / Schafstädt check (2026-10-20) fails on 09ab65f.
 suppressMessages(library(data.table))
 args <- commandArgs(trailingOnly = TRUE)
 dir <- if (length(args)) args[[1]] else "data/state_elections/final"
@@ -282,6 +282,9 @@ if (file.exists(st06_file)) {
 check("ST 2006: 1,020 receivers; a Gemeinde no pool names gets the pools' average rate (Groß Schwechten 190)",
       u[state == "15" & election_year == 2006, sum(flag_postal_allocated)] == 1020 &&
         identical(voters("15363044", 2006), 190))
+check("ST 2006: Delitz am Berge and Schafstädt in the Bad Lauchstädt pool (350 / 746 voters; Bad Lauchstädt 1,919)",
+      identical(voters("15261010", 2006), 350) && identical(voters("15261050", 2006), 746) &&
+        identical(voters("15261004", 2006), 1919))
 
 if (length(failed)) {
   cat(length(failed), "check(s) failed.\n")

@@ -14,9 +14,10 @@
 ## counts the ballots of one Wahlkreis), without the Gemeinden that count their
 ## own postal votes there (8-digit AGS, Wahllokalart B). Where the key is not a
 ## VG (verbandsfreie Städte, labels naming several units) `spec` below lists
-## the units the label names. A Gemeinde part that no pool of its Wahlkreis
-## names (its VG's pool sits in another Wahlkreis, or its VG has none: 14 parts)
-## is listed in `shared_ags` of every pool of its Wahlkreis and Kreis; the
+## the units the label names; `inferred` adds VG Laucha-Schwarzeiche, which no
+## label names, to the Bad Lauchstädt pool. A Gemeinde part that no pool of its
+## Wahlkreis names (its VG's pool sits in another Wahlkreis, or its VG has none:
+## 12 parts) is listed in `shared_ags` of every pool of its Wahlkreis and Kreis; the
 ## source rows of each Wahlkreis add up exactly to the official Wahlkreis
 ## result, so its postal ballots are in one of those pools, but the source does
 ## not say which. 01b splits its electorate over them in proportion to the
@@ -111,6 +112,22 @@ spec <- list(
   "705102" = c("G:Salzwedel")
 )
 
+## Units no label names whose postal ballots the data place in one pool.
+## VG Laucha-Schwarzeiche (Delitz am Berge, Schafstädt; key 6104) has no pool in
+## Wahlkreis 41. At the Bundestagswahl of 18.09.2005 the two ran a joint postal
+## board of their own (Briefwahlzugehörigkeit 04: 164 postal voters for 176
+## Wahlschein holders, BTW05_Zweitstimmen_Wahlbezirke.txt). In 2006 a pool holds
+## about 0.47 times its members' 2005 Wahlschein holders (73 pools without shared
+## parts, p10-p90 0.43-0.54). The Bad Lauchstädt pool holds 0.73 on its own
+## members (381 voters, 135 above that rate) and 0.54 with these two, whose
+## Wahlschein holders predict about 83; Oberes Geiseltal (0.52), Weida-Land (0.51)
+## and Querfurt's own postal district (0.51) show no excess. Schafstädt had been
+## put into VG Bad Lauchstädt when VG Laucha-Schwarzeiche was dissolved on
+## 22.03.2005 (restored by the Verwaltungsgericht Halle on 05.04.2005); both
+## joined Bad Lauchstädt on 01.01.2008. No document names the district: this is
+## an inference (Vincent's decision, 2026-10-20).
+inferred <- list("611400" = "VB:6104")
+
 base <- function(x) sub(",.*$", "", x)
 res <- list()
 for (i in seq_len(nrow(pools))) {
@@ -138,10 +155,22 @@ for (i in seq_len(nrow(pools))) {
     }
     mem <- c(mem, hit$ags)
   }
+  how_inf <- character(0)
+  for (u in inferred[[p$wbz]]) {
+    nm <- sub("^VB:", "", u)
+    stopifnot(nrow(vg[kreis == p$code & vb == nm]) == 1)
+    hit <- pw[vb == nm & !own]
+    if (!nrow(hit)) stop(sprintf("%s %s: inferred VG %s has no Gemeinde in WK %s", p$code, p$wbz, nm, p$lwk))
+    mem <- c(mem, hit$ags)
+    how_inf <- c(how_inf, sprintf("VG %s (%s)", vg[kreis == p$code & vb == nm]$vg_name, nm))
+  }
   stopifnot(!anyDuplicated(mem))
   res[[i]] <- data.table(i = i, ags = mem,
                          basis = paste0(if (is.null(spec[[p$wbz]])) "Wahlbezirk key = " else "label names ",
-                                        paste(how, collapse = " + ")))
+                                        paste(how, collapse = " + "),
+                                        if (length(how_inf)) paste0("; plus ", paste(how_inf, collapse = " + "),
+                                          ", which has no pool: inferred from the pool's size against the",
+                                          " members' 2005 Wahlschein holders")))
 }
 mem <- rbindlist(res)
 
@@ -149,7 +178,7 @@ mem <- rbindlist(res)
 ## Wahlkreis and Kreis.
 cover <- unique(merge(mem, pools[, .(i = seq_len(.N), lwk)], by = "i")[, .(lwk, ags)])
 orph <- parts[own == FALSE][!cover, on = .(lwk, ags)]
-stopifnot(nrow(orph) == 14)          # 14 Gemeinde parts, listed in the HANDOVER
+stopifnot(nrow(orph) == 12)          # 12 Gemeinde parts, listed in the HANDOVER
 orph_mem <- rbindlist(lapply(seq_len(nrow(orph)), function(k) {
   o <- orph[k]
   ii <- which(pools$lwk == o$lwk & pools$code == o$kreis)

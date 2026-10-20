@@ -42,7 +42,9 @@ add no columns to the election files and are not a new package dataset.
   records how, and notes the special cases (Thale's OT Allrode, Petersberg's OT
   Brachstedt in the Landsberg pools, Apenburg-Winterfeld served by the Kalbe pool,
   Halberstadt 2006, which counts its own postal votes and has a pool of its own).
-  `shared_ags` (2006 only) lists the 14 Gemeinde parts that no pool of their
+  The Bad Lauchstädt pool of 2006 also holds VG Laucha-Schwarzeiche (Delitz am Berge,
+  Schafstädt), which no label names: inferred from the pool's size against the 2005
+  Wahlschein holders (see the builder). `shared_ags` (2006 only) lists the 12 Gemeinde parts that no pool of their
   Wahlkreis names; they share every pool of their Wahlkreis and Kreis, their
   electorate split over those pools in proportion to the electorate each names.
   Each member is weighted by its electorate in the pool's Landtagswahlkreis, computed

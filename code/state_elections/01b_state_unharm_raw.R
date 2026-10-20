@@ -1136,6 +1136,10 @@ for (yr in names(st_dates)) {
       ## with (Storkau (Elbe) moved to VG Tangermünde on 12.01.2006, before the
       ## election), without the Gemeinden that count their own postal votes
       ## (review/st_postal_pools_2026-10-19/st_postal_pool_members_build_2006.R).
+      ## VG Laucha-Schwarzeiche (Delitz am Berge, Schafstädt), which no label
+      ## names, is pinned to the Bad Lauchstädt pool: that pool holds 135 voters
+      ## more than its own Gemeinden's 2005 Wahlschein holders predict, about what
+      ## the two predict (83), and the other pools of Wahlkreis 41 show no excess.
       ## 1990-2002 book the pools on the Kreis, or on the Land where the source
       ## could not assign them to one Kreis: a pool goes to its Kreis's part of
       ## the Wahlkreis, and to the whole Wahlkreis where it is booked on the Land
@@ -1175,7 +1179,7 @@ for (yr in names(st_dates)) {
           stopifnot(!anyNA(w), all(w > 0))
           setNames(w, m)
         })
-        ## `shared_ags` (2006, 14 Gemeinde parts): no pool of the Wahlkreis names
+        ## `shared_ags` (2006, 12 Gemeinde parts): no pool of the Wahlkreis names
         ## them (their VG's pool sits in another Wahlkreis, or it has none), so
         ## their postal ballots are in one of the pools of their Wahlkreis and
         ## Kreis, which list them all. Each such part's electorate is split over

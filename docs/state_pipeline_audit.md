@@ -170,9 +170,13 @@ turnout result of the September section above.
    `review/st_postal_pools_2026-10-19/st_postal_pool_members_build_2006.R`; the 26
    Gemeinden that count their own postal votes and had received 8,947 pooled voters
    now receive none (Mansfeld -353, Jessen -498), except Halberstadt, which keeps the
-   pool labelled with its name (380 voters); 14 Gemeinde parts that no pool of their
+   pool labelled with its name (380 voters); VG Laucha-Schwarzeiche (Delitz am Berge,
+   Schafstädt), which no label names, goes to the Bad Lauchstädt pool, which holds 135
+   voters more than its own Gemeinden's 2005 Wahlschein holders predict (a 2006 pool
+   holds 0.47 of them; 73 pools, p10-p90 0.43-0.54), about the 83 the two predict
+   (decided 2026-10-20); 12 Gemeinde parts that no pool of their
    Wahlkreis names share its pools at the average rate. Voters moved between Gemeinden: 9,647 (1990), 9,474
-   (1994), 3,433 (1998), 3,766 (2002), 10,541 (2006), i.e. 16, 11, 4, 4 and 21 % of the
+   (1994), 3,433 (1998), 3,766 (2002), 10,496 (2006), i.e. 16, 11, 4, 4 and 21 % of the
    pooled voters; no Gemeinde's turnout changes by more than 4.6 points (2025
    boundaries: 3.9). Each group of Wahlkreise linked by shared Gemeinden now equals
    the Wahlkreis file exactly in voters, valid votes and parties (section 21 (d) of
