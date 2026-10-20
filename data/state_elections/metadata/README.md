@@ -30,17 +30,28 @@ add no columns to the election files and are not a new package dataset.
   the source). Donor rows carry NA counts and shares; receiver rows hold the pooled
   unit, electorate included. Written by `01b_state_unharm_raw.R` from the source file.
   The rows involved carry `flag_pooled = 1` in all four state files.
-- `st_postal_pool_members.csv`: the 61 pooled postal districts of the Sachsen-Anhalt
-  Landtagswahlen 2011 (27) and 2016 (34), keyed by Kreis code, Wahlbezirk and label as
-  printed, with the Gemeinden each serves (`member_ags`). The label names them or
-  their Verbandsgemeinde (members then from the workbook's own VG column, restricted
-  to the Landtagswahlkreis where the label says "WK n"); `basis` records how, and
-  notes the special cases (Thale's OT Allrode, Petersberg's OT Brachstedt in the
-  Landsberg pools, Apenburg-Winterfeld served by the Kalbe pool). Each member is
-  weighted by its electorate in the pool's Landtagswahlkreis, computed from the
-  source. Read by `01b_state_unharm_raw.R`, which stops if a source pool has no
-  entry here, an entry matches no pool, or a pool's voters or Wahlkreis differ from
-  `pool_voters` / `landtagswahlkreis`.
+- `st_postal_pool_members.csv`: the 162 pooled postal districts of the Sachsen-Anhalt
+  Landtagswahlen 2006 (101), 2011 (27) and 2016 (34), keyed by Kreis code, Wahlbezirk and
+  label as printed, with the Gemeinden each serves (`member_ags`). The label names them
+  or their Verwaltungs- or Verbandsgemeinde (2011/2016: members then from the workbook's
+  own VG column, restricted to the Landtagswahlkreis where the label says "WK n"; 2006:
+  from the Gemeindeverzeichnis of 31.12.2005, whose Gemeindeverband key opens the
+  Wahlbezirk number (Storkau (Elbe), in VG Tangermünde from 12.01.2006, as of election day), restricted to the pool's Landtagswahlkreis and without the
+  Gemeinden that count their own postal votes, built by
+  `review/st_postal_pools_2026-10-19/st_postal_pool_members_build_2006.R`); `basis`
+  records how, and notes the special cases (Thale's OT Allrode, Petersberg's OT
+  Brachstedt in the Landsberg pools, Apenburg-Winterfeld served by the Kalbe pool,
+  Halberstadt 2006, which counts its own postal votes and has a pool of its own).
+  `shared_ags` (2006 only) lists the 14 Gemeinde parts that no pool of their
+  Wahlkreis names; they share every pool of their Wahlkreis and Kreis, their
+  electorate split over those pools in proportion to the electorate each names.
+  Each member is weighted by its electorate in the pool's Landtagswahlkreis, computed
+  from the source. Read by `01b_state_unharm_raw.R`, which stops if a source pool has
+  no entry here, an entry matches no pool, or a pool's voters or Wahlkreis differ
+  from `pool_voters` / `landtagswahlkreis`. The 1990-2002 pools name only the Kreis
+  or the Land and need no entry: 01b sends them to the Kreis's part of their
+  Wahlkreis (the whole Wahlkreis where booked on the Land, or where a Kreis of it has
+  no pool of its own).
 - `postal_allocation_rules.csv`: one row per state and election of `state_unharm`
   saying whether postal votes were pooled in the source (`postal_votes`), and if so
   how GERDA distributed them: `allocation` (the pool level), `weight`, `counts`

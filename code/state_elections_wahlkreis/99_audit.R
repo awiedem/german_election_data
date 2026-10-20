@@ -402,6 +402,101 @@ if (!file.exists(mp)) {
     print(bad_fx[, .(sy, was_short, expected, got = vot, off = round(off, 4))])
   }
 
+  # (d) Sachsen-Anhalt 1990-2006: pooled postal votes stay in their
+  #     Landtagswahlkreis (October 2026). The source prints the Wahlkreis on
+  #     every Gemeinde and pool row; a Gemeinde split between Wahlkreise
+  #     (Magdeburg, Halle, Dessau and a few others) ties them together, so the
+  #     Gemeinde-level file is summed per group of Wahlkreise linked through
+  #     shared Gemeinden (37-40 groups per election) and must equal the
+  #     Wahlkreis file there exactly: voters, valid votes and every party whose
+  #     statewide totals agree (1990/1994 file the joint Green list under
+  #     different labels). Calibrated: off in 35-39 groups per election, by up
+  #     to 1,704 voters, on the build that spread the pools over the Kreis and
+  #     the 1990/1994 Land pools over the state.
+  st_raw <- here("data", "state_elections", "raw", "Landtagswahlen", "Sachsen-Anhalt")
+  st_files <- file.path(st_raw, sprintf("Sachsen-Anhalt_%d_Landtagswahl.xlsx", c(1990L, 1994L, 1998L, 2002L, 2006L)))
+  if (!requireNamespace("readxl", quietly = TRUE) || !all(file.exists(st_files))) {
+    wn("ST 1990-2006 source workbooks not readable - Wahlkreis-group check skipped")
+  } else {
+    st_off <- list()
+    for (y in c(1990L, 1994L, 1998L, 2002L, 2006L)) {
+      raw <- suppressMessages(readxl::read_excel(st_files[match(y, c(1990L, 1994L, 1998L, 2002L, 2006L))],
+                                                 sheet = 1, col_names = FALSE, col_types = "text",
+                                                 .name_repair = "minimal"))[-(1:6), c(1, 3)]
+      raw <- as.data.table(raw); setnames(raw, c("wk", "ags"))
+      raw <- unique(raw[grepl("^15\\d{6}$", trimws(ags)), .(wk = as.integer(wk), ags = trimws(ags))])
+      grp <- setNames(sort(unique(raw$wk)), sort(unique(raw$wk)))
+      repeat {
+        before <- grp
+        for (wks in split(raw$wk, raw$ags))
+          if (length(wks) > 1) grp[grp %in% grp[as.character(wks)]] <- min(grp[as.character(wks)])
+        if (identical(before, grp)) break
+      }
+      g_of <- unique(raw[, .(ags, grp_id = grp[as.character(wk)])])
+      m <- merge(mun[state == "15" & election_year == y], g_of, by = "ags")
+      w <- wide[state == "15" & election_year == y & stimme == "zweitstimme"]
+      w[, grp_id := grp[as.character(as.integer(wkr_nr))]]
+      qp <- intersect(pz, names(w))
+      sum_by <- function(d) d[, c(list(vot = sum(number_voters), val = sum(valid_votes)),
+                                  lapply(.SD, function(x) round(sum(x * valid_votes, na.rm = TRUE)))),
+                              by = "grp_id", .SDcols = qp]
+      sm <- sum_by(m); sw <- sum_by(w)
+      cmp <- merge(sm, sw, by = "grp_id", suffixes = c(".m", ".w"))
+      qq <- c("vot", "val", qp[vapply(qp, function(q) isTRUE(sum(cmp[[paste0(q, ".m")]]) == sum(cmp[[paste0(q, ".w")]])), logical(1))])
+      off_g <- cmp[Reduce(`|`, lapply(qq, function(q) {
+        d <- abs(cmp[[paste0(q, ".m")]] - cmp[[paste0(q, ".w")]]); is.na(d) | d > 0.5 }))]
+      ## every group of the source must be on both sides, or the check passes on less
+      st_off[[as.character(y)]] <- data.table(year = y, groups = nrow(cmp),
+                                              rows_matched = nrow(m) == nrow(mun[state == "15" & election_year == y]) &&
+                                                !anyDuplicated(g_of$ags) && !anyNA(w$grp_id) && nrow(w) > 0 &&
+                                                nrow(cmp) == uniqueN(grp) && setequal(sm$grp_id, sw$grp_id),
+                                              groups_off = nrow(off_g),
+                                              max_voters_off = if (nrow(off_g)) max(abs(off_g$vot.m - off_g$vot.w)) else 0)
+    }
+    st_off <- rbindlist(st_off)
+    if (all(st_off$rows_matched) && all(st_off$groups_off == 0)) {
+      ok(sprintf("ST 1990-2006: postal pools stay in their Landtagswahlkreis - all %d groups of Wahlkreise equal the Wahlkreis file exactly (voters, valid votes, parties)",
+                 sum(st_off$groups)))
+    } else {
+      bad("ST 1990-2006: Gemeinde-level sums per group of Landtagswahlkreise differ from the Wahlkreis file:")
+      print(st_off)
+    }
+  }
+
+  # (e) Sachsen-Anhalt 1994-2006 against the official Kreis rows (Satzart KRS)
+  #     of the same Landeswahlleiter files. Kreis-coded pools must stay in their
+  #     Kreis: 1998-2006 equal the official voters exactly. The 1994 pools
+  #     booked on the Land are split between the Kreise of their Wahlkreis by
+  #     electorate; the official rows split them proportionally by weights the
+  #     source does not give, so 1994 agrees within a few hundred voters per
+  #     Kreis (528 in all). Calibrated: 16,444 voters off in 1994 on the build
+  #     that spread the Land pools over the whole state. 1990 is not compared:
+  #     its Kreis rows use the Kreise of 1994.
+  krs_files <- file.path(here("data", "state_elections", "raw", "Landtagswahlen_Wahlkreis", "Sachsen-Anhalt"),
+                         sprintf("ST_%d_Landtagswahl_Wahlkreis.csv", c(1994L, 1998L, 2002L, 2006L)))
+  if (!all(file.exists(krs_files)) || any(file.size(krs_files) < 1000)) {
+    wn("ST 1994-2006 Wahlkreis files not readable - official Kreis-row check skipped")
+  } else {
+    krs_off <- rbindlist(lapply(seq_along(krs_files), function(i) {
+      y <- c(1994L, 1998L, 2002L, 2006L)[i]
+      k <- fread(krs_files[i], sep = ";", encoding = "Latin-1", colClasses = "character")
+      k <- if (y == 2006L) k[SART == "KRS", .(kr = NR, off = as.numeric(B))] else
+        k[k[[2]] == "KRS", .(kr = AGS, off = as.numeric(B))]
+      m <- mun[state == "15" & election_year == y, .(got = sum(number_voters)), by = .(kr = substr(ags, 1, 5))]
+      x <- merge(k, m, by = "kr", all = TRUE)
+      data.table(year = y, kreise = nrow(x), unmatched = sum(is.na(x$off) | is.na(x$got)),
+                 total_off = sum(abs(x$got - x$off), na.rm = TRUE), max_off = max(abs(x$got - x$off), na.rm = TRUE))
+    }))
+    if (all(krs_off$kreise == 24 & krs_off$unmatched == 0) && all(krs_off[year > 1994, total_off] == 0) &&
+        krs_off[year == 1994, total_off] <= 1000 && krs_off[year == 1994, max_off] <= 300) {
+      ok(sprintf("ST 1994-2006: Kreis sums equal the official Kreis rows (1998-2006 exactly; 1994 within %d voters per Kreis, %d in all, from the Land pools' split)",
+                 as.integer(krs_off[year == 1994, max_off]), as.integer(krs_off[year == 1994, total_off])))
+    } else {
+      bad("ST 1994-2006: Gemeinde-level Kreis sums differ from the official Kreis rows:")
+      print(krs_off)
+    }
+  }
+
   cat(sprintf("    turnout block exact in %d of %d shared state-years (RP 2001-2016 has no Gemeinde-level turnout)\n",
               nrow(cmpx[abs(elig.w-elig.m) < 0.5 & abs(vot.w-vot.m) < 0.5 & abs(val.w-val.m) < 0.5]),
               nrow(cmpx)))

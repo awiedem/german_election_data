@@ -73,7 +73,11 @@ This folder contains scripts to check data quality and diagnose issues in the Ge
   Land rows; (third round) the `far_left` NA set and the far-right classification
   (pro NRW / pro Deutschland and DLVH counted, DSU not); (fifth round) Bremen
   1991/1995 in the `far_left` NA set, Hamburg's HLA and NL and Rheinland-Pfalz
-  1991's Deutsche Allianz in `far_right`. Exits 1 on any failure;
+  1991's Deutsche Allianz in `far_right`; (section 8) Sachsen-Anhalt 1990--2006
+  pools by Landtagswahlkreis: no 1990/1994 Land pool in Magdeburg or Halle, 1990
+  Wahlkreis 2's Stendal pool in its Osterburg part, no 2006 pool for Gemeinden
+  that count their own postal votes (the per-Wahlkreis sums are section 21 (d)
+  of the Wahlkreis `99_audit.R`). Exits 1 on any failure;
   each check fails on the build it fixes.
 - **`build_state_metadata.R`** regenerates the actual election coverage,
   field completeness and explicit column schema under

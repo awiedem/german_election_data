@@ -155,10 +155,35 @@ turnout result of the September section above.
    / +1,881 voters), A2 weights in 1994/1998/2011, 2011 members by the source's Amt
    code (30 Gemeinden merged by 2013 had got nothing), Neukalen 2002 no longer twice;
    2016/2021 totals now equal the source's Land row.
-6. **Sachsen-Anhalt 2011/2016** pools go to the Gemeinden their labels name
-   (`metadata/st_postal_pool_members.csv`), weighted by electorate in the pool's
-   Landtagswahlkreis (Thale -518 voters in 2011); Brücken-Hackpfüffel's 2011 postal
-   district (code with a trailing line break) is no longer dropped.
+6. **Sachsen-Anhalt** pools stay in their Landtagswahlkreis, which the source prints
+   on every row, each Gemeinde part weighted by its electorate there. 2011/2016 pools
+   go to the Gemeinden their labels name (`metadata/st_postal_pool_members.csv`;
+   Thale -518 voters in 2011); Brücken-Hackpfüffel's 2011 postal district (code with
+   a trailing line break) is no longer dropped. 1990-2002 pools, booked on the Kreis
+   or the Land, go to their Kreis's part of the Wahlkreis, and to the whole Wahlkreis
+   where booked on the Land (1990, 1994), on a code with no Gemeinde there (1994
+   "15368") or where a Kreis of it has no pool (1990 Wahlkreis 2: the one Stendal pool
+   also serves the Osterburg part, 3.5 % of the Wahlkreis's voters; restricted to
+   Stendal's part it would be 10.8 %). 2006 pools go to the Verwaltungsgemeinschaft
+   that their Wahlbezirk number (its first four digits are the Gemeindeverband key of
+   the Gemeindeverzeichnis 31.12.2005; Storkau (Elbe) changed VG on 12.01.2006) and label name, built by
+   `review/st_postal_pools_2026-10-19/st_postal_pool_members_build_2006.R`; the 26
+   Gemeinden that count their own postal votes and had received 8,947 pooled voters
+   now receive none (Mansfeld -353, Jessen -498), except Halberstadt, which keeps the
+   pool labelled with its name (380 voters); 14 Gemeinde parts that no pool of their
+   Wahlkreis names share its pools at the average rate. Voters moved between Gemeinden: 9,647 (1990), 9,474
+   (1994), 3,433 (1998), 3,766 (2002), 10,541 (2006), i.e. 16, 11, 4, 4 and 21 % of the
+   pooled voters; no Gemeinde's turnout changes by more than 4.6 points (2025
+   boundaries: 3.9). Each group of Wahlkreise linked by shared Gemeinden now equals
+   the Wahlkreis file exactly in voters, valid votes and parties (section 21 (d) of
+   the Wahlkreis `99_audit.R`; before: 35-39 groups off per election, by up to 1,704
+   voters). The Landeswahlleiter's own Kreis rows (Satzart KRS of the same files) agree:
+   Kreis sums are exact in 1998-2006 and within 246 voters per Kreis in 1994 (528 in all;
+   before 16,444), where the official rows split each Land-booked pool between the
+   Kreise of its Wahlkreis in proportion to weights the source does not give, while
+   GERDA uses the electorate (section 21 (e)); 1990, whose Kreis rows use the Kreise of
+   1994, is off by 642 voters over the 22 Kreise whose electorate maps exactly (before
+   13,596; Halle and Magdeburg exact).
 
 7. **Hanno's suggestions (same day).** Schleswig-Holstein 2017/2022 (Amt pools by
    Wahlkreis and A2) and Brandenburg 2004/2014/2024 now also go through
@@ -177,11 +202,12 @@ turnout result of the September section above.
    Pfalz 1991's Deutsche Allianz – Heimatbündnis, now in `deutsche_liga` instead of
    `da` (which holds the Demokratischer Aufbruch in Sachsen 1990).
 
-**Result.** `flag_postal_allocated`: 26,708 rows of `state_unharm` (24,063 before item 7). Rows with turnout
+**Result.** `flag_postal_allocated`: 26,683 rows of `state_unharm` (24,063 before item 7, 26,708 before the
+Sachsen-Anhalt 1990-2006 part of item 6). Rows with turnout
 > 1 in `state_harm_25`: 8 (Sachsen 1994 3, Thüringen 1994-2009 4, Baden-Württemberg
 2021 1). The Wahlkreis cross-check reports 57 comparisons off by > 0.5 %, down from 61.
-Still open: Sachsen-Anhalt 1990-2006 pools still go Kreis- (1990, 1994: Land-) wide,
-and Thüringen and the Sachsen 2019/2024 lead pools keep fractional, uncapped counts. Regression checks: `code/checks/check_state_farright_postal.R`.
+Still open: Thüringen and the Sachsen 2019/2024 lead pools keep fractional, uncapped
+counts. Regression checks: `code/checks/check_state_farright_postal.R`.
 
 ## Pipeline files
 

@@ -1121,53 +1121,111 @@ for (yr in names(st_dates)) {
       pool$other_n <- pmax(pool$valid_votes - pmapped, 0, na.rm = TRUE)
       alloc_cols <- c("number_voters", "valid_votes", "invalid_votes",
                       intersect(count_cols, names(pool)))
-      ## 2011 and 2016 label each pooled district with the Gemeinden or the
-      ## Verbandsgemeinde it serves ("Ballenstedt, Ditfurt, Hedersleben,
-      ## Selke-Aue"); metadata/st_postal_pool_members.csv pins those members.
-      ## Until October 2026 such a pool went to every Gemeinde of its Kreis, so
-      ## Quedlinburg, which counts its own postal votes, received part of
-      ## Ballenstedt's. A Briefwahlbezirk counts the ballots of one
-      ## Landtagswahlkreis, so each member weighs with its electorate in the
-      ## pool's Wahlkreis: some pools serve only part of a Gemeinde (OT Allrode
+      ## Every pooled row carries its Landtagswahlkreis (column 1), as does every
+      ## Gemeinde row, and a Briefwahlbezirk counts the ballots of one Wahlkreis.
+      ## So a pool goes to Gemeinde parts of its Wahlkreis only, each weighted by
+      ## its electorate there; a Gemeinde split between Wahlkreise takes part in
+      ## the pools of each. Some pools serve only part of a Gemeinde (OT Allrode
       ## of Thale, three Wahlbezirke of Jessen, Sandersdorf-Brehna split between
-      ## two pools, Petersberg's OT Brachstedt in the Landsberg pools). The
-      ## 1990-2002 labels name only the Kreis or the Land, and 2006 names
-      ## Verbandsgemeinden without saying which Gemeinden belong to them, so
-      ## those pools still go to the whole Kreis (1990, 1994: the Land).
-      st_members <- NULL
-      if (yr %in% c("2011", "2016")) {
+      ## two pools, Petersberg's OT Brachstedt in the Landsberg pools).
+      ## 2006, 2011 and 2016 label each pooled district with the Gemeinden or the
+      ## Verwaltungs- or Verbandsgemeinde it serves ("Ballenstedt, Ditfurt,
+      ## Hedersleben, Selke-Aue"); metadata/st_postal_pool_members.csv pins those
+      ## members. 2006 takes the VG members from the Gemeindeverzeichnis of
+      ## 31.12.2005, whose Gemeindeverband key the pool's Wahlbezirk number starts
+      ## with (Storkau (Elbe) moved to VG Tangermünde on 12.01.2006, before the
+      ## election), without the Gemeinden that count their own postal votes
+      ## (review/st_postal_pools_2026-10-19/st_postal_pool_members_build_2006.R).
+      ## 1990-2002 book the pools on the Kreis, or on the Land where the source
+      ## could not assign them to one Kreis: a pool goes to its Kreis's part of
+      ## the Wahlkreis, and to the whole Wahlkreis where it is booked on the Land
+      ## (1990, 1994), on a code with no Gemeinde there (1994 "15368" in Wahlkreis
+      ## 49) or where a Kreis of the Wahlkreis has no pool of its own (1990
+      ## Wahlkreis 2: the one Stendal pool, 3.5 % of the Wahlkreis's voters, also
+      ## serves its Osterburg part, which would otherwise get no postal votes).
+      ## Until October 2026 every pool went to every Gemeinde of its Kreis, the
+      ## Land pools of 1990 and 1994 to every Gemeinde of the state: Quedlinburg,
+      ## which counts its own postal votes, received part of Ballenstedt's (2011),
+      ## and 26 of the 29 Gemeinden counting their own in 2006 got 8,947 pooled
+      ## voters.
+      lwk_ev <- tapply(eligible, paste(ags_vec, trimws(df[[cnames[1]]])),
+                       sum, na.rm = TRUE)
+      if (yr %in% c("2006", "2011", "2016")) {
         st_clean <- function(x) trimws(gsub("\\s+", " ", x))
+        lab_cols <- if (yr == "2006") c(6, 4) else c(9, 10)   # Wahlbezirk, label
         st_pins <- fread(here("data", "state_elections", "metadata",
                               "st_postal_pool_members.csv"),
                          colClasses = "character", encoding = "UTF-8")
         st_pins <- st_pins[st_pins$election_year == yr, ]
         pin_key <- paste(st_pins$pool_code, st_pins$wahlbezirk, st_pins$pool_label,
                          sep = " | ")
-        pool$pool_code <- paste(pool$pool_code, st_clean(df_pool[[cnames[9]]]),
-                                st_clean(df_pool[[cnames[10]]]), sep = " | ")
+        pool$pool_code <- paste(pool$pool_code, st_clean(df_pool[[cnames[lab_cols[1]]]]),
+                                st_clean(df_pool[[cnames[lab_cols[2]]]]), sep = " | ")
         stopifnot(!anyDuplicated(pin_key), setequal(pool$pool_code, pin_key))
-        ## The pins also record each pool's voters and Wahlkreis as printed: a
-        ## re-issued source with other figures stops here.
+        ## The pins also record each pool's voters and Wahlkreis as printed (2006
+        ## prints some pools in several rows): a re-issued source with other
+        ## figures stops here.
         o <- match(pool$pool_code, pin_key)
+        pool_v <- tapply(pool$number_voters, pool$pool_code, sum)
         stopifnot(identical(trimws(df_pool[[cnames[1]]]), st_pins$landtagswahlkreis[o]),
-                  all(pool$number_voters == as.numeric(st_pins$pool_voters[o])))
-        lwk_ev <- tapply(eligible, paste(ags_vec, trimws(df[[cnames[1]]])),
-                         sum, na.rm = TRUE)
+                  all(pool_v[pin_key] == as.numeric(st_pins$pool_voters)))
         st_members <- lapply(seq_len(nrow(st_pins)), function(k) {
           m <- strsplit(st_pins$member_ags[k], ";")[[1]]
           w <- as.numeric(lwk_ev[paste(m, st_pins$landtagswahlkreis[k])])
           stopifnot(!anyNA(w), all(w > 0))
           setNames(w, m)
         })
+        ## `shared_ags` (2006, 14 Gemeinde parts): no pool of the Wahlkreis names
+        ## them (their VG's pool sits in another Wahlkreis, or it has none), so
+        ## their postal ballots are in one of the pools of their Wahlkreis and
+        ## Kreis, which list them all. Each such part's electorate is split over
+        ## those pools in proportion to the electorate the pools name, so it
+        ## receives their average rate rather than their sum. Pools that print
+        ## the same members in several rows (Stadt Sangerhausen) count once.
+        named_ev <- vapply(st_members, sum, numeric(1))
+        member_set <- vapply(st_members, function(m) paste(sort(names(m)), collapse = ";"), "")
+        shared <- lapply(st_pins$shared_ags, function(s)
+          if (is.na(s) || !nzchar(s)) character(0) else strsplit(s, ";")[[1]])
+        for (k in which(lengths(shared) > 0)) {
+          lwk_k <- st_pins$landtagswahlkreis[k]
+          w <- vapply(shared[[k]], function(a) {
+            ks <- which(st_pins$landtagswahlkreis == lwk_k &
+                          vapply(shared, function(z) a %in% z, logical(1)))
+            ks <- ks[!duplicated(member_set[ks])]
+            as.numeric(lwk_ev[paste(a, lwk_k)]) * named_ev[k] / sum(named_ev[ks])
+          }, numeric(1))
+          stopifnot(!anyNA(w), all(w > 0), !any(shared[[k]] %in% names(st_members[[k]])))
+          st_members[[k]] <- c(st_members[[k]], setNames(w, shared[[k]]))
+        }
         names(st_members) <- pin_key
         stopifnot(all(unlist(lapply(st_members, names)) %in% result$ags))
+      } else {
+        ## No Gemeinde counts its own postal votes in 1990-2002; if a re-issued
+        ## file had one, it must not receive pooled votes as well.
+        stopifnot(all(df[[cnames[lokal_col]]] == "Urne"))
+        pool_lwk <- trimws(df_pool[[cnames[1]]])
+        pool_kreis <- pool$pool_code
+        pool$pool_code <- paste0(pool_kreis, " | WK ", pool_lwk)
+        part_ags <- sub(" .*$", "", names(lwk_ev))
+        part_lwk <- sub("^\\S+ ", "", names(lwk_ev))
+        st_members <- lapply(unique(pool$pool_code), function(key) {
+          code <- sub(" .*$", "", key)
+          wk <- sub("^.* WK ", "", key)
+          in_wk <- part_lwk == wk
+          in_kreis <- in_wk & startsWith(part_ags, code)
+          take <- if (nchar(code) == 5 && any(in_kreis) &&
+                      all(substr(part_ags[in_wk], 1, 5) %in% pool_kreis[pool_lwk == wk]))
+            in_kreis else in_wk
+          stopifnot(any(take), all(lwk_ev[take] > 0))
+          setNames(as.numeric(lwk_ev[take]), part_ags[take])
+        })
+        names(st_members) <- unique(pool$pool_code)
       }
       result <- as.data.frame(result)
       result <- allocate_pooled_counts(result, as.data.frame(pool), alloc_cols,
                                        label = paste("ST", yr, "Briefwahl"),
                                        members = st_members,
-                                       weight_label = if (is.null(st_members)) NULL else
-                                         "eligible voters in the pool's Landtagswahlkreis")
+                                       weight_label = "eligible voters in the pool's Landtagswahlkreis")
       result <- tibble::as_tibble(result)
     }
 

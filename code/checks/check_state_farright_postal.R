@@ -12,7 +12,9 @@
 # on the second-round build, and those of section 7 (Hanno's suggestions) on
 # the third-round build. The fifth-round checks (Bremen 1991/1995 far_left; HLA,
 # NL and Rheinland-Pfalz 1991's Deutsche Allianz in far_right) fail on the
-# fourth-round build.
+# fourth-round build. Of the Sachsen-Anhalt 1990-2006 checks (section 8, pools
+# by Landtagswahlkreis), all but the conservation guard fail on the fifth-round
+# build.
 suppressMessages(library(data.table))
 args <- commandArgs(trailingOnly = TRUE)
 dir <- if (length(args)) args[[1]] else "data/state_elections/final"
@@ -245,6 +247,41 @@ for (yr in c(2017L, 2022L)) {
   check(sprintf("SH %d: statewide voters equal the source's Wahlbezirk rows (%s)", yr, format(src, big.mark = ",")),
         u[state == "01" & election_year == yr, sum(number_voters)] == src)
 }
+
+# 8. Sachsen-Anhalt 1990-2006 (October 2026): pools stay in their
+#    Landtagswahlkreis (before: Kreis-wide, the 1990/1994 Land pools state-wide);
+#    2006 pools go to the Verwaltungsgemeinschaft they name, not to Gemeinden
+#    that count their own postal votes. The per-Wahlkreis sums are checked
+#    against the Wahlkreis file in section 21 of the Wahlkreis 99_audit.R.
+st_old <- u[state == "15" & election_year <= 2006,
+            .(voters = sum(number_voters)), keyby = election_year]
+check("ST 1990-2006: statewide voters conserved (sum of every row of the source)",
+      identical(setNames(st_old$voters, st_old$election_year),
+                c(`1990` = 1455634, `1994` = 1182217, `1998` = 1535433,
+                  `2002` = 1190831, `2006` = 923278)))
+check("ST 1990/1994: Land pools stay in their Wahlkreis (Magdeburg 141,688 / 117,763, Halle 151,031 / 117,786 voters)",
+      identical(voters("15303000", 1990), 141688) && identical(voters("15303000", 1994), 117763) &&
+        identical(voters("15202000", 1990), 151031) && identical(voters("15202000", 1994), 117786))
+check("ST 1990: Wahlkreis 2's one Stendal pool also serves its Osterburg part (Osterburg 4,429, Stendal 19,918)",
+      identical(voters("15331590", 1990), 4429) && identical(voters("15340450", 1990), 19918))
+st06_own <- c("15171026", "15260039")   # Jessen, Mansfeld: count their own postal votes
+check("ST 2006: Gemeinden counting their own postal votes get no pool (Jessen 5,880, Mansfeld 3,241, unflagged); Halberstadt keeps its labelled pool (13,296)",
+      identical(voters("15171026", 2006), 5880) && identical(voters("15260039", 2006), 3241) &&
+        all(u[ags %in% st06_own & election_year == 2006, flag_postal_allocated] == 0) &&
+        identical(voters("15357017", 2006), 13296))
+st06_file <- "data/state_elections/raw/Landtagswahlen/Sachsen-Anhalt/Sachsen-Anhalt_2006_Landtagswahl.xlsx"
+if (file.exists(st06_file)) {
+  raw <- readxl::read_excel(st06_file, sheet = 1, col_names = FALSE, col_types = "text",
+                            .name_repair = "minimal")[-(1:6), ]
+  code <- trimws(raw[[3]])
+  own <- unique(code[grepl("^15[0-9]{6}$", code) & raw[[7]] %in% "B"])   # 8-digit Briefwahl rows
+  check(sprintf("ST 2006: of the %d Gemeinden with Briefwahl rows of their own, only Halberstadt receives a pool", length(own)),
+        length(own) == 29L &&
+          identical(u[state == "15" & election_year == 2006 & ags %in% own & flag_postal_allocated == 1, ags], "15357017"))
+}
+check("ST 2006: 1,020 receivers; a Gemeinde no pool names gets the pools' average rate (Groß Schwechten 190)",
+      u[state == "15" & election_year == 2006, sum(flag_postal_allocated)] == 1020 &&
+        identical(voters("15363044", 2006), 190))
 
 if (length(failed)) {
   cat(length(failed), "check(s) failed.\n")
