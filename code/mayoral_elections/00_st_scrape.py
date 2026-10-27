@@ -104,7 +104,7 @@ def to_share(s):
 
 
 def split_name_party(raw):
-    """'2. Beyer-Kögel, Christin (CDU)' -> (name, party). No party -> Einzelbewerber."""
+    """'2. Muster-Beispiel, Erika (CDU)' -> (name, party). No party -> Einzelbewerber."""
     s = re.sub(r"^\s*\d+\.\s*", "", raw).strip()          # drop the "N." rank prefix
     m = re.search(r"\(([^)]+)\)\s*$", s)
     party = m.group(1).strip() if m else None

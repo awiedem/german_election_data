@@ -14,10 +14,18 @@
 # - For N:1 mergers with same-date elections (e.g. Bayern synchronized
 #   elections): aggregate numeric counts via population-weighted sum, take the
 #   winner (party, votes, voteshare) from the largest predecessor by population.
-#   Winner votes are NOT summed — predecessors can have different winners. Where
-#   they do (flag_multi_winner == 1) the winner columns describe the dominant
-#   predecessor alone, so winner_votes / valid_votes != winner_voteshare there:
-#   the counts cover the whole 2021 municipality, the winner does not.
+#   Winner votes are NOT summed: each predecessor elected its own mayor. Where
+#   more than one predecessor did (flag_multi_winner == 1) the winner columns
+#   describe the dominant predecessor alone, so winner_votes / valid_votes !=
+#   winner_voteshare there: the counts cover the whole 2021 municipality, the
+#   winner does not. Where some predecessors report no counts (winner-only
+#   rounds), the counts cover only the others (flag_partial_counts == 1).
+# - A runoff is its own row. Where it is not the runoff of the dominant
+#   predecessor of the preceding Hauptwahl row of the same 2021 unit (a village
+#   runoff two weeks after a town's first-round win, Potsdam/Groß Glienicke
+#   1998), flag_runoff_other_predecessor == 1: it does not decide that cycle.
+# - ags_name is the 2021 municipality's name (the crosswalk's), not a
+#   predecessor's.
 # - For 1:N splits: duplicate the election result to each successor
 #   municipality, weight-split the counts.
 # - Rheinland-Pfalz has percentage-only data (no absolute counts) — turnout
@@ -49,6 +57,10 @@ df <- gerda_read_election_source("data/mayoral_elections/final/mayoral_unharm.rd
   as_tibble()
 
 cat("Loaded mayoral_unharm:", nrow(df), "rows\n")
+# party_family is added by 01b_mayoral_candidates.R (it needs the candidates)
+if (!"party_family" %in% names(df)) {
+  stop("mayoral_unharm has no party_family: run 01b_mayoral_candidates.R after 01_mayoral_unharm.R")
+}
 cat("States:", paste(sort(unique(df$state)), collapse = ", "), "\n")
 cat("Year range:", min(df$election_year), "-", max(df$election_year), "\n")
 table(df$election_type, useNA = "ifany")
@@ -299,7 +311,7 @@ df_cw <- df_cw |>
 common_cols <- c(".source_id", "ags_original", "flag_shared_ags", "crosswalk_year", "mapping_method", "ags", "ags_name", "state", "state_name",
                  "election_year", "election_date", "election_type", "round",
                  "eligible_voters", "number_voters", "valid_votes",
-                 "invalid_votes", "turnout", "winner_party",
+                 "invalid_votes", "turnout", "winner_party", "party_family",
                  "winner_votes", "winner_voteshare",
                  "cw_year", "flag_pre_1990",
                  "ags_21", "pop_cw", "population",
@@ -362,8 +374,8 @@ df_categorical <- df_all |>
   group_by(ags_21, election_date, round) |>
   slice_max(weight, n = 1, with_ties = FALSE) |>
   ungroup() |>
-  transmute(ags_21, election_date, round,
-            winner_party, election_type, election_year,
+  transmute(ags_21, election_date, round, .dom = ags_original,
+            winner_party, party_family, election_type, election_year,
             state, state_name, ags_name,
             winner_votes = round(winner_votes * pop_cw, digits = 0),
             winner_valid_votes = round(valid_votes * pop_cw, digits = 0),
@@ -389,10 +401,17 @@ df_flags <- df_all |>
     flag_shared_ags = any(flag_shared_ags %in% TRUE),
     # TRUE if ANY predecessor's round was annulled / superseded (Bayern only)
     flag_superseded = any(flag_superseded, na.rm = TRUE),
-    # TRUE where predecessors of this 2021 municipality had different winners —
-    # the winner columns then describe the dominant predecessor only.
+    # TRUE where more than one predecessor elected a mayor in this round (each
+    # predecessor is its own office, so these are different winners even under
+    # one party label) — the winner columns describe the dominant predecessor only.
     flag_multi_winner = as.integer(
-      n_distinct(winner_party[!is.na(winner_party)]) > 1
+      n_distinct(ags_original[!is.na(winner_party) | !is.na(winner_votes)]) > 1
+    ),
+    # TRUE where only some predecessors report counts: the summed counts then
+    # cover part of the 2021 municipality only
+    flag_partial_counts = as.integer(
+      any(!is.na(eligible_voters) | !is.na(valid_votes)) &
+        any(is.na(eligible_voters) & is.na(valid_votes))
     ),
     n_predecessors = n(),
     .groups = "drop"
@@ -426,6 +445,35 @@ df_harm <- df_counts |>
          -winner_valid_votes, -winner_voteshare_dom) |>
   rename(ags = ags_21)
 
+# A runoff row whose dominant predecessor is not the dominant predecessor of the
+# 2021 unit's preceding Hauptwahl row (within 120 days) belongs to another,
+# smaller predecessor's cycle.
+dom_round <- df_harm |> select(ags, election_date, round, .dom)
+runoff_other <- dom_round |>
+  filter(round == "stichwahl") |>
+  inner_join(dom_round |> filter(round == "hauptwahl") |>
+               select(ags, hw_date = election_date, .dom_hw = .dom),
+             by = "ags", relationship = "many-to-many") |>
+  filter(hw_date < election_date, as.numeric(election_date - hw_date) <= 120) |>
+  group_by(ags, election_date, round) |>
+  slice_max(hw_date, n = 1, with_ties = FALSE) |>
+  ungroup() |>
+  transmute(ags, election_date, round,
+            flag_runoff_other_predecessor = as.integer(.dom != .dom_hw))
+df_harm <- df_harm |>
+  left_join(runoff_other, by = c("ags", "election_date", "round")) |>
+  mutate(flag_runoff_other_predecessor = coalesce(flag_runoff_other_predecessor, 0L)) |>
+  select(-.dom)
+cat("Runoff rows of a non-dominant predecessor (flag_runoff_other_predecessor):",
+    sum(df_harm$flag_runoff_other_predecessor), "\n")
+
+# The 2021 municipality's own name (the dominant predecessor's could be a village)
+names_21 <- cw |> distinct(ags_21, ags_name_21) |> group_by(ags_21) |> slice(1) |> ungroup()
+df_harm <- df_harm |>
+  left_join(names_21, by = c("ags" = "ags_21")) |>
+  mutate(ags_name = coalesce(ags_name_21, ags_name)) |>
+  select(-ags_name_21)
+
 
 # 9. Quality flags ---------------------------------------------------------
 
@@ -453,10 +501,11 @@ df_harm <- df_harm |>
     ags, ags_name, state, state_name,
     election_year, election_date, election_type, round,
     eligible_voters, number_voters, valid_votes, invalid_votes,
-    turnout, winner_party, winner_votes, winner_voteshare,
+    turnout, winner_party, party_family, winner_votes, winner_voteshare,
     flag_unsuccessful_naive_merge, flag_pre_1990, flag_aggregated,
     flag_turnout_above_1, flag_voteshare_above_1, flag_pct_only,
-    flag_superseded, flag_multi_winner, flag_shared_ags,
+    flag_superseded, flag_multi_winner, flag_partial_counts,
+    flag_runoff_other_predecessor, flag_shared_ags,
     n_predecessors
   ) |>
   arrange(ags, election_date, round)

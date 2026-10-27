@@ -88,7 +88,11 @@ if (nrow(excl)) {
 }
 
 cat("\n========== C. unharm winner == candidates winner (cross-dataset) ==========\n")
-hw <- mc[!is.na(candidate_votes_hw),.(cmax=max(candidate_votes_hw)),.(ags,election_date)][,round:="hauptwahl"]
+# Thüringen's pooled write-ins ("Weitere Personen") are not a candidate: in the
+# 2009-2010 window without runoffs the top NAMED candidate won (see G3 below).
+th_window_pooled <- substr(mc$ags, 1, 2) == "16" & mc$candidate_party %in% "Weitere Personen" &
+  mc$election_date >= as.Date("2009-05-01") & mc$election_date <= as.Date("2010-07-31")
+hw <- mc[!is.na(candidate_votes_hw) & !th_window_pooled,.(cmax=max(candidate_votes_hw)),.(ags,election_date)][,round:="hauptwahl"]
 sw <- mc[has_stichwahl==TRUE & !is.na(candidate_votes_sw),.(cmax=max(candidate_votes_sw)),.(ags,election_date=election_date_sw)][,round:="stichwahl"]
 mwin <- merge(mu[!is.na(winner_votes),.(ags,election_date,round,st=sn[substr(ags,1,2)],winner_votes)], rbind(hw,sw), by=c("ags","election_date","round"))
 # NI (top-candidates-only) & SL legitimately differ; everything else must match
@@ -449,7 +453,18 @@ mc_round_max <- rbind(
 wcheck <- merge(
   mu[!is.na(winner_votes), .(ags, election_date, election_type, round, winner_votes)],
   mc_round_max, by = c("ags","election_date","election_type","round"))
-wbad <- wcheck[is.finite(max_votes) & max_votes > 0 & winner_votes != max_votes]
+# Exception: Thüringen's pooled write-ins ("Weitere Personen") are not a
+# candidate. In the 2009-2010 window without runoffs the top NAMED candidate won
+# (00_th_tls_reports_parse.py, decide_majority_rule), even where the pooled
+# write-ins hold more votes.
+th_named_max <- mc[substr(ags, 1, 2) == "16" & !is.na(candidate_votes_hw) &
+                     !(candidate_party %in% "Weitere Personen") &
+                     election_date >= as.Date("2009-05-01") & election_date <= as.Date("2010-07-31"),
+                   .(round = "hauptwahl", named_max = max(candidate_votes_hw)),
+                   .(ags, election_date, election_type)]
+wcheck <- merge(wcheck, th_named_max, by = c("ags","election_date","election_type","round"), all.x = TRUE)
+wbad <- wcheck[is.finite(max_votes) & max_votes > 0 & winner_votes != max_votes &
+                 !(winner_votes %in% named_max)]
 if (nrow(wbad)) rep("WARN","cross.winner_is_max",
   sprintf("%d rounds where unharm winner_votes != max candidate votes in that round", nrow(wbad)),
   wbad[order(-abs(winner_votes - max_votes))]) else

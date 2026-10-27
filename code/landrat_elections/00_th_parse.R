@@ -355,6 +355,25 @@ cat("\nElection dates corrected from report timestamps to polling days:\n")
 print(th_data %>% distinct(election_date_stand, round, election_date) %>%
         arrange(election_date))
 
+# The Landrat runoffs of 28.05.2000 (Gotha, Saalfeld-Rudolstadt, Altenburger
+# Land), transcribed from the TLS report 29924 by
+# code/mayoral_elections/00_th_tls_reports_parse.py. Preliminary figures; the
+# Hauptwahl of 14.05.2000 is in no source we hold, so these are runoff-only
+# cycles. The file names losing candidates and is gitignored.
+th_tls2000 <- "data/landrat_elections/raw/thueringen_tls2000_runoffs.csv"
+if (file.exists(th_tls2000)) {
+  lr00 <- read_csv(th_tls2000, col_types = cols(.default = col_character())) %>%
+    mutate(across(c(candidate_votes, eligible_voters, number_voters, valid_votes,
+                    invalid_votes, turnout, candidate_voteshare), as.numeric),
+           election_year = as.integer(election_year),
+           election_date = as.Date(election_date),
+           election_date_stand = as.Date(election_date_stand))
+  stopifnot(nrow(lr00) == 6, !any(lr00$ags %in% th_data$ags[th_data$election_year == 2000]))
+  th_data <- bind_rows(th_data, lr00[, names(th_data)])
+  cat(sprintf("Added %d Landrat runoffs of 28.05.2000 from the TLS report\n",
+              n_distinct(lr00$ags)))
+}
+
 cat(sprintf("\n=== Parsed %d candidate-rows from Thüringen ===\n", nrow(th_data)))
 cat("By year/round:\n")
 print(th_data %>% count(election_year, round))

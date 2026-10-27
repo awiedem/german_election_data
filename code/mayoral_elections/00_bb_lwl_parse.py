@@ -34,6 +34,10 @@ OUTPUT
     Candidate-level long — one row per candidate per round — in the same schema
     the 01/01b Brandenburg blocks already consume, plus `is_winner`,
     `candidate_title`, `wahlvorschlag_art` and `source`.
+    Gitignored since 19.10.2026, like the workbook and the portal scrape: it
+    names every Bewerber. 01b writes the tracked copy bb_lwl_parsed_public.csv
+    from it (only the elected persons named), which builds the public files in
+    a clone without it.
 
 SOURCE DEFECTS REPAIRED HERE (all reported, never silent)
   (a) One election is listed twice, byte-identical except that one copy leaves
@@ -87,6 +91,7 @@ except ImportError:
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 RAW_DIR = os.path.join(ROOT, "data", "mayoral_elections", "raw", "brandenburg")
+NAME_FIXES_CSV = os.path.join(RAW_DIR, "bb_lwl_name_fixes_restricted.csv")
 XLSX = os.path.join(RAW_DIR, "BB_Buergermeisterwahlen_ab2010_Landeswahlleiter.xlsx")
 PORTAL_CSV = os.path.join(RAW_DIR, "bb_bm_parsed.csv")
 OUT_CSV = os.path.join(RAW_DIR, "bb_lwl_parsed.csv")
@@ -102,7 +107,7 @@ KREISFREIE = {"12051000", "12052000", "12053000", "12054000"}
 N_CAND_BLOCKS = 10
 
 # "Dr.", "Dr. phil.", "Dr.-Ing.", "Prof." … appear either before the surname
-# ("Dr. Radant, Jana") or before the given name ("Tittel, Dr. Claudia").
+# ("Dr. Muster, Erika") or before the given name ("Muster, Dr. Erika"; invented).
 TITLE_RE = re.compile(r"^((?:Dr|Prof)\.?(?:\s*-?\s*[A-Za-zÄÖÜäöü]+\.)*\.?)\s+")
 
 
@@ -123,7 +128,7 @@ def strip_title(s):
 
 
 def split_name(raw):
-    """'Tittel, Dr. Claudia' -> ('Tittel, Claudia', 'Tittel', 'Claudia', 'Dr.')"""
+    """'Muster, Dr. Erika' -> ('Muster, Erika', 'Muster', 'Erika', 'Dr.') (invented)"""
     s, t1 = strip_title(raw)
     if "," in s:
         last, first = [x.strip() for x in s.split(",", 1)]
@@ -211,11 +216,10 @@ def fingerprint(rec):
 # Cross-round name reconciliation
 # ---------------------------------------------------------------------------
 # The source spells the SAME person differently in the Hauptwahl and the
-# Stichwahl of one cycle in 9 of 135 runoffs — a dropped letter (Kulike /
-# Kulicke, Trebling / Tebling, Heinz-Georg / Hein-Georg, Herinrich / Heinrich,
-# Maass / Maaß), a truncated surname ("K, Bengt" for "Kanzler, Bengt"), swapped
-# name fields ("Ronny, Kretschmer"), or a shortened given name (Fred /
-# Fred Hans Willi). 01b pairs the two rounds BY NAME, so each of these split one
+# Stichwahl of one cycle in 9 of 135 runoffs — a dropped letter (invented
+# examples: Mustre / Muster, Ss / ß), a truncated surname ("M, Max" for
+# "Muster, Max"), swapped name fields ("Max, Muster"), or a shortened given name
+# (Max / Max Erich). 01b pairs the two rounds BY NAME, so each of these split one
 # candidate into two rows — and in five cases the split row was the WINNER, who
 # then carried the runoff result with no first-round votes while the first-round
 # leader was left ranked as a loser.
@@ -235,40 +239,24 @@ QUALIFIER_RE = re.compile(r"^\s*\d*\s*\.?\s*(.+?)\s*\((.*)\)\s*$")
 # so a corrected source file makes the entry stop matching instead of silently
 # applying a stale override.
 #   (ags, hauptwahl-date, "Last, First" seen in HW, "Last, First" seen in SW)
-#       -> canonical ("Last", "First")
-NAME_FIXES = {
-    # Kulike (HW) / Kulicke (SW). Local press and his own mayoral pages spell it
-    # Kulicke (werneuchen-info.de, barnim-aktuell.de).
-    ("12060280", "2019-09-01", "Kulike, Frank", "Kulicke, Frank"):
-        ("Kulicke", "Frank"),
-    # Heinz-Georg (HW) / Hein-Georg (SW). SPD Königs Wusterhausen and the town's
-    # councillor register both give Heinz-Georg.
-    ("12061260", "2017-09-24", "Hanke, Heinz-Georg", "Hanke, Hein-Georg"):
-        ("Hanke", "Heinz-Georg"),
-    # Alexander-Joachim (HW) / Alexander (SW). Both are his; the fuller form is
-    # kept, as elsewhere in the dataset.
-    ("12063056", "2013-04-14", "Lamprecht, Alexander-Joachim", "Lamprecht, Alexander"):
-        ("Lamprecht", "Alexander-Joachim"),
-    # Trebling (HW) / Tebling (SW). Premnitz's mayor is Ralf Tebling.
-    ("12063244", "2016-04-10", "Trebling, Ralf", "Tebling, Ralf"):
-        ("Tebling", "Ralf"),
-    # Herinrich (HW) / Heinrich (SW). Gemeinde Glienicke/Nordbahn: Dr. Hans
-    # Günther Heinrich Oberlack.
-    ("12065096", "2017-09-24", "Oberlack, Hans Günther Herinrich",
-     "Oberlack, Hans Günther Heinrich"): ("Oberlack", "Hans Günther Heinrich"),  # noqa: E501
-    # Surname truncated to "K" in the Hauptwahl row. Vetschau/Spreewald's mayor
-    # is Bengt Kanzler.
-    ("12066320", "2017-09-24", "K, Bengt", "Kanzler, Bengt"): ("Kanzler", "Bengt"),
-    # Name fields swapped in the Hauptwahl row ("Ronny, Kretschmer").
-    ("12068320", "2013-01-13", "Ronny, Kretschmer", "Kretschmer, Ronny"):
-        ("Kretschmer", "Ronny"),
-    # Maass (HW) / Maaß (SW). Contemporary reporting (PNN) spells it Maaß.
-    ("12069397", "2011-09-11", "Maass, Christian", "Maaß, Christian"):
-        ("Maaß", "Christian"),
-    # Fred (HW) / Fred Hans Willi (SW). The fuller form is kept.
-    ("12071160", "2018-04-22", "Mahro, Fred", "Mahro, Fred Hans Willi"):
-        ("Mahro", "Fred Hans Willi"),
-}
+#       -> canonical ("Last", "First"), with the evidence, in
+#   bb_lwl_name_fixes_restricted.csv (9 pins).
+NAME_FIXES = {}            # filled in main() from NAME_FIXES_CSV
+
+
+def load_name_fixes():
+    """The pins name real people, losing candidates among them, so they live in
+    a gitignored file next to the workbook they correct (user decision
+    2026-10-19: every Brandenburg loser restricted). Columns: ags, hw_date,
+    hw_name, sw_name, canonical_last, canonical_first, evidence."""
+    if not os.path.exists(NAME_FIXES_CSV):
+        sys.exit(f"FATAL: missing {NAME_FIXES_CSV} (gitignored; the name pins)")
+    out = {}
+    with open(NAME_FIXES_CSV, encoding="utf-8") as fh:
+        for r in csv.DictReader(fh):
+            out[(r["ags"], r["hw_date"], r["hw_name"], r["sw_name"])] = \
+                (r["canonical_last"], r["canonical_first"])
+    return out
 
 
 def match_score(a, b):
@@ -301,8 +289,8 @@ def reconcile_rounds(deduped, problems):
                 continue                       # orphan runoff, reported elsewhere
             hw = max(prior, key=lambda h: h["_date"])
 
-            # Compare on the TITLE-STRIPPED "Last, First" form: "Dr. Radant,
-            # Jana" and "Dr.phil. Radant, Jana" are the same record, and the
+            # Compare on the TITLE-STRIPPED "Last, First" form: "Dr. Muster,
+            # Erika" and "Dr.phil. Muster, Erika" are the same record, and the
             # academic title is not part of the published name anyway.
             hw_names = [split_name(c["raw_name"])[0] for c in candidates_of(hw)]
             hw_parties = [c["party"] for c in candidates_of(hw)]
@@ -373,6 +361,7 @@ def reconcile_rounds(deduped, problems):
 
 
 def main():
+    NAME_FIXES.update(load_name_fixes())
     if not os.path.exists(XLSX):
         sys.exit(f"FATAL: source workbook not found: {XLSX}")
 

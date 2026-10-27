@@ -4,6 +4,14 @@ Result pages of the Landeswahlleiter Brandenburg (LWL), parsed by `parse_bb()` i
 [`code/landrat_elections/01_landrat_combine.R`](../../../../code/landrat_elections/01_landrat_combine.R).
 Every file is kept verbatim; none is ever overwritten.
 
+**Not in the repository since 19.10.2026.** The pages name every candidate, and every
+Brandenburg loser is restricted to the restricted twin (user decision), so the
+`BB_*.html` files are gitignored and kept locally only. `bb_landrat_parsed_public.csv`
+(tracked) holds what `parse_bb()` reads from them: the same rows in the same order,
+the counts as printed, only the elected Landräte named, and an opaque pairing key per
+candidate and cycle. `01_landrat_combine.R` writes it after a full parse and reads it
+when the pages are missing; a build from it reproduces the public files exactly.
+
 ## Naming
 
 `BB_ergebnis-landratswahl-<kreis>[_<date>[_r<retrieved>]].html` (Hauptwahl) and
@@ -51,10 +59,11 @@ All are **final** results ("Endgültiges Ergebnis"). Where a cycle exists in bot
 places, the two were compared cell by cell. All agree except in two cases, and
 for each cycle the complete one is kept:
 
-- Oberhavel Hauptwahl 22.02.2015: the earlier-site original lists "Dr. Gerhard
-  Kalinka (GRÜNE/B 90)" (a Teltow-Fläming 2013 candidate) with the AfD candidate's
-  6,393 votes and leaves "Dr. Dietmar Buchberger (AfD)" without a count; the portal
-  re-publication corrects this. **Portal copy kept.**
+- Oberhavel Hauptwahl 22.02.2015: the earlier-site original lists a candidate of
+  another Kreis (GRÜNE/B 90, Teltow-Fläming 2013) with the AfD candidate's 6,393
+  votes and leaves the AfD candidate without a count; the portal re-publication
+  corrects this. **Portal copy kept.** (Losing candidates are not named here: every
+  Brandenburg loser is restricted, user decision 2026-10-19.)
 - Potsdam-Mittelmark Hauptwahl 25.09.2016: the portal copy prints the "Ungültige
   Stimmen" row (1,301) with an empty label; the 2016 original has it. **Original kept.**
 

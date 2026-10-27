@@ -4,6 +4,16 @@ Tracking outstanding work on the German Election Database. Last updated: 2026-09
 
 ---
 
+## How we work (since 2026-10-13)
+
+- **One integrator for `main`.** Vincent's integrating Claude session (since 2026-10-27: the session preparing the mayoral/Landrat release; 2026-10-19: "Ingest Brandenburg mayoral scans 2004–2013 (Landeswahlleiter)", closed the same day; before that "Bavaria/Saxony-Anhalt GERDA updates", which no longer exists) is the only one that changes `main`'s working tree: it pulls new commits, applies changes, rebuilds, runs the audits and commits. Other sessions work in a scratch clone and send it patches.
+- **Hanno: no direct commits or pushes for now.** A lot of mayoral/Landrat work is uncommitted on purpose while the statistics offices clarify what may be redistributed. Please report findings here or on Slack; they get integrated and credited.
+- **Before starting an item**, put your name next to it in this file. The Rhein-Pfalz-Kreis 2017 code was fixed twice on 2026-10-12 because nobody had claimed it.
+- **Permissions:** Brandenburg Statistische Berichte B VII 3-6 1993–2008: the AfS **consented** on 2026-10-27 (elected mayors: name, Wahlvorschlagsträger, Wahltag, votes, with a source citation), so the release is being prepared. Thüringen TLS reports 2000/2004/2010: may be published without any names (TLS, 2026-10-12). Bayern Bürgermeisterverzeichnisse and LfStat candidate lists: the LfStat **declined** on 2026-10-16 to let GERDA redistribute their names, birth years and professions, so they are now in the restricted twins only, winners included (applied in main the same day; known issues §19). The mayoral/Landrat work ships as one release.
+- **Decided 2026-10-16 (Vincent):** the 2026 Bayern Mandatsträger names stay published (the refusal does not name them); Sachsen-Anhalt winners' names stay published; Bayern winners' gender stays published (names withheld). The integrator is now the session "Bavaria/Saxony-Anhalt GERDA updates".
+
+---
+
 ## Open Issues
 
 ### 0. Data audit of all final datasets (2026-10-12)
@@ -19,6 +29,43 @@ A multi-agent audit found 13 high-severity and 32 medium-severity issues, plus l
 **Round 4 (Hanno's suggestions) applied in main 2026-10-19 by the session "Hanno's document issues"** (`review/state_farright_postal_2026-10-19/state_hanno_suggestions_round4.patch`): SH 2017/2022 and BB 2004/2014/2024 postal pools now go through `allocate_pooled_counts()` (flagged, exact; SH by Amt and Wahlkreis, A2), receivers capped at their electorate, new metadata `postal_allocation_rules.csv`, `state_postal_pools.csv`, `state_postal_receivers.csv`, `state_party_columns.csv`, crosswalk population notes in the codebook. Committed with rounds 1–3. Backup: `~/gerda_backups/2026-10-19_pre_state_round4/`. Not done from Hanno's list: per-row columns in the election files (the receivers table is the companion instead), capping in the Thüringen residual and the Sachsen lead pools.
 
 **Round 5 (Hanno's unverified leads) applied in main 2026-10-19 by the session "Hanno's document issues", committed on top of rounds 1–4, not pushed** (verdicts in `review/state_party_leads_2026-10/report.md`; Vincent's decisions the same day). The leads were correct data (SN/ST 1990 Greens in `forum`/`grue_nf`; the western `linke_pds` gaps and explicit far-right zeros are parties that did not stand). Fixed: `far_left`/`far_left_w_linke` NA in Bremen 1991 and 1995 (no valid votes, so the NA rule now weights `other` by voters); `far_right` counts Hamburg's HLA and NL and Rheinland-Pfalz 1991's Deutsche Allianz – Heimatbündnis (RP block: "DA" → `deutsche_liga`). Backup: `~/gerda_backups/2026-10-19_pre_state_round5/`. Left for later (Vincent): WASG in `far_left_w_linke` (RP/BW/Berlin/MV 2006); NA instead of 0 for parties not on the ballot (RP, Hamburg, Saarland, Sachsen 2004); NI 2003 "–" read as NA.
+
+### 0c. Brandenburg mayoral and Landrat data (2026-10-19)
+
+**Owner since 2026-10-27: the integrator session preparing the release (the AfS consented on 2026-10-27). Before: "Ingest Brandenburg mayoral scans 2004–2013 (Landeswahlleiter)", closed 2026-10-19. All of it is in main and rebuilt, but uncommitted: it ships with the mayoral/Landrat release. Re-verified 2026-10-27: a full rebuild reproduces every output byte for byte, all three audits pass, 47 workbooks PASS. Pick-up note with state, order of steps and next actions: [`review/bb_mayoral_2026-10-19/PICKUP.md`](review/bb_mayoral_2026-10-19/PICKUP.md).**
+
+- [x] The Gemeinden's result reports 2004–2013 (Landeswahlleiter scans): 119 elections. See `raw/brandenburg/lwl_ergebnismeldungen_2004_2013/README.md` and known issues §20.
+- [x] `fread()` doubled quotes in party labels (all states): 10 unharm and 13 candidate labels outside Brandenburg.
+- [x] Every Brandenburg loser restricted, whatever the source (user decisions 2026-10-16/19). This covers 756 workbook and portal rows and 124 Landrat rows. The raw files are gitignored, with tracked name-stripped copies instead (known issues §21).
+- [x] The Landeswahlleiter's archived result pages 2001–2017 (Internet Archive): 411 winner-only elections replaced, 7 added. See `raw/brandenburg/lwl_bmwahlen_archive/README.md` and known issues §22.
+- [x] Losers' own-name Wahlvorschlag labels ("EB Muster") are the plain list type in the public files (user decision 2026-10-19): 228 mayoral and 6 Landrat labels, 7 unharm rounds; the twin keeps them.
+- [x] Loser names removed from tracked code and docs (Landrat comments, the Landrat raw README, the workbook parser's name pins → gitignored `bb_lwl_name_fixes_restricted.csv`).
+- [x] **Kreistag 2024 pages untracked (user decision 2026-10-19), done the same day.** The pages in `data/county_elections/raw/Kreistagswahlen/Brandenburg/2024_html/` list every candidate; only `03_county_seats.R` reads them, and only the table of elected members.
+  - They are gitignored. `Brandenburg_2024_Sitze.csv` (tracked; Kreis, party, seats, total) holds what the script reads; its 'EB …' labels name elected members only. The script rewrites it whenever all 18 pages are present.
+  - `county_council_seats` is `identical()` with and without the pages. Patch: `review/bb_mayoral_2026-10-19/bb_kreistag2024_untrack.patch`.
+  - **At release:** `git rm --cached` the 18 pages and add the CSV.
+  - A scan of every tracked council raw file (text, xlsx, xls, docx, pdf; umlaut paths included) found no other file that lists non-elected candidates. The MV statistical reports B731E 2014/2019 list elected Kreistag members only (office-holders).
+- [x] **Sachsen-Anhalt Landrat raw files untracked (user decision 2026-10-27).** The five Landeswahlleiter files in `data/landrat_elections/raw/sachsen_anhalt/` name losing candidates; they are gitignored, and `01_landrat_combine.R` writes the tracked name-stripped copy `st_landrat_parsed_public.csv` (same code as Brandenburg's, now `write_landrat_public()`). The public files are `identical()` with and without the raw files; the Landrat audit checks the copy.
+- [ ] **At the release commit:**
+  - `git rm --cached` the five Sachsen-Anhalt Landrat raw files and add `st_landrat_parsed_public.csv`;
+  - `git rm --cached` the workbook xlsx, `bb_lwl_parsed.csv`, `bb_bm_parsed.csv` and `data/landrat_elections/raw/brandenburg/BB_*.html` (incl. the four `BB_pressemitteilung-*` pages, which name candidates too);
+  - add `bb_lwl_parsed_public.csv`, `bb_landrat_parsed_public.csv` and the archive README, manifest and CDX listing;
+  - note in the commit that the tracked `name_origin_lookup.rds` no longer holds the 642 name pairs of Brandenburg losers.
+- [x] Git history: **kept, no purge** (user decision 2026-10-19). The untracked files' older versions stay in the repository history.
+- [x] Questions to the Landeswahlleiter SENT 2026-10-19 (reply in Herr Sokol's thread "hh* 2025/1211 – Teil 4", cc the Landeswahlleiter): Schwarzheide 2008, Belzig, Liebenwalde, Eichwalde/Pritzwalk, and the four elections missing from the workbook. **Awaiting his answer.**
+- [ ] Website update-log lines at the release:
+  - Brandenburg mayoral 2004–2013 and 2001–2017;
+  - Brandenburg losing candidates restricted;
+  - the party-label quote fix.
+- [x] **M22 party families: DONE 2026-10-19 in main (uncommitted; user decision 2026-10-19).**
+  - `code/shared/party_family.R` sorts the labels into `cdu_csu`, `spd`, `gruene`, `linke_pds`, `fdp`, `afd`, `fw_wg`, `independent`, `other`, `joint_list` (NA: no label / mixed category).
+  - New columns: `candidate_party_family` (mayoral + Landrat candidates, computed in 01b on the full frame; the combine fills only its own rows) and `party_family` (four panels, 03).
+  - `party_switch` = no overlap of the family components of successive winners (joint lists count as each member; minor parties as parties); `is_new_party_mayor` = no component has won there before.
+  - Effect: `party_switch` 48.8 % -> 22.8 % (Bayern 50.0 -> 21.3 %); every other column identical. `99_audit.R` §36, Landrat audit; known issues §23; READMEs; codebook (qmd + md by hand).
+  - Election-level files too (user request 2026-10-19 evening): `party_family` next to `winner_party` in `mayoral_unharm` / `mayoral_harm` / `landrat_unharm`. 01b adds it to both unharm files (matches each round's label to its candidate: the own-name rule decides 235 + 20 rounds), 02 carries it with `winner_party`, the combine computes it in `build_unharm()` for its rows; 02 and the combine stop if 01b has not run after 01. Audit §36g + Landrat check. Backup `~/gerda_backups/2026-10-19_pre_m22b_election_families/`.
+  - Noted on the way: 5 public labels are the candidate's own name while the name is withheld (3 Bayern winners whose LfStat names were withheld on 16.10, 2 Thüringen). Known issues §17.5: such labels are kept as published (decision 2026-10-12); the generic-label rule of 2026-10-19 is Brandenburg only. Unchanged; only Vincent can extend it.
+  - Backup: `~/gerda_backups/2026-10-19_pre_m22_party_families/`.
+- [x] The former Uckermark Landrat (chosen by the Kreistag 2010, lost 2018) **stays named** in the two comments and the codebook: they concern his office (user decision 2026-10-19).
 
 ### 1. Historical state-election errors (GitHub #7)
 

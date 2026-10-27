@@ -972,16 +972,26 @@ legitimately fall short of `valid_votes`, whose count includes the Nein
 votes. Two such votes failed (Driedorf 2016, Morschen 2022) and have no
 winner.
 
-Brandenburg covers the **hauptamtliche** Bürgermeister and
+Brandenburg covers 1993–2026. The **hauptamtliche** Bürgermeister and
 Oberbürgermeister of the amtsfreie Gemeinden/Städte and the four
-kreisfreie Städte, 2010–2026 (Landeswahlleiter workbook, obtained on
-request). The amtsangehörige Gemeinden, whose Bürgermeister are
-ehrenamtlich, are not covered. The source states that digital
-transmission by the Gemeinden only became compulsory in 2014, so
-2010–2013 makes no claim to completeness. Unusually, Brandenburg results
-are back-cast by the source onto the **current** municipal boundaries
-(Gebietsstand 01.01.2026), so Brandenburg is the one state whose
-`mayoral_unharm` rows do not sit on election-year boundaries.
+kreisfreie Städte come from the Landeswahlleiter’s workbook (2010–2026,
+obtained on request; the source states that digital transmission by the
+Gemeinden only became compulsory in 2014, so 2010–2013 makes no claim to
+completeness), the Gemeinden’s result reports in the Landeswahlleiter’s
+archive (2004–2013) and the Landeswahlleiter’s old result pages as
+archived by the Internet Archive (2001–2017). The Statistische Berichte
+B VII 3-6 of the Landesbetrieb für Datenverarbeitung und Statistik
+Brandenburg (1993–2003) and the Amt für Statistik Berlin-Brandenburg
+(2008–2024) add the hauptamtliche elections of 1993–2008 and the
+**ehrenamtliche** Bürgermeister of the amtsangehörige Gemeinden elected
+on the general election days 1998–2024; most of these are winner-only,
+and the 1993 figures are the reports’ preliminary results (the Amt für
+Statistik holds no final result). The Amt für Statistik permits their use
+with this source citation. Unusually, the workbook’s results are
+back-cast onto the **current** municipal boundaries (Gebietsstand
+01.01.2026), so these `mayoral_unharm` rows do not sit on election-year
+boundaries; rows from the other sources keep the AGS of the election or
+report year. Losing candidates are named only in the restricted twin.
 Brandenburg single-candidate elections are Ja/Nein votes, as in Hessen.
 
 ## Election level (`mayoral_unharm` / `mayoral_harm`)
@@ -993,6 +1003,7 @@ One row per municipality, election and round.
 | `election_type` | character | `Bürgermeisterwahl`, `Oberbürgermeisterwahl`, `VG-Bürgermeisterwahl` (Verbandsgemeinde), or `SG-Bürgermeisterwahl` (Samtgemeinde). |
 | `round` | character | `"hauptwahl"` (first round) or `"stichwahl"` (runoff). |
 | `winner_party` | character | Party or nominating list of the winner. This is the formal Wahlvorschlagsträger, **not** the winner’s party membership: candidates affiliated with a party frequently run as Einzelbewerber in local elections and are recorded with a blank party. Do not “correct” these against secondary sources. |
+| `party_family` | character | Party family of `winner_party` (the round’s winner, or the leader of a Hauptwahl that went to a runoff), as `candidate_party_family` below. Also in `mayoral_harm` and `landrat_unharm`. |
 | `winner_votes` | numeric | Votes for the winner. `NA` where the source reports shares only, or where the winner was not the first-listed Wahlvorschlag in a winner-only source. |
 | `winner_voteshare` | numeric | Winner’s share of valid votes (0–1). |
 | `flag_superseded` | logical | Bayern only. `TRUE` for a round that did not seat a mayor and was superseded by a later valid round: either annulled (`Wahlart` contains “ungültig”), or a Hauptwahl without an absolute majority that was not resolved by a runoff and was followed by a repeat Hauptwahl within 250 days. Duly-won Hauptwahlen that merely preceded a later by-election are **not** flagged. Rows are kept, not dropped — filter `== FALSE` for decisive rounds only. `FALSE` for all other states. |
@@ -1012,13 +1023,14 @@ results carry the `_hw` suffix and Stichwahl results the `_sw` suffix.
 | `election_date`, `election_date_sw` | Date | Hauptwahl and Stichwahl dates. `election_date_sw` is `NA` without a runoff. |
 | `has_stichwahl` | logical | Whether the cycle went to a runoff. |
 | `turnout`, `turnout_sw` | numeric | Turnout in each round. |
-| `candidate_name`, `candidate_last_name`, `candidate_first_name` | character | Candidate name. `candidate_name` keeps the source string; the last/first parts have academic titles removed. `NA` for Bayern (losing candidates are not named in the source) and for Thüringen, where §50 ThürKWO redacts them. |
+| `candidate_name`, `candidate_last_name`, `candidate_first_name` | character | Candidate name. `candidate_name` keeps the source string; the last/first parts have academic titles removed. `NA` for losing candidates in Bayern, Sachsen-Anhalt and Thüringen, whose names are kept in the restricted twin only. `NA` also for every Bayern row before 2026: the printed *Bürgermeisterverzeichnisse* and the candidate lists of the Bayerisches Landesamt für Statistik name the winners, but the Landesamt declined permission to redistribute their names, birth years and professions (16.10.2026), so they are in the restricted twin only. The Bayern winners of 2026 are named from the Landesamt's *Mandatsträger* file. |
 | `candidate_party` | character | Nominating list — as with `winner_party`, the formal Wahlvorschlagsträger. |
+| `candidate_party_family` | character | Party family of `candidate_party` (`code/shared/party_family.R`): `cdu_csu`, `spd`, `gruene`, `linke_pds`, `fdp`, `afd`; `fw_wg` (FREIE WÄHLER or any local Wählergruppe; not the council files' `freie_wahler`, the party alone); `independent` (Einzelbewerber, parteilos, an own-name label, Sachsen-Anhalt's blank label); `other` (another party); `joint_list` (two or more of these); `NA` without a label (Baden-Württemberg) or for a category mixing families. Also in `landrat_candidates`. |
 | `candidate_votes_hw`, `candidate_voteshare_hw`, `candidate_rank_hw`, `n_candidates_hw` | numeric | Hauptwahl votes, share, rank (1 = most votes), and field size. |
 | `candidate_votes_sw`, `candidate_voteshare_sw`, `candidate_rank_sw`, `n_candidates_sw` | numeric | The same for the Stichwahl; `NA` for candidates not in the runoff. |
 | `is_winner` | logical | Whether this candidate won the cycle (outright in the Hauptwahl or in the runoff). Use this rather than max votes — in winner-only sources the winner is flagged directly. |
 | `flag_superseded` | logical | As in `mayoral_unharm`, made constant within each `(ags, election_date, election_type)`. |
-| `candidate_birth_year`, `candidate_profession` | num/chr | Available for some states only. |
+| `candidate_birth_year`, `candidate_profession` | num/chr | Available for some states only. Bayern: birth year of the 2026 winners only (*Mandatsträger* file); the register birth years and professions are in the restricted twin only. |
 | `office_type` | character | Office type; Bayern and Saarland only. |
 
 **Predicted candidate characteristics.** Gender and name-origin fields
@@ -1044,28 +1056,36 @@ precedence over prediction. Cross-validation against raw data: 99.79%
 accuracy for Rheinland-Pfalz, 100% for Saarland. Of 107,457 candidate
 rows, 24,447 carry a name and 22,905 a gender — the remainder are states
 that do not publish losing candidates’ names.
+Bayern winners before 2026 carry a gender predicted from the given name in
+the LfStat registers, although that name is not published (LfStat,
+16.10.2026); their name-origin and migration-background fields are `NA`.
 
 ## Mayor panels
 
-`mayor_panel` has one row per person per election (42,836 rows, 20,739
+`mayor_panel` has one row per person per election (46,364 rows, 22,331
 distinct mayors, 1945–2026); `mayor_panel_annual` expands this to one
-row per person per year (254,045 rows), forward-filling the term. The
-`_harm` variants add `ags_21` and map to 2021 boundaries (41,732 and
-248,384 rows).
+row per person per year (240,620 rows), forward-filling the term. The
+`_harm` variants add `ags_21` and map to 2021 boundaries (46,332 and
+240,390 rows). Everything “within the municipality” follows a
+municipality across Kreisreform renumberings of its code
+(Sachsen-Anhalt 2007, Sachsen 2008): the mayor keeps one `person_id` and
+the term count continues.
 
 | Variable | Type | Description |
 |:---|:---|:---|
-| `person_id` | character | Unique mayor identifier (e.g. `p_09_00001` for Bayern), linking a person’s terms. |
-| `term_number` | integer | Sequential term within (person, municipality), starting at 1. |
+| `person_id` | character | Unique mayor identifier (e.g. `p_09_00001` for Bayern), linking a person’s terms, also across a merger where the same name wins in the merged municipality within 15 years. |
+| `term_number` | integer | Sequential term within (person, municipality), starting at 1; a merger starts a new municipality, a renumbering does not. |
 | `consecutive_terms` | integer | Consecutive terms, resetting after a gap of more than one cycle. |
 | `winner_party`, `winner_voteshare` | chr/num | Party and vote share in the decisive round. |
+| `party_family` | character | Party family of `winner_party`, as `candidate_party_family`. Also in `mayor_panel_annual`. |
 | `winning_margin` | numeric | Vote-share gap between winner and runner-up. |
 | `margin_change` | numeric | Change in that margin since the previous election. |
 | `n_candidates` | numeric | Size of the candidate field. |
 | `is_incumbent` | integer | 1 where `term_number >= 2`. |
-| `next_runs_again` | integer | 1 if this person wins the next election, 0 if someone else does, `NA` if there is no subsequent election. |
-| `party_switch` | integer | 1 where the winning party changed from the previous election. |
-| `is_new_party_mayor` | integer | 1 where this party wins in this municipality for the first time. |
+| `was_predecessor_mayor` | integer | 1 if this person was mayor of a Gemeinde that merged into this municipality; not counted in `term_number`. |
+| `next_runs_again` | integer | 1 if this person wins the next election, 0 if someone else does, `NA` if there is no subsequent election or one whose winner is not in the panel lies in a year in between (likewise for `party_switch` and `margin_change`). |
+| `party_switch` | integer | 1 where the winner's party family differs from the previous winner's, 0 where they share one (a joint list shares each member's family; two minor parties compare as parties). Since 19.10.2026; it compared labels before, so successive local lists counted as switches. |
+| `is_new_party_mayor` | integer | 1 where none of the winner's party families has won in this municipality before. |
 | `tenure_start` | numeric | Year of the person’s first election in this municipality. |
 | `years_in_office` | numeric | `election_year - tenure_start`. |
 | `term_start_date` | Date | Date of first taking office (Bayern: Amtsantritt; elsewhere the first election date). |
@@ -1081,6 +1101,13 @@ position-in-cycle measures:
 | `years_since_election` | numeric | `year - election_year`. |
 | `years_to_next_election` | numeric | Years until the next election (`NA` if unknown). |
 | `electoral_cycle_pos` | numeric | Position in the cycle, from 0 in the election year to just under 1 in the year before the next. |
+
+A term runs to the year before the next election of the municipality,
+named or not. It ends earlier when the municipality ceases to exist (a
+merger), and at the longest term the law allows (plus one year) where
+the source lacks an election that must have been held; in Thüringen
+six years after a pre-2020 election with no later one in any source. A
+year without a row has no known mayor.
 
 Both panels carry the same predicted-characteristics columns as
 `mayoral_candidates`, constant within a term.
@@ -1100,8 +1127,8 @@ Columns are identical to the corresponding mayoral files —
 `landrat_unharm` matches `mayoral_unharm` minus `flag_superseded` (which
 is Bayern-mayoral only), and `landrat_candidates` matches
 `mayoral_candidates` minus `flag_superseded` and the
-predicted-characteristics block. Both add `flag_elected_by_council`
-(below). `election_type` is `Landratswahl` throughout, and `ags` is the
+predicted-characteristics block. Both carry
+`flag_decisive_round_missing` and `flag_elected_by_council` (below). `election_type` is `Landratswahl` throughout, and `ags` is the
 county’s 8-digit code.
 
 **Brandenburg Landräte elected by the Kreistag.** In Brandenburg the
@@ -1113,6 +1140,7 @@ nobody and the Kreistag elects the Landrat.
 
 | Variable | Type | Description |
 |:---|:---|:---|
+| `flag_decisive_round_missing` | logical | `TRUE` on every row of a cycle whose decisive round is not in the data: the five Sachsen-Anhalt Kreise of 22 April 2007 without a first-round majority, whose runoffs were never published. In `landrat_candidates`, `is_winner` is `NA` for every candidate of such a cycle (none of them is named); in `landrat_unharm` the Hauptwahl row keeps its round leader. `FALSE` everywhere else. |
 | `flag_elected_by_council` | logical | `TRUE` on every row of a Brandenburg cycle whose decisive round missed the majority-plus-15 % rule, so the Kreistag elected the Landrat. In `landrat_candidates`, `is_winner` is `NA` for every candidate of such a cycle; in `landrat_unharm`, `winner_party`, `winner_votes` and `winner_voteshare` are `NA` on the failed Stichwahl row, while the Hauptwahl row keeps its round leader as usual. `FALSE` everywhere else. |
 
 Brandenburg is covered from its first direct elections (10 January

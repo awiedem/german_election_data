@@ -105,6 +105,13 @@ data/mayoral_elections/raw/thueringen/LSInfo*.xlsx
 data/mayoral_elections/raw/thueringen/th_ob_parsed.csv
 data/mayoral_elections/raw/thueringen_bm/th_bm_scraped.csv
 data/landrat_elections/raw/thueringen_parsed.rds
+# TLS Kommunalwahl reports 2000/2004, sent by e-mail 2026-10-08: they name losing
+# candidates, and the imprint requires consent for electronic distribution.
+data/mayoral_elections/raw/thueringen/tls_wahlberichte_2000_2004/*.pdf
+data/mayoral_elections/raw/thueringen/tls_wahlberichte_2010/*.pdf
+data/mayoral_elections/raw/thueringen/tls_wahlberichte_2000_2004/*.csv
+data/mayoral_elections/raw/thueringen_bm/th_mayoral_tls_augmented.csv
+data/landrat_elections/raw/thueringen_tls2000_runoffs.csv
 
 # Hessen mayoral candidate names 1993-2012 (Hessami 2018, CC0) name LOSING
 # candidates, who are private individuals. GERDA publishes the elected persons'
@@ -114,6 +121,48 @@ data/mayoral_elections/raw/hessen/hessami_2018/*.dta
 data/mayoral_elections/raw/hessen/he_hessami_parsed.csv
 data/mayoral_elections/raw/hessen/he_hessami_collected_parsed.csv
 data/mayoral_elections/raw/hessen/he_hist_restricted_names.csv
+
+# Bayern Bürgermeisterverzeichnisse 1978-2008 + B7320C/B7370C reports, scanned by
+# the LfStat library (October 2026). Public PDFs, but ~390 MB, and they carry full
+# birth dates (1978/1984) and losing candidates' names (B7320C). Kept for the
+# de_housing age-limit audit. Parsed by 00_by_verzeichnis_*.py and
+# 00_by_bewerber_parse.py; README + manifests stay tracked.
+data/mayoral_elections/raw/bayern/lfstat_verzeichnisse/*.pdf
+data/mayoral_elections/raw/bayern/lfstat_verzeichnisse/_text_layer/
+data/mayoral_elections/raw/bayern/lfstat_verzeichnisse/_ocr_cache/
+data/mayoral_elections/raw/bayern/by_verzeichnis_*_restricted.csv
+data/mayoral_elections/raw/bayern/by_bewerber_parsed_restricted.csv
+# The parsed registers name the elected mayors 1978-2014 (with birth years). The
+# LfStat declined permission to redistribute the register and candidate-list
+# contents (16.10.2026, correspondence/ below), so these files never go into git,
+# and the names, birth years and professions reach only the restricted twins.
+data/mayoral_elections/raw/bayern/by_verzeichnis_elections.csv
+data/mayoral_elections/raw/bayern/by_verzeichnis_persons.csv
+# Name pins and audit fixtures that name register entries, and the LfStat
+# correspondence (refusal of 16.10.2026 + AGB).
+data/mayoral_elections/raw/bayern/lfstat_verzeichnisse/*_restricted.csv
+data/mayoral_elections/raw/bayern/lfstat_verzeichnisse/*_restricted.md
+# OCR heading snippets per page; one front-matter snippet carries a mayor's name.
+data/mayoral_elections/raw/bayern/lfstat_verzeichnisse/_page_map.csv
+data/mayoral_elections/raw/bayern/lfstat_verzeichnisse/correspondence/
+# Internal review note for the de_housing register audit (restricted evidence).
+docs/bayern_register_review_417.md
+# StaLA Sachsen-Anhalt correspondence: it gives exact birth dates of mayors.
+data/mayoral_elections/raw/sachsen_anhalt/correspondence/
+
+# Brandenburg Bürgermeisterwahlen, Statistische Berichte B VII 3-6 1993-2008
+# (downloaded 2026-10-09, pointed to by the AfS library). They name losing
+# candidates (1993, 1998, 2001/02, 2003), and the 2002/2003/2008 imprints require
+# consent for electronic distribution (the AfS allowed GERDA to use the elected
+# mayors on 2026-10-27; the reports themselves stay out of git). The CC-BY issues
+# 2014-2024 stay tracked.
+# The transcriptions of the scans and the parsed output (00_bb_afs_reports_parse.py)
+# name losing candidates too.
+data/mayoral_elections/raw/brandenburg/afs_bvii36_reports/BM_OB_5.12.1993.pdf
+data/mayoral_elections/raw/brandenburg/afs_bvii36_reports/Stichwahl_BM_u_OB-19121993_BB.pdf
+data/mayoral_elections/raw/brandenburg/afs_bvii36_reports/SB_B7-3-6_*
+data/mayoral_elections/raw/brandenburg/afs_bvii36_reports/transcribed/
+data/mayoral_elections/raw/brandenburg/bb_afs_parsed.csv
 
 # RESTRICTED (scientific-use-only) twins of the published candidate datasets.
 # Identical to data/{mayoral,landrat}_elections/final/*_candidates.* except that
@@ -129,11 +178,60 @@ data/landrat_elections/final_restricted/
 # into the tracked gender_guesser_lookup.csv / name_origin_lookup.rds).
 data/mayoral_elections/processed/*_restricted.csv
 data/mayoral_elections/processed/*_restricted.rds
+data/mayoral_elections/processed/by_register_review_417_restricted.json
+
+# Person-id maps between intermediate, never-published builds (local re-join aids
+# for de_housing). One could tie a withheld TLS-named Thüringen term to a named
+# later term (audit 2026-10-12). A map for a release is HEAD -> release.
+docs/person_id_map_*.csv
 
 # Brandenburg municipal-election report whose imprint requires consent for
 # electronic distribution (like the B VII 3-6 issues of 2002/2003/2008); the
 # manifest stays tracked.
 data/municipal_elections/raw/brandenburg/lds_reports/SB_B7-3-5_5j-08_BB.pdf
+
+# Brandenburg Bürgermeisterwahlen 2004-2013: scans of the Gemeinden's result reports
+# (Ergebnismeldungen) from the Landeswahlleiter's archive, sent by e-mail on 2026-10-15
+# (Sokol, "hh* 2025/1211", Teil 1-4), for research under § 25 BbgDSG / Art. 89 DSGVO.
+# They name losing candidates, so the scans, the transcription table and the parsed
+# output stay out of git; the README and _source_manifest.csv stay tracked.
+data/mayoral_elections/raw/brandenburg/lwl_ergebnismeldungen_2004_2013/*.pdf
+data/mayoral_elections/raw/brandenburg/lwl_ergebnismeldungen_2004_2013/transcribed/
+data/mayoral_elections/raw/brandenburg/lwl_ergebnismeldungen_2004_2013/_work/
+data/mayoral_elections/raw/brandenburg/lwl_ergebnismeldungen_2004_2013/wayback/*.html
+data/mayoral_elections/raw/brandenburg/bb_lwl_scans_parsed.csv
+
+# Brandenburg raw inputs that name losing candidates (user decision 2026-10-19:
+# every Brandenburg loser restricted, whatever the source). The Landeswahlleiter
+# workbook of 31.07.2026 (supplied for research under § 25 BbgDSG), its parsed
+# CSV, the portal scrape and the Landrat portal pages stay local; the tracked
+# name-stripped copies bb_lwl_parsed_public.csv (written by 01b) and
+# bb_landrat_parsed_public.csv (written by 01_landrat_combine.R) rebuild the
+# public files in a clone without them. The files were tracked until then:
+# untrack them with `git rm --cached` in the commit that adds this block.
+data/mayoral_elections/raw/brandenburg/BB_Buergermeisterwahlen_ab2010_Landeswahlleiter.xlsx
+data/mayoral_elections/raw/brandenburg/bb_lwl_parsed.csv
+data/mayoral_elections/raw/brandenburg/bb_bm_parsed.csv
+data/mayoral_elections/raw/brandenburg/bb_lwl_name_fixes_restricted.csv
+data/landrat_elections/raw/brandenburg/BB_*.html
+
+# Sachsen-Anhalt Landrat raw files from the Landeswahlleiter portal: they name
+# losing candidates, whom the public files withhold (section 80 KWO LSA; user
+# decision 2026-10-27). 00_st_scrape.R downloads them again; the tracked
+# name-stripped copy st_landrat_parsed_public.csv (written by
+# 01_landrat_combine.R) rebuilds the public files in a clone without them. The
+# files were tracked until then: untrack them with `git rm --cached` in the
+# commit that adds this block.
+data/landrat_elections/raw/sachsen_anhalt/lr*.csv
+data/landrat_elections/raw/sachsen_anhalt/ST_*.html
+
+# Brandenburg Bürgermeisterwahlen 2001-2017 from the Landeswahlleiter's old result
+# pages (wahlen.brandenburg.de/bmwahlen/), archived by the Internet Archive: the
+# pages name every Bewerber, so the pages and the parsed output stay local; the
+# README, the capture manifest and the CDX listing are tracked.
+data/mayoral_elections/raw/brandenburg/lwl_bmwahlen_archive/pages/
+data/mayoral_elections/raw/brandenburg/bb_lwl_archive_parsed.csv
+data/mayoral_elections/raw/brandenburg/bb_lwl_archive_supersedes.csv
 
 # Brandenburg Kreistag 2024 result pages: they list every candidate by name with
 # their votes (user decision 2026-10-19: candidate names stay out of the

@@ -43,7 +43,7 @@ expected_unharm <- c("ags", "ags_name", "state", "state_name",
                      "eligible_voters", "number_voters", "valid_votes",
                      "invalid_votes", "turnout",
                      "winner_party", "winner_votes", "winner_voteshare",
-                     "flag_elected_by_council")
+                     "flag_decisive_round_missing", "flag_elected_by_council")
 miss_u <- setdiff(expected_unharm, names(l))
 check(length(miss_u) == 0,
       sprintf("landrat_unharm has all %d expected columns", length(expected_unharm)),
@@ -55,7 +55,8 @@ expected_cand <- c("ags", "ags_name", "state", "state_name",
                    "candidate_name", "candidate_party",
                    "candidate_votes_hw", "candidate_voteshare_hw",
                    "candidate_votes_sw", "candidate_voteshare_sw",
-                   "is_winner", "flag_elected_by_council")
+                   "is_winner", "flag_decisive_round_missing",
+                   "flag_elected_by_council")
 miss_c <- setdiff(expected_cand, names(lc))
 check(length(miss_c) == 0,
       sprintf("landrat_candidates has all %d critical columns", length(expected_cand)),
@@ -264,14 +265,17 @@ check_warn(nrow(no_cands) == 0,
                    nrow(unharm_keys)),
            sprintf("%d unharm rows have no matching candidate row", nrow(no_cands)))
 
-# Cycles the Kreistag decided have no winner by design; section 12 pins them
+# Cycles the Kreistag decided have no winner by design; section 12 pins them.
+# So do failed elections, whose candidates all carry is_winner = NA: Rügen May
+# 2001, whose Ja/Nein runoff missed the 25 % quorum (mayoral 99_audit 30f).
 no_winner <- lc %>%
   group_by(ags, election_date, election_type) %>%
   summarise(any_winner = any(is_winner, na.rm = TRUE),
-            council = any(flag_elected_by_council %in% TRUE), .groups = "drop") %>%
-  filter(!any_winner, !council)
+            council = any(flag_elected_by_council %in% TRUE),
+            failed = all(is.na(is_winner)), .groups = "drop") %>%
+  filter(!any_winner, !council, !failed)
 check_warn(nrow(no_winner) == 0,
-           "every election in candidates has ≥1 winner (Kreistag-elected cycles aside)",
+           "every election in candidates has ≥1 winner (Kreistag-elected and failed cycles aside)",
            sprintf("%d elections have no winner candidate", nrow(no_winner)))
 
 no_rank1 <- lc %>%
@@ -288,22 +292,37 @@ check_warn(nrow(no_rank1) == 0,
 # use licence and section 80 KWO LSA), exactly as in mayoral_candidates, so a
 # missing name is required there rather than a defect. Thüringen follows the
 # same rule since 2026-10-03 (section 50 Abs. 2 ThürKWO). Elected Landraete stay
-# named, and every other scraped state must name all its candidates.
+# named, and every other scraped state must name all its candidates. The
+# exception are the three Thüringen runoffs of 28.05.2000 from the TLS report
+# 29924: the TLS allows its reports' results to be published only without any
+# personal data, the winners' names included (e-mail of 12.10.2026).
+th_tls2000 <- lc$state == "16" & lc$election_date == as.Date("2000-05-28")
+# Brandenburg follows the same rule since 2026-10-19 (user decision: every
+# Brandenburg loser restricted, whatever the source).
 n_na_name_scraped <- lc %>%
-  filter(state %in% c("05","12","14") |
-           (state == "16" & is_winner %in% TRUE), is.na(candidate_name)) %>%
+  filter(state %in% c("05","14") |
+           (state == "12" & is_winner %in% TRUE) |
+           (state == "16" & is_winner %in% TRUE & !th_tls2000), is.na(candidate_name)) %>%
   nrow()
 check(n_na_name_scraped == 0,
-      "all NRW/BB/SN candidates and TH winners have non-NA name",
-      sprintf("%d NRW/BB/SN candidates or TH winners with NA name", n_na_name_scraped))
+      "all NRW/SN candidates and BB/TH winners have non-NA name (TH 2000 TLS runoffs aside)",
+      sprintf("%d NRW/SN candidates or BB/TH winners with NA name", n_na_name_scraped))
+check(sum(th_tls2000) == 6 && all(is.na(lc$candidate_name[th_tls2000])) &&
+        all(is.na(lc$candidate_last_name[th_tls2000])),
+      "TH Landrat runoffs of 28.05.2000 (TLS 29924): 6 candidates, nobody named in the public file",
+      "TH Landrat runoffs of 28.05.2000: missing, or a name from the TLS report is public")
 
-for (st_code in c("15", "16")) {
-  st_lab <- c("15" = "ST", "16" = "TH")[[st_code]]
+for (st_code in c("09", "12", "15", "16")) {
+  st_lab <- c("09" = "BY", "12" = "BB", "15" = "ST", "16" = "TH")[[st_code]]
   st_named_losers <- lc %>%
-    filter(state == st_code, !(is_winner %in% TRUE), !is.na(candidate_name)) %>% nrow()
+    filter(state == st_code, !(is_winner %in% TRUE),
+           !is.na(candidate_name) | !is.na(candidate_last_name) | !is.na(candidate_first_name) |
+             !is.na(candidate_birth_year) | !is.na(candidate_profession)) %>% nrow()
   check(st_named_losers == 0,
         sprintf("%s losing candidates are anonymised (%s)", st_lab,
-                if (st_code == "15") "licence / section 80 KWO LSA" else "section 50 ThürKWO"),
+                c("09" = "LfStat candidate lists: withheld, winners too",
+                  "12" = "user decision 2026-10-19", "15" = "licence / section 80 KWO LSA",
+                  "16" = "section 50 ThürKWO")[[st_code]]),
         sprintf("%d named %s non-winner rows leaked", st_named_losers, st_lab))
   st_named_winners <- lc %>%
     filter(state == st_code, is_winner %in% TRUE, !is.na(candidate_name)) %>% nrow()
@@ -311,6 +330,88 @@ for (st_code in c("15", "16")) {
         sprintf("%s elected Landraete remain named (%d rows)", st_lab, st_named_winners),
         sprintf("%s winners lost their names — anonymisation is too broad", st_lab))
 }
+# The tracked, name-stripped copies of the Brandenburg and Sachsen-Anhalt
+# Landrat parses (the raw files are gitignored; written by
+# 01_landrat_combine.R) name only elected Landräte the public file names, on
+# that Kreis's round dates.
+lr_tok <- function(x) vapply(strsplit(tolower(trimws(x)), "[[:space:],]+"),
+                             function(t) paste(sort(t[nzchar(t)]), collapse = " "), "")
+for (lr_cp in list(c("12", "BB", "data/landrat_elections/raw/brandenburg/bb_landrat_parsed_public.csv"),
+                   c("15", "ST", "data/landrat_elections/raw/sachsen_anhalt/st_landrat_parsed_public.csv"))) {
+  if (file.exists(lr_cp[3])) {
+    lpin <- read.csv(lr_cp[3], colClasses = "character", na.strings = character(0),
+                     encoding = "UTF-8")
+    lpin_named <- lpin[nzchar(lpin$candidate_name), ]
+    lb_named <- lc %>% filter(state == lr_cp[1], !is.na(candidate_name))
+    lb_dates <- c(paste(lb_named$ags, lb_named$election_date, lr_tok(lb_named$candidate_name)),
+                  paste(lb_named$ags, lb_named$election_date_sw, lr_tok(lb_named$candidate_name)))
+    l_unknown <- !(paste(lpin_named$ags, lpin_named$election_date, lr_tok(lpin_named$candidate_name)) %in% lb_dates)
+    check(sum(l_unknown) == 0 && nrow(lpin_named) > 0 && all(nzchar(lpin$pair_key)),
+          sprintf("%s Landrat tracked input copy: %d rows, %d named, all elected Landräte the public file names",
+                  lr_cp[2], nrow(lpin), nrow(lpin_named)),
+          sprintf("%s Landrat tracked input copy names %d people the public file does not",
+                  lr_cp[2], sum(l_unknown)))
+  } else {
+    check(FALSE, sprintf("%s Landrat tracked input copy present", lr_cp[2]),
+          sprintf("%s is missing (run 01_landrat_combine.R with the raw files)", basename(lr_cp[3])))
+  }
+}
+# A Brandenburg loser's own-name Wahlvorschlag label is the plain list type in
+# the public file (user decision 2026-10-19); the restricted twin keeps it.
+source("code/shared/bb_own_name_label.R")
+lr_tw <- "data/landrat_elections/final_restricted/landrat_candidates_restricted.rds"
+if (file.exists(lr_tw)) {
+  ltw <- readRDS(lr_tw)
+  l_same <- nrow(ltw) == nrow(lc) && identical(ltw$ags, lc$ags) && identical(ltw$election_date, lc$election_date)
+  li <- which(ltw$state %in% "12" & !(ltw$is_winner %in% TRUE))
+  lwant <- bb_generic_own_label(ltw$candidate_party[li], ltw$candidate_last_name[li], ltw$candidate_first_name[li])
+  l_bad <- sum(coalesce(lc$candidate_party[li], "") != coalesce(lwant, ""))
+  l_gen <- sum(coalesce(lwant, "") != coalesce(ltw$candidate_party[li], ""))
+  l_full <- length(list.files("data/landrat_elections/raw/brandenburg", pattern = "^BB_ergebnis.*\\.html$")) > 0
+  check(l_same && l_bad == 0 && (l_gen == 6 || !l_full),
+        sprintf("BB Landrat: %d own-name labels of losing candidates are the plain list type in the public file", l_gen),
+        sprintf("BB Landrat: %d losing candidates' labels differ from the rule (rows aligned: %s)", l_bad, l_same))
+}
+# Party family of the Wahlvorschlag (code/shared/party_family.R, TODO M22,
+# 2026-10-19): allowed values, a few pinned labels, and the same family in the
+# restricted twin.
+pf_ok <- c("cdu_csu", "spd", "gruene", "linke_pds", "fdp", "afd", "fw_wg",
+           "independent", "other", "joint_list", NA)
+pf_fx <- c("CSU" = "cdu_csu", "CDU" = "cdu_csu", "SPD" = "spd", "FREIE WÄHLER" = "fw_wg",
+           "AfD" = "afd", "ÖDP" = "other", "Einzelbewerber" = "independent")
+pf_fx_bad <- sum(vapply(names(pf_fx), function(x)
+  sum(lc$candidate_party %in% x & !(lc$candidate_party_family %in% pf_fx[[x]])), integer(1)))
+pf_tw_same <- !file.exists(lr_tw) ||
+  identical(readRDS(lr_tw)$candidate_party_family, lc$candidate_party_family)
+pf_lk <- bind_rows(
+  lc %>% transmute(ags, d = election_date, lab = candidate_party, f = candidate_party_family),
+  lc %>% filter(!is.na(election_date_sw)) %>%
+    transmute(ags, d = election_date_sw, lab = candidate_party, f = candidate_party_family)) %>%
+  distinct() %>% group_by(ags, d, lab) %>% filter(n() == 1) %>% ungroup()
+pf_lj <- l %>% inner_join(pf_lk, by = c("ags", "election_date" = "d", "winner_party" = "lab"))
+pf_lu_bad <- sum(coalesce(pf_lj$party_family, "NA") != coalesce(pf_lj$f, "NA"))
+check("party_family" %in% names(l) && all(l$party_family %in% pf_ok) && nrow(pf_lj) > 2000 && pf_lu_bad == 0,
+      sprintf("landrat_unharm: party_family = the candidate's family in all %d rounds matched by label", nrow(pf_lj)),
+      sprintf("landrat_unharm: party_family missing, or %d rounds differ from the candidate's family", pf_lu_bad))
+check("candidate_party_family" %in% names(lc) && all(lc$candidate_party_family %in% pf_ok) &&
+        pf_fx_bad == 0 && pf_tw_same && sum(is.na(lc$candidate_party_family) & !is.na(lc$candidate_party)) <= 20,
+      sprintf("landrat_candidates: candidate_party_family set (%s), pinned labels agree, twin identical",
+              paste(names(sort(table(lc$candidate_party_family), decreasing = TRUE))[1:4], collapse = ", ")),
+      sprintf("landrat_candidates: candidate_party_family missing or wrong (%d pinned labels off, twin same: %s)",
+              pf_fx_bad, pf_tw_same))
+
+# Bayern before 2026: every name, birth year and profession comes from the LfStat
+# registers and candidate lists (B VII 3-2 / 3-7), whose redistribution the LfStat
+# declined on 16.10.2026, winners included. Calibrated: the 2026-10-13 build
+# published 644 such rows.
+by_lfstat_pub <- lc %>%
+  filter(state == "09", election_date < as.Date("2026-01-01"),
+         !is.na(candidate_name) | !is.na(candidate_last_name) | !is.na(candidate_first_name) |
+           !is.na(candidate_gender) | !is.na(candidate_birth_year) | !is.na(candidate_profession)) %>%
+  nrow()
+check(by_lfstat_pub == 0,
+      "BY Landrat before 2026: no personal field public (LfStat registers and lists, 16.10.2026)",
+      sprintf("%d BY Landrat rows before 2026 carry a personal field", by_lfstat_pub))
 
 # ============================================================================
 # 9. Duplicate detection
@@ -350,7 +451,7 @@ winners_scraped <- lc %>%
   filter(n_winner != 1, !council)
 # Both runoff candidates of a BB cycle ran in its Hauptwahl, so a Stichwahl row
 # without Hauptwahl votes is a pairing failure: the LWL spells some people
-# differently in the two rounds ("Bernd Sachse" / "Sachse, Bernd", MOL 2013),
+# differently in the two rounds ("First Last" / "Last, First", MOL 2013),
 # which split each into two rows and crowned both until September 2026.
 bb_unpaired <- lc %>%
   filter(state == "12", !is.na(candidate_votes_sw), is.na(candidate_votes_hw))
@@ -372,7 +473,7 @@ hw_rows <- l %>% filter(round == "hauptwahl") %>% distinct(ags, election_year)
 sw_no_hw <- anti_join(sw_rows, hw_rows, by = c("ags", "election_year"))
 check_warn(nrow(sw_no_hw) == 0,
            "every Stichwahl has a matching Hauptwahl in same year",
-           sprintf("%d Stichwahl rows have no matching Hauptwahl (OK for SL hardcoded)",
+           sprintf("%d Stichwahl rows have no matching Hauptwahl (OK for SL hardcoded, SN 2022 and the TH 2000 runoffs of TLS 29924)",
                    nrow(sw_no_hw)))
 
 sw_inconsistent <- lc %>%
@@ -489,6 +590,69 @@ check(nrow(first_direct) == 14 && max(first_direct$election_date) < as.Date("201
       "BB: 14 first direct elections 2010-2016, 9 decided by the Kreistag (Gäbler & Rösel)",
       sprintf("BB: first direct elections: %d Kreise, %d flagged, last %s",
               nrow(first_direct), sum(first_direct$flag), max(first_direct$election_date)))
+
+# ============================================================================
+# 12b. Sachsen-Anhalt 2007: runoffs not on file (flag_decisive_round_missing)
+# ============================================================================
+# lr07dat3.csv holds only the first round of 22.04.2007 (2007 published no
+# runoff results). Five Kreise had no majority, so their Landrat was decided
+# in a runoff we do not hold: flagged, nobody seated. Burgenlandkreis was won
+# outright by Reiche (51.2 %), whom a read.csv2() row-wrap had dropped along
+# with candidates 10-11, seating the 13.8 % runner-up (data audit 2026-10-12).
+cat("\n12b. Sachsen-Anhalt 2007 (flag_decisive_round_missing)\n")
+check(is.logical(l$flag_decisive_round_missing) && !anyNA(l$flag_decisive_round_missing) &&
+        is.logical(lc$flag_decisive_round_missing) && !anyNA(lc$flag_decisive_round_missing),
+      "flag_decisive_round_missing is logical and never NA in both files",
+      "flag_decisive_round_missing is not a complete logical column")
+st_pinned <- paste(c("15082000", "15087000", "15088000", "15089000", "15091000"),
+                   "2007-04-22")
+fl_u <- l %>% filter(flag_decisive_round_missing)
+fl_c <- lc %>% filter(flag_decisive_round_missing)
+check(setequal(paste(fl_u$ags, fl_u$election_date), st_pinned) && nrow(fl_u) == 5L &&
+        setequal(unique(paste(fl_c$ags, fl_c$election_date)), st_pinned),
+      "flag_decisive_round_missing: exactly the 5 ST Kreise of 22.04.2007, in both files",
+      sprintf("flag_decisive_round_missing on: %s",
+              paste(unique(paste(fl_c$ags, fl_c$election_date)), collapse = ", ")))
+st_cyc <- lc %>%
+  filter(paste(ags, election_date) %in% st_pinned) %>%
+  group_by(ags, election_date) %>%
+  summarise(all_flag = all(flag_decisive_round_missing), no_winner = all(is.na(is_winner)),
+            .groups = "drop")
+check(nrow(st_cyc) == 5L && all(st_cyc$all_flag) && all(st_cyc$no_winner) &&
+        all(fl_u$round == "hauptwahl") && !anyNA(fl_u$winner_party) &&
+        all(fl_u$winner_voteshare <= 0.5),
+      "ST 2007: flagged cycles seat nobody (is_winner NA); unharm Hauptwahl keeps its sub-50 % leader",
+      "ST 2007: a flagged cycle still seats a candidate or lost its Hauptwahl leader")
+# Independent of the parser: no other ST Hauptwahl lacks both majority and runoff
+st_hw <- l %>% filter(state == "15", round == "hauptwahl", winner_voteshare <= 0.5)
+st_sw <- l %>% filter(state == "15", round == "stichwahl") %>% select(ags, sw = election_date)
+st_open <- st_hw %>%
+  left_join(st_sw, by = "ags", relationship = "many-to-many") %>%
+  group_by(ags, election_date) %>%
+  summarise(has_sw = any(sw > election_date & sw - election_date < 60, na.rm = TRUE),
+            flag = any(flag_decisive_round_missing), .groups = "drop") %>%
+  filter(!has_sw)
+check(nrow(st_open) > 0 && all(st_open$flag),
+      "ST: every Hauptwahl without majority and without runoff is flagged",
+      sprintf("ST: unflagged Hauptwahl without majority or runoff: %s",
+              paste(st_open$ags[!st_open$flag], st_open$election_date[!st_open$flag],
+                    collapse = ", ")))
+st07 <- lc %>% filter(state == "15", election_date == as.Date("2007-04-22")) %>%
+  group_by(ags) %>%
+  summarise(n = n(), votes = sum(candidate_votes_hw), valid = first(valid_votes),
+            .groups = "drop")
+check(nrow(st07) == 9L && all(st07$votes == st07$valid),
+      "ST 2007: every Kreis's candidate votes add up to its valid votes",
+      sprintf("ST 2007: votes != valid in %s",
+              paste(st07$ags[st07$votes != st07$valid], collapse = ", ")))
+blk <- lc %>% filter(ags == "15084000", election_date == as.Date("2007-04-22"))
+blk_w <- blk %>% filter(is_winner %in% TRUE)
+check(nrow(blk) == 11L && nrow(blk_w) == 1L && blk_w$candidate_votes_hw == 31263 &&
+        blk_w$candidate_last_name %in% "Reiche" &&
+        l$winner_votes[l$ags == "15084000" & l$election_date == as.Date("2007-04-22")] == 31263,
+      "ST 2007 Burgenlandkreis: 11 candidates, Reiche elected with 31,263 votes (51.2 %)",
+      sprintf("ST 2007 Burgenlandkreis: %d candidates, winner %s",
+              nrow(blk), paste(blk_w$candidate_last_name, blk_w$candidate_votes_hw)))
 
 # ============================================================================
 # 13. Coverage summary

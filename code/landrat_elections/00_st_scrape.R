@@ -21,9 +21,10 @@
 # dat3 = Hauptwahl Kreise, but lr07's own download page labels dat2 as
 # "Endergebnisse der Kreisfreien Städte und Landkreise" and dat3 as
 # "Endergebnisse von Gemeinden" -- both Hauptwahl. lr07dat1.csv is not a file
-# that has gone missing: 2007 published no Stichwahl results at all, which is
-# why six 2007 Landratswahlen sit in the data with a sub-50 % Hauptwahl winner
-# and no runoff row.
+# that has gone missing: 2007 published no Stichwahl results at all, so the
+# five 2007 Landratswahlen without a first-round majority have no runoff row.
+# 01_landrat_combine.R flags them (flag_decisive_round_missing) and seats
+# nobody. (A sixth, Burgenlandkreis, was a reader error: Reiche won outright.)
 #
 # The scheme only ever existed for lr07 and lr14. Everything from 2019 on is in
 # the rolling file fetched further down.

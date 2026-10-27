@@ -9,7 +9,9 @@
 # - Bayern: "Tag des ersten Amtsantritt" groups consecutive terms
 # - Hessen: official "Amtszeiten seit 1993" / "Wiederwahl" counters, including
 #   two documented mayors who left office and later returned
-# - Other named states: candidate-name matching within municipality
+# - Other named states: candidate-name matching within municipality, where a
+#   municipality is a lineage of renumbered codes; a mayor who wins in the
+#   municipality their Gemeinde merged into keeps their id
 #
 # Outputs (both unharmonized + harmonized to 2021 boundaries):
 # - mayor_panel.rds             — one row per person-election (original AGS)
@@ -40,24 +42,13 @@ setwd(here::here())
 options(scipen = 999)
 source("code/shared/harmonization_audit.R")
 source("code/shared/mayoral_mapping.R")
+source("code/shared/party_family.R")
 
 # Helper function to pad AGS codes
 pad_zero_conditional <- function(x, n, pad = "0") {
   x <- as.character(x)
   x[nchar(x) < n] <- paste0(pad, x[nchar(x) < n])
   return(x)
-}
-
-# Normalised party label, used ONLY to compare the winning party of consecutive
-# elections in the same municipality (party_switch / is_new_party_mayor).
-# The same Wählergruppe is spelled differently across sources — 'Wählergruppe
-# "Loisach"' vs 'Wählergruppe Loisach', "e.V." vs "e. V." — and fread() returns
-# RFC-4180 doubled quotes un-collapsed. Comparing the raw labels produced
-# spurious party switches (audit 2026-07, M41).
-norm_party <- function(x) {
-  y <- gsub('""', '"', as.character(x), fixed = TRUE)
-  y <- gsub("[^[:alnum:]]+", "", tolower(trimws(y)))
-  ifelse(is.na(x) | !nzchar(y), NA_character_, y)
 }
 
 # Public Hessen snapshots disagree about whether a name is printed as
@@ -125,6 +116,127 @@ cat("Loaded mayoral_candidates:", nrow(cand), "rows\n")
 valid_types <- c("Bürgermeisterwahl", "Oberbürgermeisterwahl")
 cand <- cand |> filter(election_type %in% valid_types)
 cat("After filtering to BM/OBM:", nrow(cand), "rows\n")
+
+
+# --- Municipality lineages, successors and election cycles (October 2026) ---
+# An AGS changes for two reasons. A Kreisreform RENUMBERS a Gemeinde
+# (Sachsen-Anhalt 1.7.2007, Sachsen 1.8.2008, the four MV cities 2011,
+# Göttingen 2016): same territory, same mayor, new code. A MERGER ends a
+# Gemeinde. Keyed on the code, a renumbered mayor became a new person in a new
+# first term, and a term in a Gemeinde that no longer existed ran on in the
+# annual panel to the last data year (45,684 rows and 2,556 terms of more than
+# 12 years in the 2026-10-08 build, almost all Sachsen-Anhalt and Sachsen).
+# Everything "within the municipality" -- person keys, term counts, the
+# previous and next election, term ends -- is therefore computed per LINEAGE:
+# the first code of a chain of pure renumberings. A code is renumbered when it
+# ends in year Y and exactly one code that is new in Y + 1 has the same name, in
+# the same Land, with a population within +-15 % (a same-name merger that
+# creates a new code grows by far more).
+xw_code_years <- bind_rows(
+  readRDS("data/crosswalks/final/ags_crosswalks.rds") |>
+    transmute(ags = str_pad(as.character(ags), 8, pad = "0"), year = as.integer(year),
+              ags_name, population, pop_cw,
+              target = str_pad(as.character(ags_21), 8, pad = "0")),
+  readRDS("data/crosswalks/final/crosswalk_ags_2021_2022_to_2023.rds") |>
+    transmute(ags, year = as.integer(year), ags_name, population, pop_cw, target = ags_2023),
+  readRDS("data/crosswalks/final/crosswalk_ags_2023_24_to_2025.rds") |>
+    transmute(ags, year = as.integer(year), ags_name, population, pop_cw, target = ags_25)
+) |>
+  group_by(ags, year) |>
+  slice_max(pop_cw, n = 1, with_ties = FALSE) |>
+  ungroup()
+xw_code_years <- bind_rows(
+  xw_code_years,
+  readRDS("data/crosswalks/final/crosswalk_ags_2023_24_to_2025.rds") |>
+    distinct(ags = ags_25, .keep_all = TRUE) |>
+    transmute(ags, year = 2025L, ags_name = ags_name_25, target = ags)
+) |>
+  mutate(name_key = gsub("[^a-zäöüß]", "", tolower(sub(",.*$", "", ags_name))))
+xw_last_year <- max(xw_code_years$year)
+code_last_year <- xw_code_years |>
+  group_by(ags) |>
+  summarise(last_year = max(year), .groups = "drop")
+
+renumbered <- code_last_year |>
+  filter(last_year < xw_last_year) |>
+  inner_join(xw_code_years |> select(ags, year, name_key, pop_old = population),
+             by = c("ags", "last_year" = "year")) |>
+  mutate(year = last_year + 1L) |>
+  inner_join(xw_code_years |>
+               anti_join(xw_code_years |> distinct(ags, year) |> mutate(year = year + 1L),
+                         by = c("ags", "year")) |>
+               select(succ = ags, year, name_key, pop_new = population),
+             by = c("year", "name_key"), relationship = "many-to-many") |>
+  filter(substr(succ, 1, 2) == substr(ags, 1, 2)) |>
+  group_by(ags) |>
+  filter(n() == 1) |>
+  ungroup() |>
+  filter(pop_new / pop_old >= 0.85, pop_new / pop_old <= 1.15) |>
+  # two same-name Gemeinden pointing at one new code (Hirschfeld, Hopfgarten,
+  # Holzhausen, Grumbach, 1990-1993) cannot both be it: neither is taken
+  group_by(succ) |>
+  filter(n() == 1) |>
+  ungroup() |>
+  select(ags, renumbered_in = last_year, succ)
+
+follow_codes <- function(x, map) {
+  x <- as.character(x)
+  repeat {
+    nx <- unname(map[x])
+    hit <- !is.na(nx)
+    if (!any(hit)) return(x)
+    x[hit] <- nx[hit]
+  }
+}
+renum_pred <- setNames(renumbered$ags, renumbered$succ)
+renum_next <- setNames(renumbered$succ, renumbered$ags)
+lineage_of <- function(ags) follow_codes(ags, renum_pred)
+
+# The year the municipality ceases to exist: the last crosswalk year of the
+# lineage's final code, if that is before the last year the crosswalks cover.
+# (Codes in no crosswalk at all, such as Merzien 15159029, get no end.)
+lineage_end_of <- function(lineage) {
+  final <- follow_codes(lineage, renum_next)
+  y <- code_last_year$last_year[match(final, code_last_year$ags)]
+  if_else(!is.na(y) & y < xw_last_year, y, NA_integer_)
+}
+
+# Where a merged-away Gemeinde went: the codes of the following year with the
+# same (dominant) target code; at the 2020/2022/2024 breaks the target of the
+# next crosswalk IS the successor code.
+merged_away <- code_last_year |>
+  filter(last_year < xw_last_year, !(ags %in% renumbered$ags)) |>
+  inner_join(xw_code_years |> select(ags, year, target), by = c("ags", "last_year" = "year"))
+merger_successors <- bind_rows(
+  merged_away |>
+    filter(last_year %in% c(2020L, 2022L, 2024L)) |>
+    transmute(ags, merged_in = last_year, succ = target),
+  merged_away |>
+    filter(!(last_year %in% c(2020L, 2022L, 2024L))) |>
+    mutate(year = last_year + 1L) |>
+    inner_join(xw_code_years |> select(succ = ags, year, target),
+               by = c("year", "target"), relationship = "many-to-many") |>
+    filter(succ != ags) |>
+    transmute(ags, merged_in = last_year, succ)
+) |>
+  transmute(from_lineage = lineage_of(ags), merged_in, to_lineage = lineage_of(succ)) |>
+  distinct()
+
+# Every BM/OB election of each municipality, whether or not its winner is named
+# (and so whether or not it reaches the panel). A superseded round and a cycle
+# whose decisive round is missing elected nobody -- unless the council then chose
+# the mayor (Brandenburg, flag_elected_by_council): that also ends the term.
+if (!"flag_elected_by_council" %in% names(cand)) cand$flag_elected_by_council <- FALSE
+cycles <- cand |>
+  filter(!(flag_superseded %in% TRUE),
+         !(flag_decisive_round_missing %in% TRUE) | flag_elected_by_council %in% TRUE) |>
+  distinct(ags, state, cycle_year = as.integer(election_year)) |>
+  mutate(lineage = lineage_of(ags))
+state_last_cycle <- cycles |>
+  group_by(state) |>
+  summarise(last_cycle = max(cycle_year), .groups = "drop")
+cat(sprintf("Municipality lineages: %d renumberings, %d merger links, %d election cycles\n",
+            nrow(renumbered), nrow(merger_successors), n_distinct(cycles$lineage, cycles$cycle_year)))
 
 
 # ============================================================================
@@ -195,6 +307,23 @@ bayern$runner_up_votes_clean <- as.numeric(bayern_filtered_raw$`gültige Stimmen
 bayern$n_candidates_raw <- 1L + rowSums(!is.na(
   as.data.frame(bayern_filtered_raw)[, existing_bv_cols, drop = FALSE]
 ))
+
+# Superseded rounds seated nobody: a Hauptwahl without an absolute majority that
+# a Neuwahl repeated (flag_superseded, 01_mayoral_unharm.R). Until October 2026
+# the panel's municipality-year dedup removed most of them together with the
+# year's later round; now that the panel keeps every election cycle they are
+# dropped here (after the positional Bewerber copy above).
+# A date is dropped only when every round on it is superseded: Würzburg's 1948
+# council vote has a failed first ballot and the decisive one on one day.
+by_superseded <- readRDS("data/mayoral_elections/final/mayoral_unharm.rds") |>
+  filter(state == "09") |>
+  group_by(ags, election_date) |>
+  filter(all(flag_superseded %in% TRUE)) |>
+  ungroup() |>
+  distinct(ags, election_date)
+n_before_sup <- nrow(bayern)
+bayern <- bayern |> anti_join(by_superseded, by = c("ags", "election_date"))
+cat("Bayern: dropped", n_before_sup - nrow(bayern), "superseded rounds\n")
 
 # Deduplicate election cycles: keep Stichwahl where available
 # Group elections in the same ags within 60 days
@@ -304,6 +433,21 @@ bayern_persons <- bayern |>
   ungroup() |>
   mutate(person_id = sprintf("p_09_%05d", row_number()))
 
+# RESTRICTED: the printed Bürgermeisterverzeichnisse 1978/1984 give the exact birth
+# date and birthplace, which GERDA does not publish (it publishes the birth year).
+# 00_by_verzeichnis_parse.py keys them on the same (ags, first Amtsantritt) as the
+# person_id above; attach the id here so the scientific-use table joins to the
+# panel directly. Gitignored, never redistributed; skipped if either file is absent.
+by_reg_restricted <- "data/mayoral_elections/raw/bayern/by_verzeichnis_persons_restricted.csv"
+if (file.exists(by_reg_restricted) && dir.exists("data/mayoral_elections/final_restricted")) {
+  by_reg_r <- read_csv(by_reg_restricted, show_col_types = FALSE,
+                       col_types = cols(.default = col_character())) |>
+    mutate(amtsantritt = as.Date(amtsantritt)) |>
+    left_join(bayern_persons |> select(ags, amtsantritt, person_id),
+              by = c("ags", "amtsantritt")) |>
+    relocate(person_id)            # the source key's id; mapped to the final id in section 6b
+} else by_reg_r <- NULL
+
 bayern_panel <- bayern |>
   left_join(bayern_persons, by = c("ags", "amtsantritt")) |>
   arrange(ags, election_date) |>
@@ -321,6 +465,196 @@ bayern_panel <- bayern |>
     winner_party, winner_voteshare, winning_margin,
     n_candidates, term_start_date
   )
+
+# --- Bayern person-key corrections (October 2026) ---------------------------
+# (ags, first Amtsantritt) is only as good as the workbook's date, and the printed
+# Bürgermeisterverzeichnisse show where it fails:
+#   A. A round whose Amtsantritt lies more than 200 days AFTER its own election
+#      cannot belong to the person who took office on that date. Hohenthann's
+#      2002/2008 rounds carry the 2014 date of the successor; Mitterteich's
+#      2002/2008 rounds carry the date of a later namesake with another given name
+#      and birth year. Where the names show it IS the same person (Dachau 2014;
+#      Kirchweidach, a mayor who returned in 2020), the rounds stay together and
+#      only the wrong start date is dropped. Where the names differ or are unknown,
+#      the rounds are split off.
+#   B. Inside one key, a named winner who is not the earlier named winner (surname,
+#      given name and birth year compared, OCR variants tolerated) starts a new
+#      person: the Augsburg OB 1990 key holds the OBs of 1990-2002 and of 2002,
+#      and the keys of Nördlingen and Schongau two people each.
+# The register names are restricted (LfStat, 16.10.2026; they reach this script
+# through the restricted twin), so the examples here name no one.
+# Existing person_ids are kept by the person the date belongs to; split-off people
+# get new ids appended after the highest existing one, person_id_method
+# "first_amtsantritt_split", and no start date (03 then uses their first election).
+# The register names are withheld from the public file (LfStat, 16.10.2026), so
+# these corrections read them from the restricted twin; only the pseudonymous
+# person_id they produce is published.
+by_win_file <- "data/mayoral_elections/final_restricted/mayoral_candidates_restricted.rds"
+if (!file.exists(by_win_file)) {
+  warning("No restricted candidates twin: the Bayern person-key corrections fall back to the ",
+          "public file, which names no Bayern winner before 2026, so Bayern person_ids will ",
+          "differ from the published panel.")
+  by_win_file <- "data/mayoral_elections/final/mayoral_candidates.rds"
+}
+by_win <- as.data.frame(readRDS(by_win_file))
+by_win <- by_win[by_win$state == "09" & by_win$is_winner %in% TRUE & !is.na(by_win$candidate_last_name), ]
+nrm_sur <- function(x) gsub("[^a-z]", "", tolower(iconv(x, to = "ASCII//TRANSLIT")))
+sig_dec <- data.frame(ags = by_win$ags,
+                      .d = as.Date(ifelse(is.na(by_win$election_date_sw), as.character(by_win$election_date),
+                                          as.character(by_win$election_date_sw))),
+                      .sur = nrm_sur(by_win$candidate_last_name),
+                      # first given-name token that is not a title ("Dr. Stefan" -> stefan)
+                      .fst = nrm_sur(sapply(strsplit(dplyr::coalesce(by_win$candidate_first_name, ""), " +"),
+                                            function(tk) { tk <- tk[!grepl("^(dr|prof|dipl|ing|mag)\\b", tolower(tk))]
+                                                           if (length(tk)) tk[1] else "" })),
+                      .byr = by_win$candidate_birth_year, .pri = 1L)
+sig_hw <- sig_dec; sig_hw$.d <- as.Date(by_win$election_date); sig_hw$.pri <- 2L
+by_sig <- rbind(sig_dec, sig_hw)
+by_sig <- by_sig[order(by_sig$ags, by_sig$.d, by_sig$.pri), ]
+by_sig <- by_sig[!duplicated(by_sig[c("ags", ".d")]), setdiff(names(by_sig), ".pri")]
+bp <- dplyr::left_join(bayern_panel, by_sig, by = c("ags", "election_date" = ".d"))
+bp$.amt0 <- bp$term_start_date     # the source key's Amtsantritt, before any correction
+bp$.pid0 <- bp$person_id           # the source key's own id
+bp <- bp[order(bp$person_id, bp$election_date), ]
+bp$.impossible <- !is.na(bp$term_start_date) & as.numeric(bp$term_start_date - bp$election_date) > 200
+str_close <- function(a, b, thr) a == b || grepl(a, b, fixed = TRUE) || grepl(b, a, fixed = TRUE) ||
+  1 - as.numeric(adist(a, b)) / max(nchar(a), nchar(b)) >= thr
+same_person <- function(i, j) {           # NA = cannot tell
+  if (is.na(bp$.sur[i]) || is.na(bp$.sur[j]) || !nzchar(bp$.sur[i]) || !nzchar(bp$.sur[j])) return(NA)
+  fa <- bp$.fst[i]; fb <- bp$.fst[j]
+  # Tolerated since the 2014 register (scan OCR, October 2026): a register that
+  # prints the given name first (Kirchensittenbach 2014 vs 2026), and the same
+  # surname with the same birth year and initial under another given name (a
+  # short form, Achslach).
+  if (!is.na(fa) && !is.na(fb) && nzchar(fa) && nzchar(fb) &&
+      bp$.sur[i] == fb && bp$.sur[j] == fa) return(TRUE)
+  if (bp$.sur[i] == bp$.sur[j] && !is.na(bp$.byr[i]) && !is.na(bp$.byr[j]) &&
+      bp$.byr[i] == bp$.byr[j] &&
+      (is.na(fa) || is.na(fb) || !nzchar(fa) || !nzchar(fb) || substr(fa, 1, 1) == substr(fb, 1, 1)))
+    return(TRUE)
+  # OCR reads "rn" as "m" (Vilgertshofen 2014)
+  if (!str_close(gsub("rn", "m", bp$.sur[i]), gsub("rn", "m", bp$.sur[j]), 0.75)) return(FALSE)
+  if (!is.na(fa) && !is.na(fb) && nzchar(fa) && nzchar(fb)) return(str_close(fa, fb, 0.6))
+  # given names unknown: the birth year decides (a sources' birth-year slip alone,
+  # with matching given names, does not make two people: a 2008/2026 case)
+  if (!is.na(bp$.byr[i]) && !is.na(bp$.byr[j]) && abs(bp$.byr[i] - bp$.byr[j]) > 1) return(FALSE)
+  TRUE
+}
+bp$.group <- 0L          # 0 = keeps the original id; 1, 2, ... = split off
+bp$.drop_start <- FALSE
+for (pid in unique(bp$person_id[!is.na(bp$person_id)])) {
+  ix <- which(bp$person_id %in% pid)
+  imp <- ix[bp$.impossible[ix]]; pos <- ix[!bp$.impossible[ix]]
+  next_g <- 1L
+  if (length(imp) && length(pos)) {
+    ni <- imp[!is.na(bp$.sur[imp])]; np <- pos[!is.na(bp$.sur[pos])]
+    verdict <- if (length(ni) && length(np)) same_person(ni[length(ni)], np[1]) else NA
+    if (is.na(verdict)) {
+      # No names on one side: the same list, held without another mayor in
+      # between and within one term, is the same person with a wrong date
+      # (Stulln, one CSU mayor 2002-2020); a list change is a new mayor.
+      li <- imp[length(imp)]; fp <- pos[1]
+      np_party <- function(x) tolower(gsub("[^[:alnum:]]", "", dplyr::coalesce(x, "")))
+      between <- bp$ags == bp$ags[li] & bp$election_date > bp$election_date[li] &
+        bp$election_date < bp$election_date[fp] & !(bp$person_id %in% pid)
+      verdict <- nzchar(np_party(bp$winner_party[li])) &&
+        np_party(bp$winner_party[li]) == np_party(bp$winner_party[fp]) && !any(between) &&
+        as.numeric(bp$election_date[fp] - bp$election_date[li]) <= 7 * 365.25
+    }
+    if (isTRUE(verdict)) {
+      bp$.drop_start[ix] <- TRUE                      # same person, wrong date
+    } else {
+      bp$.group[imp] <- next_g; next_g <- next_g + 1L # a different (or unknown) earlier mayor
+    }
+  } else if (length(imp)) {
+    bp$.drop_start[ix] <- TRUE                        # only impossible rounds: keep id, drop date
+  }
+  # Rule B inside each group, in date order
+  for (g in unique(bp$.group[ix])) {
+    gx <- ix[bp$.group[ix] == g]
+    ref <- NA_integer_; cur <- g
+    for (k in gx) {
+      if (is.na(bp$.sur[k])) { bp$.group[k] <- cur; next }
+      if (is.na(ref)) { ref <- k; bp$.group[k] <- cur; next }
+      if (isFALSE(same_person(ref, k))) { cur <- next_g; next_g <- next_g + 1L; ref <- k }
+      bp$.group[k] <- cur
+    }
+  }
+}
+split_rows <- bp$.group > 0L
+if (any(split_rows)) {
+  max_id <- max(as.integer(sub("p_09_", "", bayern_persons$person_id)))
+  keys <- unique(bp[split_rows, c("person_id", ".group")])
+  first_d <- sapply(seq_len(nrow(keys)), function(r)
+    min(bp$election_date[bp$person_id %in% keys$person_id[r] & bp$.group == keys$.group[r]]))
+  keys <- keys[order(substr(keys$person_id, 1, 99), first_d), ]
+  keys$.new_id <- sprintf("p_09_%05d", max_id + seq_len(nrow(keys)))
+  bp <- dplyr::left_join(bp, keys, by = c("person_id", ".group"))
+  bp$person_id <- ifelse(is.na(bp$.new_id), bp$person_id, bp$.new_id)
+  bp$person_id_method[!is.na(bp$.new_id)] <- "first_amtsantritt_split"
+  bp$term_start_date[!is.na(bp$.new_id) | bp$.drop_start] <- as.Date(NA)
+}
+cat("Bayern person-key corrections: rows split off", sum(split_rows), "into",
+    if (any(split_rows)) nrow(keys) else 0L, "new person_ids; start date dropped (same person or",
+    "all rounds impossible) on", sum(bp$.drop_start), "rows\n")
+# C. The counterpart of B: consecutive keys of one Gemeinde that are one person.
+#    The 2026 Mandatsträger file dates a re-elected mayor's first Amtsantritt a
+#    few days off the workbook's (Reiner 09278179, Falter 09376175, ...), so the
+#    2026 round got its own key and the incumbent a second person_id. A key is
+#    merged into the preceding one when (1) the names agree (same surname and
+#    first given name; birth years equal where both are known), or (2) the two
+#    first-Amtsantritt dates lie within 120 days, the winning list is the same,
+#    the names do not contradict each other, and the later key's Amtsantritt
+#    lies more than a year before that key's own first election -- the key of a
+#    re-elected incumbent. A key that starts with its own election (an appointed
+#    1945 mayor and the 1946 elected one, a repeated election) is a successor.
+bp <- bp[order(bp$ags, bp$election_date), ]
+nrm_list <- function(x) tolower(gsub("[^[:alnum:]]", "", dplyr::coalesce(x, "")))
+bp$.merge_into <- NA_character_
+by_merge_log <- list()
+for (a in unique(bp$ags)) {
+  ix <- which(bp$ags == a)
+  pids <- unique(bp$person_id[ix])          # in order of first election
+  if (length(pids) < 2) next
+  for (k in 2:length(pids)) {
+    prev <- ix[bp$person_id[ix] == pids[k - 1]]; cur <- ix[bp$person_id[ix] == pids[k]]
+    i <- prev[length(prev)]; j <- cur[1]
+    pn <- prev[!is.na(bp$.sur[prev])]; cn <- cur[!is.na(bp$.sur[cur])]
+    names_agree <- length(pn) && length(cn) &&
+      bp$.sur[pn[length(pn)]] == bp$.sur[cn[1]] && nzchar(bp$.fst[pn[length(pn)]]) &&
+      bp$.fst[pn[length(pn)]] == bp$.fst[cn[1]] &&
+      (is.na(bp$.byr[pn[length(pn)]]) || is.na(bp$.byr[cn[1]]) || bp$.byr[pn[length(pn)]] == bp$.byr[cn[1]])
+    names_clash <- length(pn) && length(cn) && isFALSE(same_person(pn[length(pn)], cn[1]))
+    date_close <- !is.na(bp$.amt0[i]) && !is.na(bp$.amt0[j]) && bp$.amt0[i] != bp$.amt0[j] &&
+      abs(as.numeric(bp$.amt0[j] - bp$.amt0[i])) <= 120 &&
+      as.numeric(min(bp$election_date[cur]) - bp$.amt0[j]) > 365 &&
+      nzchar(nrm_list(bp$winner_party[i])) && nrm_list(bp$winner_party[i]) == nrm_list(bp$winner_party[j])
+    if (isTRUE(names_agree) || (date_close && !isTRUE(names_clash))) {
+      target <- dplyr::coalesce(bp$.merge_into[i], pids[k - 1])
+      bp$.merge_into[cur] <- target
+      by_merge_log[[length(by_merge_log) + 1]] <- data.frame(
+        ags = a, into = target, from = pids[k], rule = if (isTRUE(names_agree)) "names" else "date",
+        amt_into = bp$.amt0[i], amt_from = bp$.amt0[j], first_from = min(bp$election_date[cur]),
+        n_rows = length(cur))
+    }
+  }
+}
+key_merge <- !is.na(bp$.merge_into)
+if (any(key_merge)) {
+  merged_ids <- unique(bp$person_id[key_merge])
+  bp$person_id[key_merge] <- bp$.merge_into[key_merge]
+  bp$person_id_method[key_merge] <- "first_amtsantritt_merge"
+  # a merged key's rows take the start of office of the key they join
+  key_start <- tapply(bp$term_start_date[!key_merge], bp$person_id[!key_merge],
+                      function(x) if (all(is.na(x))) NA_real_ else as.numeric(min(x, na.rm = TRUE)))
+  bp$term_start_date[key_merge] <- as.Date(unname(key_start[bp$person_id[key_merge]]))
+} else merged_ids <- character()
+cat("Bayern key merges (one person under two first-Amtsantritt keys):", length(merged_ids),
+    "keys,", sum(key_merge), "rows\n")
+if (length(by_merge_log)) print(do.call(rbind, by_merge_log), row.names = FALSE)
+# source key -> final person, for the restricted register table (section 6b)
+by_key_rows <- bp[, c(".pid0", "person_id", "ags", "election_date", ".sur", ".byr")]
+bayern_panel <- bp[order(bp$ags, bp$election_date), names(bayern_panel)]
 
 cat("Bayern person-elections:", nrow(bayern_panel), "\n")
 cat("Bayern unique persons:", n_distinct(bayern_panel$person_id, na.rm = TRUE), "\n")
@@ -461,7 +795,6 @@ candidate_name_aliases <- tribble(
   "05382024", "Wirtz",              "Peter",                       "Wirtz",               "Franz Peter",
   "05758036", "Wilken",             "Rocco",                       "Wilken",              "Swen Rocco",
   "14521690", "Sigmund",            "Arne",                        "Sigmund",             "Hubert Arne",
-  "14523090", "Kerber",             "Heinrich",                    "Kerber",              "Jörg Heinrich",
   "14625040", "Große",              "Holm",                        "Große",               "André Holm",
   "14625320", "Mögel",              "Christian",                   "Mögel",               "Walter Christian",
   "14625470", "Brußk",              "Franz",                       "Brußk",               "Hubertus Franz",
@@ -516,14 +849,188 @@ named_persons <- winners_name_based |>
   mutate(person_id = sprintf("p_%s_%05d", state[1], row_number())) |>
   ungroup()
 
+# One person, one id across a municipality's history (October 2026). The key
+# above is per code, so (1) a renumbering split one mayor into two people
+# (846 of them, nearly all Sachsen and Sachsen-Anhalt), and (2) the mayor of a
+# Gemeinde that merged into another and who then won there got a new id too.
+# Now (1) the same name in the same lineage is one person, and (2) the same name
+# winning in a successor municipality within 15 years of the merger is the same
+# person. The later record takes the id of the earliest one, so no other id
+# changes. A merger link is marked in person_id_method; the term counters still
+# restart in the new municipality (was_predecessor_mayor marks those terms).
+# The key holds only the first INITIAL, so a link also needs a compatible given
+# name (equal, one a prefix of the other, or at most two edits apart; unknown on
+# either side counts as compatible): Naumann Lothar (2001) and his son Lars
+# (2008-2022), and Riedel Ulrich (2001) and Uwe (2022, three mayors later), share
+# a key and a lineage but are different people.
+first_compatible <- function(a, b) {
+  if (!length(a) || !length(b)) return(TRUE)
+  any(outer(a, b, Vectorize(function(x, y)
+    x == y || startsWith(x, y) || startsWith(y, x) || adist(x, y) <= 2)))
+}
+name_records <- winners_name_based |>
+  filter(!is.na(name_key)) |>
+  group_by(name_key, ags) |>
+  summarise(first_date = min(election_date), last_date = max(election_date),
+            .firsts = list(unique(na.omit(sub(" .*$", "", .first_norm)))),
+            .groups = "drop") |>
+  left_join(named_persons |> select(name_key, ags, person_id), by = c("name_key", "ags")) |>
+  mutate(lineage = lineage_of(ags))
+renumbering_links <- name_records |>
+  group_by(name_key, lineage) |>
+  filter(n() > 1) |>
+  arrange(first_date, .by_group = TRUE) |>
+  transmute(from = first(person_id), to = person_id,
+            .ok = vapply(.firsts, function(f) first_compatible(.firsts[[1]], f), logical(1))) |>
+  ungroup() |>
+  filter(from != to)
+cat(sprintf("Renumbering links dropped for incompatible given names: %d\n", sum(!renumbering_links$.ok)))
+renumbering_links <- renumbering_links |> filter(.ok) |> select(from, to)
+merger_links <- name_records |>
+  inner_join(merger_successors, by = c("lineage" = "from_lineage"),
+             relationship = "many-to-many") |>
+  inner_join(name_records |>
+               select(name_key, to_lineage = lineage, to = person_id, to_first = first_date,
+                      .to_firsts = .firsts),
+             by = c("name_key", "to_lineage"), relationship = "many-to-many") |>
+  filter(to_first > last_date,
+         year(to_first) >= merged_in, year(to_first) <= merged_in + 15L,
+         mapply(first_compatible, .firsts, .to_firsts)) |>
+  distinct(from = person_id, to, to_lineage)
+
+# Merge linked ids into the id of each group's earliest record.
+first_seen <- name_records |>
+  group_by(person_id) |>
+  summarise(first_date = min(first_date), .groups = "drop")
+id_rank <- setNames(rank(as.numeric(first_seen$first_date) +
+                           seq_len(nrow(first_seen)) / (nrow(first_seen) + 1)),
+                    first_seen$person_id)
+merge_ids <- function(lab, links) {
+  for (k in seq_len(nrow(links))) {
+    a <- lab[[links$from[k]]]
+    b <- lab[[links$to[k]]]
+    if (a == b) next
+    keep <- if (id_rank[[a]] < id_rank[[b]]) a else b
+    lab[lab == setdiff(c(a, b), keep)] <- keep
+  }
+  lab
+}
+id_map <- merge_ids(setNames(first_seen$person_id, first_seen$person_id), renumbering_links)
+
+# Name variants of one person between sources or report years (October 2026),
+# pinned in data/mayoral_elections/metadata/person_name_variant_links.csv with
+# the evidence for each: a misprinted or transliterated surname (Horts/Horst,
+# Clauß/Claus, Fröhlich/Froehlich), a married or dropped second surname, given
+# names added or dropped (Garn, Friedrich Wilhelm / Wilhelm), and a 1993 record
+# that prints the surname only. Every pair is the same municipality and the
+# same office, consecutive terms or a return after one term. Unlike the
+# candidate_name_aliases table above, these links merge person ids AFTER
+# numbering, like the renumbering links: the later record takes the earlier
+# id and no other person_id changes. Both spellings must still occur.
+variant_file <- "data/mayoral_elections/metadata/person_name_variant_links.csv"
+variant_pairs <- if (file.exists(variant_file)) {
+  fread(variant_file, encoding = "UTF-8", colClasses = "character") |>
+    as_tibble() |>
+    mutate(state = substr(ags, 1, 2),
+           alias_key = make_person_key(alias_last, alias_first, state),
+           canonical_key = make_person_key(canonical_last, canonical_first, state))
+} else tibble()
+variant_links <- tibble(from = character(), to = character())
+if (nrow(variant_pairs) > 0) {
+  variant_links <- variant_pairs |>
+    left_join(named_persons |> select(ags, alias_key = name_key, from = person_id),
+              by = c("ags", "alias_key")) |>
+    left_join(named_persons |> select(ags, canonical_key = name_key, to = person_id),
+              by = c("ags", "canonical_key"))
+  unresolved <- variant_links |> filter(is.na(from) | is.na(to) | from == to)
+  if (nrow(unresolved) > 0) {
+    print(unresolved |> select(ags, alias_last, alias_first, canonical_last, canonical_first, from, to))
+    stop("person_name_variant_links.csv: a pinned spelling no longer occurs, or both spellings ",
+         "already share an id. Re-check the pair against the sources.")
+  }
+  variant_links <- variant_links |> select(from, to)
+  id_map <- merge_ids(id_map, variant_links)
+}
+cat(sprintf("Name-variant links (pinned): %d pairs\n", nrow(variant_links)))
+# A successor record that more than one predecessor mayor of the same name
+# could claim is left unlinked.
+merger_links <- merger_links |>
+  mutate(from_c = unname(id_map[from])) |>
+  group_by(to) |>
+  filter(n_distinct(from_c) == 1) |>
+  ungroup()
+id_map <- merge_ids(id_map, merger_links)
+merger_linked_ids <- unique(unname(id_map[c(merger_links$from, merger_links$to)]))
+# after every merge, so a variant-linked person later joined across a merger
+# keeps its variant label (the variant link takes precedence, as before)
+variant_linked_ids <- unique(unname(id_map[c(variant_links$from, variant_links$to)]))
+predecessor_terms <- merger_links |>
+  transmute(person_id = unname(id_map[to]), lineage = to_lineage) |>
+  distinct()
+cat(sprintf("Person links: %d renumbering records, %d merger records; %d ids before, %d after\n",
+            nrow(renumbering_links), nrow(merger_links),
+            length(id_map), n_distinct(id_map)))
+
 winners_name_based <- winners_name_based |>
   left_join(named_persons |> select(name_key, ags, person_id),
             by = c("name_key", "ags")) |>
+  mutate(person_id = unname(id_map[person_id])) |>
   group_by(person_id) |>
-  mutate(person_id_method = if_else(any(.variant_link),
-                                    "candidate_name_variant_link",
-                                    "candidate_name")) |>
+  mutate(person_id_method = case_when(
+    any(.variant_link) | person_id[1] %in% variant_linked_ids ~ "candidate_name_variant_link",
+    person_id[1] %in% merger_linked_ids ~ "merger_name_link",
+    TRUE ~ "candidate_name")) |>
   ungroup()
+
+# One name key can hold two people with the same surname and initial in one
+# municipality (Hotopp Angelika 1994 / Andy 2001, Hampel Ingo / Ingeburg). A
+# record starts a new person when its given name is incompatible with the
+# person's previous record AND gender or birth year contradict it; reviewed
+# cases where the sources show a different person are pinned in
+# metadata/person_split_pins.csv (ags + the second person's first election).
+# Split-off people get new ids (person_id_method "candidate_name_split").
+split_file <- "data/mayoral_elections/metadata/person_split_pins.csv"
+split_pins <- if (file.exists(split_file)) {
+  fread(split_file, encoding = "UTF-8", colClasses = "character") |>
+    as_tibble() |> transmute(ags, election_date = as.Date(second_person_from), .pin = TRUE)
+} else tibble(ags = character(), election_date = as.Date(character()), .pin = logical())
+winners_name_based <- winners_name_based |>
+  left_join(split_pins, by = c("ags", "election_date")) |>
+  mutate(.pin = coalesce(.pin, FALSE), .ffirst = sub(" .*$", "", .first_norm)) |>
+  arrange(person_id, election_date)
+stopifnot(sum(winners_name_based$.pin) == nrow(split_pins))
+winners_name_based$.grp <- 0L
+for (pid in unique(winners_name_based$person_id[!is.na(winners_name_based$person_id)])) {
+  ix <- which(winners_name_based$person_id %in% pid)
+  if (length(ix) < 2) next
+  g <- 0L; ref <- ix[1]
+  for (k in ix[-1]) {
+    w <- winners_name_based
+    conflict <- !is.na(w$.ffirst[k]) && !is.na(w$.ffirst[ref]) && nzchar(w$.ffirst[k]) && nzchar(w$.ffirst[ref]) &&
+      !first_compatible(w$.ffirst[ref], w$.ffirst[k]) &&
+      ((!is.na(w$candidate_gender[k]) && !is.na(w$candidate_gender[ref]) &&
+          w$candidate_gender[k] != w$candidate_gender[ref]) ||
+         (!is.na(w$candidate_birth_year[k]) && !is.na(w$candidate_birth_year[ref]) &&
+            abs(w$candidate_birth_year[k] - w$candidate_birth_year[ref]) > 1))
+    if (conflict || w$.pin[k]) g <- g + 1L
+    winners_name_based$.grp[k] <- g
+    if (!is.na(w$.ffirst[k]) && nzchar(w$.ffirst[k])) ref <- k
+  }
+}
+split_n <- winners_name_based |> filter(.grp > 0) |> distinct(person_id, .grp, state)
+if (nrow(split_n)) {
+  base_max <- winners_name_based |> filter(!is.na(person_id)) |>
+    group_by(state) |> summarise(.m = max(as.integer(sub("^p_[0-9]+_", "", person_id))), .groups = "drop")
+  split_n <- split_n |> left_join(base_max, by = "state") |> arrange(state, person_id, .grp) |>
+    group_by(state) |> mutate(.new = sprintf("p_%s_%05d", state, .m + row_number())) |> ungroup()
+  winners_name_based <- winners_name_based |>
+    left_join(split_n |> select(person_id, .grp, .new), by = c("person_id", ".grp")) |>
+    mutate(person_id_method = if_else(!is.na(.new), "candidate_name_split", person_id_method),
+           person_id = coalesce(.new, person_id)) |>
+    select(-.new)
+}
+cat(sprintf("Name-key splits: %d people split off (%d pinned)\n", nrow(split_n), nrow(split_pins)))
+winners_name_based <- winners_name_based |> select(-.pin, -.ffirst, -.grp)
 
 # Build panel rows for named states
 named_panel <- winners_name_based |>
@@ -531,6 +1038,8 @@ named_panel <- winners_name_based |>
     person_id, person_id_method, ags, state, election_year, election_date,
     winner_party = candidate_party,
     winner_voteshare, winning_margin, n_candidates,
+    # the winner's name, only for the own-name rule of party_family_parts()
+    pf_last = candidate_last_name, pf_first = candidate_first_name,
     # Candidate characteristics (from 04_candidate_characteristics.R)
     candidate_gender, candidate_gender_source, candidate_gender_prob,
     candidate_gender_method,
@@ -712,8 +1221,53 @@ cat("Hessen rows without person_id:", sum(is.na(hessen_panel$person_id)), "\n")
 
 cat("\n=== Combining all states ===\n")
 
+# Bayern panel rows are built from the workbook, which names nobody, so they had
+# no candidate characteristics. The 2026 winners are named in the public
+# mayoral_candidates (Mandatsträger file), from which 04 derives gender and name
+# origin. Attach them by the decisive round's date, falling back to the
+# Hauptwahl date. person_id is untouched. The names from the printed
+# Bürgermeisterverzeichnisse and the LfStat candidate lists are withheld from the
+# public file (LfStat, 16.10.2026); 04 still publishes those winners' gender
+# (user decision 2026-10-16), so they carry gender here and NA name origin.
+by_char_cols <- c("candidate_gender", "candidate_gender_source", "candidate_gender_prob",
+                  "candidate_gender_method", "candidate_migration_bg",
+                  "candidate_migration_bg_prob", "candidate_name_origin",
+                  "candidate_name_origin_conf", "candidate_name_origin_method")
+by_w <- as.data.frame(readRDS("data/mayoral_elections/final/mayoral_candidates.rds"))
+by_w <- by_w[by_w$state == "09" & by_w$election_type %in% valid_types &
+               by_w$is_winner %in% TRUE &
+               (!is.na(by_w$candidate_last_name) | !is.na(by_w$candidate_gender)), ]
+by_dec <- by_w[, c("ags", by_char_cols)]
+by_dec$.d <- as.Date(ifelse(is.na(by_w$election_date_sw), as.character(by_w$election_date),
+                            as.character(by_w$election_date_sw)))
+by_dec$.pri <- 1L
+by_hw <- by_w[, c("ags", by_char_cols)]
+by_hw$.d <- as.Date(by_w$election_date)
+by_hw$.pri <- 2L
+by_chars <- rbind(by_dec, by_hw)
+by_chars <- by_chars[order(by_chars$ags, by_chars$.d, by_chars$.pri), ]
+by_chars <- by_chars[!duplicated(by_chars[c("ags", ".d")]), setdiff(names(by_chars), ".pri")]
+bayern_panel <- dplyr::left_join(bayern_panel, by_chars, by = c("ags", "election_date" = ".d"))
+cat("Bayern panel rows with a named winner's characteristics:",
+    sum(!is.na(bayern_panel$candidate_name_origin_method) | !is.na(bayern_panel$candidate_gender)),
+    "of", nrow(bayern_panel), "\n")
+
 panel <- bind_rows(bayern_panel, named_panel, hessen_panel) |>
-  arrange(state, ags, election_date)
+  arrange(state, ags, election_date) |>
+  mutate(
+    # Party family components of the winner's list (code/shared/party_family.R):
+    # INTERNAL, compared by party_switch / is_new_party_mayor; published as
+    # party_family. An own-name label (Rheinland-Pfalz: "Muster") is an
+    # Einzelbewerber only if the winner's name is known.
+    party_parts = party_family_parts(winner_party, state, pf_last, pf_first),
+    lineage = lineage_of(ags),
+    # 1 = this person was mayor of a Gemeinde that merged into this municipality
+    # (linked above); the term counters below count terms HERE only.
+    was_predecessor_mayor = as.integer(paste(person_id, lineage) %in%
+                                         paste(predecessor_terms$person_id,
+                                               predecessor_terms$lineage))
+  ) |>
+  select(-pf_last, -pf_first)
 
 cat("Combined panel:", nrow(panel), "rows\n")
 cat("Unique persons:", n_distinct(panel$person_id, na.rm = TRUE), "\n")
@@ -747,24 +1301,32 @@ panel <- panel |>
 
 cat("After person-level dedup:", nrow(panel) + nrow(panel_he), "rows\n")
 
-# When multiple persons are both marked as winners in the same ags+year
-# (HW winner vs SW winner from separate records), keep only the one with
-# the highest voteshare — this correctly identifies the overall winner in
-# both cases: (a) HW-dated rows with SW data, (b) standalone SW records.
+# When two winners of ONE election cycle reach the panel as separate records
+# (HW winner vs SW winner), keep the one with the highest voteshare. Records
+# belong to one cycle when they lie less than 60 days apart. Until October 2026
+# this kept one winner per municipality-YEAR and so deleted 130 genuine second
+# elections of a year (by-elections, repeats: Lützen 2010, Reichel in May and
+# Könnecke in December); the annual panel gives such a year to the later term.
 n_before <- nrow(panel)
 panel <- panel |>
-  arrange(ags, election_year, desc(winner_voteshare)) |>
-  distinct(ags, election_year, .keep_all = TRUE)
-cat("After ags-year dedup:", nrow(panel) + nrow(panel_he), "(dropped",
+  arrange(ags, election_date) |>
+  group_by(ags) |>
+  mutate(.cyc = cumsum(c(TRUE, diff(as.numeric(election_date)) >= 60))) |>
+  ungroup() |>
+  arrange(ags, .cyc, desc(winner_voteshare)) |>
+  distinct(ags, .cyc, .keep_all = TRUE) |>
+  select(-.cyc)
+cat("After ags-cycle dedup:", nrow(panel) + nrow(panel_he), "(dropped",
     n_before - nrow(panel), "dup winners)\n")
 he_same_year <- panel_he |> count(ags, election_year) |> filter(n > 1)
 cat("Hessen municipality-years with two counted terms (kept):", nrow(he_same_year), "\n")
 panel <- bind_rows(panel, panel_he)
 
-# Term number within each person in each municipality
+# Term number within each person in each municipality (lineage: a renumbered
+# Gemeinde is the same municipality)
 panel <- panel |>
-  arrange(person_id, ags, election_date) |>
-  group_by(person_id, ags) |>
+  arrange(person_id, lineage, election_date) |>
+  group_by(person_id, lineage) |>
   mutate(
     term_number = row_number(),
     tenure_start = min(election_year),
@@ -776,10 +1338,10 @@ panel <- panel |>
 panel <- panel |>
   mutate(is_incumbent = as.integer(term_number >= 2))
 
-# next_runs_again: does this person win the NEXT election in this ags?
+# next_runs_again: does this person win the NEXT election in this municipality?
 panel <- panel |>
-  arrange(ags, election_date) |>
-  group_by(ags) |>
+  arrange(lineage, election_date) |>
+  group_by(lineage) |>
   mutate(
     next_person_id = lead(person_id),
     next_runs_again = case_when(
@@ -793,7 +1355,7 @@ panel <- panel |>
 
 # For Bayern: term_start_date is amtsantritt; for others: election_date of first term
 panel <- panel |>
-  group_by(person_id, ags) |>
+  group_by(person_id, lineage) |>
   mutate(
     term_start_date = case_when(
       !is.na(term_start_date) ~ term_start_date,  # Bayern: already set
@@ -803,69 +1365,98 @@ panel <- panel |>
   ungroup()
 
 # --- Incumbency enrichment variables ---
+# All of these compare elections of the same municipality (lineage), and are
+# recomputed in the same way after harmonisation (section 7).
+add_enrichment <- function(pnl) {
+  # party_switch: did the winning party FAMILY change from the previous election
+  #   here? 0 when the two winners' family components overlap (CSU -> CSU/Freie
+  #   Wähler), 1 when they do not, NA when either is unknown.
+  # is_new_party_mayor: 1 when none of the winner's family components has won
+  #   here before (the first winner of a municipality included).
+  # Until 2026-10-19 both compared normalised LABELS, so a re-elected mayor
+  # whose list the next source spelled differently, or two successive local
+  # lists, counted as a switch (TODO M22; code/shared/party_family.R).
+  # margin_change: change in winning margin from the previous election
+  pnl <- pnl |>
+    arrange(lineage, election_date) |>
+    group_by(lineage) |>
+    mutate(
+      prev_parts = lag(party_parts),
+      x_overlap = party_parts_overlap(prev_parts, party_parts),
+      party_switch = case_when(
+        is.na(x_overlap) ~ NA_integer_,
+        x_overlap ~ 0L,
+        TRUE ~ 1L
+      ),
+      is_new_party_mayor = party_parts_new(party_parts),
+      prev_margin = lag(winning_margin),
+      margin_change = case_when(
+        is.na(prev_margin) | is.na(winning_margin) ~ NA_real_,
+        TRUE ~ winning_margin - prev_margin
+      )
+    ) |>
+    ungroup() |>
+    select(-prev_parts, -x_overlap, -prev_margin)
+
+  # consecutive_terms: number of consecutive observed wins by the same person.
+  # This must reset when a former mayor returns after somebody else held office
+  # (Hessen contains two such source-verified cases), as well as after a >10-year
+  # hole in the observed series.
+  pnl |>
+    arrange(lineage, election_date) |>
+    group_by(lineage) |>
+    mutate(
+      new_consec_run = row_number() == 1L |
+        person_id != lag(person_id) |
+        election_year - lag(election_year) > 10L,
+      new_consec_run = replace_na(new_consec_run, TRUE),
+      consec_group = cumsum(new_consec_run)
+    ) |>
+    group_by(lineage, consec_group) |>
+    mutate(consecutive_terms = row_number()) |>
+    ungroup() |>
+    select(-new_consec_run, -consec_group)
+}
+
+# Between two panel rows of one municipality there can be elections whose
+# winner is not in the panel (Thüringen 2005-2019, a few Bayern elections of
+# the 1950s-60s and of 2026). Comparisons with the
+# "previous/next election" would skip them, so next_runs_again (does this
+# person win the NEXT election) and party_switch / margin_change (vs the
+# PREVIOUS election) are NA when an election of the municipality falls in a
+# calendar year strictly between the two rows. Counted by year, as the annual
+# panel is: same-year repeat and by-elections, which the ags-year dedup above
+# keeps out of the panel, do not count. (Thüringen only from 2026-10-08, by
+# date; all states from 2026-10-09.)
+apply_gap_rule <- function(pnl, label) {
+  pnl$.rid <- seq_len(nrow(pnl))
+  gaps <- pnl |>
+    select(.rid, lineage, election_date, election_year) |>
+    arrange(lineage, election_date) |>
+    group_by(lineage) |>
+    mutate(prev_year = lag(election_year), next_year = lead(election_year)) |>
+    ungroup() |>
+    left_join(cycles |> distinct(lineage, cycle_year), by = "lineage",
+              relationship = "many-to-many") |>
+    group_by(.rid) |>
+    summarise(
+      gap_before = any(cycle_year > prev_year & cycle_year < election_year, na.rm = TRUE),
+      gap_after = any(cycle_year > election_year & cycle_year < next_year, na.rm = TRUE),
+      .groups = "drop")
+  pnl <- pnl |>
+    left_join(gaps, by = ".rid") |>
+    mutate(
+      next_runs_again = if_else(gap_after, NA_integer_, next_runs_again),
+      party_switch = if_else(gap_before, NA_integer_, party_switch),
+      margin_change = if_else(gap_before, NA_real_, margin_change)
+    )
+  cat(sprintf("  %s: %d rows with an election not in the panel before them, %d after (comparisons set to NA)\n",
+              label, sum(pnl$gap_before), sum(pnl$gap_after)))
+  pnl |> select(-.rid, -gap_before, -gap_after)
+}
+
 cat("\n  Adding incumbency enrichment variables...\n")
-
-# party_switch: did the winning party change from the previous election in this ags?
-# is_new_party_mayor: first time this party wins in this municipality (ever in data)
-# Both compare NORMALISED labels (see norm_party above) so that spelling and
-# quoting differences between sources are not read as party changes.
-panel <- panel |>
-  arrange(ags, election_date) |>
-  group_by(ags) |>
-  mutate(
-    party_key = norm_party(winner_party),
-    prev_party = lag(party_key),
-    party_switch = case_when(
-      is.na(prev_party) | is.na(party_key) ~ NA_integer_,
-      prev_party == party_key ~ 0L,
-      TRUE ~ 1L
-    )
-  ) |>
-  ungroup()
-
-# is_new_party_mayor: has this party EVER won before in this ags (within data)?
-panel <- panel |>
-  arrange(ags, election_date) |>
-  group_by(ags) |>
-  mutate(
-    is_new_party_mayor = as.integer(
-      !duplicated(party_key) & !is.na(party_key)
-    )
-  ) |>
-  ungroup()
-
-# margin_change: change in winning margin from previous election
-panel <- panel |>
-  arrange(ags, election_date) |>
-  group_by(ags) |>
-  mutate(
-    prev_margin = lag(winning_margin),
-    margin_change = case_when(
-      is.na(prev_margin) | is.na(winning_margin) ~ NA_real_,
-      TRUE ~ winning_margin - prev_margin
-    )
-  ) |>
-  ungroup() |>
-  select(-prev_party, -prev_margin, -party_key)
-
-# consecutive_terms: number of consecutive observed wins by the same person.
-# This must reset when a former mayor returns after somebody else held office
-# (Hessen contains two such source-verified cases), as well as after a >10-year
-# hole in the observed series.
-panel <- panel |>
-  arrange(ags, election_date) |>
-  group_by(ags) |>
-  mutate(
-    new_consec_run = row_number() == 1L |
-      person_id != lag(person_id) |
-      election_year - lag(election_year) > 10L,
-    new_consec_run = replace_na(new_consec_run, TRUE),
-    consec_group = cumsum(new_consec_run)
-  ) |>
-  group_by(ags, consec_group) |>
-  mutate(consecutive_terms = row_number()) |>
-  ungroup() |>
-  select(-new_consec_run, -consec_group)
+panel <- apply_gap_rule(add_enrichment(panel), "Gap rule")
 
 cat(sprintf("  party_switch: %d switches out of %d with data (%.1f%%)\n",
             sum(panel$party_switch == 1L, na.rm = TRUE),
@@ -912,6 +1503,94 @@ if (nrow(multi_state) > 0) {
   cat("No person_id spans multiple states — OK\n")
 }
 
+
+# ============================================================================
+# 6b. STABLE PERSON IDS
+# ============================================================================
+# The ids above are positional: every added election, split or merge renumbers
+# the people after it. metadata/person_id_registry.csv records which id each
+# person-election (ags, election_date) carried; it was seeded from the panel
+# published in commit 176259e (October 2026). Each person of this build takes
+# the registry id that covers most of its elections (greedy, largest overlap
+# first); a person with no overlap takes a retired id whose elections it now
+# holds, else a new one (the state's highest id ever issued + 1, in order of
+# first election). Ids are never reused for another person: ids that lose all
+# their elections stay in the registry as retired rows. The registry is
+# rewritten by every run, so commit it together with the panel.
+reg_file <- "data/mayoral_elections/metadata/person_id_registry.csv"
+registry <- fread(reg_file, colClasses = "character", encoding = "UTF-8") |>
+  as_tibble() |>
+  mutate(election_date = as.Date(election_date), active = active == "TRUE")
+stopifnot(!anyDuplicated(registry[registry$active, c("ags", "election_date")]),
+          !anyDuplicated(panel[c("ags", "election_date")]))
+cur_first <- panel |> group_by(person_id) |>
+  summarise(.first = min(election_date), .ags = min(ags), .groups = "drop")
+assign_ids <- function(pairs, cur_done, reg_used) {
+  pairs <- pairs |> left_join(cur_first, by = c(".cur" = "person_id")) |>
+    arrange(desc(n), .first, .cur, .reg)
+  ci <- match(pairs$.cur, names(cur_done)); ri <- match(pairs$.reg, names(reg_used))
+  take <- logical(nrow(pairs))
+  for (k in seq_len(nrow(pairs))) if (!cur_done[ci[k]] && !reg_used[ri[k]]) {
+    cur_done[ci[k]] <- TRUE; reg_used[ri[k]] <- TRUE; take[k] <- TRUE
+  }
+  list(map = pairs[take, c(".cur", ".reg")], cur_done = cur_done, reg_used = reg_used)
+}
+overlap <- function(reg_rows) panel |> select(.cur = person_id, ags, election_date) |>
+  inner_join(reg_rows |> select(.reg = person_id, ags, election_date), by = c("ags", "election_date")) |>
+  count(.cur, .reg, name = "n")
+all_reg_ids <- unique(registry$person_id)
+cur_done <- setNames(logical(nrow(cur_first)), cur_first$person_id)
+reg_used <- setNames(logical(length(all_reg_ids)), all_reg_ids)
+a1 <- assign_ids(overlap(registry |> filter(active)), cur_done, reg_used)
+retired_ids <- setdiff(all_reg_ids, registry$person_id[registry$active])
+a2 <- assign_ids(overlap(registry |> filter(person_id %in% retired_ids)), a1$cur_done, a1$reg_used)
+id_stable <- bind_rows(a1$map, a2$map)
+new_people <- cur_first |> filter(!person_id %in% id_stable$.cur) |>
+  mutate(.st = substr(person_id, 3, 4)) |>
+  left_join(registry |> distinct(person_id) |>
+              transmute(.st = substr(person_id, 3, 4), .n = as.integer(sub("^p_[0-9]+_", "", person_id))) |>
+              group_by(.st) |> summarise(.max = max(.n), .groups = "drop"), by = ".st") |>
+  mutate(.max = coalesce(.max, 0L)) |>
+  arrange(.st, .first, .ags, person_id) |>
+  group_by(.st) |> mutate(.reg = sprintf("p_%s_%05d", .st, .max + row_number())) |> ungroup()
+id_stable <- bind_rows(id_stable, new_people |> select(.cur = person_id, .reg))
+id_stable <- setNames(id_stable$.reg, id_stable$.cur)
+stopifnot(!anyDuplicated(id_stable), setequal(names(id_stable), cur_first$person_id))
+panel <- panel |> mutate(person_id = unname(id_stable[person_id]))
+cat(sprintf("Stable ids: %d people keep a registry id (%d of them a retired one), %d new; %d registry ids retired\n",
+            nrow(a1$map) + nrow(a2$map), nrow(a2$map), nrow(new_people),
+            length(setdiff(all_reg_ids, panel$person_id))))
+id_num <- function(x) as.integer(sub("^p_[0-9]+_", "", x))
+registry_new <- bind_rows(
+  panel |> transmute(person_id, ags, election_date, active = TRUE),
+  registry |> filter(!person_id %in% panel$person_id) |> mutate(active = FALSE)) |>
+  arrange(substr(person_id, 3, 4), id_num(person_id), election_date, ags) |>
+  mutate(election_date = format(election_date, "%Y-%m-%d"), active = if_else(active, "TRUE", "FALSE"))
+fwrite(registry_new, reg_file)
+
+# The restricted Bayern register table: source key -> final person -> stable id.
+# Where a key holds two people (split above), the register entry goes to the one
+# whose surname matches it, else to the person who kept the key's id.
+if (!is.null(by_reg_r)) {
+  key_people <- by_key_rows |>
+    filter(!is.na(.pid0)) |>
+    group_by(.pid0, person_id) |>
+    summarise(.surs = list(unique(na.omit(.sur))), .first = min(election_date), .groups = "drop")
+  pick_person <- function(base, last_name) {
+    kp <- key_people[key_people$.pid0 %in% base, ]
+    if (!nrow(kp)) return(NA_character_)
+    if (nrow(kp) == 1) return(kp$person_id)
+    hit <- kp$person_id[vapply(kp$.surs, function(s) nrm_sur(last_name) %in% s, logical(1))]
+    if (length(hit) == 1) return(hit)
+    if (base %in% kp$person_id) return(base)
+    kp$person_id[which.min(kp$.first)]
+  }
+  by_reg_r$person_id <- unname(id_stable[mapply(pick_person, by_reg_r$person_id, by_reg_r$last_name)])
+  write_csv(by_reg_r, "data/mayoral_elections/final_restricted/by_register_persons_restricted.csv")
+  saveRDS(by_reg_r, "data/mayoral_elections/final_restricted/by_register_persons_restricted.rds")
+  cat("Bayern register (restricted):", nrow(by_reg_r), "persons,",
+      sum(!is.na(by_reg_r$person_id)), "linked to a panel person_id\n")
+}
 
 # Snapshot before crosswalk for unharmonized version
 panel_unharm <- panel
@@ -1066,8 +1745,8 @@ panel <- panel |> select(-.source_id, -any_of(c("pop_cw", "crosswalk_year", "map
 
 # Recompute term_number after crosswalk may have dropped some rows
 panel <- panel |>
-  arrange(person_id, ags, election_date) |>
-  group_by(person_id, ags) |>
+  arrange(person_id, lineage, election_date) |>
+  group_by(person_id, lineage) |>
   mutate(
     term_number = row_number(),
     tenure_start = min(election_year),
@@ -1078,8 +1757,8 @@ panel <- panel |>
 
 # Recompute next_runs_again
 panel <- panel |>
-  arrange(ags, election_date) |>
-  group_by(ags) |>
+  arrange(lineage, election_date) |>
+  group_by(lineage) |>
   mutate(
     next_person_id = lead(person_id),
     next_runs_again = case_when(
@@ -1091,53 +1770,100 @@ panel <- panel |>
   ungroup() |>
   select(-next_person_id)
 
-# Recompute enrichment variables after harmonization
-panel <- panel |>
-  arrange(ags, election_date) |>
-  group_by(ags) |>
-  mutate(
-    party_key = norm_party(winner_party),
-    prev_party = lag(party_key),
-    party_switch = case_when(
-      is.na(prev_party) | is.na(party_key) ~ NA_integer_,
-      prev_party == party_key ~ 0L,
-      TRUE ~ 1L
-    ),
-    is_new_party_mayor = as.integer(
-      !duplicated(party_key) & !is.na(party_key)
-    ),
-    prev_margin = lag(winning_margin),
-    margin_change = case_when(
-      is.na(prev_margin) | is.na(winning_margin) ~ NA_real_,
-      TRUE ~ winning_margin - prev_margin
-    )
-  ) |>
-  ungroup() |>
-  select(-prev_party, -prev_margin, -party_key)
-
-panel <- panel |>
-  arrange(ags, election_date) |>
-  group_by(ags) |>
-  mutate(
-    new_consec_run = row_number() == 1L |
-      person_id != lag(person_id) |
-      election_year - lag(election_year) > 10L,
-    new_consec_run = replace_na(new_consec_run, TRUE),
-    consec_group = cumsum(new_consec_run)
-  ) |>
-  group_by(ags, consec_group) |>
-  mutate(consecutive_terms = row_number()) |>
-  ungroup() |>
-  select(-new_consec_run, -consec_group)
+# Recompute enrichment variables after harmonization, and the gap rule with
+# them: until 2026-10-09 this recomputation dropped the Thüringen gap NAs, so
+# mayor_panel_harm compared across 548 unnamed elections that mayor_panel
+# did not.
+panel <- apply_gap_rule(add_enrichment(panel), "Gap rule (harmonised)")
 
 
 # ============================================================================
 # 8. FINALIZE BOTH VERSIONS (UNHARMONIZED + HARMONIZED)
 # ============================================================================
 
+# --- Where a term ends in the annual panel (October 2026) --------------------
+# Until 2026-10-08 a term ran to the next NAMED winner of its AGS, or to the
+# last data year. Elections with unnamed winners and Gemeinden that no longer
+# existed therefore kept a mayor in office for decades. A term now ends at the
+# earliest of:
+#   (a) the next election of the municipality, named or not;
+#   (b) the end of the municipality: the last year of its lineage, so a merger
+#       ends it and a renumbering does not;
+#   (c) the longest term the law allows (below), where the source has no later
+#       election although one must have been held;
+#   (d) in Thüringen, six years after a pre-2020 election with no later one in
+#       any source (the 2010/2016 elections of the 381 Gemeinden of 2004 that
+#       the TLS database lacks).
+# Longest legal term of a directly elected mayor, by-elections included (Land,
+# election year; research 2026-10-09). Used only for (c), with one year of slack
+# for the start of office and an incumbent staying until the successor takes
+# over, so it never shortens a term the law allows. NA = no cap.
+#   NI  5 y to 30.4.2005; 8 y to 2014; 2014-1/2025 single elections ran to the
+#       end of the NEXT council period (Drs. 18/2022: up to ~10 y); 8 y again
+#       from 1.2.2025 (§ 80 NKomVG).
+#   NRW by-elections 2000-2007 ran to the end of the next council period (~10);
+#       6 y for 2007-2013 elections (GO-Reformgesetz 2007); the 2013 transition
+#       and the 2020 by-election rule allow ~8 (§ 65 GO NRW).
+#   BY  6 y; by-elections up to 7 y (GLKrWG 1995) and 8 y (from 2008); the law
+#       before 1995 was not checked, so no cap.
+#   SL  8 y until 2007, 10 y from the Bündelungsgesetz of 29.8.2007.
+#   BB  8 y (§ 53 BbgKVerf); ehrenamtliche 5 y with the council, a by-election
+#       up to ~6 y. MV 7-9 y by Hauptsatzung. SH 6-8 y. HE 6, RP 8, BW 8, SN 7,
+#       ST 7 (ehrenamtliche too), TH 6.
+max_legal_term <- function(state, year, office_type = NA_character_) {
+  case_when(
+    state == "12" & office_type %in% "Ehrenamtliche(r) Bürgermeister*in" ~ 6,
+    state == "01" ~ 8,
+    state == "03" & year < 2005 ~ 5,
+    state == "03" & year < 2014 ~ 8,
+    state == "03" & year < 2025 ~ 10,
+    state == "03" ~ 8,
+    state == "05" & year < 2008 ~ 10,
+    state == "05" & year < 2013 ~ 6,
+    state == "05" ~ 8,
+    state == "06" ~ 6,
+    state == "07" ~ 8,
+    state == "08" ~ 8,
+    state == "09" & year < 1995 ~ NA_real_,
+    state == "09" & year < 2008 ~ 7,
+    state == "09" ~ 8,
+    state == "10" & year < 2007 ~ 9,
+    state == "10" ~ 10,
+    state == "12" ~ 8,
+    state == "13" ~ 9,
+    state == "14" ~ 7,
+    state == "15" ~ 7,
+    state == "16" ~ 6,
+    TRUE ~ NA_real_
+  )
+}
+winner_office <- bind_rows(
+  cand |> filter(is_winner %in% TRUE) |> select(ags, election_date, office_type),
+  cand |> filter(is_winner %in% TRUE, !is.na(election_date_sw)) |>
+    select(ags, election_date = election_date_sw, office_type)
+) |>
+  distinct(ags, election_date, .keep_all = TRUE)
+term_caps <- panel_unharm |>
+  distinct(person_id, ags, election_date, lineage, state, election_year) |>
+  left_join(cycles |> distinct(lineage, cycle_year), by = "lineage",
+            relationship = "many-to-many") |>
+  group_by(person_id, ags, election_date, lineage, state, election_year) |>
+  summarise(next_cycle = if (any(cycle_year > election_year, na.rm = TRUE))
+              min(cycle_year[cycle_year > election_year], na.rm = TRUE) else NA_integer_,
+            .groups = "drop") |>
+  left_join(winner_office, by = c("ags", "election_date")) |>
+  left_join(state_last_cycle, by = "state") |>
+  mutate(lineage_end = lineage_end_of(lineage),
+         max_term = max_legal_term(state, election_year, office_type)) |>
+  select(person_id, ags, election_date, next_cycle, lineage_end, max_term, last_cycle)
+stopifnot(!anyDuplicated(term_caps[, c("person_id", "ags", "election_date")]))
+cat(sprintf("Term ends: %d terms followed by an election of the municipality, %d in a municipality that ceased to exist\n",
+            sum(!is.na(term_caps$next_cycle)), sum(!is.na(term_caps$lineage_end))))
+
 # Helper: compute within-mayor stats, format, and build annual panel
 finalize_panel <- function(p, version = "harm") {
   has_ags_21 <- "ags_21" %in% names(p)
+  p <- p |> mutate(party_family = party_family_from_parts(party_parts))
 
   cat(sprintf("\n--- Finalizing %s panel ---\n", version))
 
@@ -1158,9 +1884,9 @@ finalize_panel <- function(p, version = "harm") {
     "source_person_reelections", "ags",
     if (has_ags_21) "ags_21",
     "state", "election_year", "election_date",
-    "term_number", "consecutive_terms", "winner_party", "winner_voteshare",
+    "term_number", "consecutive_terms", "winner_party", "party_family", "winner_voteshare",
     "winning_margin", "margin_change",
-    "n_candidates", "is_incumbent", "next_runs_again",
+    "n_candidates", "is_incumbent", "was_predecessor_mayor", "next_runs_again",
     "party_switch", "is_new_party_mayor",
     "tenure_start", "years_in_office", "term_start_date",
     "n_terms", "total_tenure_years", "has_margin_variation",
@@ -1169,7 +1895,8 @@ finalize_panel <- function(p, version = "harm") {
     "candidate_gender_method",
     "candidate_migration_bg", "candidate_migration_bg_prob",
     "candidate_name_origin", "candidate_name_origin_conf",
-    "candidate_name_origin_method"
+    "candidate_name_origin_method",
+    "lineage"  # internal, dropped below
   )
   p <- p |>
     select(all_of(panel_cols)) |>
@@ -1179,10 +1906,16 @@ finalize_panel <- function(p, version = "harm") {
   cat("  Building annual panel...\n")
 
   p <- p |>
-    arrange(ags, election_date) |>
-    group_by(ags) |>
+    arrange(lineage, election_date) |>
+    group_by(lineage) |>
     mutate(next_election_year = lead(election_year)) |>
-    ungroup()
+    ungroup() |>
+    # (a) the next election of the municipality, whether or not its winner is named
+    left_join(term_caps, by = c("person_id", "ags", "election_date")) |>
+    mutate(next_election_year = case_when(
+      !is.na(next_cycle) &
+        (is.na(next_election_year) | next_cycle < next_election_year) ~ as.integer(next_cycle),
+      TRUE ~ next_election_year))
 
   # Last year the panel extends open terms to. Derived from the data — a
   # hardcoded 2025 combined with the missing pmax() guard below made every
@@ -1202,7 +1935,27 @@ finalize_panel <- function(p, version = "harm") {
       term_end_year = case_when(
         !is.na(next_election_year) ~ pmax(next_election_year - 1L, election_year),
         TRUE ~ pmax(max_year, election_year)
-      )
+      ),
+      # (b) a municipality that ceased to exist ends the term -- not for an
+      # election filed under a code whose last crosswalk year lies BEFORE it
+      # (Brandenburg 1998 rows under codes ending 1997, Dessau OB 2007): that
+      # term runs on to the next election or the legal maximum (c)
+      term_end_year = if_else(!is.na(lineage_end) & lineage_end >= election_year,
+                              pmin(term_end_year, lineage_end),
+                              term_end_year),
+      # (c) the longest legal term, where the source shows no election that
+      # must have been held: only where that end lies inside the Land's data
+      term_end_year = if_else(state != "16" & !is.na(max_term) &
+                                election_year + max_term + 1L <= last_cycle,
+                              pmin(term_end_year, as.integer(election_year + max_term)),
+                              term_end_year),
+      # (d) Thüringen: the six-year term (§ 28 ThürKO) when no later election
+      # of the AGS is in any source. TH elections fall on fixed general dates
+      # (2004 -> 2010), so here the cap is exact rather than lenient. Terms
+      # from 2020 keep the rules above (their next elections are named).
+      term_end_year = if_else(state == "16" & election_year < 2020 & is.na(next_cycle),
+                              pmin(term_end_year, election_year + 5L),
+                              term_end_year)
     ) |>
     rowwise() |>
     mutate(year = list(seq(election_year, term_end_year))) |>
@@ -1230,8 +1983,8 @@ finalize_panel <- function(p, version = "harm") {
     if (has_ags_21) "ags_21",
     "year", "person_id", "person_id_method", "source_person_term_number",
     "source_person_reelections", "state", "election_year", "election_date",
-    "term_number", "winner_party", "winner_voteshare", "winning_margin",
-    "n_candidates", "is_incumbent", "next_runs_again",
+    "term_number", "winner_party", "party_family", "winner_voteshare", "winning_margin",
+    "n_candidates", "is_incumbent", "was_predecessor_mayor", "next_runs_again",
     "years_since_election", "years_to_next_election",
     "electoral_cycle_pos", "tenure_start", "term_start_date",
     # Candidate characteristics (constant within term)
@@ -1256,7 +2009,11 @@ finalize_panel <- function(p, version = "harm") {
   }
 
   # Remove temp column from election-level panel
-  p <- p |> select(-next_election_year)
+  # (published row order: by code and date, as before lineages)
+  p <- p |>
+    select(-next_election_year, -next_cycle, -lineage_end, -max_term,
+           -last_cycle, -lineage) |>
+    arrange(ags, election_date, person_id)
 
   cat(sprintf("  Election panel: %d rows, %d persons\n",
               nrow(p), n_distinct(p$person_id)))

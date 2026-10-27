@@ -199,13 +199,27 @@ def repair_source_rows(data: list) -> tuple:
         (ags, election_date, round) and would keep exactly one of the ten.
 
         The true historical AGS is recovered from `ags_crosswalks.csv` by
-        (normalised Gemeinde name, election year). A match is accepted ONLY if
-        it is unique for that year AND the candidate AGS harmonises to the same
-        municipality the source itself reports (its ags_21 equals either the
-        source's "AGS aktuell" or the ags_21 of the code the source gave). That
-        guard rejects same-name Gemeinden elsewhere in the state — e.g. a 1994
-        "Dannefeld" that harmonises to Gardelegen, where the source's Dannefeld
-        belongs to Salzwedel.
+        (normalised Gemeinde name, election year; the previous year for a
+        Gemeinde that merged during the election year). A match is accepted
+        ONLY if exactly one candidate passes the guard: it harmonises to the
+        municipality the source itself reports (its ags_21 equals the source's
+        "AGS aktuell" or the ags_21 of the code the source gave), or it lies in
+        the Kreis of the code the source gave. That rejects same-name Gemeinden
+        elsewhere in the state. The Kreis test is needed because the source's
+        "AGS aktuell" can be wrong too: Dannefeld 1994/2001 carries Salzwedel's,
+        copied with the code of its alphabetical neighbour Dambeck (15370021/
+        15370022); Dannefeld lies in Gardelegen, as the source's own 2008 row
+        and the electorate (370 in 2001, 350 in 2008; Dambeck 304) show.
+
+    (C) POST-MERGER CODE ON ANOTHER DAY. The same defect without a same-day
+        partner: Liesten and Wieblitz-Eversdorf elected their mayors on
+        2008-07-06 and 2008-06-29 under 15081455, the code of Salzwedel, which
+        they joined in 2010 (their 2008 codes were 15081325 and 15081360). The
+        panel, which keeps one winner per municipality and election cycle, then
+        read two villages' mayors as one election of Salzwedel's (29 ST codes
+        carried more than one Gemeinde). A row is re-coded when the crosswalk
+        names its code differently in that year and the row's own name matches
+        exactly one code of that year that passes the guard of (B).
 
     Returns (repaired_rows, stats) where stats["shared_flag"] holds the ids of
     rows still sharing an AGS after the repair.
@@ -246,36 +260,78 @@ def repair_source_rows(data: list) -> tuple:
 
     n_recovered = 0
     shared_flag: set = set()
+    by_name: dict = {}
+    to_21: dict = {}
+    name_of: dict = {}
+    cw_path = os.path.join(ROOT, "data", "crosswalks", "final", "ags_crosswalks.csv")
+    if os.path.exists(cw_path):
+        with open(cw_path, encoding="utf-8", newline="") as fh:
+            for row in csv.DictReader(fh):
+                a = row["ags"].zfill(8)
+                by_name.setdefault((norm_name(row["ags_name"]), row["year"]),
+                                   set()).add(a)
+                to_21[(a, row["year"])] = row["ags_21"].zfill(8)
+                name_of[(a, row["year"])] = norm_name(row["ags_name"])
+    else:
+        sys.stderr.write(f"  ! crosswalk not found ({cw_path}); cannot repair "
+                         f"shared AGS\n")
+
+    def recover(r):
+        """The row's own historical AGS, or None (see (B) for the guard)."""
+        given = cell(r, C_AGS_WT)
+        cur = cell(r, C_AGS_AK)
+        year = cell(r, C_HW_DATE)[:4]
+        name = norm_name(cell(r, C_NAME_WT))
+        # A Gemeinde that merged during the election year is missing from that
+        # year's crosswalk (an end-of-year snapshot): Schinne 2010-03-14, which
+        # joined Bismark later that year. Its code of the previous year is used.
+        for y in (year, str(int(year) - 1)):
+            hits = by_name.get((name, y), set())
+            if hits:
+                break
+        if given in hits:
+            return given
+        # Accept when the recovered code harmonises like the source says, or
+        # when it lies in the same Kreis as the code the source gave: a unique
+        # same-name Gemeinde of that Kreis in that year is no namesake
+        # elsewhere. The second test settles the three pairs whose "AGS
+        # aktuell" contradicts the crosswalk (Großzöberitz/Heideloh 2001,
+        # Cosa/Diebzig 2001, Dambeck/Dannefeld 1994), which had left one elected
+        # mayor per pair unseated. Of two namesakes (Kläden 2009, in Arendsee
+        # and in Bismark) only one can pass.
+        ok = [c for c in hits
+              if to_21.get((c, y), "") and (to_21[(c, y)] == cur
+                                            or to_21[(c, y)] == to_21.get((given, y), "")
+                                            or c[:5] == given[:5])]
+        return ok[0] if len(ok) == 1 else None
+
+    # (C) first: a code that in that year belongs to a differently named Gemeinde
+    n_recoded_c = 0
+    for r in rows:
+        given = cell(r, C_AGS_WT)
+        year = cell(r, C_HW_DATE)[:4]
+        own = name_of.get((given, year))
+        if own is None or own == norm_name(cell(r, C_NAME_WT)):
+            continue
+        cand = recover(r)
+        if cand and cand != given:
+            r[C_AGS_WT] = cand
+            n_recoded_c += 1
+    groups = {}
+    for r in rows:
+        groups.setdefault((cell(r, C_AGS_WT), cell(r, C_HW_DATE)[:10]), []).append(r)
+    shared = [g for g in groups.values() if len(g) > 1]
     if shared:
-        by_name: dict = {}
-        to_21: dict = {}
-        cw_path = os.path.join(ROOT, "data", "crosswalks", "final", "ags_crosswalks.csv")
-        if os.path.exists(cw_path):
-            with open(cw_path, encoding="utf-8", newline="") as fh:
-                for row in csv.DictReader(fh):
-                    a = row["ags"].zfill(8)
-                    by_name.setdefault((norm_name(row["ags_name"]), row["year"]),
-                                       set()).add(a)
-                    to_21[(a, row["year"])] = row["ags_21"].zfill(8)
-        else:
-            sys.stderr.write(f"  ! crosswalk not found ({cw_path}); cannot repair "
-                             f"shared AGS\n")
 
         for g in shared:
             for r in g:
-                given = cell(r, C_AGS_WT)
-                cur = cell(r, C_AGS_AK)
-                year = cell(r, C_HW_DATE)[:4]
-                hits = by_name.get((norm_name(cell(r, C_NAME_WT)), year), set())
-                if len(hits) == 1:
-                    cand = next(iter(hits))
-                    if cand == given:
-                        continue                       # already correct
-                    t = to_21.get((cand, year), "")
-                    if t and (t == cur or t == to_21.get((given, year), "")):
-                        r[C_AGS_WT] = cand             # accept the recovery
-                        n_recovered += 1
-                        continue
+                cand = recover(r)
+                if cand == cell(r, C_AGS_WT):
+                    continue                           # already correct
+                if cand:
+                    r[C_AGS_WT] = cand                 # accept the recovery
+                    n_recovered += 1
+                    continue
                 shared_flag.add(id(r))
 
         # anything still sharing an (ags, date) after the repair stays flagged
@@ -293,7 +349,7 @@ def repair_source_rows(data: list) -> tuple:
             else:
                 shared_flag.discard(id(g[0]))
 
-    return rows, {"n_dup": n_dup, "n_recovered": n_recovered,
+    return rows, {"n_dup": n_dup, "n_recovered": n_recovered, "n_recoded_c": n_recoded_c,
                   "n_unresolved": len(shared_flag), "shared_flag": shared_flag}
 
 
@@ -329,6 +385,7 @@ def main() -> None:
 
     data, fix = repair_source_rows(data)
     print(f"  source repair: {fix['n_dup']} duplicate record(s) dropped, "
+          f"{fix['n_recoded_c']} rows filed under another Gemeinde's code and "
           f"{fix['n_recovered']} shared-AGS rows re-coded to their true historical "
           f"AGS, {fix['n_unresolved']} left sharing an AGS (flagged)")
     shared_flag = fix["shared_flag"]

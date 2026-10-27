@@ -433,3 +433,161 @@ Found in the pre-publication audit of 2026-10-02 and fixed the same day. The def
 - Thüringen person groupings are unchanged, but the IDs are sequential, so 472 panel rows carry a new `person_id` label.
 
 `98_full_audit.R` G8 fails if a Thüringen party contains "Nachname,", in `mayoral_candidates` or as the winner's party in `mayor_panel`. Calibration: 647 / 624 on the release of 2026-10-02, 0 after.
+
+## 17. Panel identity, by-elections, Sachsen-Anhalt codes, Mecklenburg-Vorpommern (fixed, October 2026)
+
+The audit of 2026-10-12 left seven pre-existing problems for a decision. Six are fixed; the seventh (labels) is kept as published, by decision.
+
+**1. By-elections dropped.** The panel kept one winner per municipality-*year* (the highest vote share), so a second election in the same year disappeared together with its winner: Lützen 2010 kept Reichel (May) and lost Könnecke (December by-election). It now keeps one winner per election *cycle*: records less than 60 days apart are one cycle, later ones are kept. 116 municipality-years outside Hessen now hold two elections (Bayern 104, Sachsen-Anhalt 12). Hessen was already exempt (§15).
+- Bayern's `flag_superseded` rounds (a Hauptwahl without majority repeated by a Neuwahl) used to vanish in the same dedup; they are now dropped explicitly before the panel (34 rounds, Tittling 2011). A date is dropped only if every round on it is superseded: Würzburg's 1948 council vote has a failed first ballot and the decisive one on one day.
+- The same person elected twice in one year keeps one row, the later election (21 cases, mostly repeats after an annulled election and early post-war ballots).
+
+**2. Bayern incumbents with two ids.** The person key is the workbook's first-Amtsantritt date. The 2026 Mandatsträger file dates a re-elected mayor's first Amtsantritt a few days off (Rattiszell: 2007-06-19 vs 2007-06-18), so the 2026 round started a new person. 03 now merges a key into the preceding key of the Gemeinde when the names agree, or when the dates lie within 120 days, the list is the same, the names do not contradict and the later key's Amtsantritt lies more than a year before its own first election (`first_amtsantritt_merge`: 13 keys, 19 rows). The last condition matters: without it the rule merged an appointed 1945 mayor of Straubing with the one elected in 1946, and repeated elections (1996, 2002) with their predecessors.
+
+**3. Two people under one id.** A name key holds a surname and an initial. Split now on an incompatible given name plus a gender or birth-year conflict (Hotopp Angelika/Andy, Hampel Ingo/Ingeburg), and on reviewed pins in `metadata/person_split_pins.csv` (Vieker father/son, Espelkamp 2020). An independent review of all 37 people with incompatible given names (`docs/person_split_review_2026-10-12.csv`, with sources) found 33 to be one person each (Gerd/Gerhard, Pit = Peter, "K.-D." = Klaus-Dieter, added given names), 3 to be two people, and could not decide Hampel. The Statistisches Landesamt Sachsen-Anhalt settled it on 16.10.2026 after asking the Verbandsgemeinde Goldene Aue: Ingo and Ingeburg Hampel are two people (Ingo first, Ingeburg until Riethnordhausen joined Wallhausen on 01.09.2009). The split is now pinned in `person_split_pins.csv` too. Eggenstedt (Hotopp), asked in the same e-mail, was answered on 21.10.2026 after the office asked the Stadt Wanzleben-Börde: two people as well. Angelika Hotopp was mayor from 12.06.1994 to 11.07.2001; Andy Hotopp was appointed ("ernannt") mayor on 12.07.2001 and again on 12.07.2008. The appointments start the terms won at the direct elections of 06.05.2001 and 16.03.2008, so GERDA keeps those rows as elections dated on polling day, not as council choices (`flag_elected_by_council` = FALSE), and the annual panel gives 2001 to Andy Hotopp, as it gives every election year to the winner. GERDA does not use Sachsen-Anhalt Amtsantritt dates; the StaLA workbook dates the 2008 one 16.07.2008. The Hotopp pin already existed (gender rule plus workbook evidence) and now cites the answer (§30c: 4 pins). Both e-mails are in `raw/sachsen_anhalt/correspondence/` (gitignored: the Hampel answer gives birth dates). The alias table had joined Ellefeld's Heinrich Kerber (1994-2013) to Jörg Heinrich Kerber (from 2013), his son; it is gone. Sachsen lists every given name from about 2013 on; the August 2026 aliases assumed the last one is the name in use, which holds in 16 of 17 checked cases — Ellefeld, where the son carries his father's name last, is the exception, and the rule can fail the same way elsewhere.
+
+**4. Positional ids.** Every added election or split renumbered the people after it (2026-10-09: 1,582 ids changed). Ids now come from `metadata/person_id_registry.csv`, seeded from the published panel (commit 176259e): 97.7 % of published person-elections keep their id, 976 published ids are retired (mostly one id of each pair the October 2026 lineage links merged), and new people get ids after the highest ever issued. A map from the uncommitted 2026-10-12 build to the registry ids (2,914 ids, mostly Brandenburg and Niedersachsen) is `docs/person_id_map_2026-10-12_to_registry.csv`, gitignored.
+
+**5. List labels naming a withheld candidate — kept as published (decision 2026-10-12).** Bayern, Sachsen-Anhalt and Thüringen losers are withheld, but some lists are named after their candidate, and the label is published as the source prints it: 9 Bayern rows (8 mayoral, 1 Landrat) and two Thüringen labels ("Wenzl", Eisenach 2012, a genuine Träger, see §16; "Orzechowsk", a database label of 2004). The label is the official name of the Wahlvorschlag, not a candidate field.
+
+**6. Sachsen-Anhalt: one code, two Gemeinden.** The source files some elections of then-independent Gemeinden under the code of the town they later joined. Where two Gemeinden shared a code on one day, the parser already re-coded them from the crosswalk, except three pairs whose "AGS aktuell" contradicts the crosswalk: Heideloh/Großzöberitz 2001, Cosa/Diebzig 2001, Dambeck/Dannefeld 1994. One elected mayor per pair stayed unseated (Blaha, Feuerborn, Blankau). A candidate code in the Kreis of the given code is now accepted. The source's "AGS aktuell" is itself wrong for Dannefeld: it carries Salzwedel's, copied with the code of its alphabetical neighbour Dambeck, while Dannefeld lies in Gardelegen (its own 2008 row, electorate 370 in 2001 and 350 in 2008). The same defect on *different* days is now repaired too: 17 elections, among them Liesten and Wieblitz-Eversdorf 2008 under Salzwedel, ten 2008/2009 Gardelegen villages, Kläden 2009 (of two namesakes only one harmonises to the source's town) and Schinne, Schwarzholz and Uchtdorf 2010 (merged during the election year, so their code is the previous year's). With the year dedup these had been read as one election of the town; with the cycle rule two villages' mayors within 60 days would have been one cycle. The remaining codes with two names are renames and spellings, plus Aue-Fallstein 2003 under Atzendorf's code with Atzendorf's "AGS aktuell" (no recovery possible).
+
+**7. Mecklenburg-Vorpommern.** The Landeswahlleitung's overview (2026-10-12) showed Wismar's 2026 Bürgermeisterwahl missing (the LAIV publishes no Wismar 2026 file) and Rügen's Landrat of May 2001 seated although her Ja/Nein runoff failed the 25 % quorum. Wismar is transcribed from the city's official Bekanntmachungen; the Rügen cycle carries `flag_decisive_round_missing` and seats nobody.
+
+`99_audit.R` §30 pins all seven (30a-30f; the labels are documented, not tested) and is calibrated: every check fails on the build of 2026-10-12 before the fixes. §26e and §28b were re-counted (164 predecessor terms / 109 people; 69 variant-link people / 176 terms).
+
+## 18. Rheinland-Pfalz: the 2026 edition of the source, and errors in both editions (October 2026)
+
+The Statistisches Landesamt Rheinland-Pfalz sent the 2026 edition of its Direktwahlen workbook on 12.10.2026 (Az. 111-AD26-1436). It covers every direct election of the Landräte, the Oberbürgermeister of the kreisfreie Städte and the Bürgermeister of the verbandsfreie Gemeinden and Verbandsgemeinden from 1994 to 13.09.2026, but names only the elected person (no other candidate), with term start and end and a marker for women. The 2025 edition, which lists every candidate with first-round and runoff shares, stays the base.
+
+**Compared row by row** (910 of 928 elections matched on unit and date; name, share and runoff agree in 99 %), each edition has errors the other does not:
+
+- **2025 edition wrong, corrected** (pinned in `metadata/rlp_source_corrections.csv`, each with its evidence; every pin checks the cell's old value first):
+  - Landrat Rhein-Pfalz-Kreis 2017 (Körner) carried the code of Südliche Weinstraße;
+  - Kusel-Altenglan and Rengsdorf-Waldbreitbach 2017 carried a predecessor's and an invalid code (the edition itself codes both differently in 2025);
+  - Wörrstadt was dated 28.10.2019, a Monday after its own runoff date (true: 28.10.2018);
+  - Koblenz 2017: Langner's first-round and runoff shares were in each other's columns (42.82 % and 69.8 %);
+  - Leiningerland 2025: the two shares were swapped, so GERDA seated Rüttger (CDU); Krauß (SPD) won with 53.43 % (official notice);
+  - Lauterecken-Wolfstein 2018: the runoff (Müller 52.23 %, Eckert 47.77 %) was missing;
+  - Landrat Rhein-Lahn-Kreis: Denninghoff (not "Dennighoff") was elected on 13.03.2022, not on Ahrweiler's 23.01.2022; also Lars Denninghoff, Aar-Einrich 2022;
+  - Andernach 2022: only the winner's share was given; the official notice adds the other three candidates.
+- **2025 edition read wrongly by GERDA, fixed in code:** eight Verbandsgemeinde elections held with the Landtagswahl of 27.03.2011 (Altenahr, Treis-Karden, Rheinböllen, Monsheim, Wörrstadt, Eisenberg (Pfalz), Altenglan, Landau-Land) have their date typed as text. `read_excel()` read it as NA and the parsers' fill-down gave them the previous election's date, 07.11.2010. The October 2026 parser comment had blamed the source for printing the date only once per polling day.
+- **2026 edition wrong, not used:** codes of Neustadt 2017 (that of Ludwigshafen), Budenheim 2018, Sinzig 2025, Monsheim and Nordpfälzer Land 2019; Loreley dated 2019 with its runoff in 2020; a runoff on a Tuesday (Wörth 2023); the names Orhten, Lüttkefedder, Fdenzer, Hechler "Dieter" (Ralf Dieter Hechler); share and turnout swapped (Bitburg-Prüm 2021, Morbach 2019, Daaden-Herdorf 2021, Hermeskeil and Oberes Glantal 2024); Kaiserslautern 2023 and Linz 2022 shares; Andernach 2022 marked as a runoff (it was decided in the first round); Brohltal 2023 missing.
+
+**Added from the 2026 edition:** 35 elections, the 34 after the 2025 edition's last day (29.06.2025) and Vordereifel 2024 (Schomisch, who died in office on 03.01.2026, hence the election of 22.03.2026). They pass checks that stop the build otherwise: Sunday dates, a runoff 14 or 21 days after its first round, a majority winner, a unit the 2025 edition knows, no election twice. They are winner-only.
+
+`99_audit.R` §31 pins all of the above and is calibrated: it fails on the build of 2026-10-12 before the 2026 edition.
+
+## 19. Bayern: register and candidate-list names withheld (LfStat refusal, 16 October 2026)
+
+The printed *Bürgermeisterverzeichnisse* 1978–2014 and the Statistische Berichte B VII 3-2 / 3-7 (candidate lists 2008–2026, OB and Landräte) name the elected mayors and Landräte with birth year and profession. The Bayerisches Landesamt für Statistik declined permission to redistribute these names, birth years and professions in GERDA (e-mail of its data protection officer, 16.10.2026). It cites § 9 Abs. 3 of its AGB (no electronic redistribution of Verzeichnisse) and argues that the GLKrWO reserves publication of the personal data to the Landesamt, so other databases lack a legal basis. The reply and the AGB are in `raw/bayern/lfstat_verzeichnisse/correspondence/` (gitignored).
+
+- **Public files:** no Bayern name, birth year, profession, name origin or migration background before 2026, in `mayoral_candidates` or `landrat_candidates`. The winners' gender, derived from the withheld given name, IS published (user decision 2026-10-16): 04 copies it from the restricted twin (17,782 rows). That withholds 17,882 mayoral and 644 Landrat winner rows that the unreleased build had named; losing candidates were withheld already. The 2026 winners stay named from the Landesamt's *Mandatsträger* file, which is not covered by the request.
+- **Restricted twins** (`final_restricted/`, gitignored) keep everything, as before.
+- **Panel:** person ids unchanged. The register-based corrections of the first-Amtsantritt key (`first_amtsantritt_split`, `first_amtsantritt_merge`) read the names from the restricted twin, and only the pseudonymous ids are published. The Bayern gender columns are filled as before (19,688 terms); migration background and name origin only for the 1,914 terms won in 2026.
+- **Not in git:** `by_verzeichnis_elections.csv` / `by_verzeichnis_persons.csv` (stay gitignored for good), the parser's name pins and the audit fixtures that name register entries (`lfstat_verzeichnisse/*_restricted.csv`).
+- **Runoff names, 2026:** a runoff row joined to its first round by list elimination (01b Step 2c) now passes on the public *Mandatsträger* name. Before, 7 winners named in the published data had lost their name in the working tree.
+- `99_audit.R` §24a (public file holds no Bayern name, birth year, profession or name-origin field before 2026; calibrated on the 2026-10-13 build, which published 17,882 named winners; and gender is present on ≥ 17,000 winner rows) and §24c–g, §29c (now on the restricted twin); Landrat `99_audit.R` (no BY Landrat personal field before 2026).
+
+## 20. Brandenburg: hauptamtliche elections 2004–2013 from the Gemeinden's result reports (October 2026)
+
+The Geschäftsstelle des Landeswahlleiters sent scans of the result reports (*Ergebnismeldungen*) the Gemeinden had filed with it, 2004–2018 (four e-mails of 15.10.2026; `raw/brandenburg/lwl_ergebnismeldungen_2004_2013/`, README there; PDFs gitignored). `00_bb_lwl_scans_parse.py` reads a transcription checked three ways, and checks every figure against each page's own subtotals:
+- two independent reads (the OCR layer and a visual read);
+- a blind third read of 71 pages, which agreed on every count, vote, date, name and finding.
+
+- **Added:** 119 elections, 164 rounds, 115 Gemeinden, 2004–2012, with full results. The hauptamtliche gap of 2004–2009 (4 winner-only elections before) is closed for the elections the archive holds (85).
+  - Four 2008 elections that the B VII 3-6 report held as winner-only now have full results. That parser drops its own copy once it has checked that both name the same elected person.
+  - The first round of Schöneiche bei Berlin (22.04.2012) is missing from the scans. It comes from the Landeswahlleiter's own result page, archived by the Internet Archive (`wayback/`).
+- **Panel:**
+  - 115 new terms.
+  - 96 existing Brandenburg terms end earlier, because an intervening election is now known; none runs over 12 years.
+  - One published `person_id` changes: Groß Leine 1998 joins its mayor's Märkische Heide terms through a merger link via the newly known 2006 election. The old id is retired.
+- **Checked against outside sources:**
+  - 22 sampled winners: all 22 agree on winner and date, and on the figures wherever a source gives them. Sources: Amtsblätter, Wikipedia, archived LWL pages.
+  - The LWL's own result pages, archived by the Internet Archive (984 captures, 2008–2017), show 139 of the 164 new rounds; the other 25 are mostly from before the site existed.
+    - 135 agree in every figure.
+    - 3 agree in every figure but carry the site's wrong date: it dates three Märkisch-Oderland elections of 27.09.2009 as 28.09.2008. The captures show the elections appearing only in 2009.
+    - The one difference is Belzig's corrected electorate, which the site repeats from the Gemeinde.
+    - Across all 738 archived rounds, no other figure differs from GERDA.
+- **Overlap with the workbook (47 elections, 61 rounds), left in the workbook:** all candidate votes agree. Any further difference makes the parser stop until it is pinned.
+  - Liebenwalde 11.09.2011: 3,704 Wahlberechtigte on the Gemeinde's form, which is consistent with its own turnout, threshold and the council and Landtag electorates. The workbook and the LWL's own website have 3,407. Kept as published, pending the Landeswahlleiter's answer.
+- **Corrected with evidence:**
+  - Belzig 28.09.2008, Wahlberechtigte 5,779 → 9,779. The evidence is the Gemeindevertretung election of the same day and register (AfS SB B VII 3-5 – 5j/08 p. 108) and the Kreistag (9,790). The LWL's website repeated the Gemeinde's misprint.
+  - Schwarzheide 2008: the page labelled "Hauptwahl" on 12.10.2008 is the runoff; B VII 3-6 2008 dates the first round 28.09. That first round has no result here (`n_candidates_hw` NA).
+- **Kept as printed, flagged:**
+  - Eichwalde and Pritzwalk 2009: the two rounds print electorates 7 % and 10 % apart. The runoff figure fits the other counts, and the LWL website carries the same figures.
+  - Four hand-computed thresholds are off by one, with no effect on any outcome.
+- **One person, two spellings across rounds** (4 Bewerber in 3 cycles; Träger labels differ for 10 Bewerber in 8 cycles): linked by `pair_key` from the Hauptwahl's list of runoff qualifiers, so the wide pivot does not split them. Without it, Templin 2010 showed the winner twice.
+- **Privacy:** losing Bewerber are named in the restricted twin only (295 people). The elected person's own rows are named, chosen by row and not by name, so a namesake is never published. Wahlvorschlag labels that carry a loser's surname ("Einzelwahlvorschlag …", 9 elections) were kept as printed (user decision 2026-10-16); since 2026-10-19 they are the plain list type in the public files (§21).
+- **A runoff below the 15 % quorum** (none in the delivery) seats nobody: `flag_decisive_round_missing`, with `flag_elected_by_council` on the cycle. Both popular-vote rounds stay in `mayoral_unharm`, and the panel ends the previous term there. Tested end to end by mutation.
+- **Open, user decision 2026-10-16:** the workbook's and the portal's own losing candidates 2010–2026 are still published (756 named non-winner rows in 271 elections), unlike every other Brandenburg source. They are to be restricted to the twin as well, in a separate change.
+- **Separate fix, all states (audit 2026-10-19):** `fread()` left RFC-4180 doubled quotes in labels that contain quotes (`LV ""Wir für X""`). 01/01b now collapse them: 10 unharm/harm and 13 candidate labels outside Brandenburg change, and the Brandenburg ones with them. Nothing else changes.
+- `99_audit.R` §34 pins coverage, vote integrity in both rounds, privacy and five fixtures. §27i (223 terms / 85 people across the 2001–2003 mergers) and §27j (exactly 223 result-less first rounds) moved with it.
+
+## 21. Brandenburg: every losing candidate restricted; raw inputs out of the repository (19 October 2026)
+
+Until 19.10.2026 the public files named the losing candidates of the Landeswahlleiter workbook 2010–2026 and its portal fallback (756 rows in 271 elections, gender or name origin derived for 747) and of the Landrat portal pages (124 rows in 34 elections). Every other Brandenburg source was restricted already. Vincent decided on 16 and 19 October 2026 that all of them go to the restricted twin.
+- **01b and the Landrat combine** add Brandenburg to `withheld_loser_states`, the rule already used for Bayern, Sachsen-Anhalt and Thüringen: a non-winner row keeps votes, shares, rank and Wahlvorschlagsträger, but no name and no name-derived field.
+- **Own-name labels (user decision 2026-10-19).** An independent candidate's label is often their own name ("EB Muster", "Einzelwahlvorschlag Max Muster"; invented), which would name the loser anyway. In the public files it becomes the plain list type when nothing but an independent-candidate prefix is left once the person's own name, initials and titles are removed (`code/shared/bb_own_name_label.R`). A list whose name merely contains a surname is unchanged; the twin keeps the label. 228 mayoral and 6 Landrat labels change, and 7 `winner_party` values in `mayoral_unharm`/`_harm` (the leader of a Hauptwahl who lost the runoff). The tracked copies carry the generic labels, so a clean clone reproduces this. `04` compares `candidate_party` with the twin except on these rows; `99_audit.R` §27n and the Landrat audit check the rule, and fail on the build before.
+- **Raw files.** The workbook (supplied for research under § 25 BbgDSG), `bb_lwl_parsed.csv`, the portal scrape `bb_bm_parsed.csv` and the Landrat `BB_*.html` pages are gitignored. Their versions in earlier commits stay in the git history; whether to rewrite it is open.
+- **Tracked copies.** `bb_lwl_parsed_public.csv` (written by 01b) and `bb_landrat_parsed_public.csv` (written by `01_landrat_combine.R`) hold the same rows with only the elected persons named. Every row carries an opaque pairing key that is unique within its Hauptwahl–Stichwahl cycle and links nobody across elections, so the two rounds pair exactly as by name. 01/01b and the combine read them when the full files are missing.
+  - A build from the copies alone reproduced every public output, the person_id registry and the tracked lookups `identical()` to the full build (19.10.2026).
+- **Effect.** Only these Brandenburg fields change, nothing else in any state: 756 + 124 names, 747 genders, 756 name origins and migration backgrounds. The tracked `name_origin_lookup.rds` no longer holds the 642 first-and-last-name pairs that came only from these losers, and `gender_guesser_lookup.csv` loses 78 first names.
+- `99_audit.R` §27c checks every Brandenburg non-winner row in all years and all name-derived fields. §27m checks that the tracked copy names only people the public file names. The Landrat audit checks the same for its copy. All were calibrated on the previous build and with a planted name.
+
+## 22. Brandenburg 2001–2017: the Landeswahlleiter's archived result pages (19 October 2026)
+
+The Internet Archive kept the Landeswahlleiter's old result pages (`wahlen.brandenburg.de/bmwahlen/<AGS10>/h|s`, 984 captures 2008–2017). Each shows a Gemeinde's latest election on the same MAIS form as the result reports of §20. `00_bb_lwl_archive_parse.py` runs after the B VII 3-6 parser and decides election by election (`raw/brandenburg/lwl_bmwahlen_archive/README.md`):
+- **Held with counts** by the workbook, the result reports or a B VII 3-6 table (218): compared, left out. Every count and vote agrees, except the pinned Belzig electorate.
+- **Held winner-only by B VII 3-6** (411): replaced by the archived rounds. A round the archive lacks is carried over (18 elections), so each election comes from one file and its rounds pair by `pair_key`. The elected person must be the report's. The 472 replaced rounds are listed in `bb_lwl_archive_supersedes.csv`, which 01/01b drop, and only together with the archive file.
+- **Not in GERDA** (7): added. Two runoffs come without their first round. One council choice after a rejected single candidate (Rosenau 2014). Pinnow 2008's failed Hauptwahl joins the report's council record.
+- **Effect:**
+  - `mayoral_unharm` gains 11 Brandenburg rounds; Brandenburg rounds without counts fall from 2,901 to 2,448;
+  - `mayoral_candidates` gains 392 rows;
+  - the panel gains 6 terms; Lychen's 2002 term is re-dated to its first round of 21.04;
+  - no `person_id` changes;
+  - nothing outside Brandenburg changes;
+  - 387 more losing Bewerber are in the restricted twin only.
+- **Site defects, pinned:**
+  - five misdated pages, left out;
+  - an incomplete early capture (Falkensee 2007);
+  - three pages without a result;
+  - five misprinted names, corrected to the report or the other round;
+  - salutations in the 2014 pages;
+  - off-by-one thresholds and misprinted percentages;
+  - electorates differing between rounds.
+- **A rule found on the way:** a Hauptwahl that went to a runoff elected nobody, so all its rows are `is_winner = FALSE`. Otherwise, with a winner-only runoff carried over, the first-round leader would stand as a second winner.
+- `99_audit.R` §35 pins counts and fixtures (Lychen 2002, Guben 2016, Forst 2015, Pinnow 2008, Falkenberg/Elster 2017). §27f, §27i and §27j moved with it.
+
+## 23. Party switches compared labels, not parties (fixed, 19 October 2026)
+
+- **Problem:** `party_switch` and `is_new_party_mayor` compared the normalised Wahlvorschlag labels. These counted as switches:
+  - two successive local lists ("Freie Wählergemeinschaft" → "Bürgerblock");
+  - one list spelled differently by two sources;
+  - a joint list and one of its members (CSU → "CSU/Freie Wähler").
+
+  `party_switch` was 1 in 48.8 % of the comparable rows, 50.0 % in Bayern.
+- **Fix** (user decision 19.10.2026): `code/shared/party_family.R` sorts the 14,700 labels into ten families, and the panels compare families. See the mayoral README, "Party families".
+  - New columns: `candidate_party_family` in `mayoral_candidates` and `landrat_candidates`, and `party_family` next to `winner_party` in the four panels, `mayoral_unharm`, `mayoral_harm` and `landrat_unharm`.
+  - The election-level files get the family in `01b_mayoral_candidates.R`, which matches each round's label to its candidate (the own-name rule needs the person; it decides 235 mayoral and 20 Landrat rounds). `02_mayoral_harm.R` takes it with `winner_party` from the dominant predecessor; the Landrat combine computes it for its own rows. 02 and the combine stop if 01b has not run after 01.
+  - The labels are unchanged.
+- **Rules worth knowing:**
+  - a joint list counts as each of its members: CSU → CSU/Freie Wähler is no switch, CSU → Freie Wähler/SPD is one;
+  - minor parties compare as parties: BP → ÖDP is a switch;
+  - supporters ("CSU und ihre Freunde"), an open list beside a party and a party branch do not make a list joint;
+  - Sachsen-Anhalt's blank label is an Einzelbewerber, so 2,766 Sachsen-Anhalt rows become comparable (105 before);
+  - an own-name label (Rheinland-Pfalz: "Muster") is an Einzelbewerber only when the name is known. 01b computes the family on the full frame, so the restricted twin and the public file agree;
+  - `NA`: no label (Baden-Württemberg), "Sonstige", or a category mixing families (Nordrhein-Westfalen's "Wählergr./Einzelbew.", 274 rows).
+- **Effect:**
+  - `party_switch` is 1 in 22.8 % of 39,228 comparable rows; Bayern 21.3 %, Brandenburg 34.8 %, Sachsen 33.0 %, Nordrhein-Westfalen 32.1 %, Hessen 30.1 %;
+  - `is_new_party_mayor` is 1 in 11,801 rows (20,219 before);
+  - every other column and row of every output is unchanged.
+- **Audits:** `99_audit.R` §36 pins:
+  - the families of 22 frequent labels;
+  - the twin agreement;
+  - the agreement of the panel with the winner's candidate row (all but 17 Bayern register labels);
+  - the switch rule on 30,331 successive pairs;
+  - the counts;
+  - the election-level files against the candidates (§36g).
+
+  The Landrat audit checks `landrat_candidates` and `landrat_unharm`.

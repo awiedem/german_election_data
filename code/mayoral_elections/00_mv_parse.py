@@ -35,6 +35,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 RAW = os.path.join(ROOT, "data", "mayoral_elections", "raw", "mecklenburg_vorpommern")
 OUT_CSV = os.path.join(RAW, "mv_parsed.csv")
+# Elections published only as an official Bekanntmachung (no LAIV PDF): checked
+# transcriptions in mv_parsed's schema, sources in the same folder.
+TRANSCRIBED = [os.path.join(RAW, "wismar_2026", "wismar_2026_official.csv")]
+# A single-candidate Ja/Nein runoff elects only with Ja votes from at least a
+# quarter of the electorate (§ 64 Abs. 3 KWG M-V, 2001: "Neuwahl erforderlich,
+# weil Anteil der Ja-Stimmen nicht 25 % der Wahlberechtigten erreicht").
+JA_NEIN_QUORUM = 0.25
 OUT_ELEC = os.path.join(RAW, "mv_parsed_elections.csv")
 
 STATE = "13"
@@ -446,6 +453,13 @@ def parse_pdf(path, fname):
     return rows, elec
 
 
+def group_rounds(rows):
+    out = {}
+    for r in rows:
+        out.setdefault((r["ags"], r["election_date"]), []).append(r)
+    return out
+
+
 def main():
     pdfs = sorted(glob.glob(os.path.join(RAW, "*.pdf")))
     if not pdfs:
@@ -461,12 +475,42 @@ def main():
             errors.append((fname, str(e)))
             print(f"  ERROR {fname}: {e}", file=sys.stderr)
 
+    # A failed Ja/Nein runoff seats nobody: flag every row of that election so
+    # 01/01b give the cycle no winner (Rügen 2001-05: Kassner's 10 589 Ja votes
+    # were 16.9 % of the electorate; the Neuwahl of 2001-09 is its own cycle).
+    failed = set()
+    for r in all_rows:
+        if r["round"] == "stichwahl" and r["ja_nein"] == 1 and r["candidate_votes"] and r["eligible_voters"]:
+            if r["candidate_votes"] / r["eligible_voters"] < JA_NEIN_QUORUM:
+                failed.add(r["source_file"])
+    for r in all_rows:
+        r["flag_decisive_round_missing"] = "TRUE" if r["source_file"] in failed else "FALSE"
+    print(f"  failed Ja/Nein runoffs (below {JA_NEIN_QUORUM:.0%} of the electorate): {sorted(failed)}")
+    assert {unicodedata.normalize("NFC", f) for f in failed} == {"KW D 2001 05 Rügen.pdf"}, failed
+
+    # checked transcriptions of official Bekanntmachungen
+    have = {(r["ags"], r["election_date"]) for r in all_rows}
+    for path in TRANSCRIBED:
+        with open(path, encoding="utf-8", newline="") as fh:
+            tr = list(csv.DictReader(fh))
+        for (a, d), grp in group_rounds(tr).items():
+            if (a, d) in have:
+                sys.exit(f"{path}: {a} {d} is also in a LAIV PDF")
+            valid, voters, invalid = (int(grp[0][k]) for k in ("valid_votes", "number_voters", "invalid_votes"))
+            if sum(int(r["candidate_votes"]) for r in grp) != valid or valid + invalid != voters:
+                sys.exit(f"{path}: {a} {d} does not add up")
+        for r in tr:
+            r["flag_decisive_round_missing"] = "FALSE"
+        all_rows.extend(tr)
+        print(f"  + {len(tr)} rows transcribed from {os.path.relpath(path, RAW)}")
+
     cols = ["ags", "ags_name", "state", "state_name", "election_year",
             "election_date", "election_type", "round", "eligible_voters",
             "number_voters", "valid_votes", "invalid_votes", "turnout",
             "candidate_name", "candidate_last_name", "candidate_first_name",
             "candidate_party", "candidate_votes", "candidate_voteshare",
-            "ja_nein", "winner_name_raw", "source_file", "notes"]
+            "ja_nein", "winner_name_raw", "source_file", "notes",
+            "flag_decisive_round_missing"]
     with open(OUT_CSV, "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=cols)
         w.writeheader()

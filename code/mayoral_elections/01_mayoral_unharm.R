@@ -14,7 +14,9 @@
 #   (~2016-2024; winner-only, no party; StaLA Bericht B VII 3-j/25)
 # - Brandenburg — hauptamtliche Bürgermeister-/OB-wahlen of amtsfreie Gemeinden +
 #   kreisfreie Städte, 2010-2026 (with party; Landeswahlleiter workbook supplied
-#   on request, merged with the older portal scrape)
+#   on request, merged with the older portal scrape), plus 1993-2008 and the
+#   ehrenamtliche Bürgermeister 1998-2024 from the Statistische Berichte B VII 3-6
+#   (mostly winner-only)
 # - Sachsen-Anhalt — Bürgermeister-/OB-wahlen 2024-2026 (with party;
 #   Landeswahlleiter portal scrape)
 # - Hessen — most recent Direktwahl per Gemeinde/Landkreis (~2017-2024; winner +
@@ -704,7 +706,11 @@ all_mayoral_data[["sachsen"]] <- sachsen_clean
 
 cat("\n=== Processing Rheinland-Pfalz mayoral elections ===\n")
 
-rlp_file <- "data/mayoral_elections/raw/rlp/20251219_Heddesheimer_Direktwahlen 1994-2024.xlsx"
+# The 2025 edition of the StaLA workbook is the base; the 2026 edition adds the
+# elections it lacks, and pinned cell corrections fix its known errors (see
+# rlp_direktwahlen.R, shared with 01b).
+source("code/mayoral_elections/rlp_direktwahlen.R")
+rlp_file <- RLP_FILE_2025
 
 # RLP has 4 sheets with different municipality types and code formats.
 # All sheets share a multi-row-per-election format: row 1 = election info + first/winner
@@ -715,8 +721,6 @@ rlp_file <- "data/mayoral_elections/raw/rlp/20251219_Heddesheimer_Direktwahlen 1
 # Helper function to process one RLP sheet
 # Column positions vary slightly by sheet type (see mappings below).
 process_rlp_sheet <- function(rlp_file, sheet_name, sheet_type) {
-
-  raw <- read_excel(rlp_file, sheet = sheet_name, skip = 4, col_names = FALSE)
 
   # Column mapping depends on sheet type:
   # Landräte (12 relevant cols): 1=Wahltag, 2=Stichwahltag, 3=Schlüssel(numeric),
@@ -744,19 +748,25 @@ process_rlp_sheet <- function(rlp_file, sheet_name, sheet_type) {
     col_beteiligung_hw <- 11; col_beteiligung_sw <- 12
   }
 
+  raw <- rlp_read_sheet(sheet_name, list(
+    wahltag = col_wahltag, stichwahltag = col_stichwahltag, schluessel = col_schluessel,
+    kandidat = col_kandidat, ergebnis_hw = col_ergebnis_hw, ergebnis_sw = col_ergebnis_sw))
+
   # Remove completely blank rows
   raw <- raw[!apply(raw, 1, function(x) all(is.na(x))), ]
 
   if (nrow(raw) == 0) return(NULL)
 
-  # Assign a group ID: each row where col_wahltag is non-NA starts a new election group
-  # Group on the SCHLÜSSEL, not on the Wahltag. The VG sheet prints the Wahltag
-  # only on the FIRST election of a polling day, so grouping on
-  # cumsum(!is.na(Wahltag)) merged every election held that day into one group
-  # and the loop kept only the first — eight elections of 2010-11-07 (Altenahr,
-  # Treis-Karden, Rheinböllen, Monsheim, Wörrstadt, Eisenberg (Pfalz),
-  # Altenglan, Landau-Land) were silently dropped. Wahltag/Stichwahltag are
-  # filled forward so the later groups inherit the polling day.
+  # Assign a group ID: each row with a Schlüssel starts a new election group.
+  # Group on the SCHLÜSSEL, not on the Wahltag: grouping on
+  # cumsum(!is.na(Wahltag)) merged the eight Verbandsgemeinde elections whose
+  # Wahltag read as NA into the group before them, and the loop kept only the
+  # first (Altenahr, Treis-Karden, Rheinböllen, Monsheim, Wörrstadt, Eisenberg
+  # (Pfalz), Altenglan, Landau-Land). Their Wahltag was never missing: the source
+  # types it as text ("27.03.2011", with the Landtagswahl), which read_excel()
+  # turned into NA, and the fill-down below then dated them 07.11.2010 until
+  # October 2026. rlp_read_sheet() now parses those cells; the fill-down stays
+  # as a guard and changes nothing.
   raw$group_id <- cumsum(!is.na(raw[[col_schluessel]]))
   fill_down <- function(x) {
     if (all(is.na(x))) return(x)
@@ -783,12 +793,11 @@ process_rlp_sheet <- function(rlp_file, sheet_name, sheet_type) {
     # The Hauptwahl row must report the HAUPTWAHL's LEADER, not the eventual
     # winner. The source lists the eventual winner FIRST, whatever his first-round
     # placing, so first_row[[col_ergebnis_hw]] is often the RUNNER-UP's share (54
-    # groups; in 53 of them the eventual winner then took the Stichwahl). In the
-    # 54th there IS no Stichwahl: VG Leiningerland 07033207, 2025-06-15, where
-    # Rüttger (CDU) won outright with 53.4% and mayoral_unharm published
-    # winner_party = "SPD", winner_voteshare = 0.466 — a flat wrong winner.
-    # The eventual winner is still recoverable from mayoral_candidates, which
-    # keeps every candidate's HW and SW result.
+    # groups; in 53 of them the eventual winner then took the Stichwahl). The
+    # 54th, VG Leiningerland 2025-06-15, had no Stichwahl: the source lists Krauß
+    # (SPD) first but swaps the two shares, so this rule seated Rüttger (CDU)
+    # until the official result (Krauß 53.43 %) was pinned in
+    # metadata/rlp_source_corrections.csv on 2026-10-12.
     hw_shares <- suppressWarnings(as.numeric(group[[col_ergebnis_hw]]))
     lead_idx <- if (any(!is.na(hw_shares))) which.max(hw_shares) else 1L
     lead_row <- group[lead_idx, ]
@@ -858,9 +867,6 @@ if (!is.null(rlp_landraete)) {
   rlp_landraete <- rlp_landraete %>%
     mutate(
       ags = paste0("07", str_pad(schluessel, width = 3, side = "left", pad = "0"), "000"),
-      # Source error: the 2017-03-05 Rhein-Pfalz-Kreis row carries key 337
-      # (Suedliche Weinstrasse); Rhein-Pfalz-Kreis is 338
-      ags = if_else(ort_name == "Rhein-Pfalz-Kreis" & ags == "07337000", "07338000", ags),
       election_type = "Landratswahl"
     )
 }
@@ -923,6 +929,31 @@ rlp_combined <- bind_rows(rlp_landraete, rlp_ob, rlp_vg, rlp_vfr) %>%
     turnout, winner_party, winner_votes, winner_voteshare
   )
 
+# Elections only the 2026 edition has: the elected person and the share with
+# which they were elected. A runoff cycle gets a result-less Hauptwahl row
+# (turnout only), as the Brandenburg winner-only runoffs do.
+rlp_known <- rlp_combined %>%
+  distinct(ags, election_type) %>%
+  mutate(office = c("Landratswahl" = "landrat", "Oberbürgermeisterwahl" = "ob",
+                    "Bürgermeisterwahl" = "vfr", "VG-Bürgermeisterwahl" = "vg")[election_type])
+rlp_add <- rlp_additions_2026(rlp_known)
+rlp_add_rows <- bind_rows(
+  rlp_add %>% transmute(
+    ags, ags_name, state = "07", state_name = "Rheinland-Pfalz",
+    election_year = lubridate::year(election_date), election_date, election_type,
+    round = "hauptwahl", eligible_voters = NA_real_, number_voters = NA_real_,
+    valid_votes = NA_real_, invalid_votes = NA_real_, turnout = turnout_hw / 100,
+    winner_party = if_else(runoff, NA_character_, candidate_party), winner_votes = NA_real_,
+    winner_voteshare = if_else(runoff, NA_real_, pct / 100)),
+  rlp_add %>% filter(runoff) %>% transmute(
+    ags, ags_name, state = "07", state_name = "Rheinland-Pfalz",
+    election_year = lubridate::year(stichwahl_date), election_date = stichwahl_date, election_type,
+    round = "stichwahl", eligible_voters = NA_real_, number_voters = NA_real_,
+    valid_votes = NA_real_, invalid_votes = NA_real_, turnout = turnout_sw / 100,
+    winner_party = candidate_party, winner_votes = NA_real_, winner_voteshare = pct / 100))
+rlp_combined <- bind_rows(rlp_combined, rlp_add_rows)
+stopifnot(!anyDuplicated(rlp_combined[c("ags", "election_date", "round")]))
+
 cat("RLP: Processed", nrow(rlp_combined), "elections total\n")
 cat("  Years:", paste(range(rlp_combined$election_year, na.rm = TRUE), collapse = "-"), "\n")
 cat("  By type:\n")
@@ -951,6 +982,20 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
     "Freie Demokratische Partei" = "FDP",
     "Einzelwahlvorschlag" = "EB"
   )
+
+  # A page is a Samtgemeinde election only if its HEADING (the text above
+  # "Schlüssel:") names the Samtgemeindebürgermeister, or its key is a
+  # Samtgemeinde key (Kreis + 4nn: SG Wathlingen 2014 is headed plain
+  # "Bürgermeister/Bürgermeisterin"). Testing the whole page also matched a
+  # candidate's Beruf (Stuhr 2019: Holle, Frank, "Samtgemeindebürgermeister")
+  # and typed four town elections as SG-Bürgermeisterwahl, which the panel
+  # drops: Bad Fallingbostel 2006, Stuhr and Cuxhaven 2019, Rotenburg (Wümme)
+  # 2021.
+  ns_is_sg_page <- function(page, schluessel) {
+    head <- sub("(?s)Schlüssel:.*$", "", page, perl = TRUE)
+    grepl("Samtgemeindebürgermeister", head) |
+      (grepl("Samtgemeindebürgermeister", page) & grepl("^\\d{3}4\\d{2}$", schluessel))
+  }
 
   # --------------------------------------------------------------------------
   # Standard page parser (works for 2011, 2014, 2016, 2019, 2021, 2024, 2025
@@ -985,7 +1030,7 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
       grepl("Regionspräsident", page) ~ "Landratswahl",
       grepl("Landrat/Landrätin|Landrätin/Landrat|Landrätin / des Landrates", page) ~ "Landratswahl",
       grepl("Oberbürgermeister", page) ~ "Oberbürgermeisterwahl",
-      grepl("Samtgemeindebürgermeister", page) ~ "SG-Bürgermeisterwahl",
+      ns_is_sg_page(page, schluessel) ~ "SG-Bürgermeisterwahl",
       TRUE ~ "Bürgermeisterwahl"
     )
 
@@ -1343,7 +1388,7 @@ if (requireNamespace("pdftools", quietly = TRUE)) {
     election_type_raw <- case_when(
       grepl("Landrätin / des Landrates|Landrat", page) ~ "Landratswahl",
       grepl("Oberbürgermeister", page) ~ "Oberbürgermeisterwahl",
-      grepl("Samtgemeindebürgermeister", page) ~ "SG-Bürgermeisterwahl",
+      ns_is_sg_page(page, schluessel) ~ "SG-Bürgermeisterwahl",
       TRUE ~ "Bürgermeisterwahl"
     )
 
@@ -1960,9 +2005,13 @@ if (file.exists(mv_file)) {
                                "candidate_party", "candidate_name"))),
                       fill = TRUE)
 
+  if (!"flag_decisive_round_missing" %in% names(mv_raw)) mv_raw[, flag_decisive_round_missing := NA]
   mv_clean <- mv_raw %>%
     mutate(election_date = as.Date(election_date),
-           election_year = as.integer(election_year)) %>%
+           election_year = as.integer(election_year),
+           # a cycle that seated nobody (Rügen 2001-05: the Ja/Nein runoff missed
+           # the quorum of 25 % of the electorate; 00_mv_parse.py)
+           .no_winner = as.character(flag_decisive_round_missing) %in% "TRUE") %>%
     # Winner of each round = highest votes (rounds are kept as separate rows,
     # matching the SH/NI convention — hauptwahl and stichwahl have distinct dates).
     group_by(ags, election_date, round) %>%
@@ -1977,9 +2026,9 @@ if (file.exists(mv_file)) {
       valid_votes = as.numeric(valid_votes),
       invalid_votes = as.numeric(invalid_votes),
       turnout = as.numeric(turnout),
-      winner_party = candidate_party,
-      winner_votes = as.numeric(candidate_votes),
-      winner_voteshare = as.numeric(candidate_voteshare)
+      winner_party = if_else(.no_winner, NA_character_, candidate_party),
+      winner_votes = if_else(.no_winner, NA_real_, as.numeric(candidate_votes)),
+      winner_voteshare = if_else(.no_winner, NA_real_, as.numeric(candidate_voteshare))
     )
 
   cat("Mecklenburg-Vorpommern: Processed", nrow(mv_clean), "round-results across",
@@ -2004,18 +2053,35 @@ if (file.exists(mv_file)) {
 #     parsed from the raw Info/Daten files by 00_th_mayoral_parse.py.
 # BM (Gemeinden) and OB (kreisfreie Städte) have disjoint AGS. Here we aggregate
 # to winner-level per round. Landrat stays in the landrat pipeline.
+# 00_th_tls_reports_parse.py merges both files with the TLS Kommunalwahl
+# reports 2000/2004/2010 into th_mayoral_tls_augmented.csv: the same rows plus
+# grafted names, plus the 2004 rounds of the 381 Gemeinden the database lacks,
+# five 2000 runoffs, 63 winner-only elections (1999-2004) and the 300 elections
+# of 06.06.2010 the database lacks. Read that file
+# when it exists (the TLS reports are gitignored).
 
 cat("\n=== Processing Thüringen mayoral elections (BM + OB) ===\n")
 
 th_files <- c("data/mayoral_elections/raw/thueringen_bm/th_bm_scraped.csv",
               "data/mayoral_elections/raw/thueringen/th_ob_parsed.csv")
+th_aug <- "data/mayoral_elections/raw/thueringen_bm/th_mayoral_tls_augmented.csv"
 th_have <- th_files[file.exists(th_files)]
+if (file.exists(th_aug)) th_have <- th_aug
 
 if (length(th_have) > 0) {
   th_raw <- bind_rows(lapply(th_have, function(f)
     fread(f, encoding = "UTF-8",
           colClasses = list(character = c("ags", "ags_name", "state", "state_name",
             "election_date", "candidate_party", "candidate_name")))))
+  if (identical(th_have, th_aug)) {
+    # stale if the database was re-scraped after the merge
+    n_scraped <- nrow(fread(th_files[1], select = "ags"))
+    if (sum(th_raw$source == "wahlen.thueringen.de") != n_scraped)
+      stop("th_mayoral_tls_augmented.csv is out of date: re-run 00_th_tls_reports_parse.py")
+  }
+  # Eisenach 2018: the database repeats an OB election of the OB file
+  source("code/mayoral_elections/th_ob_overlap.R")
+  th_raw <- drop_th_db_ob_repeats(th_raw)
 
   # The database writes a named candidate's Wahlvorschlag as "Nachname, Vorname"
   # or "Nachname, Vorname (Träger)"; winner_party takes the Träger, or NA when
@@ -2024,11 +2090,14 @@ if (length(th_have) > 0) {
   from_db <- th_raw$source == "wahlen.thueringen.de"
   th_raw$candidate_party[from_db] <- split_th_wahlvorschlag(th_raw$candidate_party[from_db])$party
 
+  # In the 2009-2010 no-runoff window the top NAMED candidate won, never the
+  # pooled write-ins ("Weitere Personen"); Stage 0 marks that row is_winner_src.
+  if (!"is_winner_src" %in% names(th_raw)) th_raw$is_winner_src <- ""
   th_clean <- th_raw %>%
     mutate(election_date = as.Date(election_date),
            election_year = as.integer(election_year)) %>%
     group_by(ags, election_date, round) %>%
-    arrange(desc(candidate_votes)) %>%
+    arrange(desc(is_winner_src %in% "TRUE"), desc(candidate_votes)) %>%
     slice(1) %>%
     ungroup() %>%
     transmute(
@@ -2039,15 +2108,19 @@ if (length(th_have) > 0) {
       valid_votes = as.numeric(valid_votes),
       invalid_votes = as.numeric(invalid_votes),
       turnout = as.numeric(turnout),
-      winner_party = candidate_party,
+      winner_party = na_if(candidate_party, ""),
       winner_votes = as.numeric(candidate_votes),
       winner_voteshare = as.numeric(candidate_voteshare)
     )
 
   # The elected person of a declined round ("Wahl nicht angenommen") was never
   # seated, so that round has no winner (see the Thüringen block in 01b).
+  # So did the four write-in elections of 27.06.2004 in which nobody won a
+  # majority ("Wiederholungswahl erforderlich", TLS 20421), flagged in Stage 0.
+  th_failed <- if ("flag_decisive_round_missing" %in% names(th_raw))
+    as.logical(th_raw$flag_decisive_round_missing) %in% TRUE else FALSE
   th_declined <- paste(th_raw$ags, th_raw$election_date, th_raw$round)[
-    from_db & grepl("nicht angenommen", th_raw$winner_name_raw)]
+    (from_db & grepl("nicht angenommen", th_raw$winner_name_raw)) | th_failed]
   di <- paste(th_clean$ags, th_clean$election_date, th_clean$round) %in% th_declined
   th_clean$winner_party[di] <- NA
   th_clean$winner_votes[di] <- NA
@@ -2166,9 +2239,22 @@ if (file.exists(bw_file)) {
 # block consumes ONE candidate-level long file. If only the portal scrape
 # exists, fall back to it (current cycle only, ~2018-2026).
 #
-# The amtsangehörige Gemeinden (ehrenamtliche BM, elected on Kommunalwahl day)
-# are not part of either source. Here we aggregate to winner-level per round,
-# like MV/TH.
+# HISTORICAL + EHRENAMTLICHE (October 2026): bb_afs_parsed.csv, built by
+# 00_bb_afs_reports_parse.py from the LDS/AfS Statistische Berichte B VII 3-6,
+# adds the hauptamtliche elections 1993-2008 and the ehrenamtliche Bürgermeister
+# of the amtsangehörige Gemeinden elected on the general Kommunalwahl days
+# 1998-2024. Most of its rounds are winner-only (votes and counts NA). Rounds
+# that seated nobody (flag_decisive_round_missing: 1993 runoffs below the quorum,
+# 1998 single candidates rejected) keep their counts but no winner. Those rows
+# carry the AGS of the report year, not the 2026 Gebietsstand.
+#
+# HAUPTAMTLICHE 2004-2013 (October 2026): bb_lwl_scans_parsed.csv, built by
+# 00_bb_lwl_scans_parse.py from the Gemeinden's result reports in the
+# Landeswahlleiter's archive (scans sent 15.10.2026), adds the full results of
+# the hauptamtliche elections the workbook lacks (all of 2004-2009, part of
+# 2010-2012). Elections the workbook holds are left out there; the B VII 3-6
+# parser drops its winner-only copies of elections held here. Rows carry the
+# AGS of the election day.
 #
 # BOUNDARIES: the Landeswahlleiter back-casts every result onto the CURRENT
 # Gebietsstand (01.01.2026), so — as in Rheinland-Pfalz — BB rows are already
@@ -2176,29 +2262,99 @@ if (file.exists(bw_file)) {
 
 cat("\n=== Processing Brandenburg mayoral elections ===\n")
 
+# bb_lwl_parsed.csv names every Bewerber and is gitignored (user decision
+# 2026-10-19); a clone without it reads the tracked name-stripped copy that 01b
+# writes from it (losers unnamed, rounds paired by pair_key), and only then the
+# portal scrape.
 bb_file <- "data/mayoral_elections/raw/brandenburg/bb_lwl_parsed.csv"
+bb_public_file <- "data/mayoral_elections/raw/brandenburg/bb_lwl_parsed_public.csv"
+if (!file.exists(bb_file) && file.exists(bb_public_file)) bb_file <- bb_public_file
 if (!file.exists(bb_file)) {
   bb_file <- "data/mayoral_elections/raw/brandenburg/bb_bm_parsed.csv"
 }
+bb_afs_file <- "data/mayoral_elections/raw/brandenburg/bb_afs_parsed.csv"
+bb_scan_file <- "data/mayoral_elections/raw/brandenburg/bb_lwl_scans_parsed.csv"
+bb_arc_file <- "data/mayoral_elections/raw/brandenburg/bb_lwl_archive_parsed.csv"
+bb_arc_sup_file <- "data/mayoral_elections/raw/brandenburg/bb_lwl_archive_supersedes.csv"
+# The Landeswahlleiter's archived result pages (00_bb_lwl_archive_parse.py)
+# replace B VII 3-6 elections held winner-only; the B VII 3-6 rounds they replace
+# are listed in bb_lwl_archive_supersedes.csv and dropped here. Only together
+# with the archive file, so a list without it can never delete rounds.
+bb_drop_superseded <- function(d) {
+  if (!file.exists(bb_arc_file)) return(d)
+  if (!file.exists(bb_arc_sup_file)) stop(bb_arc_file, " exists without ", bb_arc_sup_file)
+  sup <- fread(bb_arc_sup_file, colClasses = "character")
+  n0 <- nrow(d)
+  d <- d[!sup, on = c("ags", "election_date", "round")]
+  stopifnot(n0 - nrow(d) == nrow(sup))      # every listed round existed, once
+  d
+}
 
 if (file.exists(bb_file)) {
-  bb_raw <- fread(bb_file, encoding = "UTF-8",
+  bb_read <- function(f) fread(f, encoding = "UTF-8",
                   colClasses = list(character = c("ags", "ags_name", "state",
                     "state_name", "election_date", "candidate_party",
                     "candidate_name", "round")))
+  bb_raw <- bb_read(bb_file)
   # Portal-only rows carry no elected-person record; rank stands in for them.
   if (!"is_winner" %in% names(bb_raw)) bb_raw[, is_winner := NA]
+  # A mayor chosen by the Gemeindevertretung is no direct-election round: the
+  # winner-only council records of the B VII 3-6 reports exist only in
+  # mayoral_candidates (flag_elected_by_council), where the panel uses them to
+  # end the previous mayor's term. A failed popular vote that preceded a council
+  # choice (result reports 2004-2013: runoff leader below the 15 % quorum) keeps
+  # its rounds here; flag_decisive_round_missing gives them no winner.
+  for (f in c(bb_afs_file, bb_scan_file, bb_arc_file)[file.exists(c(bb_afs_file, bb_scan_file, bb_arc_file))]) {
+    bb_add <- bb_read(f)
+    if (f == bb_afs_file) bb_add <- bb_drop_superseded(bb_add)
+    bb_add <- bb_add[!(as.character(elected_by_council) %in% "TRUE" &
+                       as.character(winner_only) %in% "TRUE")]
+    bb_raw <- rbindlist(list(bb_raw, bb_add), fill = TRUE)
+  }
+  if (!"flag_decisive_round_missing" %in% names(bb_raw)) {
+    bb_raw[, flag_decisive_round_missing := FALSE]
+  }
+  if (!"first_round_no_result" %in% names(bb_raw)) bb_raw[, first_round_no_result := NA]
+  if (!"pair_key" %in% names(bb_raw)) bb_raw[, pair_key := NA_character_]
+  source("code/shared/bb_own_name_label.R")
 
   bb_clean <- bb_raw %>%
     mutate(election_date = as.Date(election_date),
            election_year = as.integer(election_year),
-           .is_winner = as.logical(is_winner)) %>%
+           .is_winner = as.logical(is_winner),
+           # a round that seated nobody, or the result-less first round that the
+           # reports date for a winner-only runoff cycle
+           .no_winner = as.logical(flag_decisive_round_missing) %in% TRUE |
+             as.character(first_round_no_result) %in% "TRUE") %>%
     group_by(ags, election_date, round) %>%
     # Prefer the source's own winner flag (it survives Dr. titles and ties);
     # otherwise the top-voted candidate of THIS round.
     arrange(desc(coalesce(.is_winner, FALSE)), desc(candidate_votes)) %>%
     slice(1) %>%
     ungroup() %>%
+    # A Hauptwahl leader who lost the runoff is a losing candidate: an own-name
+    # label of theirs becomes the plain list type, as in mayoral_candidates
+    # (code/shared/bb_own_name_label.R). Person = pair_key, else the name.
+    mutate(.key = coalesce(na_if(as.character(pair_key), ""),
+                           tolower(trimws(as.character(candidate_name))))) %>%
+    (function(top) {
+      sw <- top %>% filter(round == "stichwahl") %>% transmute(ags, .sw_date = election_date, .sw_key = .key)
+      pairs <- sw %>%
+        inner_join(top %>% filter(round == "hauptwahl") %>% transmute(ags, .hw_date = election_date),
+                   by = "ags", relationship = "many-to-many") %>%
+        mutate(.gap = as.numeric(.sw_date - .hw_date)) %>%
+        filter(.gap >= 0, .gap <= 120) %>%
+        group_by(ags, .sw_date) %>% slice_min(.gap, n = 1, with_ties = FALSE) %>% ungroup() %>%
+        group_by(ags, .hw_date) %>% slice_min(.sw_date, n = 1, with_ties = FALSE) %>% ungroup()
+      top %>%
+        left_join(pairs %>% transmute(ags, election_date = .hw_date, .hw_sw_key = .sw_key),
+                  by = c("ags", "election_date")) %>%
+        mutate(.lost = round == "hauptwahl" & !is.na(.hw_sw_key) & .key != .hw_sw_key,
+               candidate_party = if_else(.lost, bb_generic_own_label(candidate_party,
+                                           as.character(candidate_last_name),
+                                           as.character(candidate_first_name)),
+                                         candidate_party))
+    })() %>%
     transmute(
       ags, ags_name, state, state_name, election_year, election_date,
       election_type, round,
@@ -2207,9 +2363,10 @@ if (file.exists(bb_file)) {
       valid_votes = as.numeric(valid_votes),
       invalid_votes = as.numeric(invalid_votes),
       turnout = as.numeric(turnout),
-      winner_party = candidate_party,
-      winner_votes = as.numeric(candidate_votes),
-      winner_voteshare = as.numeric(candidate_voteshare)
+      # a round that seated nobody, or whose result is unknown, has no winner
+      winner_party = if_else(.no_winner, NA_character_, candidate_party),
+      winner_votes = if_else(.no_winner, NA_real_, as.numeric(candidate_votes)),
+      winner_voteshare = if_else(.no_winner, NA_real_, as.numeric(candidate_voteshare))
     )
 
   cat("Brandenburg: Processed", nrow(bb_clean), "round-results across",
@@ -2592,6 +2749,11 @@ cat("\n=== Combining all mayoral election data ===\n")
 
 # Combine all states
 mayoral_unharm <- bind_rows(all_mayoral_data)
+# fread() leaves RFC-4180 doubled quotes un-collapsed in a quoted field
+# ('LV ""Wir für X""' for 'LV "Wir für X"'; Bayern, Brandenburg and
+# Sachsen-Anhalt labels). 03's norm_party() already collapses them for its
+# comparisons; collapse them in the published label too (audit 2026-10-19).
+mayoral_unharm$winner_party <- gsub('""', '"', mayoral_unharm$winner_party, fixed = TRUE)
 # Only Sachsen-Anhalt's source supplies flag_shared_ags; make sure the column
 # exists even if that block did not run, so the select() below never errors.
 if (!"flag_shared_ags" %in% names(mayoral_unharm)) mayoral_unharm$flag_shared_ags <- NA

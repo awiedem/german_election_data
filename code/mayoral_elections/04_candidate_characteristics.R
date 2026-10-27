@@ -500,6 +500,31 @@ if (!file.exists(restricted_in)) {
   fwrite(cand_r, "data/mayoral_elections/final_restricted/mayoral_candidates_restricted.csv")
   cat("\nSaved mayoral_candidates_restricted.{rds,csv} with characteristics columns\n")
 
+  # Bayern winners before 2026: their names come from the LfStat registers and
+  # candidate lists, which may not be redistributed (16.10.2026), so the public
+  # file has no name to derive a gender from. The gender itself IS published
+  # (user decision 2026-10-16): copy the twin's gender columns onto those rows.
+  # Name origin and migration background stay withheld. Both frames come from
+  # 01b in the same row order; the key columns must agree row by row.
+  key_cols <- c("ags", "election_date", "election_type",
+                "candidate_votes_hw", "candidate_votes_sw", "is_winner")
+  # candidate_party too, except on Brandenburg losers' rows, where an own-name
+  # label is generic in the public file only (code/shared/bb_own_name_label.R)
+  bb_lab <- cand$state %in% "12" & !(cand$is_winner %in% TRUE)
+  stopifnot(nrow(cand_r) == nrow(cand),
+            all(vapply(key_cols, function(k) identical(cand[[k]], cand_r[[k]]), logical(1))),
+            identical(cand$candidate_party[!bb_lab], cand_r$candidate_party[!bb_lab]))
+  gender_cols <- c("candidate_gender", "candidate_gender_source",
+                   "candidate_gender_prob", "candidate_gender_method")
+  by_g <- cand$state == "09" & cand$is_winner %in% TRUE &
+    cand$election_date < as.Date("2026-01-01") &
+    is.na(cand$candidate_last_name) & !is.na(cand_r$candidate_gender)
+  for (cl in gender_cols) cand[[cl]][by_g] <- cand_r[[cl]][by_g]
+  write_rds(cand, "data/mayoral_elections/final/mayoral_candidates.rds", compress = "gz")
+  fwrite(cand, "data/mayoral_elections/final/mayoral_candidates.csv")
+  cat(sprintf("Bayern winners before 2026: gender published for %d rows whose names stay restricted\n",
+              sum(by_g)))
+
   st_l <- substr(cand_r$ags, 1, 2) == "15" & !(cand_r$is_winner %in% TRUE)
   cat(sprintf("ST non-winners: %d rows, %d named, %d with gender, %d with name origin\n",
               sum(st_l), sum(st_l & !is.na(cand_r$candidate_last_name)),

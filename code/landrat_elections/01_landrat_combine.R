@@ -55,7 +55,7 @@ split_name_party <- function(s) {
 # sources use every order: "Last, First" (TH, SN, most ST), "First Last" (11 of
 # 14 BB Kreise), a title before either part or as a third field ("Dr. Groß,
 # Markus", "Lenk, Dr. Tassilo", "Ermrich, Michael, Dr."), and name particles on
-# either side ("Wilfried von Aswegen", "Woedtke, von Frank"). Titles are removed
+# either side ("Erika von Muster", "Muster, von Max"; invented). Titles are removed
 # with the same rule as strip_name_titles() in 01b_mayoral_candidates.R.
 strip_name_titles <- function(x) {
   x <- as.character(x)
@@ -73,7 +73,7 @@ split_person_name <- function(x) {
   rest <- str_replace(rest, "(,\\s*(Prof\\.|Dr\\.)(\\s*(Prof\\.|Dr\\.))*)+\\s*$", "")
   l <- strip_name_titles(str_extract(x[comma], "^[^,]+"))
   f <- strip_name_titles(rest)
-  pm <- str_match(f, particle)                 # "Woedtke, von Frank" -> "von Woedtke"
+  pm <- str_match(f, particle)                 # "Muster, von Max" -> "von Muster" (invented)
   moved <- !is.na(pm[, 1])
   l[moved] <- paste(pm[moved, 2], l[moved])
   f[moved] <- str_trim(str_replace(f[moved], particle, ""))
@@ -101,7 +101,7 @@ parse_de_num <- function(x) {
   suppressWarnings(as.numeric(x))
 }
 
-# ---- Sachsen-Anhalt and Thüringen anonymisation ----------------------------
+# ---- Bayern, Brandenburg, Sachsen-Anhalt and Thüringen anonymisation -------
 # VERBATIM COPY of anonymise_losers() and withheld_loser_states in
 # code/mayoral_elections/01b_mayoral_candidates.R (~line 2717). THE TWO COPIES
 # MUST STAY IN SYNC. It is needed here as well because this script re-binds new
@@ -126,7 +126,26 @@ parse_de_num <- function(x) {
 # elected person from then on. The official OB and Landrat files name losers
 # too. GERDA publishes the elected person and keeps the others in the
 # restricted twin.
-withheld_loser_states <- c("15", "16")   # Sachsen-Anhalt, Thüringen
+#
+# Bayern (09) since 2026-10-07: "Wahlen seit 1945" names nobody, and the only
+# source of losing candidates' names is the LfStat candidate lists (B VII 3-2,
+# 00_by_bewerber_parse.py). User decision: elected persons public, everyone
+# else in the restricted twin only. Since 16.10.2026 the elected persons' names
+# from the LfStat registers and lists are withheld as well (LfStat refusal); only
+# the 2026 Mandatsträger names stay public.
+#
+# Brandenburg (12) since 2026-10-19 (user decisions 2026-10-16 and 2026-10-19):
+# every losing candidate, whatever the source. The B VII 3-6 reports and the
+# 2004-2013 result reports were restricted from the start (name_restricted);
+# the Landeswahlleiter workbook of 31.07.2026, supplied for research under
+# § 25 BbgDSG, its portal fallback and the Landrat portal pages now follow. The
+# raw workbook, its parsed CSVs and the Landrat pages are gitignored; tracked
+# name-stripped copies (bb_lwl_parsed_public.csv, bb_landrat_parsed_public.csv)
+# rebuild the public files in a clone without them. The Sachsen-Anhalt Landrat
+# raw files (lr*.csv, ST_2015_*.html) name losing candidates too and follow the
+# same pattern since 2026-10-27 (user decision): gitignored, with the tracked
+# copy st_landrat_parsed_public.csv.
+withheld_loser_states <- c("09", "12", "15", "16")   # Bayern, Brandenburg, Sachsen-Anhalt, Thüringen
 st_personal_cols <- c("candidate_name", "candidate_last_name",
                       "candidate_first_name", "candidate_title",
                       "candidate_gender", "candidate_birth_year",
@@ -140,7 +159,7 @@ anonymise_losers <- function(df, label) {
   for (cl in intersect(st_personal_cols, names(df))) {
     df[[cl]][idx] <- NA
   }
-  cat("  ", label, ": anonymised ", sum(idx), " ST/TH non-winner rows (",
+  cat("  ", label, ": anonymised ", sum(idx), " BY/BB/ST/TH non-winner rows (",
       n_before, " carried a name)\n", sep = "")
   df
 }
@@ -336,10 +355,11 @@ parse_st <- function(raw_dir) {
     df_lk <- df_lk[!df_lk$kreis5 %in% c("15001", "15002", "15003"), ]
     if (nrow(df_lk) == 0) return(NULL)
 
-    # For each Kreis: aggregate
-    n_cols <- ncol(df)
+    # For each Kreis: aggregate. Count only the source fields, not the kreis5
+    # helper column added above.
+    n_cols <- ncol(df) - 1L
     candidate_col_pairs <- list()
-    for (k in 1:11) {
+    for (k in seq_len((n_cols - triplet_start + 1) %/% 3)) {
       n_idx <- triplet_start + (k - 1) * 3 + 1
       d_idx <- triplet_start + (k - 1) * 3 + 2
       if (d_idx > n_cols) break
@@ -412,8 +432,17 @@ parse_st <- function(raw_dir) {
     # 2014+ schema: 1=ERGART, 2=DATUM, 3-5=LEER, 6=Satzart, 7=Schlüsselnummer, 8=NAME, 9-12=A/B/C/D, then triplets
     raw <- iconv(readLines(f, warn = FALSE), from = "ISO-8859-1", to = "UTF-8")
     if (length(raw) < 2) next
+    # Size the table from the longest line. read.csv2() counts the fields of
+    # the first five lines only and wraps every longer line onto a new row.
+    # lr07dat3.csv lists 4 to 11 candidates per Kreis and its first lines hold
+    # at most 8, so the Burgenlandkreis rows lost candidates 9-11 -- among them
+    # Harri Reiche, elected with 51.2 % -- and the 13.8 % runner-up was seated
+    # (data audit 2026-10-12).
+    n_fields <- max(count.fields(textConnection(raw[-1]), sep = ";",
+                                 quote = "\"", comment.char = ""), na.rm = TRUE)
     df <- read.csv2(text = raw[-1], stringsAsFactors = FALSE,
-                    header = FALSE, check.names = FALSE)
+                    header = FALSE, check.names = FALSE, fill = TRUE,
+                    col.names = paste0("V", seq_len(n_fields)))
 
     # Detect schema by checking column 6: if it's all numeric/NA → 2007 schema.
     # In 2014+ schema, col 6 has letters ("KRS", "GEM", "AS", etc.).
@@ -524,6 +553,17 @@ parse_st <- function(raw_dir) {
            paste(unique(st_all$ags[placeholder][is.na(fixed)]), collapse = ", "))
     }
     st_all$ags_name[placeholder] <- fixed
+  }
+
+  # Every round's candidate votes must add up to its valid votes. A dropped
+  # candidate column passes every other check (see the read.csv2() note above).
+  off <- st_all %>%
+    group_by(ags, election_date, round) %>%
+    summarise(cand = sum(candidate_votes), valid = first(valid_votes), .groups = "drop") %>%
+    filter(is.na(cand) | is.na(valid) | cand != valid)
+  if (nrow(off) > 0) {
+    stop("ST Landrat: candidate votes do not add up to the valid votes in ",
+         paste(off$ags, off$election_date, off$round, off$cand, off$valid, collapse = "; "))
   }
   st_all
 }
@@ -1180,6 +1220,64 @@ apply_elected_by_council <- function(df, council) {
   df
 }
 
+# ---- Sachsen-Anhalt: runoffs not on file -------------------------------------
+# A Landrat in Sachsen-Anhalt needs more than half of the valid votes; failing
+# that, the two leaders meet in a runoff. lr07dat3.csv holds only the first
+# round of 22.04.2007 and the 2007 download offered no runoff file (see
+# 00_st_scrape.R), so five Kreise have a Hauptwahl without a majority and no
+# Stichwahl (data audit 2026-10-12, LC-05). Seating the round leader would
+# publish a Landrat the voters may not have elected. Same representation as the
+# mayoral pipeline's flag_decisive_round_missing:
+#   flag_decisive_round_missing = TRUE on every row of the cycle, in both files
+#     (FALSE everywhere else, never NA);
+#   landrat_candidates: is_winner = NA for all candidates of the cycle, so the
+#     anonymisation below withholds every name of it (either leader may have
+#     lost the runoff); the restricted twin keeps them;
+#   landrat_unharm: the Hauptwahl row keeps its round leader, like every
+#     Hauptwahl that went to a runoff.
+# Pinned: any other ST Hauptwahl without a majority and without a runoff stops
+# the run, so a newly missing round is looked at instead of flagged unseen.
+st_missing_runoff_expected <- paste(
+  c("15082000", "15087000", "15088000", "15089000", "15091000"), "2007-04-22")
+
+st_missing_runoff_cycles <- function(st_long) {
+  hw <- st_long %>%
+    filter(round == "hauptwahl") %>%
+    group_by(ags, election_date) %>%
+    summarise(top = max(candidate_votes), valid = first(valid_votes), .groups = "drop") %>%
+    filter(2 * top <= valid)
+  sw <- st_long %>% filter(round == "stichwahl") %>% distinct(ags, sw_date = election_date)
+  missing <- hw %>%
+    left_join(sw, by = "ags", relationship = "many-to-many") %>%
+    mutate(gap = as.numeric(sw_date - election_date)) %>%
+    group_by(ags, election_date) %>%
+    summarise(has_sw = any(gap > 0 & gap < 60, na.rm = TRUE), .groups = "drop") %>%
+    filter(!has_sw) %>%
+    select(ags, election_date)
+  found <- paste(missing$ags, missing$election_date)
+  if (!setequal(found, st_missing_runoff_expected)) {
+    stop("ST Landrat: Hauptwahlen without a majority and without a runoff changed. ",
+         "Expected: ", paste(st_missing_runoff_expected, collapse = ", "),
+         ". Found: ", paste(found, collapse = ", "))
+  }
+  missing
+}
+
+apply_decisive_round_missing <- function(df, cycles) {
+  df <- df %>%
+    select(-any_of("flag_decisive_round_missing")) %>%
+    left_join(cycles %>% mutate(.missing = TRUE), by = c("ags", "election_date")) %>%
+    mutate(flag_decisive_round_missing = coalesce(.missing, FALSE)) %>%
+    select(-.missing)
+  if ("election_date_sw" %in% names(df)) {
+    df <- df %>% mutate(is_winner = if_else(flag_decisive_round_missing, NA, is_winner))
+  }
+  df <- df %>% relocate(flag_decisive_round_missing, .before = flag_elected_by_council)
+  cat("  flag_decisive_round_missing:", sum(df$flag_decisive_round_missing), "rows",
+      sprintf("(%d cycle(s))", nrow(cycles)), "\n")
+  df
+}
+
 # ============================================================================
 # Combine all
 # ============================================================================
@@ -1233,6 +1331,9 @@ is_scraper_owned <- function(df) {
 existing <- if (file.exists("data/landrat_elections/final/landrat_unharm.rds")) {
   readRDS("data/landrat_elections/final/landrat_unharm.rds")
 } else NULL
+if (!is.null(existing) && !"party_family" %in% names(existing)) {
+  stop("landrat_unharm has no party_family: run 01b_mayoral_candidates.R after 01_mayoral_unharm.R")
+}
 # Defensive filter: drop any kreisfreie-Stadt rows that may have leaked from
 # prior runs of this script (before the ST parser correctly excluded them).
 if (!is.null(existing)) {
@@ -1247,11 +1348,73 @@ if (!is.null(existing)) {
 }
 cat("Existing landrat_unharm rows:", nrow(existing %||% data.frame(x = NA)), "\n")
 
+# The Sachsen-Anhalt and Brandenburg raw files name every candidate and are
+# gitignored (user decisions 2026-10-27 and 2026-10-19). A tracked copy of each
+# state's parse (st_landrat_parsed_public.csv, bb_landrat_parsed_public.csv),
+# written at the end of this script from a full parse, holds the same rows with
+# only the elected persons named and an opaque in-cycle pair key
+# (write_landrat_public() below). A clone without the raw files builds the
+# state from it, plus any election scraped since that the copy does not hold.
+read_landrat_public <- function(f) {
+  if (!file.exists(f)) return(NULL)
+  d <- fread(f, encoding = "UTF-8", na.strings = "",
+             colClasses = list(character = c("ags", "ags_name", "state", "state_name",
+                                             "election_date", "election_type", "round",
+                                             "candidate_name", "candidate_party", "pair_key")))
+  if (!"share_printed" %in% names(d)) d$share_printed <- NA_real_
+  as_tibble(d) %>%
+    mutate(
+      election_date = as.Date(election_date),
+      election_year = year(election_date),
+      across(c(candidate_votes, eligible_voters, number_voters, valid_votes, invalid_votes,
+               share_printed), as.numeric),
+      # recomputed exactly as the parsers compute them, not read back as text;
+      # share_printed is a percentage the source prints instead (ST 2015)
+      candidate_voteshare = if_else(!is.na(share_printed), share_printed / 100,
+                                    if_else(!is.na(valid_votes) & valid_votes > 0,
+                                            candidate_votes / valid_votes, NA_real_)),
+      turnout = ifelse(!is.na(eligible_voters) & eligible_voters > 0,
+                       number_voters / eligible_voters, NA_real_)
+    ) %>%
+    select(candidate_name, candidate_party, candidate_votes, candidate_voteshare, ags,
+           ags_name, state, state_name, election_year, election_date, election_type,
+           round, eligible_voters, number_voters, valid_votes, invalid_votes, turnout,
+           .pub_key = pair_key)
+}
+# A full parse holds every round the tracked copy holds; otherwise the copy is
+# used, plus parsed elections it does not hold, so no cycle mixes the two.
+with_public_copy <- function(parsed, pub, label) {
+  round_key <- function(d) paste(d$ags, d$election_date, d$round)
+  full <- !is.null(parsed) && (is.null(pub) || all(round_key(pub) %in% round_key(parsed)))
+  if (full || is.null(pub)) return(list(data = parsed, full = full))
+  new_rows <- NULL
+  if (!is.null(parsed)) {
+    near <- parsed %>% distinct(ags, election_date) %>%
+      inner_join(pub %>% distinct(ags, x_d = election_date), by = "ags",
+                 relationship = "many-to-many") %>%
+      filter(abs(as.numeric(election_date - x_d)) < 60) %>%
+      distinct(ags, election_date)
+    new_rows <- parsed %>% anti_join(near, by = c("ags", "election_date"))
+  }
+  cat(label, ": the raw files are incomplete; using the tracked name-stripped copy (",
+      nrow(pub), "rows ) plus", if (is.null(new_rows)) 0 else nrow(new_rows),
+      "parsed rows of elections it does not hold\n")
+  list(data = bind_rows(pub, new_rows), full = FALSE)
+}
+
 st_data <- parse_st("data/landrat_elections/raw/sachsen_anhalt")
 cat("ST parsed rows (candidate-level):", nrow(st_data %||% data.frame(x = NA)), "\n")
+st_public_file <- "data/landrat_elections/raw/sachsen_anhalt/st_landrat_parsed_public.csv"
+st_src <- with_public_copy(st_data, read_landrat_public(st_public_file), "ST")
+st_data <- st_src$data
+st_full_parse <- st_src$full
 
 bb_data <- parse_bb("data/landrat_elections/raw/brandenburg")
 cat("BB parsed rows (candidate-level):", nrow(bb_data %||% data.frame(x = NA)), "\n")
+bb_public_file <- "data/landrat_elections/raw/brandenburg/bb_landrat_parsed_public.csv"
+bb_src <- with_public_copy(bb_data, read_landrat_public(bb_public_file), "BB")
+bb_data <- bb_src$data
+bb_full_parse <- bb_src$full
 
 sn_data <- parse_sn("data/landrat_elections/raw/sachsen")
 cat("SN parsed rows (candidate-level):", nrow(sn_data %||% data.frame(x = NA)), "\n")
@@ -1261,6 +1424,27 @@ cat("TH parsed rows (candidate-level):", nrow(th_data %||% data.frame(x = NA)), 
 
 sl_extra_data <- parse_sl_extra_cached()
 cat("SL extra parsed rows (candidate-level):", nrow(sl_extra_data %||% data.frame(x = NA)), "\n")
+
+# The HW-SW pairing key of the wide build below: normalised surname + given
+# name; a key missing, or not unique within some round of its Kreis, falls back
+# to the verbatim name in every round of that Kreis. A row from a tracked
+# Sachsen-Anhalt or Brandenburg copy uses the opaque key it was written with
+# (.pub_key).
+landrat_pair_key <- function(df) {
+  pk <- split_person_name(df$candidate_name)
+  key <- if_else(is.na(pk$last), NA_character_,
+                 str_squish(tolower(paste(pk$last, coalesce(pk$first, "")))))
+  pub <- if (".pub_key" %in% names(df)) df$.pub_key else rep(NA_character_, nrow(df))
+  amb <- tibble(ags = df$ags, election_date = df$election_date, round = df$round,
+                key = key) %>%
+    filter(!is.na(key), is.na(pub)) %>%
+    count(ags, election_date, round, key) %>%
+    filter(n > 1) %>%
+    distinct(ags, key)
+  is_amb <- !is.na(key) & paste(df$ags, key) %in% paste(amb$ags, amb$key)
+  key <- if_else(is.na(key) | is_amb, paste0("<verbatim>", df$candidate_name), key)
+  if_else(!is.na(pub), paste0("<pub>", pub), key)
+}
 
 # Build winner-level summaries (one row per ags+date+round) for landrat_unharm
 build_unharm <- function(cand_df) {
@@ -1276,13 +1460,13 @@ build_unharm <- function(cand_df) {
       turnout = first(turnout),
       # Winner: use candidate_votes when available, fall back to candidate_voteshare
       # for SN 2002 (winner-only file with no vote counts).
-      winner_party = {
-        if (any(!is.na(candidate_votes))) {
-          candidate_party[which.max(candidate_votes)]
-        } else if (any(!is.na(candidate_voteshare))) {
-          candidate_party[which.max(candidate_voteshare)]
-        } else NA_character_
-      },
+      x_wi = if (any(!is.na(candidate_votes))) {
+        which.max(candidate_votes)
+      } else if (any(!is.na(candidate_voteshare))) {
+        which.max(candidate_voteshare)
+      } else NA_integer_,
+      winner_party = if (is.na(x_wi)) NA_character_ else candidate_party[x_wi],
+      x_wname = if (is.na(x_wi)) NA_character_ else candidate_name[x_wi],
       winner_votes = if (any(!is.na(candidate_votes))) {
         max(candidate_votes, na.rm = TRUE)
       } else NA_real_,
@@ -1299,11 +1483,46 @@ build_unharm <- function(cand_df) {
         max(candidate_voteshare, na.rm = TRUE)
       } else NA_real_,
       .groups = "drop"
-    )
+    ) %>%
+    # party family of the winner's list (code/shared/party_family.R); the
+    # winner's name serves the own-name rule
+    mutate(party_family = party_family(winner_party, state,
+                                       split_person_name(x_wname)$last,
+                                       split_person_name(x_wname)$first)) %>%
+    select(-x_wi, -x_wname)
 }
 
+source("code/shared/party_family.R")   # party_family() in build_unharm()
 st_unharm <- build_unharm(st_data)
 bb_unharm <- build_unharm(bb_data)
+# Brandenburg: a Hauptwahl leader who lost the runoff is a losing candidate; an
+# own-name label of theirs becomes the plain list type in winner_party, as in
+# landrat_candidates (code/shared/bb_own_name_label.R, user decision 2026-10-19).
+source("code/shared/bb_own_name_label.R")
+if (!is.null(bb_unharm) && nrow(bb_unharm) > 0) {
+  bb_top <- bb_data %>%
+    mutate(x_key = landrat_pair_key(bb_data)) %>%
+    group_by(ags, election_date, round) %>%
+    slice_max(candidate_votes, n = 1, with_ties = FALSE) %>%
+    ungroup()
+  bb_lost <- bb_top %>% filter(round == "stichwahl") %>% transmute(ags, x_sw = election_date, x_sw_key = x_key) %>%
+    inner_join(bb_top %>% filter(round == "hauptwahl") %>% transmute(ags, x_hw = election_date, x_key,
+                                                                     candidate_name, candidate_party),
+               by = "ags", relationship = "many-to-many") %>%
+    mutate(x_gap = as.numeric(x_sw - x_hw)) %>%
+    filter(x_gap > 0, x_gap < 60) %>%
+    group_by(ags, x_sw) %>% slice_min(x_gap, n = 1, with_ties = FALSE) %>% ungroup() %>%
+    filter(x_key != x_sw_key)
+  if (nrow(bb_lost) > 0) {
+    pk <- split_person_name(bb_lost$candidate_name)
+    bb_lost$x_party <- bb_generic_own_label(bb_lost$candidate_party, pk$last, pk$first)
+    bb_unharm <- bb_unharm %>%
+      left_join(bb_lost %>% transmute(ags, election_date = x_hw, round = "hauptwahl", x_party),
+                by = c("ags", "election_date", "round")) %>%
+      mutate(winner_party = coalesce(x_party, winner_party)) %>%
+      select(-x_party)
+  }
+}
 sn_unharm <- build_unharm(sn_data)
 th_unharm <- build_unharm(th_data)
 sl_extra_unharm <- build_unharm(sl_extra_data)
@@ -1334,11 +1553,15 @@ if (exists("existing_dropped") && nrow(existing_dropped) > 0) {
 
 combined_unharm <- bind_rows(existing, new_unharm) %>%
   distinct(ags, election_date, election_type, round, .keep_all = TRUE) %>%
-  arrange(state, ags, election_year, election_date, round)
+  arrange(state, ags, election_year, election_date, round) %>%
+  relocate(party_family, .after = winner_party)
 
 # Brandenburg cycles the voters did not decide (15 % quorum, see above)
 bb_council <- bb_council_elected_cycles(bb_data)
 combined_unharm <- apply_elected_by_council(combined_unharm, bb_council)
+# Sachsen-Anhalt cycles whose runoff is not on file (see above)
+st_missing_runoff <- st_missing_runoff_cycles(st_data)
+combined_unharm <- apply_decisive_round_missing(combined_unharm, st_missing_runoff)
 
 cat("\nFinal landrat_unharm rows:", nrow(combined_unharm), "\n")
 cat("By state:\n")
@@ -1348,6 +1571,91 @@ print(combined_unharm %>% count(state, state_name))
 write_rds(combined_unharm, "data/landrat_elections/final/landrat_unharm.rds", compress = "gz")
 fwrite(combined_unharm, "data/landrat_elections/final/landrat_unharm.csv")
 cat("\n✓ Saved landrat_unharm.{rds,csv}\n")
+
+
+# The tracked, name-stripped copy of a state's Landrat parse (Sachsen-Anhalt,
+# Brandenburg). The same rows in the same order; a name stays only where the
+# public landrat_candidates shows it (the elected person: Kreis, round date and
+# pairing key); every row gets an opaque key ("c1", "c2", ...) that is unique to
+# its pairing key within its Hauptwahl-Stichwahl cycle (the date_pairs rule
+# below), so a build from the copy pairs the rounds exactly as this one did.
+# Counts are written as parsed; shares and turnout are recomputed on reading,
+# except a share the source prints (share_printed). generic_label() makes a
+# losing candidate's own-name label generic (Brandenburg). The copy is read back
+# and must reproduce the parse. Landrat audit checks it.
+write_landrat_public <- function(bb_long, public_cands, f, state_code, generic_label = NULL) {
+  key <- landrat_pair_key(bb_long)
+  pub_named <- public_cands %>%
+    filter(state == state_code, !is.na(candidate_name),
+           paste(ags, election_date) %in% paste(bb_long$ags, bb_long$election_date))
+  shown_keys <- function(d, date_col) {
+    pk <- split_person_name(d$candidate_name)
+    k <- if_else(is.na(pk$last), NA_character_,
+                 str_squish(tolower(paste(pk$last, coalesce(pk$first, "")))))
+    bind_rows(tibble(ags = d$ags, x_d = d[[date_col]], x_k = k),
+              tibble(ags = d$ags, x_d = d[[date_col]], x_k = paste0("<verbatim>", d$candidate_name)))
+  }
+  shown <- bind_rows(shown_keys(pub_named, "election_date"),
+                     shown_keys(pub_named %>% filter(!is.na(election_date_sw)), "election_date_sw")) %>%
+    filter(!is.na(x_k), !is.na(x_d)) %>%
+    distinct()
+  keep <- paste(bb_long$ags, bb_long$election_date, key) %in% paste(shown$ags, shown$x_d, shown$x_k)
+  cyc <- bb_long %>% filter(round == "stichwahl") %>% distinct(ags, x_sw = election_date) %>%
+    inner_join(bb_long %>% filter(round == "hauptwahl") %>% distinct(ags, x_hw = election_date),
+               by = "ags", relationship = "many-to-many") %>%
+    mutate(gap = as.numeric(x_sw - x_hw)) %>%
+    filter(gap > 0, gap < 60) %>%
+    group_by(ags, x_sw) %>%
+    slice_min(gap, n = 1, with_ties = FALSE) %>%
+    ungroup() %>%
+    select(ags, x_sw, x_hw)
+  out <- bb_long %>%
+    mutate(x_row = row_number(), x_k = key) %>%
+    left_join(cyc, by = c("ags", "election_date" = "x_sw")) %>%
+    mutate(x_cycle = if_else(round == "stichwahl" & !is.na(x_hw), x_hw, election_date)) %>%
+    group_by(ags, x_cycle) %>%
+    mutate(pair_key = paste0("c", match(x_k, unique(x_k)))) %>%
+    ungroup() %>%
+    arrange(x_row)
+  stopifnot(nrow(out) == nrow(bb_long), !anyNA(key))
+  # a losing candidate's own-name label is made generic, as in the public file
+  if (!is.null(generic_label)) {
+    pk_all <- split_person_name(out$candidate_name)
+    gen <- generic_label(out$candidate_party, pk_all$last, pk_all$first)
+    out$candidate_party[!keep] <- gen[!keep]
+  }
+  out$candidate_name[!keep] <- NA
+  # a share that is not votes / valid is one the source prints (ST 2015)
+  recomputed <- if_else(!is.na(out$valid_votes) & out$valid_votes > 0,
+                        out$candidate_votes / out$valid_votes, NA_real_)
+  same <- (is.na(recomputed) & is.na(out$candidate_voteshare)) |
+    (!is.na(recomputed) & !is.na(out$candidate_voteshare) & recomputed == out$candidate_voteshare)
+  out$share_printed <- if_else(same, NA_real_, round(out$candidate_voteshare * 100, 4))
+  # every elected person the public file names keeps a named row, and nobody else
+  pub_dates <- unique(c(paste(pub_named$ags, pub_named$election_date),
+                        paste(pub_named$ags, pub_named$election_date_sw)))
+  stopifnot(all(paste(pub_named$ags, pub_named$election_date) %in%
+                  paste(out$ags, out$election_date)[keep] |
+                  paste(pub_named$ags, pub_named$election_date_sw) %in%
+                  paste(out$ags, out$election_date)[keep]),
+            all(paste(out$ags, out$election_date)[keep] %in% pub_dates))
+  fwrite(out %>% select(ags, ags_name, state, state_name, election_date, election_type,
+                        round, eligible_voters, number_voters, valid_votes, invalid_votes,
+                        candidate_name, candidate_party, candidate_votes, pair_key,
+                        any_of(if (any(!is.na(out$share_printed))) "share_printed")),
+         f, na = "")
+  # read back: every column but the names must reproduce the parse exactly
+  back <- read_landrat_public(f)
+  for (cc in c("candidate_votes", "candidate_voteshare", "ags", "ags_name", "state",
+               "state_name", "election_year", "election_date", "election_type", "round",
+               "eligible_voters", "number_voters", "valid_votes", "invalid_votes", "turnout")) {
+    if (!isTRUE(all.equal(back[[cc]], bb_long[[cc]], tolerance = 0, check.attributes = FALSE))) {
+      stop(f, ": the copy does not reproduce column ", cc)
+    }
+  }
+  cat("\n✓ Saved", f, ":", nrow(out), "rows,", sum(keep),
+      "named (elected persons),", sum(!keep), "unnamed\n")
+}
 
 # ============================================================================
 # Build candidate-level wide format
@@ -1383,27 +1691,17 @@ if (nrow(new_long) > 0) {
 
   # A candidate's two rounds are paired on a normalised surname + given-name
   # key, not on the verbatim candidate_name. The Landeswahlleiter spells the
-  # same person "Bernd Sachse" on the Märkisch-Oderland Hauptwahl page of
-  # 22.09.2013 and "Sachse, Bernd" on its Stichwahl page (Uckermark 2010 the
+  # same runoff candidate "First Last" on the Märkisch-Oderland Hauptwahl page of
+  # 22.09.2013 and "Last, First" on its Stichwahl page (Uckermark 2010 the
   # other way round); joining on the exact string split each runoff candidate
   # into a Hauptwahl row and a vote-less "SW-only" row and crowned both. A key
   # that is missing, or not unique within some round of that Kreis, falls back
   # to the verbatim name in every round of the Kreis, so both rounds of a
   # cycle always use the same rule.
-  pk <- split_person_name(new_long$candidate_name)
-  new_long$.pair_key <- if_else(is.na(pk$last), NA_character_,
-                                str_squish(tolower(paste(pk$last, coalesce(pk$first, "")))))
-  ambiguous <- new_long %>%
-    filter(!is.na(.pair_key)) %>%
-    count(ags, election_date, round, .pair_key) %>%
-    filter(n > 1) %>%
-    distinct(ags, .pair_key) %>%
-    mutate(.ambiguous = TRUE)
-  new_long <- new_long %>%
-    left_join(ambiguous, by = c("ags", ".pair_key")) %>%
-    mutate(.pair_key = if_else(is.na(.pair_key) | coalesce(.ambiguous, FALSE),
-                               paste0("<verbatim>", candidate_name), .pair_key)) %>%
-    select(-.ambiguous)
+  # Rows from a tracked state copy carry the key of the full parse
+  # (write_landrat_public()), as their losers are unnamed.
+  new_long$.pair_key <- landrat_pair_key(new_long)
+  new_long$.pub_key <- NULL
 
   # Split HW and SW
   hw <- new_long %>% filter(round == "hauptwahl")
@@ -1622,6 +1920,18 @@ if (nrow(new_long) > 0) {
   combined_cands <- bind_rows(existing_cands, new_wide) %>%
     arrange(state, ags, election_year, election_date)
   combined_cands <- apply_elected_by_council(combined_cands, bb_council)
+  combined_cands <- apply_decisive_round_missing(combined_cands, st_missing_runoff)
+  # Party family of the rows this script adds (code/shared/party_family.R);
+  # the rows from 01b keep the family 01b computed on the full frame, so a
+  # build from the public file alone gives the same values.
+  if (!"candidate_party_family" %in% names(combined_cands)) {
+    combined_cands$candidate_party_family <- NA_character_
+  }
+  pf_i <- which(is.na(combined_cands$candidate_party_family))
+  combined_cands$candidate_party_family[pf_i] <- party_family(
+    combined_cands$candidate_party[pf_i], substr(as.character(combined_cands$ags[pf_i]), 1, 2),
+    combined_cands$candidate_last_name[pf_i], combined_cands$candidate_first_name[pf_i])
+  combined_cands <- combined_cands %>% relocate(candidate_party_family, .after = candidate_party)
 
   # RESTRICTED twin — see write_restricted_candidates() in
   # code/mayoral_elections/01b_mayoral_candidates.R; KEEP THE TWO IN SYNC. This
@@ -1643,11 +1953,47 @@ if (nrow(new_long) > 0) {
         "named ST/TH non-winners retained )\n")
   }
 
+  # Brandenburg: a losing candidate's own-name label becomes the plain list type
+  # (code/shared/bb_own_name_label.R); the twin above keeps it.
+  bb_lr_i <- which(combined_cands$state %in% "12" & !(combined_cands$is_winner %in% TRUE))
+  combined_cands$candidate_party[bb_lr_i] <- bb_generic_own_label(
+    combined_cands$candidate_party[bb_lr_i], combined_cands$candidate_last_name[bb_lr_i],
+    combined_cands$candidate_first_name[bb_lr_i])
+
   # Re-apply the ST/TH anonymisation (see helper above). 01b applies it
   # to landrat_candidates, but this script rewrites that file, so it has to be
   # re-applied to the newly bound rows or the anonymisation is order-dependent.
-  cat("\n=== Anonymising Sachsen-Anhalt and Thüringen losing candidates ===\n")
+  cat("\n=== Anonymising Bayern, Brandenburg, Sachsen-Anhalt and Thüringen losing candidates ===\n")
   combined_cands <- anonymise_losers(combined_cands, "landrat_candidates")
+  # The Thüringen Landrat runoffs of 28.05.2000 come from the TLS report 29924
+  # (00_th_tls_reports_parse.py) and are the only Thüringen Landrat rows before
+  # 2006. The TLS consented to publishing its reports' results only "unter
+  # Löschung sämtlicher personenbezogenen Daten zu Bewerbern und gewählten
+  # Kandidaten" (§ 50 Abs. 2 ThürKWO; e-mail of 12.10.2026), so the winners'
+  # names are withheld too. The restricted twin above keeps them.
+  th_tls <- combined_cands$state %in% "16" &
+    combined_cands$election_date < as.Date("2006-01-01")
+  stopifnot(all(combined_cands$election_date[th_tls] == as.Date("2000-05-28")),
+            n_distinct(combined_cands$ags[th_tls]) %in% c(0, 3))
+  for (cl in intersect(st_personal_cols, names(combined_cands))) {
+    combined_cands[[cl]][th_tls] <- NA
+  }
+  cat("  landrat_candidates: withheld the names of", sum(th_tls),
+      "Thüringen rows from the TLS report 29924 (winners included)\n")
+  # Bayern: before the 2026 Mandatsträger file, every Landrat name, birth year and
+  # profession comes from the LfStat registers and candidate lists (B VII 3-2 /
+  # 3-7), whose redistribution the LfStat declined on 16.10.2026, winners
+  # included (see anonymise_restricted_names() in 01b). The restricted twin above
+  # keeps them.
+  by_lfstat <- combined_cands$state %in% "09" &
+    combined_cands$election_date < as.Date("2026-01-01")
+  for (cl in intersect(st_personal_cols, names(combined_cands))) {
+    combined_cands[[cl]][by_lfstat] <- NA
+  }
+  by_named_26 <- combined_cands$state %in% "09" & !is.na(combined_cands$candidate_last_name)
+  stopifnot(all(combined_cands$is_winner[by_named_26] %in% TRUE))
+  cat("  landrat_candidates: withheld the personal fields of", sum(by_lfstat),
+      "Bayern rows before 2026 (LfStat registers and candidate lists, winners included)\n")
 
   cat("Final landrat_candidates rows:", nrow(combined_cands), "\n")
   cat("By state:\n")
@@ -1656,4 +2002,7 @@ if (nrow(new_long) > 0) {
   write_rds(combined_cands, "data/landrat_elections/final/landrat_candidates.rds", compress = "gz")
   fwrite(combined_cands, "data/landrat_elections/final/landrat_candidates.csv")
   cat("\n✓ Saved landrat_candidates.{rds,csv}\n")
+  if (st_full_parse) write_landrat_public(st_data, combined_cands, st_public_file, "15")
+  if (bb_full_parse) write_landrat_public(bb_data, combined_cands, bb_public_file, "12",
+                                          bb_generic_own_label)
 }
