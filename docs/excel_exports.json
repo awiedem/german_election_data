@@ -2977,8 +2977,8 @@
     "source": "data/federal_elections/wahlkreis_level/final/wkr_2021_to_2025_crosswalk.csv"
   },
   "data/landrat_elections/final/landrat_candidates": {
-    "rows": 5346,
-    "columns": 33,
+    "rows": 5352,
+    "columns": 35,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
@@ -2986,31 +2986,31 @@
       "candidate_voteshare_hw",
       "candidate_voteshare_sw"
     ],
-    "source_sha256": "42b9d5e7d03c47d07154b8ab8e2df9aa3d306ccd1c0d716e318f460f68128bb8",
-    "rds_sha256": "adb5a8f31f8da8cae70c581361154a1abf9b2a5f5e0a98a759ff2ec112b828c4",
+    "source_sha256": "df26d0a95d65ff9c3a96018f7147705fe4ae900a952df05a9c3a327bd8d709fc",
+    "rds_sha256": "c281e5196ca509e385a72fa26a048d6d86487638ad703ea2bf008096ac889618",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "837a3409c7b019082acc0db0cc72d36549ebdb5be12f22d450069cf34a21cb86",
-    "bytes": 670583,
+    "xlsx_sha256": "23054c7cb56c4ef5be36ef7c2e6633a6cf977581f7ce18dbfd5c296e37a4fad2",
+    "bytes": 711012,
     "source": "data/landrat_elections/final/landrat_candidates.csv"
   },
   "data/landrat_elections/final/landrat_unharm": {
-    "rows": 2166,
-    "columns": 17,
+    "rows": 2172,
+    "columns": 19,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
       "winner_voteshare"
     ],
-    "source_sha256": "f87493ed3013dfe851c34878093cf242f058d5b13d70157621eeffdeef6c41d2",
-    "rds_sha256": "60fc16bdd134aa5ec0c33da6e098b074075d1e26b5f1c22762ea0d9083a1c573",
+    "source_sha256": "13838d08189242f1cd3c8bfb6d55215803bf210a34338d369c19febbe15fe7ff",
+    "rds_sha256": "f113f349e97eafc51b8155ce06e849e6da73fa39ba87d77f47ef3efbb356886a",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "e0ea708612f07fd003af928d43d4277e17406e7a8ffe75c04fdb0551dca6e291",
-    "bytes": 230237,
+    "xlsx_sha256": "35777f33007a71c68473d9214bc6667fb9d9dc10e9d095d43747d3651c8ea224",
+    "bytes": 248370,
     "source": "data/landrat_elections/final/landrat_unharm.csv"
   },
   "data/mayoral_elections/final/mayor_panel": {
-    "rows": 45365,
-    "columns": 34,
+    "rows": 48382,
+    "columns": 36,
     "sheets": 1,
     "percentage_columns": [
       "winner_voteshare",
@@ -3019,16 +3019,16 @@
       "candidate_gender_prob",
       "candidate_migration_bg_prob"
     ],
-    "source_sha256": "10c0d4ac3f89946a5ee3c1940c5f17c419e0418c839c36a9cde28cf0d6bf0417",
-    "rds_sha256": "5891fc2913b09446ab7bf18eeece27f7bff2a3c0de93a21f38101dd3b5a5f0a6",
+    "source_sha256": "f443eed3193f16d8d80245cb44348670ad99d57616f1be1821842d68f0638120",
+    "rds_sha256": "2320a351af8026582aeaba546b1583ebe122f928e62a6db637c76811cb16131c",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "0900331b927701ab0d43a35045507419651e6e39ab696ebf4faa1dd6adb1b9d8",
-    "bytes": 5869514,
+    "xlsx_sha256": "7ba2fa83612c095f20ecd85ca8272f2254744094f3ff7818921867b8b79c57fa",
+    "bytes": 7122323,
     "source": "data/mayoral_elections/final/mayor_panel.csv"
   },
   "data/mayoral_elections/final/mayor_panel_annual": {
-    "rows": 281370,
-    "columns": 30,
+    "rows": 248974,
+    "columns": 32,
     "sheets": 1,
     "percentage_columns": [
       "winner_voteshare",
@@ -3036,16 +3036,16 @@
       "candidate_gender_prob",
       "candidate_migration_bg_prob"
     ],
-    "source_sha256": "90fc20edc83e8ea83f82424fcb7da90afa36f9b4b887a6eb6e0f1cb825c52656",
-    "rds_sha256": "bdb76d9207d349350d46a15c3494886fd14684dca9c3cbc154ec42ad105d05a7",
+    "source_sha256": "ddae5e1182f36017e52e1d19e534e2591994e28c0950b7a495f4b6015e99e52e",
+    "rds_sha256": "6b5685644dc99450568229283ca63668995d0d3e5f1c19009f29cf7d201cbdb5",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "acedc250d21e6d8fb3114ed4df57c56b9d3596393c02802f975fbab5f171e47a",
-    "bytes": 25907958,
+    "xlsx_sha256": "d6cc12ce0bb684df745b54d359625f2ac1c6edb26573acca6a60510b11205167",
+    "bytes": 26924936,
     "source": "data/mayoral_elections/final/mayor_panel_annual.csv"
   },
   "data/mayoral_elections/final/mayor_panel_annual_harm": {
-    "rows": 281140,
-    "columns": 31,
+    "rows": 248744,
+    "columns": 33,
     "sheets": 1,
     "percentage_columns": [
       "winner_voteshare",
@@ -3053,16 +3053,16 @@
       "candidate_gender_prob",
       "candidate_migration_bg_prob"
     ],
-    "source_sha256": "f2337eb8626eec428c53b6e2676d0c7f8fbbb64ec60e70f0c1ca8f992ac600b2",
-    "rds_sha256": "f7989128437857331efabaa9661c5151b2eb3427bd122eceececeec52f12e281",
+    "source_sha256": "4aa25dee47951d981dec7640284dee295e045cbcf58db435b1da0480b502faeb",
+    "rds_sha256": "d4d583911c1be93204395348b9a238eabdf39471c0d1a5d4d053b5e8de9f4abf",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "45448c28abdb1869524573760a39ac4cbd8688422468cc8fc0c6c46cab8a09b2",
-    "bytes": 26948940,
+    "xlsx_sha256": "1d1d4004b75d2c0d414b416f8d9bd7eb24bd980e42f489993af8d213d9a6898d",
+    "bytes": 27882015,
     "source": "data/mayoral_elections/final/mayor_panel_annual_harm.csv"
   },
   "data/mayoral_elections/final/mayor_panel_harm": {
-    "rows": 45333,
-    "columns": 35,
+    "rows": 48350,
+    "columns": 37,
     "sheets": 1,
     "percentage_columns": [
       "winner_voteshare",
@@ -3071,16 +3071,16 @@
       "candidate_gender_prob",
       "candidate_migration_bg_prob"
     ],
-    "source_sha256": "790526b805ad191e2efabcac25779940a7fbea17b4f79421c1858753f08de945",
-    "rds_sha256": "5045db8752b9c13c6611e2888c9ba7de90481203752b82999be4bd6d10dc3563",
+    "source_sha256": "2760d51b4e1b27b5836bc70e920afbfbbd5ab8c6fb3bb53ee46739f8b4345283",
+    "rds_sha256": "7b7b4415a8c01fedbc7f55608d36cb36e00b2c8f018edf6d831e49ba41941d19",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "836a49b2347e21ddaef29a1f9baf6092b6e4347e4bf65a3cac510fab8621ae88",
-    "bytes": 6066866,
+    "xlsx_sha256": "aa328a9c19446fe54fdd7b0a628f2c32d18ee9118c8f40c1770a70798ca2a282",
+    "bytes": 7356189,
     "source": "data/mayoral_elections/final/mayor_panel_harm.csv"
   },
   "data/mayoral_elections/final/mayoral_candidates": {
-    "rows": 113345,
-    "columns": 47,
+    "rows": 118417,
+    "columns": 49,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
@@ -3091,41 +3091,41 @@
       "candidate_migration_bg_prob",
       "candidate_surname_county_share"
     ],
-    "source_sha256": "7ab9425dc9b4b1625eadcd5ff001689cec72e32d5f278a5740a29c7b1e9212b1",
-    "rds_sha256": "4c7047fb29b4e900ba6177d0991a82bce5398c6ac2e4e4b0bb98f6b993705dc0",
+    "source_sha256": "63606fa1d68d0f635ed6e3a8a22a82a6c2af7b25cead5569d6aeae908cc69b98",
+    "rds_sha256": "37b8d297e3b382280a9eac691d53de50a246f1f351cf5d77dfa87a83b6273497",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "c9b68ad4b3457c2205b1773bfda291d1c6a1845bed9affad7add2d54270c54ce",
-    "bytes": 15112464,
+    "xlsx_sha256": "919f760b0cf1cb6dd7684f3b9aedd235d8ac23ee6a6cac059b1c5290d3a1667d",
+    "bytes": 17148448,
     "source": "data/mayoral_elections/final/mayoral_candidates.csv"
   },
   "data/mayoral_elections/final/mayoral_harm": {
-    "rows": 52088,
-    "columns": 26,
+    "rows": 54795,
+    "columns": 29,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
       "winner_voteshare"
     ],
-    "source_sha256": "98ef885b3bdc9fc7bb4f38de7ba5648641145a582addd63c9b5deb0651fcedc3",
-    "rds_sha256": "c5a635eb276f9ad59860a23fae37fba003888c8832550dfb2de17f70f822c589",
+    "source_sha256": "d6de83254372a930aad1ba35bd1ce6a96a169d21deeb8882cafb2ff771621099",
+    "rds_sha256": "347d2eb6677129e0637ae0e2c15ba419d2328599e4ff12536edb871554944527",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "eac157e7de14c6a89edcecba1c8c168a93cc7855fd4b709e50d6bcccd44d44db",
-    "bytes": 6985422,
+    "xlsx_sha256": "94bf37af83b13e5cdf3feedd04156768bd1fd8b042aa8444c7ef59e029dd2921",
+    "bytes": 7927978,
     "source": "data/mayoral_elections/final/mayoral_harm.csv"
   },
   "data/mayoral_elections/final/mayoral_unharm": {
-    "rows": 55597,
-    "columns": 18,
+    "rows": 59700,
+    "columns": 19,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
       "winner_voteshare"
     ],
-    "source_sha256": "fb5f4274fc5b7b2452030e4f8a973e1501ddc0a3424f18f7c9b42eb8f0c12667",
-    "rds_sha256": "8ae59a513ef28abd8f90691c213453ef06e65ddc6cbeb73917fffd81cbdd35e0",
+    "source_sha256": "650fa11fb0ef4073e7d1d05e53c1723e93071707485e7c409eb9ab14dd03a772",
+    "rds_sha256": "4986f38653e9958151cc2673d8e293bf819b3c4c884c66e3be13b515d2f275e5",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "73f1f75a3ee2027ff6ce91e65f496c7435cd96eb109be23ed311b33672534f85",
-    "bytes": 5688355,
+    "xlsx_sha256": "59e8fb4fad93a18d0141f6dd78784ebfe2d195b7e95c1819969c98d19c47892e",
+    "bytes": 6253466,
     "source": "data/mayoral_elections/final/mayoral_unharm.csv"
   },
   "data/municipal_elections/final/municipal_harm": {
