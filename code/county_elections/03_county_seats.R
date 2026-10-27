@@ -182,7 +182,8 @@ source_coverage_audit <- tribble(
   "Baden-Württemberg 2024", "PDF", "three-digit county suffix", "final seat table",
   file.exists(file.path(raw_root, "Baden-Württemberg", "Baden-Württemberg_2024_Kommunalwahlen.pdf")),
   "Brandenburg 2024", "HTML", "county number in URL", "elected candidates by party",
-  length(list.files(file.path(raw_root, "Brandenburg", "2024_html"), pattern = "[.]html$")) == 18L,
+  length(list.files(file.path(raw_root, "Brandenburg", "2024_html"), pattern = "[.]html$")) == 18L ||
+    file.exists(file.path(raw_root, "Brandenburg", "Brandenburg_2024_Sitze.csv")),
   "Mecklenburg-Vorpommern 2024", "CSV", "official county number", "mandate columns",
   file.exists(file.path(raw_root, "Mecklenburg-Vorpommern", "Mecklenburg-Vorpommern_2024_Mandate.csv")),
   "Rheinland-Pfalz 2024", "PDF", "county heading", "2024 and 2019 party seats",
@@ -454,17 +455,34 @@ parse_sl_2024 <- function() {
   })
 }
 
+# The Brandenburg pages list every Kreistag candidate by name with their votes
+# (tables 2 onward); only table 1, the elected members, is read here. The pages
+# are gitignored (user decision 2026-10-19: candidate names stay out of the
+# repository); Brandenburg_2024_Sitze.csv (tracked) holds the seat counts read
+# from them -- Kreis, party, seats, total -- and is rewritten whenever all 18
+# pages are present, so a clone without the pages builds the same output.
 parse_bb_2024 <- function() {
-  paths <- list.files(here::here("data/county_elections/raw/Kreistagswahlen",
-                                 "Brandenburg", "2024_html"),
-                      pattern = "[.]html$", full.names = TRUE)
-  map_dfr(paths, function(path) {
-    code2 <- str_match(basename(path), "([0-9]{2})")[, 2]
-    elected <- html_table(read_html(path), fill = TRUE)[[1]]
-    seats <- elected |> count(Partei, name = "seats")
+  dir <- here::here("data/county_elections/raw/Kreistagswahlen", "Brandenburg")
+  copy_path <- file.path(dir, "Brandenburg_2024_Sitze.csv")
+  paths <- list.files(file.path(dir, "2024_html"), pattern = "[.]html$", full.names = TRUE)
+  if (length(paths) == 18L) {
+    seats_tbl <- map_dfr(paths, function(path) {
+      code2 <- str_match(basename(path), "([0-9]{2})")[, 2]
+      elected <- html_table(read_html(path), fill = TRUE)[[1]]
+      elected |> count(Partei, name = "seats") |>
+        transmute(code2 = code2, party = Partei, seats, seats_total = nrow(elected))
+    })
+    write_csv(seats_tbl, copy_path)
+  } else {
+    if (!file.exists(copy_path)) stop("Brandenburg 2024: neither the 18 pages nor ", copy_path)
+    seats_tbl <- read_csv(copy_path, col_types = cols(code2 = col_character(), party = col_character(),
+                                                      seats = col_integer(), seats_total = col_integer()))
+  }
+  map_dfr(split(seats_tbl, factor(seats_tbl$code2, levels = unique(seats_tbl$code2))), function(x) {
+    code2 <- x$code2[1]
     long_to_event(tibble(
       county = paste0("12", str_pad(code2, 3, "left", "0")),
-      party = seats$Partei, seats = seats$seats, seats_total = nrow(elected),
+      party = x$party, seats = x$seats, seats_total = x$seats_total[1],
       comment = "Official final elected-candidates table cached as HTML; Cottbus includes the September repeat election.",
       source = paste0("https://wahlergebnisse.brandenburg.de/12/200/20240609/kreistagswahl_land/ergebnisse_kreis_",
                       code2, ".html"), last_checked = official_check_date

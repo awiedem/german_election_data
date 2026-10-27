@@ -134,3 +134,10 @@ data/mayoral_elections/processed/*_restricted.rds
 # electronic distribution (like the B VII 3-6 issues of 2002/2003/2008); the
 # manifest stays tracked.
 data/municipal_elections/raw/brandenburg/lds_reports/SB_B7-3-5_5j-08_BB.pdf
+
+# Brandenburg Kreistag 2024 result pages: they list every candidate by name with
+# their votes (user decision 2026-10-19: candidate names stay out of the
+# repository). The seat counts read from them are tracked in
+# Brandenburg_2024_Sitze.csv. The pages were tracked until then: untrack them
+# with `git rm --cached` in the commit that adds this block.
+data/county_elections/raw/Kreistagswahlen/Brandenburg/2024_html/
