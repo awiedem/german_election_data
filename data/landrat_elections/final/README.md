@@ -47,7 +47,7 @@ Ranking candidates by votes would crown the runoff leader of such a cycle as if 
 
 - `flag_elected_by_council = TRUE` on every row of the cycle, in both files (`FALSE` everywhere else, never `NA`);
 - `landrat_candidates`: `is_winner = NA` for every candidate of the cycle — the ballot seated nobody;
-- `landrat_unharm`: `winner_party`, `winner_votes`, `winner_voteshare` are `NA` on the failed Stichwahl row. The cycle's Hauptwahl row keeps its round leader, like every Hauptwahl that went to a runoff.
+- `landrat_unharm`: `winner_party`, `winner_votes`, `winner_voteshare` are `NA` on the failed Stichwahl row. The cycle's Hauptwahl row keeps its round leader, like every Hauptwahl that went to a runoff (Niedersachsen and Hessen rows filled from `landrat_candidates` since 29 October 2026; until then `NA`).
 
 Twelve cycles are flagged. Their Stichwahl pages say "Gewählt: kein Bewerber" (Oberhavel 2021's carries no "Gewählt" footer), and the 15 % threshold below is the "Stimmenzahl, die 15 % der Wahlberechtigten umfasst" printed on it:
 

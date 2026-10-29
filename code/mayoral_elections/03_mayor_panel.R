@@ -249,6 +249,8 @@ bayern_raw <- read_excel(
   "data/mayoral_elections/raw/bayern/20251114_Wahlen_seit_1945.xlsx",
   sheet = "20251114_bewerberRBZ1-7"
 ) |> as.data.table()
+source("code/mayoral_elections/by_source_duplicates.R")
+bayern_raw <- drop_by_source_duplicates(bayern_raw)
 
 # Build AGS (matching 01_mayoral_unharm.R exactly)
 bayern <- bayern_raw |>
@@ -1093,7 +1095,8 @@ he_source <- fread(
     ags,
     decisive_date = as.Date(election_date),
     source_person_term_number = suppressWarnings(as.integer(winner_n_terms)),
-    source_person_reelections = suppressWarnings(as.integer(winner_n_reelections))
+    source_person_reelections = suppressWarnings(as.integer(winner_n_reelections)),
+    he_from_workbook = source_file == "Direktwahlen_in_Hessen_seit_1993.xlsx"
   )
 
 stopifnot(nrow(he_source) == nrow(distinct(he_source, ags, decisive_date)))
@@ -1114,14 +1117,26 @@ he_return_links <- c(
   "06439016|2000-05-21" = "1993-05-02"   # Rudolf Dörr, Waldems
 )
 
+# Counterless rounds whose source prints the winner with another given-name
+# form than the earlier term. Heidenrod 2025: the votemanager adds a middle
+# name; hessenschau's runoff page names the SPD winner exactly as in 2019
+# (ergebnisse-buergermeister-stichwahl-heidenrod-280925).
+he_name_variant_links <- c(
+  "06439005|2025-09-28" = "2019-05-26"   # Volker (Wolfgang) Diefenbach, Heidenrod
+)
+
 # A decisive round WITHOUT an official term counter, in a municipality-year that
 # has a counted one, was superseded and is not a term: Bad Karlshafen's one-vote
 # 2017-05-21 Stichwahl, repeated in one Wahlbezirk on 2017-11-05. (Every other
 # HSL decisive round carries a counter; recent hessenschau-only cycles have none
-# but never share a year with a counted one.)
+# but never share a year with a counted one. Rounds from the HSL's October 2026
+# web table carry no counters either and are elections of their own: Münster
+# (Hessen) re-elected its mayor on 2026-03-15 and elected a new one on
+# 2026-08-30.)
 he_superseded <- he_winners |>
   group_by(ags, election_year) |>
-  filter(is.na(source_person_term_number) & any(!is.na(source_person_term_number))) |>
+  filter(he_from_workbook %in% TRUE, is.na(source_person_term_number),
+         any(!is.na(source_person_term_number))) |>
   ungroup()
 stopifnot(nrow(he_superseded) == 1,
           he_superseded$ags == "06633002",
@@ -1132,6 +1147,7 @@ he_winners <- he_winners |>
 assign_he_group <- function(d, ags_value) {
   d <- d |> arrange(election_date, decisive_date)
   local_id <- rep(NA_integer_, nrow(d))
+  variant_link <- rep(FALSE, nrow(d))
   next_id <- 0L
 
   new_id <- function() {
@@ -1162,15 +1178,27 @@ assign_he_group <- function(d, ags_value) {
     } else {
       # Very recent hessenschau cycles absent from the HSL transmission have
       # no counter. Link only when the same normalized public name was already
-      # observed in this municipality; otherwise create a new person.
+      # observed in this municipality, or a pinned variant names the earlier
+      # term; otherwise create a new person.
       same_name <- if (i == 1L || is.na(d$public_name_key[i])) integer() else
         which(d$public_name_key[seq_len(i - 1L)] == d$public_name_key[i])
       same_name <- same_name[!is.na(same_name)]
-      local_id[i] <- if (length(same_name)) local_id[max(same_name)] else new_id()
+      variant_date <- unname(he_name_variant_links[row_key])
+      if (length(variant_date) == 1 && !is.na(variant_date)) {
+        anchor <- which(as.character(d$decisive_date[seq_len(i - 1L)]) == variant_date)
+        if (length(anchor) != 1L || length(same_name)) {
+          stop("Hessen name-variant anchor missing/ambiguous or redundant at ", row_key)
+        }
+        local_id[i] <- local_id[anchor]
+        variant_link[i] <- TRUE
+      } else {
+        local_id[i] <- if (length(same_name)) local_id[max(same_name)] else new_id()
+      }
     }
   }
 
   d$he_local_id <- local_id
+  d$he_variant_link <- variant_link
   d
 }
 
@@ -1178,6 +1206,7 @@ he_winners <- he_winners |>
   group_by(ags) |>
   group_modify(~ assign_he_group(.x, .y$ags)) |>
   ungroup()
+stopifnot(sum(he_winners$he_variant_link) == length(he_name_variant_links))
 
 he_persons <- he_winners |>
   distinct(ags, he_local_id) |>
@@ -1192,6 +1221,7 @@ hessen_panel <- he_winners |>
     person_id,
     person_id_method = case_when(
       !is.na(source_person_term_number) ~ "hessen_official_term_sequence",
+      he_variant_link ~ "candidate_name_variant_link",
       !is.na(public_name_key) ~ "candidate_name",
       TRUE ~ "election_record_only"
     ),

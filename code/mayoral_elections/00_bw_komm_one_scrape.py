@@ -41,6 +41,9 @@ import urllib.error
 from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from withheld_losers import withhold  # noqa: E402
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROJECT = os.path.abspath(os.path.join(HERE, "..", ".."))
 RAW_DIR = os.path.join(PROJECT, "data", "mayoral_elections", "raw", "baden_wuerttemberg")
@@ -360,6 +363,7 @@ def main():
 
     all_rows.sort(key=lambda r: (r["ags"], r["election_date"], r["round"],
                                  r["candidate_rank"]))
+    withhold(all_rows, "baden_wuerttemberg/bw_komm_one_parsed.csv")
     with open(OUT, "w", encoding="utf-8", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=FIELDS)
         w.writeheader()

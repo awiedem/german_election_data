@@ -185,6 +185,8 @@ bayern_file <- "data/mayoral_elections/raw/bayern/20251114_Wahlen_seit_1945.xlsx
 # Read Bayern data
 bayern_raw <- read_excel(bayern_file, sheet = "20251114_bewerberRBZ1-7") %>%
   as.data.table()
+source("code/mayoral_elections/by_source_duplicates.R")
+bayern_raw <- drop_by_source_duplicates(bayern_raw)
 
 # Clean Bayern data
 bayern_clean <- bayern_raw %>%
@@ -2150,6 +2152,8 @@ cat("\n=== Processing Baden-Württemberg mayoral elections ===\n")
 
 bw_file <- "data/mayoral_elections/raw/baden_wuerttemberg/bw_parsed.csv"
 bw_komm_file <- "data/mayoral_elections/raw/baden_wuerttemberg/bw_komm_one_parsed.csv"
+bw_augmented <- "data/mayoral_elections/raw/baden_wuerttemberg/bw_komm_one_augmented.csv"
+if (file.exists(bw_augmented)) bw_komm_file <- bw_augmented
 
 if (file.exists(bw_file)) {
   bw_raw <- fread(bw_file, encoding = "UTF-8",
@@ -2181,21 +2185,28 @@ if (file.exists(bw_file)) {
              election_year = as.integer(election_year),
              candidate_voteshare = as.numeric(candidate_voteshare),
              is_winner = as.logical(is_winner))
-    # Komm.ONE supersedes StaLA only for cycles where it captured the DECISIVE round
-    # (has a Stichwahl, or a Hauptwahl winner with an absolute majority >=50%);
-    # otherwise the Stichwahl is missing from Komm.ONE and StaLA holds the decisive
-    # winner, so fall back to StaLA for that whole (ags, election_year) cycle.
-    # (Mirror of the rule in 01b_mayoral_candidates.R.)
-    komm_complete <- bk_full %>%
-      group_by(ags, election_year) %>%
-      summarise(decisive = any(round == "stichwahl") ||
-                  any(round == "hauptwahl" & is_winner &
-                      !is.na(candidate_voteshare) & candidate_voteshare >= 0.5),
-                .groups = "drop") %>%
-      filter(decisive) %>% select(ags, election_year)
+    # The supplement identifies cycles by their first-round date. Multiple
+    # elections in one calendar year must remain separate. Keep StaLA for any
+    # absent/rejected round even when the other round was recovered.
+    if ("cycle_complete" %in% names(bk_full)) {
+      bk_full <- bk_full %>% filter(as.logical(cycle_complete))
+      komm_complete <- distinct(bk_full, ags, cycle_start)
+    } else {
+      komm_complete <- bk_full %>% group_by(ags, election_year) %>%
+        summarise(decisive = any(round == "stichwahl") ||
+                    any(round == "hauptwahl" & is_winner &
+                        !is.na(candidate_voteshare) & candidate_voteshare > 0.5),
+                  .groups = "drop") %>% filter(decisive) %>% select(ags, election_year)
+      bk_full <- semi_join(bk_full, komm_complete, by = c("ags", "election_year"))
+    }
+    if (!"flag_superseded" %in% names(bk_full)) bk_full$flag_superseded <- FALSE
+    if (!"flag_decisive_round_missing" %in% names(bk_full)) bk_full$flag_decisive_round_missing <- FALSE
+    bk_full <- bk_full %>% mutate(is_winner = is_winner & !as.logical(flag_decisive_round_missing))
+    komm_dates <- distinct(bk_full, ags, election_date)
     bk <- bk_full %>%
-      semi_join(komm_complete, by = c("ags", "election_year")) %>%
-      filter(is_winner) %>%                           # winner of each round
+      group_by(ags, election_date, round) %>%
+      arrange(desc(is_winner), desc(candidate_votes), .by_group = TRUE) %>%
+      slice_head(n = 1) %>% ungroup() %>%
       transmute(
         ags, ags_name, state, state_name, election_year, election_date,
         election_type, round,
@@ -2205,13 +2216,27 @@ if (file.exists(bw_file)) {
         invalid_votes = as.numeric(invalid_votes),
         turnout = as.numeric(turnout),
         winner_party = NA_character_,
-        winner_votes = as.numeric(candidate_votes),
-        winner_voteshare = as.numeric(candidate_voteshare)
+        winner_votes = if_else(is_winner, as.numeric(candidate_votes), NA_real_),
+        winner_voteshare = if_else(is_winner, as.numeric(candidate_voteshare), NA_real_),
+        flag_superseded = as.logical(flag_superseded)
       )
-    bw_clean <- bind_rows(bk, bw_stala %>% anti_join(komm_complete, by = c("ags", "election_year")))
+    bw_clean <- bind_rows(bk, bw_stala %>% anti_join(komm_dates, by = c("ags", "election_date")))
+    # A StaLA round under a misprinted date survives next to its recovered
+    # municipal round (Singen 2021 was also listed as 11.07.2023). The same four
+    # counts on two dates in one Gemeinde must be settled in
+    # metadata/bw_municipal_date_corrections.csv.
+    bw_same_counts <- bw_clean %>%
+      filter(!is.na(eligible_voters), !is.na(number_voters),
+             !is.na(valid_votes), !is.na(invalid_votes)) %>%
+      group_by(ags, eligible_voters, number_voters, valid_votes, invalid_votes) %>%
+      filter(n_distinct(election_date) > 1) %>% ungroup()
+    if (nrow(bw_same_counts) > 0) {
+      print(bw_same_counts %>% select(ags, ags_name, election_date, round, valid_votes))
+      stop("Baden-Württemberg: identical counts on two dates in one Gemeinde (misdated duplicate)")
+    }
     cat(sprintf("  Komm.ONE: %d round-results across %d complete cycles; StaLA kept: %d\n",
                 nrow(bk), nrow(komm_complete),
-                nrow(bw_stala %>% anti_join(komm_complete, by = c("ags", "election_year")))))
+                nrow(bw_stala %>% anti_join(komm_dates, by = c("ags", "election_date")))))
   } else {
     bw_clean <- bw_stala
     cat("  Note: Komm.ONE file not found; using StaLA winner-only data only.\n")

@@ -40,6 +40,8 @@ import time
 import requests
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+from withheld_losers import withhold  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(HERE))
 RAW_DIR = os.path.join(ROOT, "data", "mayoral_elections", "raw", "hessen")
 OUT = os.path.join(RAW_DIR, "he2026_parsed.csv")
@@ -283,6 +285,7 @@ def main():
     if benign:
         raise SystemExit(f"FATAL: unexpected parse failures: {benign}")
 
+    withhold(rows, "hessen/he2026_parsed.csv")
     with open(OUT, "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=FIELDS)
         w.writeheader()

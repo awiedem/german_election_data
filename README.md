@@ -226,8 +226,9 @@ Statistische Ämter des Bundes und der Länder. Landtagswahlen. [https://www.reg
 
 | **State**               | **Source**                                                        | **Procured via**                         |
 |-------------------------|------------------------------------------------------------------|------------------------------------------|
+| Baden-Württemberg       | Statistisches Landesamt B VII 3-j/25; municipal votemanager/Komm.ONE results and archived notices | website (JSON, HTML, PDF); web archives |
 | Bayern                  | Bayerisches Landesamt für Statistik                              | website (Excel)                          |
-| Hessen                  | Hessisches Statistisches Landesamt, *Direktwahlen in Hessen seit 1993* (results, elected person's gender and term counters). Candidate names 1993–2012: Hessami, Zohal (2018), "Accountability and Incentives of Appointed and Elected Public Officials", *Review of Economics and Statistics* 100(1): 51–64, replication data [doi:10.7910/DVN/FZWOMK](https://doi.org/10.7910/DVN/FZWOMK) (CC0); losing candidates' names in the restricted twin only | email (workbook); Harvard Dataverse (names) |
+| Hessen                  | Hessisches Statistisches Landesamt, *Direktwahlen in Hessen seit 1993* (results, elected person's gender and term counters). Candidate names 1993–2012: Hessami, Zohal (2018), "Accountability and Incentives of Appointed and Elected Public Officials", *Review of Economics and Statistics* 100(1): 51–64, replication data [doi:10.7910/DVN/FZWOMK](https://doi.org/10.7910/DVN/FZWOMK) (CC0); losing candidates' names in the restricted twin only | email (workbook); Harvard Dataverse (names); municipal votemanager (75 additional full rounds) |
 | Niedersachsen           | Landesamt für Statistik Niedersachsen                            | website (PDF)                            |
 | Nordrhein-Westfalen     | IT.NRW                                                           | website (Excel)                          |
 | Rheinland-Pfalz         | Statistisches Landesamt Rheinland-Pfalz                          | website (Excel, percentages only)        |

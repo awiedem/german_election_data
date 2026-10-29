@@ -297,7 +297,7 @@ check(sum(l$state == "08") == 0,
       "BW: 0 Landrat rows (none leaked / none expected)",
       sprintf("BW: %d Landrat rows (expected 0)", sum(l$state == "08")))
 # Vote-count integrity: Stuttgart OB Neuwahl 2020 winner = 83,812 votes (42.3%).
-stgt <- mc %>% filter(ags == "08111000")
+stgt <- mc %>% filter(ags == "08111000", election_date == as.Date("2020-11-08"), is_winner %in% TRUE)
 check(nrow(stgt) == 1 && isTRUE(stgt$candidate_votes_sw[1] == 83812),
       "BW vote integrity: Stuttgart OB 2020 Neuwahl winner = 83,812 votes",
       "BW vote integrity: Stuttgart OB 2020 winner votes wrong")
@@ -669,7 +669,7 @@ check(nrow(by26p) >= 1800 && sum(by26p$is_incumbent == 1, na.rm = TRUE) >= 500,
               nrow(by26p), sum(by26p$is_incumbent == 1, na.rm = TRUE)),
       "BY 2026: panel person-linking failed")
 
-cat("\n20. Hessen Kommunalwahl 2026 (official XLSX full votes + hessenschau %-only)\n")
+cat("\n20. Hessen Kommunalwahl 2026 (HSL + municipal votemanager full counts)\n")
 he26 <- m %>% filter(state == "06", election_year == 2026)
 check(n_distinct(he26$ags) >= 25,
       sprintf("HE 2026: %d Gemeinden in mayoral_unharm (≥25 expected)", n_distinct(he26$ags)),
@@ -682,23 +682,33 @@ check(sum(m$state == "06" & m$election_year == 2026 & m$election_type == "Landra
         sum(l$state == "06" & l$election_year == 2026) == 0,
       "HE 2026: no Landratswahl (mayoral-only source)",
       "HE 2026: unexpected Landratswahl rows")
-# Hybrid: the official May-2026 XLSX gives FULL votes for the ~12 Gemeinden it
-# covers; the rest stay %-only from the hessenschau scrape (valid_votes NA).
+# The municipal supplement replaces all 15 remaining percentage-only rounds.
 he26_full <- he26 %>% filter(!is.na(valid_votes))
 he26_pct <- he26 %>% filter(is.na(valid_votes))
-check(nrow(he26_full) >= 10 && nrow(he26_pct) >= 8,
-      sprintf("HE 2026: %d round-rows with full votes (official XLSX) + %d %%-only (hessenschau)",
-              nrow(he26_full), nrow(he26_pct)),
-      sprintf("HE 2026: expected XLSX-full + hessenschau-%%only mix, got %d/%d",
+check(nrow(he26_full) == 63 && nrow(he26_pct) == 0,
+      "HE 2026: all 63 rounds have full counts (HSL and municipal votemanager)",
+      sprintf("HE 2026: expected 63 full + 0 percentage-only rounds, got %d/%d",
               nrow(he26_full), nrow(he26_pct)))
-he26_dec <- he26 %>% filter(!is.na(winner_voteshare))
+# A first round that went to a runoff carries its leader (since 2026-10-29), so
+# a decisive round is one with a winner and no runoff within 120 days.
+he26_to_runoff <- he26 %>% filter(round == "hauptwahl") %>%
+  inner_join(he26 %>% filter(round == "stichwahl") %>% select(ags, election_type, sw_date = election_date),
+             by = c("ags", "election_type"), relationship = "many-to-many") %>%
+  filter(sw_date > election_date, as.numeric(sw_date - election_date) <= 120) %>%
+  distinct(ags, election_type, election_date, round)
+he26_dec <- he26 %>% filter(!is.na(winner_voteshare)) %>%
+  anti_join(he26_to_runoff, by = c("ags", "election_type", "election_date", "round"))
 check(nrow(he26_dec) >= 25 && all(he26_dec$winner_voteshare >= 0.5 - 1e-9),
       sprintf("HE 2026: all %d decisive winners polled ≥50%% (no missing Stichwahl)", nrow(he26_dec)),
       sprintf("HE 2026: %d decisive winner(s) < 50%% — missing Stichwahl",
               sum(he26_dec$winner_voteshare < 0.5 - 1e-9)))
+# One term per Gemeinde, except Münster (Hessen): it re-elected its mayor on
+# 2026-03-15 and elected a new one on 2026-08-30 (HSL October 2026 table).
 he26p <- mp %>% filter(state == "06", election_year == 2026)
-check(nrow(he26p) >= 25 && n_distinct(he26p$ags) == nrow(he26p),
-      sprintf("HE 2026: %d panel terms (one per Gemeinde, HW/SW deduped)", nrow(he26p)),
+he26_two <- he26p %>% count(ags) %>% filter(n > 1)
+check(nrow(he26p) >= 25 && n_distinct(paste(he26p$ags, he26p$election_date)) == nrow(he26p) &&
+        identical(he26_two$ags, "06432015") && he26_two$n == 2,
+      sprintf("HE 2026: %d panel terms (one per Gemeinde, HW/SW deduped; Münster's March and August elections)", nrow(he26p)),
       "HE 2026: panel term dedup failed")
 
 
@@ -784,8 +794,9 @@ check("flag_decisive_round_missing" %in% names(mc) &&
         setequal(paste(fdm$ags, fdm$election_date),
                  c("06532007 2016-03-06", "06634015 2022-03-06", "16077047 2026-03-01",
                    "16063001 2004-06-27", "16067046 2004-06-27", "16069047 2004-06-27",
-                   "16076034 2004-06-27", th_majority_rule, th_neuwahl_2010)),
-      "flag_decisive_round_missing: no MV cycle; only the 2 failed Hessen Ja/Nein votes, the declined TH election, the 4 failed TH write-in elections of 2004, the 18 TH majority-rule cycles and the 2 added TH Neuwahlen of 2010",
+                   "16076034 2004-06-27", th_majority_rule, th_neuwahl_2010,
+                   "08127063 2021-03-14", "08317150 2022-05-15")),
+      "flag_decisive_round_missing: no MV cycle; only the 2 failed Hessen Ja/Nein votes, the declined TH election, the 4 failed TH write-in elections of 2004, the 18 TH majority-rule cycles and the 2 added TH Neuwahlen of 2010; BW Obersontheim annulled / Schwanau declined",
       sprintf("flag_decisive_round_missing on unexpected cycles: %s",
               paste(fdm$ags, fdm$election_date, collapse = ", ")))
 lup_p <- mp %>% filter(ags %in% lup)
@@ -865,11 +876,13 @@ check(wal$person_id[wal$election_date == as.Date("2000-05-21")] ==
       "22h HE panel: Waldems 2000 is the 1993 mayor's return (the 1999 election was annulled)",
       "22h HE panel: Waldems 2000 not linked to the 1993 mayor")
 same_yr <- he_p %>% count(ags, election_year) %>% filter(n > 1)
+# Münster (Hessen) 2026: a counted re-election in March, then an election from
+# the HSL's October 2026 table in August (no counter; a term of its own).
 check(setequal(paste(same_yr$ags, same_yr$election_year),
                c("06432001 2007", "06432002 2002", "06433001 1993", "06440002 1999",
-                 "06631002 2014")) &&
+                 "06631002 2014", "06432015 2026")) &&
         nrow(he_p %>% filter(ags == "06633002", election_year == 2017)) == 1,
-      "22h HE panel: the 5 counted same-year terms kept; Bad Karlshafen's superseded 2017 runoff excluded",
+      "22h HE panel: the 5 counted same-year terms and Münster 2026 kept; Bad Karlshafen's superseded 2017 runoff excluded",
       sprintf("22h HE panel: same-year terms wrong (%s)",
               paste(same_yr$ags, same_yr$election_year, collapse = ", ")))
 check(nrow(he_p) == n_distinct(paste(he_p$ags, he_p$election_date)) &&
@@ -1299,9 +1312,9 @@ check(th_nra[["unharm"]] == th_nra[["harm"]],
 cap_end <- ann_all %>%
   filter(paste(ags, election_date) %in% c("06431014 2017-09-24", "05112000 2009-08-30")) %>%
   group_by(ags) %>% summarise(last = max(year), .groups = "drop")
-check(nrow(cap_end) == 2 && cap_end$last[cap_end$ags == "06431014"] == 2023 &&
+check(nrow(cap_end) == 2 && cap_end$last[cap_end$ags == "06431014"] == 2022 &&
         cap_end$last[cap_end$ags == "05112000"] == 2015,
-      "26g legal maximum: Lautertal (Odenwald) 2017 ends 2023 (HSL lacks its 2023 election), Duisburg OB 2009 ends 2015 (off-cycle elections not in the IT.NRW files)",
+      "26g term ends: Lautertal 2017 ends 2022 before its recovered 2023 election; Duisburg 2009 retains its legal cap at 2015",
       "26g legal maximum: a term without its next election in the source runs past the legal maximum")
 
 # ============================================================================
@@ -1518,10 +1531,12 @@ check(nrow(vpairs) == 36 && n_one == 36,
       sprintf("28a %d of %d pinned name-variant pairs share one person_id", n_one, nrow(vpairs)))
 nv <- mp %>% filter(person_id_method == "candidate_name_variant_link")
 # 70 -> 69 people, 179 -> 176 terms (2026-10-12): the alias Kerber Heinrich =
-# Jörg Heinrich (Ellefeld) was father and son, so it went (30c).
-check(n_distinct(nv$person_id) == 69 && nrow(nv) == 176,
-      "28b candidate_name_variant_link: 69 people (33 from the August 2026 alias table + 36 pinned pairs), 176 terms",
-      sprintf("28b candidate_name_variant_link: %d people, %d terms (expected 69 / 176)",
+# Jörg Heinrich (Ellefeld) was father and son, so it went (30c). 70 / 177
+# (2026-10-28): the Heidenrod 2025 term joins its 2019 holder
+# (he_name_variant_links in 03; the counted HSL terms keep their method).
+check(n_distinct(nv$person_id) == 70 && nrow(nv) == 177,
+      "28b candidate_name_variant_link: 70 people (33 from the August 2026 alias table + 36 pinned pairs + Heidenrod), 177 terms",
+      sprintf("28b candidate_name_variant_link: %d people, %d terms (expected 70 / 177)",
               n_distinct(nv$person_id), nrow(nv)))
 ch <- mp %>% filter(ags == "12060045", election_year <= 2019) %>% arrange(election_date)
 sa <- mp %>% filter(ags == "05382056", election_year == 2025)
@@ -1682,15 +1697,16 @@ check(nrow(st2) == 0 && !("flag_shared_ags" %in% names(mc) && any(mc$flag_shared
       "30e ST: no AGS holds two Gemeinden on one day; Blaha, Feuerborn, Blankau, Boesenhagen (Liesten 2008), Jürges (Wieblitz-Eversdorf 2008) seated and in the panel",
       sprintf("30e ST: %d AGS-days hold two Gemeinden, or a re-coded mayor is unseated", nrow(st2)))
 # 30f: Mecklenburg-Vorpommern -- Wismar 2026 from the city's official result;
-# Rügen Landrat May 2001 failed its Ja/Nein runoff (25 % quorum) and seats nobody
+# Rügen Landrat May 2001 failed its Ja/Nein runoff (25 % quorum) and seats nobody:
+# no candidate elected, winner_* NA on the failed runoff row (the first round
+# keeps its leader, like every first round that went to a runoff)
 wis <- m %>% filter(ags == "13074087", election_year == 2026)
 rug <- lc %>% filter(ags == "13061000", election_date == as.Date("2001-05-06"))
 rug9 <- lc %>% filter(ags == "13061000", election_date == as.Date("2001-09-02"), is_winner %in% TRUE)
 check(nrow(wis) == 2 && identical(wis$winner_votes[wis$round == "stichwahl"], 11785) &&
         length(pid30("13074087", "2026-04-12")) == 1 &&
         nrow(rug) >= 4 && all(is.na(rug$is_winner)) && nrow(rug9) == 1 &&
-        all(is.na(l$winner_party[l$ags == "13061000" & l$election_date >= as.Date("2001-05-01") &
-                                   l$election_date <= as.Date("2001-06-30")])),
+        identical(is.na(l$winner_party[l$ags == "13061000" & l$election_date == as.Date("2001-05-20")]), TRUE),
       "30f MV: Wismar 2026 (Hauptwahl + Stichwahl, Junge 11,785) in unharm and panel; Rügen 5/2001 seats nobody, 9/2001 seats one",
       "30f MV: Wismar 2026 missing or Rügen 5/2001 seats a Landrat")
 
@@ -1931,7 +1947,11 @@ check(nrow(v35) == 0,
 cat("\n36. Party families\n")
 # pinned on the 2026-10-19 build
 PF_NA_LABELS <- 290; PF_PANEL_DISAGREE <- 17
-PF_N_SWITCH <- 8957; PF_N_CMP <- 39228; PF_N_NEW <- 11801
+# 8957 / 39228 / 11801 until the HSL's October 2026 table added Hessen terms (2026-10-27)
+# Municipal supplement: HE adds 48 comparable terms, 24 switches, 13 first-family wins.
+# Bayern duplicate rows (by_source_duplicate_rows.csv): Babenhausen loses its copied
+# 2015 term; Gundelsheim's switch moves from 1996 to 2002.
+PF_N_SWITCH <- 8987; PF_N_CMP <- 39297; PF_N_NEW <- 11817
 pf_allowed <- c("cdu_csu", "spd", "gruene", "linke_pds", "fdp", "afd", "fw_wg",
                 "independent", "other", "joint_list")
 pf_fix <- tribble(
@@ -2036,6 +2056,77 @@ check("party_family" %in% names(m) && "party_family" %in% names(mh) &&
               nrow(pf_um)),
       sprintf("36g election-level families: %d unharm rounds differ from the candidate's, %d harm rows pair a label with another family",
               pf_u_bad, pf_h_bad))
+
+cat("\n37. Recovered municipal results (HE/BW, 28 October 2026)\n")
+check(sum(m$state == "06") == 2996 && sum(m$state == "08") == 1419,
+      "37a coverage: 2,996 HE and 1,419 BW rounds",
+      "37a recovered municipal round coverage changed")
+denk37 <- mc %>% filter(ags == "08327010", election_date == as.Date("2023-06-18"), is_winner %in% TRUE)
+check(nrow(denk37) == 1 && denk37$candidate_votes_hw == 887 && denk37$valid_votes == 1301,
+      "37b Denkingen: final municipal notice, 887 winner votes / 1,301 valid",
+      "37b Denkingen correction lost")
+schor37 <- m %>% filter(ags == "08119067", election_date == as.Date("2021-11-07"))
+schor_flag37 <- fread("data/mayoral_elections/metadata/votemanager_schorndorf_flag.csv", colClasses = "character")
+check(nrow(schor37) == 1 && schor37$valid_votes == 13570 && nrow(schor_flag37) == 1 &&
+        schor_flag37$check == "CANDIDATE_TABLE_ONLY_CONFLICT" && schor_flag37$table_vote_sum == "13571",
+      "37c Schorndorf: fallback 13,570 valid; conflicting 13,571 candidate table remains flagged",
+      "37c Schorndorf fallback or unresolved flag lost")
+failed37 <- c("08127063 2021-03-14", "08317150 2022-05-15")
+fc37 <- mc %>% filter(paste(ags, election_date) %in% failed37)
+check(n_distinct(paste(fc37$ags, fc37$election_date)) == 2 &&
+        all(fc37$flag_decisive_round_missing) && all(is.na(fc37$is_winner)) &&
+        !any(paste(mp$ags, mp$election_date) %in% failed37) &&
+        all(fc37$flag_superseded[fc37$ags == "08127063"]),
+      "37d annulled Obersontheim / declined Schwanau cycles retain counts but no mayor tenure",
+      "37d failed BW cycle seated a mayor or lost its flag")
+id37 <- fread("data/mayoral_elections/metadata/votemanager_person_id_date_corrections.csv", colClasses = "character") %>%
+  mutate(election_date = as.Date(election_date)) %>%
+  left_join(mp %>% select(ags, election_date, actual_person_id = person_id), by = c("ags", "election_date"))
+check(nrow(id37) == 13 && all(!is.na(id37$actual_person_id)) && all(id37$person_id == id37$actual_person_id),
+      "37e thirteen published IDs retained at recovered/corrected cycle dates",
+      "37e published person ID changed after first-round recovery")
+# Calibrated: before the Singen correction its 2021 OB election stood twice
+# (municipal 11.07.2021 and StaLA misdated 11.07.2023). Walldorf 2021 split
+# its runoff runner-up in two rows ("Prof. apl. Dr." printed differently).
+same37 <- m %>% filter(state %in% c("06", "08"), !is.na(eligible_voters), !is.na(number_voters),
+                       !is.na(valid_votes), !is.na(invalid_votes)) %>%
+  group_by(ags, eligible_voters, number_voters, valid_votes, invalid_votes) %>%
+  filter(n_distinct(election_date) > 1) %>% ungroup()
+wall37 <- mc %>% filter(ags == "08226095", election_date == as.Date("2021-06-20"))
+check(nrow(same37) == 0 && nrow(wall37) == 7 && sum(!is.na(wall37$candidate_votes_sw)) == 6,
+      "37f no HE/BW round repeats another date's counts; Walldorf 2021 = 7 candidates, 6 of them in both rounds",
+      sprintf("37f %d HE/BW rounds repeat counts on another date; Walldorf 2021 has %d rows", nrow(same37), nrow(wall37)))
+
+cat("\n38. Rounds repeating another date's counts (all states, 28 October 2026)\n")
+# Four identical counts on two dates of one Gemeinde mark a copied row: Bayern
+# rows in metadata/by_source_duplicate_rows.csv, Singen 2021 in
+# bw_municipal_date_corrections.csv. Explained and kept: the two rounds of one
+# cycle before 1970 (the early Bayern workbook repeats the first round's turnout
+# in the runoff row: 9 of 458 runoffs 1948-1966, none since), council votes
+# (the "electorate" is the council) and the pinned cases below: one verified
+# coincidence, the rest settled by no document. Calibrated: fails on the build
+# before the Bayern drops (Wolfsegg, Gundelsheim, Seukendorf, Babenhausen).
+same38_kept <- c(
+  "09374156 1994-11-06 1996-03-10",  # Schwarzenbach: different winners; 1996 = same-day council election
+  "09376164 2014-03-16 2020-03-15",  # Schwarzhofen: genuine, both confirmed by the Landratsamt Schwandorf
+  "09679167 1990-04-01 1996-03-10",  # Eisenheim: 1990 runoff vs 1996 first round; 1996 = same-day council election
+  "09679177 1984-03-18 1984-04-29",  # Remlingen: first round repeated for the runoff after the annulled 01.04.1984
+  "15084360 2008-02-17 2008-03-02",  # Nebra: StaLA repeats the first round in the runoff columns
+  "15370045 2001-05-06 2008-02-24")  # Jeggau: StaLA lists both with the same counts
+same38 <- m %>%
+  filter(!is.na(eligible_voters), !is.na(number_voters), !is.na(valid_votes), !is.na(invalid_votes)) %>%
+  group_by(ags, eligible_voters, number_voters, valid_votes, invalid_votes) %>%
+  filter(n_distinct(election_date) > 1) %>%
+  summarise(dates = paste(sort(unique(as.character(election_date))), collapse = " "),
+            span = as.numeric(max(election_date) - min(election_date)),
+            early = max(election_date) < as.Date("1970-01-01"),
+            council = max(eligible_voters) <= 60, .groups = "drop") %>%
+  mutate(key = paste(ags, dates), kept = (early & span <= 60) | council | key %in% same38_kept)
+check(all(same38$kept) && all(same38_kept %in% same38$key),
+      sprintf("38 rounds repeating another date's counts: %d groups, all explained (one early cycle, council vote or pinned)", nrow(same38)),
+      sprintf("38 rounds repeating another date's counts unexplained: %s; pins no longer found: %s",
+              paste(same38$key[!same38$kept], collapse = "; "),
+              paste(setdiff(same38_kept, same38$key), collapse = "; ")))
 
 cat("\n════════════════════════════════════════════════════════════════════\n")
 if (failed == 0) {

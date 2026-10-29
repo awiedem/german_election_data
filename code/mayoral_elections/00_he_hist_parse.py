@@ -126,6 +126,10 @@ XLSX = os.path.join(RAW_DIR, "Direktwahlen_in_Hessen_seit_1993.xlsx")
 HE_PARSED = os.path.join(RAW_DIR, "he_parsed.csv")       # winner names (XLSX+PDF)
 HE_PDF_PARSED = os.path.join(RAW_DIR, "he_pdf_parsed.csv")  # 2024 snapshot names
 HE_2026 = os.path.join(RAW_DIR, "he2026_parsed.csv")     # 2026 candidate names
+HE_OCT = os.path.join(RAW_DIR, "he_parsed_2026-10.csv")   # B VII m web table, Stand 09.10.2026
+HE_OCT_SOURCE = "HE_Direktwahlen_BVII-m10-2026_StatHessen_tabelle_1.xlsx"
+HE_VM = os.path.join(RAW_DIR, "he_votemanager_parsed.csv")
+HE_VM_NAMES = os.path.join(RAW_DIR, "he_votemanager_parsed_names_restricted.csv")
 HESSAMI = os.path.join(RAW_DIR, "he_hessami_parsed.csv")  # 1993-2012 names (gitignored)
 HESSAMI_COLLECTED = os.path.join(RAW_DIR, "he_hessami_collected_parsed.csv")
 PAIR_PINS = os.path.join(ROOT, "data", "mayoral_elections", "metadata",
@@ -168,6 +172,23 @@ RESTRICTED_FIELDS = ["ags", "election_date", "round", "ballot_position", "candid
 GENERIC_TRAEGER = {"", "Einzelbewerbung", "Einzelbewerber", "Einzelbewerberin"}
 
 GENDER = {"männlich": "m", "weiblich": "w"}
+
+# Workbook rounds that the HSL's October 2026 table (Stand 09.10.2026) records
+# differently, each confirmed on the Gemeinde's ekom21 votemanager page
+# (2026-10-27). Keyed on the workbook's value, so a corrected workbook stops the
+# run instead of being corrected twice.
+#   workbook (ags, date, round) -> October table (date, round)
+HIST_FIXES = {
+    # Egelsbach: runoff dated 03.04.2024, a Wednesday (votemanager: 03.03.2024)
+    ("06438003", "2024-04-03", "stichwahl"): ("2024-03-03", "stichwahl"),
+    # Rödermark: dated 26.01.2024, a Friday (votemanager: 26.01.2025)
+    ("06438012", "2024-01-26", "hauptwahl"): ("2025-01-26", "hauptwahl"),
+    # Wolfhagen and Weinbach: the workbook holds only the decisive round, marked
+    # as a Hauptwahl; it is the runoff of a first round the October table adds
+    # (Wolfhagen 12.03.2023, Weinbach 04.02.2024)
+    ("06633028", "2023-03-26", "hauptwahl"): ("2023-03-26", "stichwahl"),
+    ("06533019", "2024-02-25", "hauptwahl"): ("2024-02-25", "stichwahl"),
+}
 
 
 def clean_name(x):
@@ -244,6 +265,114 @@ def parse_hist():
     return rounds
 
 
+def read_snapshot_groups(path):
+    groups = defaultdict(list)
+    for row in csv.DictReader(open(path, encoding="utf-8")):
+        groups[(row["ags"], row["election_date"], row["round"])].append(row)
+    return groups
+
+
+def apply_hist_fixes(rounds, oct_groups):
+    """HIST_FIXES: the October table must hold the corrected round with the
+    workbook round's exact valid votes and candidate votes."""
+    for (ags, date, rnd), (new_date, new_rnd) in HIST_FIXES.items():
+        hit = [rd for rd in rounds if (rd["ags"], rd["date"], rd["round"]) == (ags, date, rnd)]
+        assert len(hit) == 1, f"workbook round to correct not found: {ags} {date} {rnd}"
+        rd = hit[0]
+        rows = oct_groups.get((ags, new_date, new_rnd))
+        assert rows, f"October table lacks {ags} {new_date} {new_rnd}"
+        assert int(rows[0]["valid_votes"]) == rd["valid"] and \
+            sorted(int(r["candidate_votes"]) for r in rows) == sorted(w["votes"] for w in rd["wvs"]), \
+            f"October table disagrees with the workbook at {ags} {date}"
+        print(f"  corrected by the October 2026 table: {ags} {rd['name'][:25]} "
+              f"{date}/{rnd} -> {new_date}/{new_rnd}")
+        rd["date"], rd["round"] = new_date, new_rnd
+
+
+def snapshot_rounds(rounds, oct_groups):
+    """October-table rounds the workbook lacks, as workbook-style rounds, so they
+    get runoff pairing, cycle winners and names like every other round. The
+    table has no Amtszeiten counters; the elected person is named."""
+    keys = {(rd["ags"], rd["date"], rd["round"]) for rd in rounds}
+    by_ags = defaultdict(list)
+    for rd in rounds:
+        by_ags[rd["ags"]].append(rd)
+    added = []
+    for key, rows in sorted(oct_groups.items()):
+        if key in keys:
+            continue
+        valid = int(rows[0]["valid_votes"])
+        votes = sorted(int(r["candidate_votes"]) for r in rows)
+        twin = [rd for rd in by_ags[key[0]] if rd["valid"] == valid
+                and sorted(w["votes"] for w in rd["wvs"]) == votes]
+        assert not twin, (f"October round {key} repeats workbook round "
+                          f"{twin[0]['date']}/{twin[0]['round']}: pin it in HIST_FIXES")
+        wvs, winner, gender = [], None, ""
+        for r in rows:
+            w = {"party": r["candidate_party"], "votes": int(r["candidate_votes"]),
+                 "pct": int(r["candidate_votes"]) / valid * 100, "pos": len(wvs) + 1}
+            if r["is_winner"] == "TRUE":
+                winner, gender = w, r["candidate_gender"]
+                w.update(name=r["candidate_name"], last=r["candidate_last_name"],
+                         first=r["candidate_first_name"], name_src="public_snapshot")
+            wvs.append(w)
+        if winner is not None:
+            assert winner["votes"] / valid >= 0.5 - 1e-9, f"decisive winner below 50% at {key}"
+        added.append({
+            "ags": key[0], "name": clean_name(rows[0]["ags_name"]), "etype": classify(key[0]),
+            "round": key[2], "neuwahl": False, "date": key[1],
+            "eligible": int(rows[0]["eligible_voters"]), "voters": int(rows[0]["number_voters"]),
+            "invalid": int(rows[0]["invalid_votes"]), "valid": valid,
+            "turnout": float(rows[0]["turnout"]), "gender": gender,
+            "win_traeger": winner["party"] if winner else "", "winner": winner,
+            "n_terms": "", "n_reelect": "", "wvs": wvs, "source": HE_OCT_SOURCE,
+        })
+        print(f"  added from the October 2026 table: {key[0]} {rows[0]['ags_name'][:25]} "
+              f"{key[1]} {key[2]}")
+    rounds.extend(added)
+    return added
+
+
+def append_votemanager(rounds):
+    """Full municipal results for the rounds never transmitted to the HSL.
+
+    The public input supplies validated opaque runoff links. Restricted names
+    are optional and cannot alter the numbers or those links.
+    """
+    if not os.path.exists(HE_VM):
+        return 0
+    groups = read_snapshot_groups(HE_VM)
+    names = {}
+    if os.path.exists(HE_VM_NAMES):
+        for r in csv.DictReader(open(HE_VM_NAMES, encoding="utf-8")):
+            names[(r["ags"], r["election_date"], r["round"], r["ballot_position"])] = r
+    existing = {(r["ags"], r["date"], r["round"]) for r in rounds}
+    assert not existing.intersection(groups), "HSL now covers a votemanager supplement round: review source precedence"
+    assert len(groups) == 75, f"expected 75 verified Hessen portal rounds, got {len(groups)}"
+    for k, rows in sorted(groups.items()):
+        head, wvs, winner = rows[0], [], None
+        for r in rows:
+            w = dict(party=r["candidate_party"], votes=int(r["candidate_votes"]),
+                     pct=float(r["candidate_voteshare"]) * 100, pos=int(r["ballot_position"]),
+                     vm_pair_id=r["pair_id"], name_was_public=r["name_was_public"] == "TRUE",
+                     name_src="votemanager")
+            named = names.get((*k, r["ballot_position"]), r)
+            if named["candidate_name"]:
+                w.update(name=named["candidate_name"], last=named["candidate_last_name"],
+                         first=named["candidate_first_name"], name_src="votemanager")
+            if r["is_winner"] == "TRUE":
+                assert winner is None and int(r["candidate_votes"]) * 2 > int(r["valid_votes"])
+                winner = w
+            wvs.append(w)
+        rounds.append(dict(ags=k[0], name=head["ags_name"], etype=classify(k[0]),
+            round=k[2], neuwahl=False, date=k[1], eligible=int(head["eligible_voters"]),
+            voters=int(head["number_voters"]), invalid=int(head["invalid_votes"]),
+            valid=int(head["valid_votes"]), turnout=float(head["turnout"]), gender="",
+            win_traeger=winner["party"] if winner else "", winner=winner,
+            n_terms="", n_reelect="", wvs=wvs, source="votemanager_2026-10-27"))
+    return len(groups)
+
+
 def report_winner_traeger_mismatches(rounds):
     n = 0
     for rd in rounds:
@@ -277,6 +406,12 @@ def _snapshot_target(key, rows, by_key, by_ags):
     target = by_key.get(key)
     if target is not None:
         return target, "exact"
+
+    # an older HSL snapshot repeats a workbook value that HIST_FIXES corrects
+    if key in HIST_FIXES:
+        target = by_key.get((key[0],) + HIST_FIXES[key])
+        if target is not None:
+            return target, "pinned-correction"
 
     same_date = [rd for rd in by_ags.get(key[0], []) if rd["date"] == key[1]]
     if len(same_date) == 1:
@@ -585,7 +720,7 @@ def pair_rounds(rounds, pins):
     for rd in rounds:
         for w in rd["wvs"]:
             tag = "" if rd["round"] == "hauptwahl" else "sw"
-            w["pair_id"] = f"{rd['ags']}_{rd['date']}_{tag}{w['pos']}"
+            w["pair_id"] = w.get("vm_pair_id", f"{rd['ags']}_{rd['date']}_{tag}{w['pos']}")
             w["pair_method"] = ""
     stats = Counter()
     used_pins = set()
@@ -595,6 +730,14 @@ def pair_rounds(rounds, pins):
 
         def take(s, w, method):
             out[id(s)] = (w, method)
+
+        # Source-backed links from the municipal name tables survive the public
+        # input's redaction, so offline/public-only rebuilds pair identically.
+        for s in sw["wvs"]:
+            if s.get("vm_pair_id"):
+                matches = [w for w in hw["wvs"] if w.get("vm_pair_id") == s["vm_pair_id"]]
+                assert len(matches) == 1, (hw["ags"], hw["date"], s["pos"])
+                take(s, matches[0], "votemanager_name")
 
         # 1) names in both rounds (Hessami: exact key, then the variant tiers)
         for s in sw["wvs"]:
@@ -736,13 +879,14 @@ def emit(rounds, appended):
             is_w = rd["winner"] is not None and w is rd["winner"]
             share = round(w["votes"] / rd["valid"], 6) if rd["valid"] else ""
             src = w.get("name_src", "")
-            withheld = src == "hessami_2018" and not w.get("cycle_winner", False)
+            withheld = (src == "hessami_2018" or
+                        (src == "votemanager" and not w.get("name_was_public", False))) and not w.get("cycle_winner", False)
             if withheld:
                 restricted.append({
                     "ags": rd["ags"], "election_date": rd["date"], "round": rd["round"],
                     "ballot_position": w["pos"], "candidate_votes": w["votes"],
-                    "candidate_name": w["name"], "candidate_last_name": w["last"],
-                    "candidate_first_name": w["first"], "name_source": src})
+                    "candidate_name": w.get("name", ""), "candidate_last_name": w.get("last", ""),
+                    "candidate_first_name": w.get("first", ""), "name_source": src})
             out.append({
                 "ags": rd["ags"], "ags_name": rd["name"],
                 "state": STATE, "state_name": STATE_NAME,
@@ -763,7 +907,7 @@ def emit(rounds, appended):
                 "candidate_rank": rank_of[id(w)], "n_candidates": len(rd["wvs"]),
                 "winner_n_terms": rd["n_terms"] if is_w else "",
                 "winner_n_reelections": rd["n_reelect"] if is_w else "",
-                "source_file": SOURCE,
+                "source_file": rd.get("source", SOURCE),
                 "ballot_position": w["pos"],
                 "pair_id": w["pair_id"], "pair_method": w["pair_method"],
                 "name_source": "" if withheld else src,
@@ -809,6 +953,21 @@ def main():
     assert len(gross) <= 2, f"{len(gross)} rows with printed-% deviation > 0.06 pp"
     print(f"  max |votes/valid - printed %|: {max(x[0] for x in off):.4f} pp")
 
+    print("\n--- October 2026 B VII m table (Stand 09.10.2026) ---")
+    assert os.path.exists(HE_OCT), f"{HE_OCT} missing: run 00_he_parse_xlsx.py"
+    oct_groups = read_snapshot_groups(HE_OCT)
+    apply_hist_fixes(rounds, oct_groups)
+    added = snapshot_rounds(rounds, oct_groups)
+    keys = Counter((rd["ags"], rd["date"], rd["round"]) for rd in rounds)
+    assert max(keys.values()) == 1, f"duplicate rounds: {[k for k, v in keys.items() if v > 1]}"
+    # 29 rounds of 2023-2026 the workbook of 17.07.2026 lacks (re-measure for a new table)
+    assert len(added) == 29, f"{len(added)} rounds added from the October table, expected 29"
+    _, oct_stats = graft_snapshot(rounds, HE_OCT, "he_parsed_2026-10", append_absent=False)
+    print(f"  rounds added: {len(added)} | winner names grafted onto workbook rounds: "
+          f"{oct_stats['grafted']} | already present: {oct_stats['already']} | unmatched: "
+          f"{oct_stats['unmatched']} | conflicts: {oct_stats['conflicts']}")
+    assert oct_stats["unmatched"] == 0
+
     print("\n--- grafting names from he_parsed.csv ---")
     appended, latest_stats = graft_snapshot(
         rounds, HE_PARSED, "he_parsed", append_absent=True
@@ -845,6 +1004,9 @@ def main():
         assert h_stats["rounds"] == 1793 and h_stats["conflict_with_public"] == 0, h_stats
         n_2013 = graft_collected_2013(rounds)
         print(f"  2013 winner names from collected.dta (validated): {n_2013}")
+
+    print("\n--- full municipal results absent from HSL ---")
+    print(f"  added votemanager rounds: {append_votemanager(rounds)}")
 
     print("\n--- runoff pairing (pair_id) ---")
     p_stats = pair_rounds(rounds, load_pins())

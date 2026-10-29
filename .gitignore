@@ -70,6 +70,10 @@ mcp_server/data/
 # committed artifacts are the parsed *_scraped.csv / *_parsed.csv. TH cache ~107MB).
 data/mayoral_elections/raw/**/html_cache*/
 data/mayoral_elections/raw/**/komm_one_cache/
+# Local Votemanager/archive candidate labels, including write-ins and losers.
+data/mayoral_elections/raw/votemanager/*_restricted.csv
+data/mayoral_elections/raw/hessen/he_votemanager_parsed_names_restricted.csv
+data/mayoral_elections/raw/baden_wuerttemberg/bw_komm_one_augmented_names_restricted.csv
 
 # Signed personal-data transmission declaration for the Sachsen-Anhalt StaLA mayoral
 # extract (DSGVO/Versicherung paperwork — contains personal info, not source data).

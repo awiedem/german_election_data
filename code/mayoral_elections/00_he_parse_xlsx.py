@@ -29,8 +29,15 @@ has an empty "Gewählte/r" cell (no winner on that row) and its own Stichwahl ro
 Merge: units the XLSX omits (their last direct election predates its 2020-2026
 window, ~57 units) are kept from the 2024 PDF parse `he_pdf_parsed.csv`, so coverage
 never shrinks. Output = the final `he_parsed.csv` consumed by stages 01/01b.
+
+October 2026 issue (Stand 09.10.2026, `HE_Direktwahlen_BVII-m10-2026_StatHessen_
+tabelle_1.xlsx`, the HSL's regularly updated web table; same layout, up to 20
+Wahlvorschläge): parsed with the same code into its own file
+`he_parsed_2026-10.csv`, which 00_he_hist_parse.py adds to the historical series
+(rounds the HSL workbook of 17.07.2026 lacks, and four pinned corrections of it).
+`he_parsed.csv` stays the May snapshot.
 Run order:  python3 00_he_parse.py   (writes he_pdf_parsed.csv)
-            python3 00_he_parse_xlsx.py   (writes he_parsed.csv)
+            python3 00_he_parse_xlsx.py   (writes he_parsed.csv, he_parsed_2026-10.csv)
 """
 
 import csv
@@ -43,6 +50,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 RAW_DIR = os.path.join(ROOT, "data", "mayoral_elections", "raw", "hessen")
 XLSX = os.path.join(RAW_DIR, "HE_Direktwahlen_BVII-m05-2026_StatHessen.xlsx")
+XLSX_OCT = os.path.join(RAW_DIR, "HE_Direktwahlen_BVII-m10-2026_StatHessen_tabelle_1.xlsx")
+OUT_OCT = os.path.join(RAW_DIR, "he_parsed_2026-10.csv")
 PDF_CSV = os.path.join(RAW_DIR, "he_pdf_parsed.csv")   # 2024 fallback
 OUT = os.path.join(RAW_DIR, "he_parsed.csv")
 
@@ -115,8 +124,9 @@ def split_name(full):
     return full, full, ""
 
 
-def parse_xlsx():
-    wb = openpyxl.load_workbook(XLSX, read_only=True, data_only=True)
+def parse_xlsx(path=None):
+    path = path or XLSX
+    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     rows = [r for r in wb["Direktwahlen"].iter_rows(values_only=True)][4:]  # skip 4 header rows
     out, xlsx_ags = [], set()
     n_assert = 0
@@ -174,7 +184,7 @@ def parse_xlsx():
                 "is_winner": "TRUE" if is_w else "FALSE",
                 "candidate_rank": rank_of[id(w)],
                 "n_candidates": ncand,
-                "source_file": "HE_Direktwahlen_BVII-m05-2026_StatHessen.xlsx",
+                "source_file": os.path.basename(path),
             })
     return out, xlsx_ags, n_assert
 
@@ -213,6 +223,16 @@ def main():
         w.writeheader()
         w.writerows(rows)
     sys.stderr.write(f"  Wrote {len(rows)} rows -> {OUT}\n")
+
+    # October 2026 issue: its own file, read by 00_he_hist_parse.py (no PDF merge)
+    if os.path.exists(XLSX_OCT):
+        rows_oct, oct_ags, n_assert_oct = parse_xlsx(XLSX_OCT)
+        with open(OUT_OCT, "w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=FIELDS)
+            w.writeheader()
+            w.writerows(rows_oct)
+        sys.stderr.write(f"  October 2026 issue: {len(rows_oct)} rows, {len(oct_ags)} units, "
+                         f"{n_assert_oct} winners -> {OUT_OCT}\n")
 
 
 if __name__ == "__main__":

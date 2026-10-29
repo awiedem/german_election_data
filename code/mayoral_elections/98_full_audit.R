@@ -117,17 +117,20 @@ cat("\n========== G. mayoral <-> landrat split ==========\n")
 if (nrow(lu[election_type!="Landratswahl"])) rep("ERROR","split.landrat_type","non-Landrat in landrat_unharm") else ok("split.landrat_type","landrat_unharm all Landratswahl")
 if (nrow(mu[election_type=="Landratswahl"])) rep("ERROR","split.mayoral_landrat","Landratswahl in mayoral_unharm") else ok("split.mayoral_landrat","no Landratswahl in mayoral")
 
-cat("\n========== H. flag_superseded (Bayern annulled / superseded rounds) ==========\n")
+cat("\n========== H. flag_superseded (annulled / superseded rounds) ==========\n")
 # flag_superseded marks Bayern rounds that did NOT seat the mayor: annulled
 # ("... ungültig") rounds + a Hauptwahl superseded by a later Hauptwahl (Neuwahl)
 # for the same office within 120 days. It must exist, be a non-NA logical, be
-# TRUE only for Bayern, and never appear in the Landrat split.
+# TRUE only for Bayern or the pinned Obersontheim March 2021 annulment,
+# and never appear in the Landrat split.
 for (nm in c("mayoral_unharm","mayoral_candidates")) {
   d <- if (nm == "mayoral_unharm") mu else mc
   if (!"flag_superseded" %in% names(d)) { rep("ERROR","flag.present",paste(nm,"missing flag_superseded")); next }
   if (!is.logical(d$flag_superseded) || any(is.na(d$flag_superseded))) rep("ERROR","flag.type",paste(nm,"flag_superseded not non-NA logical")) else ok("flag.type",paste(nm,"flag_superseded is non-NA logical"))
-  nbad <- nrow(d[flag_superseded == TRUE & substr(ags,1,2) != "09"])
-  if (nbad) rep("ERROR","flag.bayern_only",sprintf("%s: %d non-Bayern rows flagged",nm,nbad), d[flag_superseded==TRUE & substr(ags,1,2)!="09",.N,.(st=substr(ags,1,2))]) else ok("flag.bayern_only",paste(nm,"flagged rows all Bayern"))
+  bad <- d[flag_superseded == TRUE & substr(ags,1,2) != "09" &
+             !(ags == "08127063" & as.character(election_date) %in% c("2021-03-14", "2021-03-28"))]
+  if (nrow(bad)) rep("ERROR", "flag.scope", sprintf("%s: %d unexpected flagged rows", nm, nrow(bad))) else
+    ok("flag.scope", paste(nm, "flagged rows restricted to Bayern and Obersontheim's annulled March 2021 cycle"))
   nflag <- nrow(d[flag_superseded == TRUE])
   if (nflag == 0) rep("ERROR","flag.nonzero",paste(nm,"has 0 flagged rows (expected >0)")) else ok("flag.nonzero",sprintf("%s: %d rows flagged superseded",nm,nflag))
 }

@@ -591,3 +591,66 @@ The Internet Archive kept the Landeswahlleiter's old result pages (`wahlen.brand
   - the election-level files against the candidates (§36g).
 
   The Landrat audit checks `landrat_candidates` and `landrat_unharm`.
+
+## 24. Hessen: the HSL's October 2026 web table (27 October 2026)
+
+The HSL publishes a regularly updated table of the latest Direktwahl of every Landkreis and municipality (`raw/hessen/HE_Direktwahlen_BVII-m10-2026_StatHessen_tabelle_1.xlsx`, Stand 09.10.2026). Its 436 rounds that the historical workbook (Stand 17.07.2026) also holds agree exactly in every count and vote. `00_he_hist_parse.py` uses it as follows:
+
+- **29 rounds added** that the workbook lacks: Rodenbach 21.06.2026 (until now percentage-only from hessenschau), 26 rounds of June–September 2026 (by-elections, among them four with a runoff), and the first rounds of Wolfhagen (12.03.2023) and Weinbach (04.02.2024). They have full counts and a named elected person, but no Amtszeiten counters.
+- **Four workbook rounds corrected** (`HIST_FIXES`, each confirmed on the municipality's ekom21 votemanager page):
+  - Egelsbach: the runoff was on 03.03.2024, not 03.04.2024 (a Wednesday);
+  - Rödermark: the election was on 26.01.2025, not 26.01.2024 (a Friday);
+  - Wolfhagen 26.03.2023 and Weinbach 25.02.2024: the workbook's only round is the runoff of a first round it omits, so it is now a `stichwahl`.
+- **Runoff pairing:** the six new runoff cycles in which an Einzelbewerbung reached the runoff are pinned in `metadata/he_runoff_pairing_verified.csv` from the votemanager's named results.
+
+**Resolved by the municipal supplement (§25).** The table contains none of the 48 municipalities whose latest election in the workbook is from 2017–2019: the HSL confirmed on 27.10.2026 that their later results were never reported to it (`raw/hessen/email_HSL_2026-10-27.txt`). Fifteen 2026 rounds were percentage-only from hessenschau for the same reason. The municipal supplement now supplies full counts for these rounds and results for all 48 municipalities.
+
+
+## 25. Municipal votemanager/Komm.ONE and archive supplement (28 October 2026)
+
+The recovered inventory contains 75 HE and 712 BW rounds, including 13 full tables from municipal and web archives. `00_votemanager_supplement.py` preserves source URLs, hashes, accounting checks and explicit runoff identities in `raw/votemanager/`. All HE tables and 710 BW tables pass. HE gains 60 rounds and replaces 15 percentage-only rounds. BW uses 709 validated rounds from complete cycles; Eschbach's first round without a decisive result retains the existing StaLA fallback.
+
+The following source problems remain explicit:
+
+- **Schorndorf, 7 November 2021:** provisional candidate table totals 13,571; StaLA valid votes are 13,570. The candidate table is excluded; `metadata/votemanager_schorndorf_flag.csv` retains the discrepancy. The StaLA first round and recovered 28 November runoff are linked.
+- **Fischerbach, 13 October 2024:** only one of two districts reported. The previously scraped incomplete table is excluded and StaLA retained.
+- **Schwäbisch Hall, 4 July 2021:** candidate sum 14,437 versus 14,447 valid. First-round StaLA fallback retained; recovered 18 July runoff linked.
+- **Denkingen, 18 June 2023:** the final notice in the archived bulletin KW25/2023 records Fabian Biselli with **887**, not StaLA's **878** votes. With the other candidate's 414, this sums to 1,301 valid. `00_bw_parse.py` applies a guarded correction; the raw report is unchanged.
+- **Count conflicts with StaLA (user decision 2026-10-29).** In 16 rounds a complete municipal table disagrees with StaLA (`votemanager_stala_conflicts_{html,json,additional}.csv`). Most of these tables are election-night quick reports. StaLA takes precedence unless the Gemeinde's final notice confirms the table. Final notices were found for 7 rounds (Leibertingen 2021, Bad Liebenzell 2021, Löffingen 2021, Weingarten 2022, Durmersheim 2022 first round and Neuwahl; for Bartholomä 2021 the Gemeinde's result sheet and "Endergebnis" news, where StaLA's 1,375 eligible transposes 1,735). All 7 confirm the municipal table. Küssaberg 2021 also keeps the municipal table, as an exception without a notice (user decision 2026-10-29): StaLA equals it minus postal district "Briefwahl 2" on all four fields (626 voters, 4 invalid, 622 valid, 445 winner votes), so StaLA omitted that district. The other 8 keep StaLA as winner-only rows. The search found no notice that confirms StaLA either; only a press report (Mögglingen) and the Gemeinde's annual review (Hirrlingen) give its figures. `metadata/votemanager_stala_conflict_decisions.csv` records each decision with its evidence.
+
+Missing dates are no longer dropped simply because the other round is present. Multiple elections in a municipality-year have separate cycle keys. New non-winner names stay in restricted companions; the public numeric extraction and opaque links reproduce the same counts without those names. Leonberg 2017 retains the published Martin Cohn identity (the source used his former surname Kaufmann).
+
+
+Two recovered cycles seated nobody: Obersontheim's March 2021 election was [annulled by the Landratsamt](https://www.n-tv.de/regionales/baden-wuerttemberg/Landratsamt-Buergermeisterwahl-in-Obersontheim-fuer-ungueltig-article22549181.html); Schwanau's May 2022 winner [declined the office](https://www.welt.de/regionales/baden-wuerttemberg/article240476659/Badische-Gemeinde-Schwanau-hat-neuen-Buergermeister.html). Their counts remain, `flag_decisive_round_missing` prevents either cycle from creating a mayor tenure, and Obersontheim also carries `flag_superseded`. The later elections are separate cycles. `metadata/votemanager_cycle_exclusions.csv` records these decisions. Three aggregate “Vom Wähler vorgeschlagene Person(en)” rows are retained in source accounting but excluded from individual candidates.
+
+Six previously published person IDs move to the recovered first-round dates (Neidlingen, Auenwald, Boxberg, Dettenheim, Rottweil and Achstetten). The matching decisive dates and names are recorded in `metadata/votemanager_person_id_date_corrections.csv`. Register gender and birth year travel along the same explicit runoff link, preserving Boxberg's official female classification when the new first round becomes its cycle date. Where the register has a fuller given name of which the municipal table prints only the first part, `01b` keeps the register's (user decision 2026-10-29; 5 elected persons).
+
+
+The integration comparison also found **ten misdated StaLA rounds in eight municipalities**, each matching the municipal table on all four turnout/count fields (and winner votes where reported): Holzgerlingen 03.11.2017 → 03.12.2017; Erligheim and Wallhausen 03.07.2023 → 03.07.2022; Vaihingen an der Enz 24.07.2023 → 24.07.2022 (a second round); Neudenau 08.03.2023 → 05.03.2023; Laupheim 27.03./24.04.2023 → the same dates in 2022; Amtzell 17.07./31.07.2023 → the same dates in 2022; Singen (Hohentwiel) OB 11.07.2023 (a Tuesday) → 11.07.2021 (found in the final audit of 2026-10-28: the misdated row had survived next to the recovered round, giving its mayor a second term). The municipal source dates replace the erroneous keys rather than creating duplicate elections. Boxberg 28.03.2021 is likewise corrected from Hauptwahl to second round. These eleven guarded key corrections are in `metadata/bw_municipal_date_corrections.csv` with their primary result URLs; the original PDF is preserved. [Holzgerlingen's municipal election archive](https://www.holzgerlingen.de/de/verwaltung-politik/verwaltung-politik/wahlen/?y=2026) independently confirms 03.12.2017.
+
+Seven additional published cycle dates move with these corrections, bringing the ID migration table to thirteen entries. `01_mayoral_unharm.R` now stops if a Baden-Württemberg Gemeinde shows the same four counts on two dates, and `99_audit.R` §37f checks HE and BW. Neudenau retains its originally published 05.03.2023 date and ID; the erroneous StaLA 08.03.2023 duplicate is removed. The final comparison guards every pre-integration published person ID, not just the migration fixtures. The Lautertal 2017 annual-term audit now ends in 2022 because its recovered election of 04.06.2023 begins the next cycle; Duisburg remains the legal-term-cap fixture.
+
+
+**Bösingen's municipal title repeats the first-round date.** The Neuwahl result at the 16.10.2022 portal is the second round of **06.11.2022** (StaLA, contemporary result reporting, and its 07.11.2022 update timestamp). The pinned URL is corrected before pairing, with the original reported date retained in the public source inventory. Its full table totals 1,870 valid and 17 invalid votes, versus StaLA's 1,871 and 16; winner votes agree at 975. No final notice is online, so StaLA's figures are used (decision of 2026-10-29, above), with both counts retained in metadata. This differs from Schorndorf's candidate-only table, which has no independent totals and remains excluded. `votemanager_source_date_corrections.csv` and `votemanager_stala_conflicts_additional.csv` retain the evidence and discrepancy.
+
+## 26. Rounds that repeat another date's counts (Bayern, Sachsen-Anhalt; 28 October 2026)
+
+Identical counts (eligible, voters, valid, invalid) on two dates of one Gemeinde usually mean a copied row. The test that found Singen 2021 (§25) also found 19 such groups outside Hessen and Baden-Württemberg. `99_audit.R` §38 now checks every state.
+
+**Dropped (4 Bayern workbook rows, `metadata/by_source_duplicate_rows.csv`).** Each row repeats another row of the same Gemeinde, including the winner's votes. The helper `by_source_duplicates.R` drops them right after `01`, `01b` and `03` read the workbook. Each pin is keyed on the copied values and stops the run if the row or its original disappears.
+- **Gundelsheim, runoff of 24.03.1996**: a copy of the runoff of 25.06.1972 (943 eligible against 2,530 two weeks earlier; first Amtsantritt 1948). The first round of 10.03.1996 was won with 92.1 % by the mayor elected in 1990, so no runoff followed. The panel had seated the 1948 mayor for a seventh term instead.
+- **Babenhausen (Schwaben), 16.03.2015** (a Monday): a copy of 16.03.2014. It gave the mayor an extra term, so 2020 counted as term 4 instead of 3.
+- **Seukendorf, runoff dated 10.07.2022**: the runoff of 24.07.2022 repeated under the first-round date, which made two 2022 cycles in `mayoral_candidates`.
+- **Wolfsegg, 19.02.1978**: carries the counts, winner and first Amtsantritt of 25.04.1948 (445 eligible against 717 at the runoff of 05.03.1978). The runoff is kept as recorded. Whether a first round took place on 19.02.1978 is not known.
+
+**Kept: the source's own conventions (10 groups).**
+- Seven Bayern cycles of 1948–1966 whose runoff row repeats the first round's turnout (Viechtach 1966, Rötz 1960, Hallstadt, Kemmern and Schönbrunn i.Steigerwald 1948, Urspringen 1960, Kammeltal 1952). The workbook does this in 9 of its 458 runoffs of 1948–1966 and in none since.
+- Two council elections of an Oberbürgermeister, where the "electorate" is the council: München 1948 (two ballots of 50 councillors) and Hof 1948/1950 (42 councillors).
+- Nebra (Unstrut) 2008: the StaLA row repeats the first round's turnout in its runoff columns.
+
+**Kept: genuine (1 group).** Schwarzhofen 2014/2020: both elections really had 822 voters and 779 valid votes. The Landratsamt Schwandorf's result pages give 779 valid votes for both Bürgermeisterwahlen, and 822 voters at the same-day Kreistag and Landrat elections (wahlen.landkreis-schwandorf.de, checked 29.10.2026). Identical counts six years apart can therefore be real.
+
+**Kept and pinned in §38: no document settles them (4 groups).**
+- Remlingen 1984: the first round of 18.03 reappears under 29.04 and anchors the repeated runoff of 13.05, held after the runoff of 01.04 was annulled. The panel is right. Dropping the copy would give one first round two runoffs, which the wide candidate file cannot hold. It is the only one of the workbook's 10 annulled runoffs with such a copy.
+- Schwarzenbach 1994/1996 and Eisenheim (1990 runoff / 1996 first round): pairs of different elections with different winners. The 1996 row is confirmed by the same-day Gemeinderatswahl in `municipal_unharm` (Schwarzenbach 737 eligible / 634 voters, Eisenheim 905 / 798). The other row (a by-election of November 1994; a runoff two weeks after the 1990 first round) has no same-day check and may be a copy or a coincidence.
+- Jeggau 2001/2008 (Sachsen-Anhalt): StaLA lists 24.02.2008 with exactly the counts of 2001, for the same sole candidate. The StaLA holds only what the Gemeinden reported.

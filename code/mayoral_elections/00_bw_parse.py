@@ -32,7 +32,8 @@ Important characteristics of the BW source (documented limitations):
 Output (one row per Gemeinde-round, winner-level long, MV/TH-compatible):
   data/mayoral_elections/raw/baden_wuerttemberg/bw_parsed.csv
 
-The CSV is **lossless** w.r.t. the report's per-Gemeinde tables: alongside the
+The CSV retains the report's per-Gemeinde fields, with source-backed date,
+round and vote corrections documented in metadata: alongside the
 columns the R stages consume, it carries every other field the report gives for
 the elected person / round but that the unified GERDA schema does not surface —
 `amtsperiode` (term number of the elected mayor), `hauptamtlich` (TRUE =
@@ -482,6 +483,27 @@ def main():
 
     ob_ags = resolve_ob_ags(munis)
     rows, n_no_winner, bad_share = build_rows(munis, winners, ob_ags)
+
+    # Denkingen's final municipal notice gives Biselli 887 and the other candidate 414
+    # (1,301 valid), correcting the 878 typo in StaLA table 14. Preserve the
+    # original PDF and fail loudly if a future report changes the input.
+    denkingen = [r for r in rows if r["ags"] == "08327010" and r["election_date"] == "2023-06-18"]
+    assert len(denkingen) == 1
+    assert denkingen[0]["candidate_votes"] == 878 and denkingen[0]["valid_votes"] == 1301
+    denkingen[0]["candidate_votes"] = 887
+    denkingen[0]["candidate_voteshare"] = 887 / 1301
+
+    # Municipal results settle misprinted dates / round types in StaLA. Each
+    # correction is pinned to all four matching counts and the original key.
+    corrections = os.path.join(ROOT, "data/mayoral_elections/metadata/bw_municipal_date_corrections.csv")
+    with open(corrections, encoding="utf-8") as fh:
+        for fix in csv.DictReader(fh):
+            hit = [r for r in rows if r["ags"] == fix["ags"] and
+                   r["election_date"] == fix["old_election_date"] and r["round"] == fix["old_round"]]
+            assert len(hit) == 1, fix
+            for field in ["eligible_voters", "number_voters", "valid_votes", "invalid_votes", "candidate_votes"]:
+                assert str(hit[0][field]) == fix[field], (fix["ags"], field)
+            hit[0].update(election_date=fix["election_date"], election_year=fix["election_date"][:4], round=fix["round"])
 
     # ---- diagnostics -----------------------------------------------------
     n_munis = len(munis)

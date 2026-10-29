@@ -277,6 +277,8 @@ bayern_file <- "data/mayoral_elections/raw/bayern/20251114_Wahlen_seit_1945.xlsx
 
 bayern_raw <- read_excel(bayern_file, sheet = "20251114_bewerberRBZ1-7") %>%
   as.data.table()
+source("code/mayoral_elections/by_source_duplicates.R")
+bayern_raw <- drop_by_source_duplicates(bayern_raw)
 
 # Build base election-level info
 bayern_base <- bayern_raw %>%
@@ -2646,6 +2648,8 @@ cat("\n=== Processing Baden-Württemberg mayoral elections ===\n")
 
 bw_file <- "data/mayoral_elections/raw/baden_wuerttemberg/bw_parsed.csv"
 bw_komm_file <- "data/mayoral_elections/raw/baden_wuerttemberg/bw_komm_one_parsed.csv"
+bw_augmented <- "data/mayoral_elections/raw/baden_wuerttemberg/bw_komm_one_augmented.csv"
+if (file.exists(bw_augmented)) bw_komm_file <- bw_augmented
 
 if (file.exists(bw_file)) {
   bw_raw <- fread(bw_file, encoding = "UTF-8",
@@ -2686,7 +2690,28 @@ if (file.exists(bw_file)) {
     bk <- fread(bw_komm_file, encoding = "UTF-8",
                 colClasses = list(character = c("ags", "ags_name", "state",
                   "state_name", "election_date", "candidate_party", "candidate_name",
-                  "candidate_last_name", "candidate_first_name", "round"))) %>%
+                  "candidate_last_name", "candidate_first_name", "round")))
+    for (cl in c("flag_superseded", "flag_decisive_round_missing")) {
+      if (!cl %in% names(bk)) bk[[cl]] <- FALSE
+      bk[[cl]] <- as.logical(bk[[cl]])
+    }
+    bk[, pair_key := if ("pair_id" %in% names(bk)) as.character(pair_id) else NA_character_]
+    bw_pair_file <- "data/mayoral_elections/raw/baden_wuerttemberg/bw_komm_one_fallback_pair_keys.csv"
+    if (identical(bw_komm_file, bw_augmented) && file.exists(bw_pair_file)) {
+      bp <- fread(bw_pair_file, colClasses = "character") %>% mutate(election_date = as.Date(election_date))
+      bw_stala <- left_join(bw_stala, bp, by = c("ags", "election_date", "round"))
+    }
+    bk[, name_restricted := if ("name_withheld" %in% names(bk)) name_withheld %in% c("TRUE", TRUE) else FALSE]
+    bw_names <- sub("\\.csv$", "_names_restricted.csv", bw_komm_file)
+    if (file.exists(bw_names)) {
+      bn <- fread(bw_names, colClasses = "character", na.strings = "")
+      bn[, ballot_position := as.integer(ballot_position)]
+      bk[bn, on = .(ags, election_date, round, ballot_position),
+         `:=`(candidate_name = i.candidate_name, candidate_last_name = i.candidate_last_name,
+              candidate_first_name = i.candidate_first_name)]
+      stopifnot(sum(bk$name_restricted) == nrow(bn))
+    }
+    bk <- bk %>%
       mutate(
         election_date = as.Date(election_date),
         election_year = as.integer(election_year),
@@ -2701,23 +2726,21 @@ if (file.exists(bw_file)) {
         n_candidates = as.integer(n_candidates),
         is_winner = as.logical(is_winner)
       )
-    # Komm.ONE coverage can be PARTIAL: for some runoff elections only the
-    # Hauptwahl is published (the Stichwahl is absent from the registry), which
-    # would mark the HW leader as the "winner" even though a runoff decided
-    # otherwise and would leave the StaLA decisive row un-superseded (a duplicate).
-    # So Komm.ONE supersedes StaLA for a cycle ONLY when it captured the DECISIVE
-    # round — it has a Stichwahl, or a Hauptwahl winner with an absolute majority
-    # (>=50%). Otherwise we fall back to StaLA (which records the decisive winner)
-    # for that whole (ags, election_year) cycle and drop the incomplete Komm.ONE rows.
-    komm_complete <- bk %>%
-      group_by(ags, election_year) %>%
-      summarise(decisive = any(round == "stichwahl") ||
-                  any(round == "hauptwahl" & is_winner &
-                      !is.na(candidate_voteshare) & candidate_voteshare >= 0.5),
-                .groups = "drop") %>%
-      filter(decisive) %>% select(ags, election_year)
-    n_komm_cycles <- nrow(distinct(bk, ags, election_year))
-    bk <- bk %>% semi_join(komm_complete, by = c("ags", "election_year"))
+    # Complete cycles are keyed by their first round, not just the year.
+    if ("cycle_complete" %in% names(bk)) {
+      n_komm_cycles <- nrow(distinct(bk, ags, cycle_start))
+      bk <- bk %>% filter(as.logical(cycle_complete))
+      komm_complete <- distinct(bk, ags, cycle_start)
+    } else {
+      n_komm_cycles <- nrow(distinct(bk, ags, election_year))
+      komm_complete <- bk %>% group_by(ags, election_year) %>%
+        summarise(decisive = any(round == "stichwahl") ||
+                    any(round == "hauptwahl" & is_winner &
+                        !is.na(candidate_voteshare) & candidate_voteshare > 0.5),
+                  .groups = "drop") %>% filter(decisive) %>% select(ags, election_year)
+      bk <- semi_join(bk, komm_complete, by = c("ags", "election_year"))
+    }
+    komm_dates <- distinct(bk, ags, election_date)
 
     # Graft StaLA register gender + birth year onto the matching Komm.ONE candidate.
     # StaLA has one winner per (ags, election_date); match the Komm.ONE candidate
@@ -2777,6 +2800,26 @@ if (file.exists(bw_file)) {
              candidate_first_name = if_else(!is.na(.reg_last), .reg_first, candidate_first_name))
     cat(sprintf("  register surname replaced the Komm.ONE split for %d candidate rows\n",
                 sum(!is.na(bk$.reg_last))))
+    # Keep the register's fuller given name where Komm.ONE prints only its first
+    # part ("Anna" for "Anna Maria"; user decision 2026-10-29). Matching as above.
+    reg_given <- bk %>%
+      transmute(ags, election_date, candidate_name, .cn = norm_tok(candidate_name),
+                .kf = norm_tok(candidate_first_name)) %>%
+      inner_join(bw_stala %>%
+                   filter(!is.na(candidate_first_name)) %>%
+                   transmute(ags, election_date, .reg_given = candidate_first_name,
+                             .sl = norm_tok(candidate_last_name),
+                             .sf = sub(" .*", "", norm_tok(candidate_first_name)),
+                             .rf = norm_tok(candidate_first_name)) %>%
+                   distinct(ags, election_date, .sl, .sf, .keep_all = TRUE),
+                 by = c("ags", "election_date"), relationship = "many-to-many") %>%
+      filter(tok_match(.sl, .sf, .cn), startsWith(.rf, paste0(.kf, " "))) %>%
+      distinct(ags, election_date, candidate_name, .keep_all = TRUE) %>%
+      select(ags, election_date, candidate_name, .reg_given)
+    bk <- bk %>%
+      left_join(reg_given, by = c("ags", "election_date", "candidate_name")) %>%
+      mutate(candidate_first_name = coalesce(.reg_given, candidate_first_name))
+    cat(sprintf("  register given name kept for %d candidate rows\n", sum(!is.na(bk$.reg_given))))
 
     bk <- bk %>%
       left_join(graft, by = c("ags", "election_date", "candidate_name")) %>%
@@ -2788,16 +2831,26 @@ if (file.exists(bw_file)) {
         office_type = ifelse(election_type == "Oberbürgermeisterwahl",
                              "Oberbürgermeister*in", "Bürgermeister*in")
       ) %>%
+      # A newly recovered first round must keep the register attributes found
+      # on its runoff row (e.g. Boxberg 2021). Opaque links are person-specific.
+      group_by(ags, pair_key) %>%
+      mutate(
+        candidate_gender = if (is.na(first(pair_key))) candidate_gender else
+          coalesce(candidate_gender, first(candidate_gender[!is.na(candidate_gender)], default = NA_character_)),
+        candidate_birth_year = if (is.na(first(pair_key))) candidate_birth_year else
+          coalesce(candidate_birth_year, first(candidate_birth_year[!is.na(candidate_birth_year)], default = NA_real_))
+      ) %>% ungroup() %>%
       select(
         ags, ags_name, state, state_name, election_year, election_date,
         election_type, round, eligible_voters, number_voters, valid_votes,
         invalid_votes, turnout, candidate_name, candidate_last_name,
         candidate_first_name, candidate_gender, candidate_party,
         candidate_votes, candidate_voteshare, candidate_birth_year,
-        candidate_profession, office_type, n_candidates, candidate_rank, is_winner
+        candidate_profession, office_type, n_candidates, candidate_rank, is_winner, name_restricted, pair_key,
+        flag_superseded, flag_decisive_round_missing
       )
-    # Drop StaLA rows for cycles superseded by a COMPLETE Komm.ONE cycle.
-    bw_stala_keep <- bw_stala %>% anti_join(komm_complete, by = c("ags", "election_year"))
+    # Drop only recovered dates; missing/conflicted rounds retain StaLA.
+    bw_stala_keep <- bw_stala %>% anti_join(komm_dates, by = c("ags", "election_date"))
     bw_candidates <- bind_rows(bk, bw_stala_keep)
     cat(sprintf("  Komm.ONE: %d candidate rows, %d complete cycles used (%d incomplete -> StaLA fallback); ",
                 nrow(bk), nrow(komm_complete), n_komm_cycles - nrow(komm_complete)))
@@ -4404,6 +4457,37 @@ for (.nm in c("mayoral_candidates", "landrat_candidates")) {
   print(table(.df$candidate_party_family, useNA = "ifany"))
   assign(.nm, .df)
 }
+# A first round that went to a runoff carries its leader in winner_party,
+# winner_votes and winner_voteshare, as ten states' sources do (user decision
+# 2026-10-29), in mayoral_unharm and landrat_unharm alike. Fill the fields the
+# others leave NA (Niedersachsen, Hessen, Baden-Württemberg; Sachsen's party)
+# from the candidate table's unique rank-1
+# candidate, and only where the row's other winner fields agree with that
+# candidate. A tied lead, or a winner-only table (one candidate with
+# first-round figures), stays NA.
+fill_runoff_leader <- function(rounds, cands, label) {
+  lead <- cands %>%
+    filter(!is.na(election_date_sw)) %>%
+    group_by(ags, election_date, election_type) %>%
+    filter(sum(!is.na(candidate_votes_hw) | !is.na(candidate_voteshare_hw)) >= 2,
+           candidate_rank_hw %in% 1L) %>%
+    filter(n() == 1) %>% ungroup() %>%
+    transmute(ags, election_date, election_type, .lp = candidate_party,
+              .lv = candidate_votes_hw, .ls = candidate_voteshare_hw)
+  out <- rounds %>%
+    left_join(lead, by = c("ags", "election_date", "election_type"), relationship = "many-to-one") %>%
+    mutate(.hw = round == "hauptwahl" & (!is.na(.lv) | !is.na(.ls)),
+           .ok = .hw & (is.na(winner_votes) | winner_votes %in% .lv) &
+                       (is.na(winner_party) | is.na(.lp) | winner_party %in% .lp),
+           .n = .ok & ((is.na(winner_party) & !is.na(.lp)) | (is.na(winner_votes) & !is.na(.lv)) |
+                       (is.na(winner_voteshare) & !is.na(.ls))),
+           winner_party = if_else(.ok & is.na(winner_party), .lp, winner_party),
+           winner_votes = if_else(.ok & is.na(winner_votes), .lv, winner_votes),
+           winner_voteshare = if_else(.ok & is.na(winner_voteshare), .ls, winner_voteshare))
+  cat("  ", label, ": runoff first-round leader filled in ", sum(out$.n), " rounds\n", sep = "")
+  print(table(out$state[out$.n]))
+  out %>% select(-.lp, -.lv, -.ls, -.hw, -.ok, -.n)
+}
 # The same for the election-level files 01_mayoral_unharm.R wrote before the
 # candidates existed: party_family of winner_party, the own-name rule applied
 # through the candidate of the round who carries the label. 02_mayoral_harm.R
@@ -4412,6 +4496,7 @@ for (.nm in c("mayoral_candidates", "landrat_candidates")) {
 for (.u in list(c("data/mayoral_elections/final/mayoral_unharm", "mayoral_candidates"),
                 c("data/landrat_elections/final/landrat_unharm", "landrat_candidates"))) {
   .ud <- readRDS(paste0(.u[1], ".rds"))
+  .ud <- fill_runoff_leader(.ud, get(.u[2]), basename(.u[1]))
   .ud$party_family <- party_family_rounds(.ud, get(.u[2]))
   .ud <- .ud %>% relocate(party_family, .after = winner_party)
   write_rds(.ud, paste0(.u[1], ".rds"), compress = "gz")
