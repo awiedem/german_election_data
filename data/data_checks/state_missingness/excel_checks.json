@@ -13,7 +13,7 @@
     ],
     "invalid_votes_checked": 153078,
     "invalid_votes_missing": 22232,
-    "invalid_votes_zero": 2815
+    "invalid_votes_zero": 2814
   },
   {
     "dataset": "data/state_elections/final/state_harm_21",
@@ -29,7 +29,7 @@
     ],
     "invalid_votes_checked": 85049,
     "invalid_votes_missing": 13878,
-    "invalid_votes_zero": 1736
+    "invalid_votes_zero": 1737
   },
   {
     "dataset": "data/state_elections/final/state_harm_23",
@@ -45,7 +45,7 @@
     ],
     "invalid_votes_checked": 84957,
     "invalid_votes_missing": 13878,
-    "invalid_votes_zero": 1727
+    "invalid_votes_zero": 1728
   },
   {
     "dataset": "data/state_elections/final/state_harm_25",
@@ -61,6 +61,6 @@
     ],
     "invalid_votes_checked": 84821,
     "invalid_votes_missing": 13872,
-    "invalid_votes_zero": 1714
+    "invalid_votes_zero": 1715
   }
 ]

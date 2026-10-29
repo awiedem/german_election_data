@@ -3001,15 +3001,15 @@
       "turnout",
       "winner_voteshare"
     ],
-    "source_sha256": "13838d08189242f1cd3c8bfb6d55215803bf210a34338d369c19febbe15fe7ff",
-    "rds_sha256": "f113f349e97eafc51b8155ce06e849e6da73fa39ba87d77f47ef3efbb356886a",
+    "source_sha256": "5acd1455a0d3ecd82ac65731d4b564f3ca84fa8bb9f5cbc50466ff47a6d1e2be",
+    "rds_sha256": "aa21e79b6475a3107cbf8e9d28885e7c6a121f75e9bd36ce77390c2ce6bcf708",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "35777f33007a71c68473d9214bc6667fb9d9dc10e9d095d43747d3651c8ea224",
-    "bytes": 248370,
+    "xlsx_sha256": "8814fcadf63cd2b972294f81cd431d010179fa694ab28262f0c30a1591a3a3e0",
+    "bytes": 249532,
     "source": "data/landrat_elections/final/landrat_unharm.csv"
   },
   "data/mayoral_elections/final/mayor_panel": {
-    "rows": 48382,
+    "rows": 48458,
     "columns": 36,
     "sheets": 1,
     "percentage_columns": [
@@ -3019,15 +3019,15 @@
       "candidate_gender_prob",
       "candidate_migration_bg_prob"
     ],
-    "source_sha256": "f443eed3193f16d8d80245cb44348670ad99d57616f1be1821842d68f0638120",
-    "rds_sha256": "2320a351af8026582aeaba546b1583ebe122f928e62a6db637c76811cb16131c",
+    "source_sha256": "79603ee144bd844929741b8fd2d5c219764496024217c7f0ceab8cfa008a8a6f",
+    "rds_sha256": "b52162abcdacf973710c2aaa3862e45adfba83d46661ddf659f53a289ad946ab",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "7ba2fa83612c095f20ecd85ca8272f2254744094f3ff7818921867b8b79c57fa",
-    "bytes": 7122323,
+    "xlsx_sha256": "e7e21ffae8b581b708977705b058aad655877bbfc8df3c970fe12f06cf1164bf",
+    "bytes": 7145440,
     "source": "data/mayoral_elections/final/mayor_panel.csv"
   },
   "data/mayoral_elections/final/mayor_panel_annual": {
-    "rows": 248974,
+    "rows": 249095,
     "columns": 32,
     "sheets": 1,
     "percentage_columns": [
@@ -3036,15 +3036,15 @@
       "candidate_gender_prob",
       "candidate_migration_bg_prob"
     ],
-    "source_sha256": "ddae5e1182f36017e52e1d19e534e2591994e28c0950b7a495f4b6015e99e52e",
-    "rds_sha256": "6b5685644dc99450568229283ca63668995d0d3e5f1c19009f29cf7d201cbdb5",
+    "source_sha256": "ba05bf8efd6e7ffdd518b2c7859fc6a0207ad88a3062d715e868e731c96b2e6c",
+    "rds_sha256": "5c3e8cee57207183f2b442febbecd6b232d8cf8b7e9e59c40d63ffc50c2bf346",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "d6cc12ce0bb684df745b54d359625f2ac1c6edb26573acca6a60510b11205167",
-    "bytes": 26924936,
+    "xlsx_sha256": "1fe242e667fe88dfe2ccbd2f4742e8a36665ebc790ddc5296d78a007c2159b7d",
+    "bytes": 26965791,
     "source": "data/mayoral_elections/final/mayor_panel_annual.csv"
   },
   "data/mayoral_elections/final/mayor_panel_annual_harm": {
-    "rows": 248744,
+    "rows": 248865,
     "columns": 33,
     "sheets": 1,
     "percentage_columns": [
@@ -3053,15 +3053,15 @@
       "candidate_gender_prob",
       "candidate_migration_bg_prob"
     ],
-    "source_sha256": "4aa25dee47951d981dec7640284dee295e045cbcf58db435b1da0480b502faeb",
-    "rds_sha256": "d4d583911c1be93204395348b9a238eabdf39471c0d1a5d4d053b5e8de9f4abf",
+    "source_sha256": "14fb1c9e8b997c2a90384b6edeefb220ad826a11adcde640cc5838a5179646ef",
+    "rds_sha256": "e87a72c29f1b9f9f40abce233a95fbfe092b1bc1828d2b2478140bf61ff192a4",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "1d1d4004b75d2c0d414b416f8d9bd7eb24bd980e42f489993af8d213d9a6898d",
-    "bytes": 27882015,
+    "xlsx_sha256": "38d8269e8e6434f1064915b7b889a857376e6928f49f246d0e19b096e8f157c4",
+    "bytes": 27923212,
     "source": "data/mayoral_elections/final/mayor_panel_annual_harm.csv"
   },
   "data/mayoral_elections/final/mayor_panel_harm": {
-    "rows": 48350,
+    "rows": 48426,
     "columns": 37,
     "sheets": 1,
     "percentage_columns": [
@@ -3071,15 +3071,15 @@
       "candidate_gender_prob",
       "candidate_migration_bg_prob"
     ],
-    "source_sha256": "2760d51b4e1b27b5836bc70e920afbfbbd5ab8c6fb3bb53ee46739f8b4345283",
-    "rds_sha256": "7b7b4415a8c01fedbc7f55608d36cb36e00b2c8f018edf6d831e49ba41941d19",
+    "source_sha256": "77c99d6c391d8d77943b53218d89ba28ecb439f029790dab308f95a9e54802f6",
+    "rds_sha256": "356c4317e9d6d36181b261ec580b6bcbd40842f4c67280a8bcb27c6f2c74bcbb",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "aa328a9c19446fe54fdd7b0a628f2c32d18ee9118c8f40c1770a70798ca2a282",
-    "bytes": 7356189,
+    "xlsx_sha256": "334cf289bf99507986957479cd242c5a77542940be4644f3d7b01fd0e0a36d50",
+    "bytes": 7381777,
     "source": "data/mayoral_elections/final/mayor_panel_harm.csv"
   },
   "data/mayoral_elections/final/mayoral_candidates": {
-    "rows": 118417,
+    "rows": 119423,
     "columns": 49,
     "sheets": 1,
     "percentage_columns": [
@@ -3091,41 +3091,41 @@
       "candidate_migration_bg_prob",
       "candidate_surname_county_share"
     ],
-    "source_sha256": "63606fa1d68d0f635ed6e3a8a22a82a6c2af7b25cead5569d6aeae908cc69b98",
-    "rds_sha256": "37b8d297e3b382280a9eac691d53de50a246f1f351cf5d77dfa87a83b6273497",
+    "source_sha256": "c515fa36f0445d8958f781d37def631b62955d51e19cff20657d6e47f4f03216",
+    "rds_sha256": "57d461a47bd58ca06fb638030a789810234274259b54bbf5c85511025f0d9cb1",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "919f760b0cf1cb6dd7684f3b9aedd235d8ac23ee6a6cac059b1c5290d3a1667d",
-    "bytes": 17148448,
+    "xlsx_sha256": "62e5c75f232b95d27c6b30e4fa7a9271e3448c3e8552370305439573f73b5cc3",
+    "bytes": 17283054,
     "source": "data/mayoral_elections/final/mayoral_candidates.csv"
   },
   "data/mayoral_elections/final/mayoral_harm": {
-    "rows": 54795,
+    "rows": 54897,
     "columns": 29,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
       "winner_voteshare"
     ],
-    "source_sha256": "d6de83254372a930aad1ba35bd1ce6a96a169d21deeb8882cafb2ff771621099",
-    "rds_sha256": "347d2eb6677129e0637ae0e2c15ba419d2328599e4ff12536edb871554944527",
+    "source_sha256": "6c80b13ad45e4363548305952cebfb5501cc2f63ce8fc1a4913830662dbd2021",
+    "rds_sha256": "40c001819cd315ddea0562ded4a0c5dca28d70bf19351cd341f2cf8e9629c5bd",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "94bf37af83b13e5cdf3feedd04156768bd1fd8b042aa8444c7ef59e029dd2921",
-    "bytes": 7927978,
+    "xlsx_sha256": "880146f2fbfc3bd35b3948492c1c7653f668da13d84768844a8020c7ee643c42",
+    "bytes": 7964710,
     "source": "data/mayoral_elections/final/mayoral_harm.csv"
   },
   "data/mayoral_elections/final/mayoral_unharm": {
-    "rows": 59700,
+    "rows": 59802,
     "columns": 19,
     "sheets": 1,
     "percentage_columns": [
       "turnout",
       "winner_voteshare"
     ],
-    "source_sha256": "650fa11fb0ef4073e7d1d05e53c1723e93071707485e7c409eb9ab14dd03a772",
-    "rds_sha256": "4986f38653e9958151cc2673d8e293bf819b3c4c884c66e3be13b515d2f275e5",
+    "source_sha256": "43bc90df1c82e8e9c7cd01ebe3476efcd2fd0c260d837449c9a3fb4e732c0df8",
+    "rds_sha256": "3ce9e081c18080f906925d8d4de0a53737c80bb24553ecc7c96de148e5d48262",
     "exporter_sha256": "4d5c91569a3b59603d1e61d35a722dede862feb577dc75109eccfefdc526bfb2",
-    "xlsx_sha256": "59e8fb4fad93a18d0141f6dd78784ebfe2d195b7e95c1819969c98d19c47892e",
-    "bytes": 6253466,
+    "xlsx_sha256": "e6521635e8b28e1ac11df801ae86ed7d03c354a465f8159c5162cd942587a8d3",
+    "bytes": 6286258,
     "source": "data/mayoral_elections/final/mayoral_unharm.csv"
   },
   "data/municipal_elections/final/municipal_harm": {
