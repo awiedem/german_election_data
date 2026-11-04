@@ -269,6 +269,10 @@ def main():
         turn = {}
         with open(KERG_CSV, encoding="utf-8-sig") as fh:
             for row in csv.DictReader(fh):
+                # parse_SL.R appends the 1980-2017 rows to this file, so on a re-run
+                # only its 2022 rows are the KERG intermediate this check means.
+                if row["election_year"] != "2022":
+                    continue
                 v = row["votes"]
                 kerg[(row["wkr_nr"], row["party_raw"])] = None if v == "" else int(v)
                 turn[row["wkr_nr"]] = (int(row["eligible_voters"]),

@@ -548,6 +548,7 @@ df_harm <- df_harm |>
   left_join(
     df_cw |>
       mutate(id = paste0(ags_25, "_", election_year)) |>
+      filter(coalesce(pop_cw, 0) > 0) |>
       select(id, flag_unsuccessful_naive_merge) |>
       distinct() |>
       group_by(id) |>
@@ -677,18 +678,32 @@ area_pop <- area_pop_23 |>
   # Inhabitants per km2, as in the covariate panel (population is in thousands)
   mutate(pop_density_ags = population_ags * 1000 / area_ags)
 
+# Add BBSR's 31.12.2024 on 2025 boundaries to the panel, so its last year is 2024 and
+# the rule below carries forward from there.
+area_pop_24 <- read_rds("data/crosswalks/final/crosswalk_ags_2024_to_2025.rds") |>
+  mutate(ags_25 = pad_zero_conditional(ags_25, 7)) |>
+  group_by(ags_25) |>
+  summarize(
+    ags_name_25 = first(ags_name_25),
+    area_ags = sum(area * area_cw, na.rm = TRUE),
+    population_ags = sum(population * pop_cw, na.rm = TRUE),
+    employees_ags = NA_real_,
+    .groups = "drop"
+  ) |>
+  mutate(year = 2024, pop_density_ags = population_ags * 1000 / area_ags)
+area_pop <- bind_rows(area_pop, area_pop_24)
+
 glimpse(area_pop)
 
 # The name is a property of the 2025 municipality, not of the election year:
 # every row takes the crosswalk's target name. Joined on (ags, year) from the
-# covariate panel, it was NA for every election after the panel's last year
-# (2023).
+# covariate panel, it was NA for every election after the panel's last year.
 ags_names_25 <- cw_23_25 |> distinct(ags_25, ags_name_25)
 stopifnot(!anyDuplicated(ags_names_25$ags_25))
 
 # Covariates describe the election year. Elections after the panel's last year
-# take that year's values, marked by flag_covars_carried_forward (the federal
-# and municipal files fill such years too, but without a flag).
+# take that year's values, marked by flag_covars_carried_forward, as in the federal,
+# municipal and county files.
 covars_last_year <- max(area_pop$year)
 
 df_final <- df_harm |>

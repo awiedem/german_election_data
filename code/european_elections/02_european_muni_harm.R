@@ -300,8 +300,8 @@ df_harm <- df_ok |>
       all_of(all_numeric_cols),
       ~ if (all(is.na(.x))) NA_real_ else sum(.x * pop_cw, na.rm = TRUE)
     ),
-    flag_unsuccessful_naive_merge = max(flag_unsuccessful_naive_merge, na.rm = TRUE),
-    flag_pooled = max(flag_pooled),
+    flag_unsuccessful_naive_merge = gerda_flag_max(flag_unsuccessful_naive_merge, pop_cw),
+    flag_pooled = gerda_flag_max(flag_pooled, pop_cw),
     n_predecessors = n(),
     .groups = "drop"
   )

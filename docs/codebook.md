@@ -174,7 +174,7 @@ their votes distributed across successors by population weight.
 | `flag_unsuccessful_naive_merge` | int/num | 1 where the direct crosswalk merge failed and the row was resolved by a fallback (previous-year code, identity mapping, or a manual correction). Not an error marker — a record of how the row was matched.                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `flag_aggregated`               | integer | 1 where the row is the result of merging several predecessor municipalities.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `flag_partial_coverage`         | integer | County-council harmonized output (`_muni` and `_cty`). 1 where the source covers less than 99 % of the 2021 unit’s population, so the row’s **counts** describe only part of it — turnout and vote shares remain valid for the part that voted. `NA` means not assessed. Set on the six 2021 Saxon counties overlapping the four 1994 Kreise whose Kreistagswahl the Sächsisches Verfassungsgericht annulled, and on 25 municipality-years: 23 in Rheinland-Pfalz, whose source is already reported on 2025 boundaries, plus Leipzig 1999 and one Sachsen-Anhalt 2004 row that genuinely cover only a fragment. |
-| `area`, `population`            | numeric | Area (km²) and population (in thousands) of the municipality, from official Gemeindeverzeichnis registers, carried through the crosswalk.                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `area`, `population`            | numeric | Area (km²) and population (in thousands) of the municipality, from official Gemeindeverzeichnis registers, carried through the crosswalk. Elections later than the file’s last covariate year take that year’s values (`flag_covars_carried_forward`). Population changes base at the Zensus 2022; see the covariates section. |
 
 The method used to harmonize votes differs by pipeline and is
 deliberate: federal, state, county and European results convert shares
@@ -227,6 +227,7 @@ or `TRUE`/`FALSE`.
 | `flag_total_votes_incongruent`                     | The summed party votes do not match `valid_votes`.                                                                                                                                                                           |
 | `flag_other_party_residual`                        | In state harmonized files, the sum of individual party shares excluding `other` differs from 1 by more than 0.001.                                                                                                           |
 | `flag_unsuccessful_naive_merge`, `flag_aggregated` | See the harmonization block above.                                                                                                                                                                                           |
+| `flag_covars_carried_forward` | In harmonized federal, state, municipal and county files, 1 where the election is later than the file’s last covariate year, so area and population describe that year. See the covariates section. |
 
 # Federal elections
 
@@ -243,8 +244,8 @@ original GERDA convention; the Wahlkreis files use `valid_votes`.
 
 `federal_muni_raw` (160,313 x 145) is the ingested source data before
 standardization. `federal_muni_unharm` (152,018 x 142) is standardized
-on each year’s own boundaries. `federal_muni_harm_21` (107,875 x 150)
-and `federal_muni_harm_25` (107,515 x 148) are harmonized to 2021 and
+on each year’s own boundaries. `federal_muni_harm_21` (107,875 x 151)
+and `federal_muni_harm_25` (107,515 x 149) are harmonized to 2021 and
 2025 boundaries and start in 1990.
 
 Shared blocks apply: identifiers, turnout, party columns (111–125 party
@@ -261,7 +262,7 @@ result of that allocation.
 | `voters_blockingnotice`                                             | numeric   | Eligible voters with Sperrvermerk (A2) — those issued a polling card.                                                  |
 | `voters_par25_2`                                                    | numeric   | Voters registered under § 25(2) BWO (A3).                                                                              |
 | `voters_w_ballot`                                                   | numeric   | Voters with a Wahlschein, i.e. mail-in and out-of-district voters (B1).                                                |
-| `unique_mailin`                                                     | numeric   | 1 where the municipality has its own mail-in district, 0 where it shares one with other municipalities.                |
+| `unique_mailin`                                                     | numeric   | 1 where the municipality has its own mail-in district, 0 where it shares one with other municipalities. `NA` for a Gemeinde the source counts inside a neighbour. |
 | `unique_multi_mailin`                                               | numeric   | 1 where the municipality has several mail-in districts of its own.                                                     |
 | `voters_weight`                                                     | numeric   | The municipality’s share of its county’s eligible voters, used to allocate shared mail-in votes.                       |
 | `blocked_weight`                                                    | numeric   | The municipality’s share of its county’s Sperrvermerk voters, the weight actually applied to mail-in ballots.          |
@@ -301,7 +302,7 @@ labels (`b90/gr` with `grüne`, and the PDS lineage) into single series.
 ## County level
 
 **Files:** `federal_cty_unharm` (8,878 x 125), `federal_cty_harm` (4,000
-x 127) in `data/federal_elections/county_level/final/`.
+x 128) in `data/federal_elections/county_level/final/`.
 
 Shared blocks apply, with 111 party columns. County-level data reaches
 back to 1953, further than the municipality files.
@@ -313,6 +314,7 @@ back to 1953, further than the municipality files.
 | `year`               | numeric   | Election year in `federal_cty_unharm`, alongside `election_date`.                                                                 |
 | `total_votes`        | numeric   | Row sum of party vote counts (harmonized file).                                                                                   |
 | `flag_briefwahl_agg` | integer   | 1 for mail-in aggregate rows (`ags` ending `999`, no eligible voters), present in 1994 and 1998 only. Filter for balanced panels. |
+| `area`, `population` | numeric | County area (km²) and inhabitants (harmonized file). 2025 takes 31.12.2024, from `cty_area_pop_emp`, with `flag_covars_carried_forward` = 1. |
 
 ## Constituency (Wahlkreis) level
 
@@ -395,8 +397,8 @@ while `state_unharm` keeps each source’s own label.
 | `total_vote_share`                                                               | numeric   | In harmonized files, sum of individual party shares excluding `other` and derived aggregates, rounded to eight decimals. A residual can leave it below 1.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `einzelbewerber`, `einzelbewerber_1`, `einzelbewerber_2`, `einzelbewerber_innen` | numeric   | Independent candidates. The source lists them under several distinct labels which are deliberately not merged, because in some state-years they identify different individuals. Sum them if you want a single independents series.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `ags_name_21` (`state_harm_21`), `ags_name` (`state_harm_23`/`_25`)              | character | Name of the target-boundary municipality, from the crosswalk’s target-name column (the name belongs to the target municipality, not to the election year); filled in every row.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `area_ags`, `population_ags`, `employees_ags`, `pop_density_ags`                 | numeric   | Municipality covariates for the election year (harmonized files), from `ags_area_pop_emp` (`state_harm_21`, 1990–2021) or `ags_area_pop_emp_2023` (`state_harm_23`/`_25`, 1990–2023); a later election carries the panel’s last year (see `flag_covars_carried_forward`). `pop_density_ags` is inhabitants per km². `employees_ags` is `NA` before 1997 and in the panels’ last years, hence in every carried row. See the covariates section.                                                                                                                                                                                                                                                                     |
-| `flag_covars_carried_forward`                                                    | integer   | Harmonized files: 1 where the election is later than the covariate panel’s last year (2021 for `state_harm_21`, 2023 for `state_harm_23`/`_25`), so the covariates describe that year rather than the election year; 0 otherwise. Where municipalities merged into the target after the panel year (Thüringen 2024 in `state_harm_21`/`_23`), a carried row’s covariates can describe less territory than its votes, so ratios such as eligible voters per inhabitant can exceed 1.                                                                                                                                                                                                                                |
+| `area_ags`, `population_ags`, `employees_ags`, `pop_density_ags`                 | numeric   | Municipality covariates for the election year (harmonized files), from `ags_area_pop_emp` (`state_harm_21`, 1990–2024), `ags_area_pop_emp_2023` (`state_harm_23`, 1990–2023) or that panel plus BBSR’s values of 31.12.2024 (`state_harm_25`); a later election carries the panel’s last year (see `flag_covars_carried_forward`). `pop_density_ags` is inhabitants per km². `employees_ags` is `NA` before 1997 and in the panels’ last years, hence in every carried row. See the covariates section.                                                                                                                                                                                                                                                                     |
+| `flag_covars_carried_forward`                                                    | integer   | Harmonized files: 1 where the election is later than the covariate panel’s last year (2024 for `state_harm_21` and `state_harm_25`, 2023 for `state_harm_23`), so the covariates describe that year rather than the election year; 0 otherwise. Where municipalities merged after the file’s boundary year (Thüringen 2024 in `state_harm_21`/`_23`), a row’s covariates can describe less territory than its votes, so ratios such as eligible voters per inhabitant can exceed 1.                                                                                                                                                                                                                                |
 
 **Schleswig-Holstein 1983.** The 1,128 municipal records contain
 in-person voters and votes only; `eligible_voters` is the full
@@ -684,8 +686,8 @@ of which missing elections are recoverable and which are not is
 Kommunalwahlen — municipal council (Gemeinderat / Stadtrat) elections.
 
 **Files:** `municipal_unharm` (92,770 x 52, 1969–2026), `municipal_harm`
-(68,057 x 57, 1990–2026, 2021 boundaries), `municipal_harm_25` (79,289 x
-57, 2025 boundaries) in `data/municipal_elections/final/`.
+(68,057 x 58, 1990–2026, 2021 boundaries), `municipal_harm_25` (79,289 x
+58, 2025 boundaries) in `data/municipal_elections/final/`.
 
 Municipalities formed after 2021 (Jahnatal, Uder, Berga-Wünschendorf, …)
 have no rows of their own in `municipal_harm`: their results are split
@@ -923,8 +925,8 @@ Kreistagswahlen — county council elections, 1948–2026, plus a separate
 county-council composition panel.
 
 **Files:** `county_elec_unharm` (78,090 x 595),
-`county_elec_harm_21_muni` (49,006 x 606), `county_elec_harm_21_cty`
-(2,544 x 603), `county_council_seats` (7,200 x 22) in
+`county_elec_harm_21_muni` (49,006 x 607), `county_elec_harm_21_cty`
+(2,544 x 604), `county_council_seats` (7,200 x 22) in
 `data/county_elections/final/`.
 
 Shared blocks apply, with 583 party columns. Results are reported at
@@ -940,7 +942,8 @@ crosswalks.
 | `einzelbewerber`                                                 | numeric | Combined share of independent candidates.                                                              |
 | `flag_total_votes_incongruent`                                   | integer | 1 where summed party votes do not match `valid_votes`.                                                 |
 | `perc_total_votes_incogruence`                                   | numeric | That discrepancy as a share of `valid_votes` (note the retained misspelling).                          |
-| `area_ags`, `population_ags`, `employees_ags`, `pop_density_ags` | numeric | Municipality covariates joined in (`_muni` file).                                                      |
+| `area_ags`, `population_ags`, `employees_ags`, `pop_density_ags` | numeric | Municipality covariates joined in (`_muni` file), through 2024; later elections take 2024 (`flag_covars_carried_forward`). |
+| `area`, `population` | numeric | `_cty` file: county area (km²) and inhabitants for the election year, from `cty_area_pop_emp`; 2025 and 2026 take 31.12.2024 (`flag_covars_carried_forward`). |
 
 **Bayern joint lists.** Most Bavarian joint lists are the Freie Wähler
 party running together with its own Kreisverband (“FREIE WÄHLER/Freie
@@ -1331,7 +1334,7 @@ Municipality and county boundary crosswalks, used by every harmonized
 dataset and publishable in their own right.
 
 **Files:** `ags_crosswalks` (405,993 x 11), `ags_1990_to_2025_crosswalk`
-(451,772 x 9), `cty_crosswalks` (14,165 x 11) in
+(451,494 x 9), `cty_crosswalks` (14,165 x 11) in
 `data/crosswalks/final/`.
 
 | Variable                                         | Type      | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
@@ -1342,7 +1345,7 @@ dataset and publishable in their own right.
 | `ags_21` / `ags_25` / `county_code_21`           | character | Target code under the harmonized boundary definition.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `ags_name_21` / `ags_name_25` / `county_name_21` | character | Target name.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `pop_cw`, `area_cw`, `emp_cw`                    | numeric   | Population-, area- and employment-based weights for the source→target mapping. Each sums to 1 within a source `(code, year)`.                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `area`, `population`, `employees`                | numeric   | Area (km²), population (thousands) and employees (thousands) of the source unit. In `ags_1990_to_2025_crosswalk` the 2024 rows repeat the area and population of 31.12.2023: the Gemeindeverzeichnis of 31.12.2024 that supplies them reports the previous year’s figures. A Gemeinde that was part of another in a given year has no row of its own then and appears only through its predecessor’s `pop_cw` share (Groß Krams 1990 is 25 % of Redefin), so year-to-year changes of small units can come from the crosswalk rather than from population change. |
+| `area`, `population`, `employees`                | numeric   | Area (km²), population (thousands) and employees (thousands) of the source unit. In `ags_1990_to_2025_crosswalk` the 2024 rows hold BBSR’s area and population of 31.12.2024, on the Zensus 2022 base (see the covariates section). A Gemeinde that was part of another in a given year has no row of its own then and appears only through its predecessor’s `pop_cw` share (Groß Krams 1990 is 25 % of Redefin), so year-to-year changes of small units can come from the crosswalk rather than from population change. |
 
 A source unit that did not change appears once with weight 1. A
 municipality that merged appears once, pointing at its successor with
@@ -1365,8 +1368,8 @@ weights summing to 1.
 Yearly municipality and county characteristics, harmonized to 2021
 boundaries and generated alongside the crosswalks.
 
-**Files:** `ags_area_pop_emp` (351,808 x 7) in
-`data/covars_municipality/final/`, `cty_area_pop_emp` (12,800 x 7) in
+**Files:** `ags_area_pop_emp` (384,790 x 7) in
+`data/covars_municipality/final/`, `cty_area_pop_emp` (14,000 x 7) in
 `data/covars_county/final/`.
 
 | Variable                              | Type      | Description                                                                                    |
@@ -1374,10 +1377,43 @@ boundaries and generated alongside the crosswalks.
 | `ags_21` / `county_code_21`           | character | Municipality or county identifier at 2021 boundaries.                                          |
 | `ags_name_21` / `county_name_21`      | character | Name under the 2021 definition.                                                                |
 | `year`                                | numeric   | Year of observation.                                                                           |
-| `area_ags` / `area_cty`               | numeric   | Area in km², from official Gemeindeverzeichnis files.                                          |
+| `area_ags` / `area_cty`               | numeric   | Area in km², from official Gemeindeverzeichnis files; 2024, and county values for 2022–2024, from BBSR’s reference files. |
 | `population_ags` / `population_cty`   | numeric   | Population in thousands.                                                                       |
-| `employees_ags` / `employees_cty`     | numeric   | Employees subject to social-security contributions, in thousands. Available from 1997 onwards. |
+| `employees_ags` / `employees_cty`     | numeric   | Employees subject to social-security contributions, in thousands. Available 1997–2020. |
 | `pop_density_ags` / `pop_density_cty` | numeric   | Population density in inhabitants per km², derived from the population and area columns.       |
+
+Both panels run 1990–2024.
+
+**Election files.** Area and population describe the election year. An
+election later than the file’s last covariate year takes that year’s values,
+with `flag_covars_carried_forward` = 1:
+
+| Files | Last covariate year | First election on the Zensus 2022 base |
+| :---- | :---- | :---- |
+| `federal_muni_harm_21`, `federal_muni_harm_25`, `federal_cty_harm` | 2024 | 2025 |
+| `state_harm_21`, `state_harm_25`, `municipal_harm`, `municipal_harm_25`, `county_elec_harm_21_muni` | 2024 | 2024 |
+| `county_elec_harm_21_cty` | 2024 | 2023 |
+| `state_harm_23` | 2023 | None |
+
+The 2024 values are BBSR’s of 31.12.2024. Files on 2021 boundaries map them back
+by 2021 population. Pre-1990 Rheinland-Pfalz rows in `municipal_harm_25` also take
+them, without the flag.
+
+<div>
+
+> **Note**
+>
+> **Population changes base at the Zensus 2022.** Municipal population
+> follows the older base through 31.12.2023 and the Zensus 2022 base
+> from 31.12.2024. County population follows the older base through
+> 31.12.2022 and appears to follow the Zensus 2022 base from 31.12.2023,
+> which BBSR does not label. For 31.12.2023 the two series therefore
+> differ, by 1.45 % nationally. The drop between the bases is mainly a
+> change of method, not a loss of inhabitants, so do not read it as
+> population change. Per-capita values move by about 1.3 % nationally
+> across the break, and by 5 % or more in some cities and counties.
+
+</div>
 
 Shapefiles (VG250 municipality and county boundaries for 2000 and 2021)
 are published alongside these under `data/shapefiles/`.

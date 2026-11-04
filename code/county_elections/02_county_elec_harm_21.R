@@ -386,7 +386,7 @@ votes_muni <- df_cw |>
 flag_lookup_muni <- df_cw |>
   mutate(id = paste0(ags_21, "_", election_year)) |>
   group_by(id) |>
-  summarise(flag_unsuccessful_naive_merge = max(flag_unsuccessful_naive_merge, na.rm = TRUE)) |>
+  summarise(flag_unsuccessful_naive_merge = gerda_flag_max(flag_unsuccessful_naive_merge, pop_cw)) |>
   ungroup()
 
 votes_muni <- votes_muni |>
@@ -712,8 +712,14 @@ area_pop <- read_rds("data/covars_municipality/final/ags_area_pop_emp.rds") |>
   mutate(ags = pad_zero_conditional(ags, 7)) |>
   rename(election_year = year)
 
+# The state_harm_21 rule: elections after the panel's last year take that year's
+# values and are flagged.
+covars_last_year <- max(area_pop$election_year)
 df_muni_out <- df_muni_out |>
-  left_join_check_obs(area_pop, by = c("ags", "election_year"))
+  mutate(covars_year = pmin(election_year, covars_last_year)) |>
+  left_join_check_obs(area_pop, by = c("ags", "covars_year" = "election_year")) |>
+  mutate(flag_covars_carried_forward = as.integer(election_year > covars_last_year)) |>
+  select(-covars_year)
 
 cat("Municipality-level:", nrow(df_muni_out), "rows,",
     n_distinct(df_muni_out$ags), "unique AGS,",
@@ -785,20 +791,17 @@ df_cty_out <- df_cty_out |>
   )
 
 # Add county-level covariates
-cty_area_pop <- read_excel(
-  path = "data/crosswalks/raw/04_KreiseVorjahr.xlsx", sheet = 2
-) |>
-  select(
-    county_code = `Kreisfreie Städte und Landkreise nach Fläche, Bevölkerung und Bevölkerungsdichte`,
-    area = `...5`,
-    population = `...6`
-  ) |>
-  slice(8:476) |>
-  filter(!is.na(county_code) & nchar(county_code) == 5) |>
-  mutate(area = as.numeric(area), population = as.numeric(population))
-
+# Covariates describe the election year, from the county panel through 2024. Later
+# elections take 2024 and are flagged.
+cty_area_pop <- read_rds("data/covars_county/final/cty_area_pop_emp.rds") |>
+  transmute(county_code = county_code_21, covars_year = year, area = area_cty,
+            population = round(population_cty * 1000, digits = 0))
+cty_covars_last_year <- max(cty_area_pop$covars_year)
 df_cty_out <- df_cty_out |>
-  left_join(cty_area_pop, by = "county_code")
+  mutate(covars_year = pmin(election_year, cty_covars_last_year)) |>
+  left_join(cty_area_pop, by = c("county_code", "covars_year")) |>
+  mutate(flag_covars_carried_forward = as.integer(election_year > cty_covars_last_year)) |>
+  select(-covars_year)
 
 cat("County-level:", nrow(df_cty_out), "rows,",
     n_distinct(df_cty_out$county_code), "unique counties,",

@@ -1370,7 +1370,7 @@ mailin25 <- df25 |> filter(joint_mailin == 1)
 
 # --- 7. Merge municipality population / area (31‑12‑2023 extract) ----------
 pop25 <- read_excel(
-  "data/covars_municipality/raw/municipality_sizes/AuszugGV4QAktuell.xlsx",
+  "data/covars_municipality/raw/municipality_sizes/AuszugGV4QAktuell_2024.xlsx",
   sheet = 2,
   col_types = "numeric"
 ) |>

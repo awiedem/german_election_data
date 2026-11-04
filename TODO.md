@@ -297,15 +297,15 @@ No dataset includes **Hamburg** (state `02`) — Hamburg lacks municipality-leve
 
 ### Covariate gaps
 
-Covariates (`area_ags`, `population_ags`, `employees_ags`, `pop_density_ags`) are present in all three harmonized datasets but systematically NA for recent elections:
+Elections later than a file's last covariate year take that year's values, with `flag_covars_carried_forward` = 1 (codebook, Covariates).
 
-| Dataset | Gap | Reason |
-|---------|-----|--------|
-| `state_harm_21` | 100% NA for 2022–2024 | `ags_area_pop_emp.rds` covers through ~2021 |
-| `state_harm_23` | `employees_ags` 100% NA for 2022–2023 | Employment data ends earlier |
-| `state_harm_25` | 100% NA for 2024 | Covariate source covers through ~2023 |
+- The Zensus 2022 break is a codebook note and table, not a flag column (decided 2026-11-04).
+- 2026 elections carry 31.12.2024. The Gemeindeverzeichnis of 31.12.2025 is on the same base; extend the panels when BBSR publishes it (decided 2026-11-04).
+- Employees stop at 2020 in the panels. BBSR has 30.6.2021, and its 2022–2024 sheets have no employment.
 
-Population in thousands.
+### Federal mail-in columns
+
+`unique_multi_mailin` is still summed across predecessors, so `16064074` in 2013 holds 2. The voter-share panel of `output/figures/n_mailin*.pdf` is empty for 2021 and 2025.
 
 ### Cross-dataset vote total differences
 

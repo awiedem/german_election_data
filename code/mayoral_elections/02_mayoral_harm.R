@@ -396,16 +396,16 @@ df_pct <- df_all |>
 df_flags <- df_all |>
   group_by(ags_21, election_date, round) |>
   summarise(
-    flag_unsuccessful_naive_merge = max(flag_unsuccessful_naive_merge, na.rm = TRUE),
-    flag_pre_1990 = max(flag_pre_1990, na.rm = TRUE),
-    flag_shared_ags = any(flag_shared_ags %in% TRUE),
+    flag_unsuccessful_naive_merge = gerda_flag_max(flag_unsuccessful_naive_merge, pop_cw),
+    flag_pre_1990 = gerda_flag_max(flag_pre_1990, pop_cw),
+    flag_shared_ags = any(flag_shared_ags %in% TRUE & coalesce(pop_cw, 0) > 0),
     # TRUE if ANY predecessor's round was annulled / superseded (Bayern only)
-    flag_superseded = any(flag_superseded, na.rm = TRUE),
+    flag_superseded = any(flag_superseded & coalesce(pop_cw, 0) > 0, na.rm = TRUE),
     # TRUE where more than one predecessor elected a mayor in this round (each
     # predecessor is its own office, so these are different winners even under
     # one party label) — the winner columns describe the dominant predecessor only.
     flag_multi_winner = as.integer(
-      n_distinct(ags_original[!is.na(winner_party) | !is.na(winner_votes)]) > 1
+      n_distinct(ags_original[(!is.na(winner_party) | !is.na(winner_votes)) & coalesce(pop_cw, 0) > 0]) > 1
     ),
     # TRUE where only some predecessors report counts: the summed counts then
     # cover part of the 2021 municipality only

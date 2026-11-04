@@ -7,6 +7,10 @@ options(scipen = 999)
 
 rm(list=ls())
 
+# .Rprofile attaches dplyr before R attaches stats, so under Rscript stats::filter
+# masks dplyr::filter until conflicted rebuilds its preferences.
+conflicted::conflicts_prefer(dplyr::filter)
+
 # Define column names for the years 1990 to 1996
 names_90to96 <- c("county_code", "county_name", "area_cw", "pop_cw", "area", "population", "county_code_21", "county_name_21")
 
@@ -145,6 +149,27 @@ cw |>
   count(year) |>
   print(n = 32)
 
+
+# 2022-2024 from BBSR's Kreis file. The 400 county codes are unchanged since 2021.
+# 31.12.2023 and later appear to be on the Zensus 2022 base here, 31.12.2022 is not
+# (see the covariates section of the codebook). These sheets have no employment.
+read_kreise <- function(sheet, yr) {
+  d <- as.data.frame(read_excel("data/crosswalks/raw/ref-kreise-1990-2024.xlsx", sheet = sheet))
+  pop_col <- grep("^Bev", names(d)); area_col <- grep("^Fl", names(d))
+  stopifnot(length(pop_col) == 1, length(area_col) == 1)
+  out <- distinct(tibble(
+    county_code_21 = str_pad(str_remove(sprintf("%.0f", as.numeric(d[[1]])), "\\d{3}$"), width = 5, side = "left", pad = "0"),
+    year = yr, area = as.numeric(d[[area_col]]), population = as.numeric(d[[pop_col]]) / 1000
+  ))
+  stopifnot(nrow(out) == 400, !anyDuplicated(out$county_code_21), setequal(out$county_code_21, cw21$county_code_21))
+  mutate(out, pop_density = population * 1000 / area)
+}
+cty_names <- distinct(filter(cw, year == 2020), county_code_21, county_name_21)
+cw <- cw |>
+  bind_rows(left_join(
+    bind_rows(read_kreise("2022-2023", 2022), read_kreise("2023-2024", 2023), read_kreise("2024-2025", 2024)),
+    cty_names, by = "county_code_21")) |>
+  arrange(county_code_21, year)
 
 # Rename with suffix cty_ to avoid confusion with municipality level covariates
 cw <- cw |>

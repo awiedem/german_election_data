@@ -173,10 +173,14 @@ for (v in c("far_right", "far_left", "far_left_w_linke", "turnout", "turnout_wo_
 
 cat("\n4. Turnout arithmetic\n")
 
-check(!any(is.na(df$valid_votes)) && !any(is.na(df$eligible_voters)) &&
-        all(df$valid_votes >= 0) && all(df$eligible_voters >= 0),
-      "valid_votes and eligible_voters are complete and non-negative",
-      "valid_votes / eligible_voters contain NA or negative values")
+# Gemeinden the source counts inside a neighbour are NA rows with flag_pooled = 1
+# (2021 and 2025). Every other row must be complete.
+pooled_na <- df$flag_pooled %in% 1 & is.na(df$valid_votes)
+check(!any(is.na(df$valid_votes[!pooled_na])) && !any(is.na(df$eligible_voters[!pooled_na])) &&
+        all(df$valid_votes[!pooled_na] >= 0) && all(df$eligible_voters[!pooled_na] >= 0),
+      sprintf("valid_votes and eligible_voters are complete and non-negative, apart from %d pooled rows",
+              sum(pooled_na)),
+      "valid_votes / eligible_voters contain NA or negative values outside the pooled rows")
 
 n_vv <- sum(df$number_voters < df$valid_votes - 1e-6, na.rm = TRUE)
 check(n_vv == 0, "number_voters >= valid_votes in every row",
@@ -186,7 +190,7 @@ check(n_vv == 0, "number_voters >= valid_votes in every row",
 # districts are shared across municipalities. They are legitimate, but every one
 # of them must carry the flag: an unflagged case means the flag logic stopped
 # tracking the anomaly it exists for.
-over <- df$eligible_voters < df$number_voters - 1e-6
+over <- !pooled_na & df$eligible_voters < df$number_voters - 1e-6
 unflagged <- sum(over & (is.na(df$flag_naive_turnout_above_1) | df$flag_naive_turnout_above_1 != 1))
 check(unflagged == 0,
       sprintf("all %d rows with number_voters > eligible_voters carry flag_naive_turnout_above_1",
@@ -290,7 +294,7 @@ check(length(raw_inf) == 0, "no Inf in federal_muni_raw",
 cat("\n7. Party availability over time\n")
 
 coverage_from <- function(col, first_year, min_cov = 0.97) {
-  covg <- df %>% filter(election_year >= first_year) %>%
+  covg <- df %>% filter(election_year >= first_year, !(flag_pooled %in% 1 & is.na(valid_votes))) %>%
     group_by(election_year) %>%
     summarise(cov = mean(!is.na(.data[[col]])), .groups = "drop")
   check(all(covg$cov >= min_cov),

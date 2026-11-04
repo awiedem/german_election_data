@@ -550,6 +550,7 @@ df_harm <- df_harm |>
   left_join(
     df_cw |>
       mutate(id = paste0(ags_23, "_", election_year)) |>
+      filter(coalesce(pop_cw, 0) > 0) |>
       select(id, flag_unsuccessful_naive_merge) |>
       distinct() |>
       group_by(id) |>
@@ -659,8 +660,8 @@ ags_names_23 <- read_rds("data/crosswalks/final/ags_1990_to_2023_crosswalk.rds")
 stopifnot(!anyDuplicated(ags_names_23$ags_2023))
 
 # Covariates describe the election year. Elections after the panel's last year
-# take that year's values, marked by flag_covars_carried_forward (the federal
-# and municipal files fill such years too, but without a flag).
+# take that year's values, marked by flag_covars_carried_forward, as in the federal,
+# municipal and county files.
 covars_last_year <- max(area_pop$year)
 
 df_final <- df_harm |>

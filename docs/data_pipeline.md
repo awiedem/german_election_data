@@ -102,12 +102,16 @@ Crosswalks are the foundation of all boundary harmonization. They map each histo
 **2023 → 2025:** `code/crosswalks/05_build_23_25_ags_crosswalks.R`
 - Uses Statistisches Bundesamt (StatBA) boundary change notices for 2024 and 2025
 - Chains: `pop_cw_1990_25 = pop_cw_1990_23 × pop_cw_23_25`
+- Year-2024 rows take population and area of 31.12.2024 from BBSR's `ref-gemeinden-2020-2024.xlsx` ([source](https://www.bbsr.bund.de/BBSR/DE/forschung/raumbeobachtung/Raumabgrenzungen/umstiegsschluessel/umsteigeschluessel.html)); the weights stay hand-built
 - Output: `ags_1990_to_2025_crosswalk.rds`
+
+**Covariates through 2024:** `code/crosswalks/06_extend_ags_area_pop_21.R`
+- Adds 2022–2024 to `ags_area_pop_emp` on 2021 boundaries; runs after the crosswalks above
 
 ### 2.3 County crosswalks
 
 **Script:** `code/crosswalks/02_cty_crosswalk.R`
-**Source:** BBSR county-level crosswalk Excels.
+**Source:** BBSR county-level crosswalk Excels. The 2022–2024 rows of `cty_area_pop_emp` come from BBSR's `ref-kreise-1990-2024.xlsx` ([source](https://www.bbsr.bund.de/BBSR/DE/forschung/raumbeobachtung/Raumabgrenzungen/umstiegsschluessel/umsteigeschluessel.html)).
 
 **Structure of `cty_crosswalks.csv`:**
 

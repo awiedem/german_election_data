@@ -69,6 +69,14 @@ cw_21_23 <- cw_21_22 %>%
   ) %>%
   select(ags, ags_name, ags_2023, ags_name_23, year, pop_cw, area_cw, population, area, employees)
 
+# The published 2021 -> 2023 key: BBSR's weights before the rescale in section 4.
+# Several harmonization scripts read this file.
+cw_21_23_out <- cw_21_23 %>%
+  transmute(ags_2021 = ags, ags_2023, w_pop = pop_cw, w_area = area_cw) %>%
+  arrange(ags_2021, ags_2023, w_pop)
+fwrite(cw_21_23_out, "data/crosswalks/final/crosswalk_ags_2021_to_2023.csv")
+write_rds(cw_21_23_out, "data/crosswalks/final/crosswalk_ags_2021_to_2023.rds", compress = "gz")
+
 # ────────────────────────────────────────────────────────────────
 # 3B.  Build 2022 → 2023 (direct)
 # ────────────────────────────────────────────────────────────────
@@ -240,12 +248,31 @@ data.table::fwrite(
 
 # Create covariate dataframe ----------------------------------------------
 
-# filter cw_combined to only German election years since 1990
-cw <- cw_1990_23
+# Rows up to 2020 come from ags_crosswalks, where area and population are already
+# each row's piece, as in ags_area_pop_emp: they only take the 2021 -> 2023 share.
+# Rows of 2021 and 2022 repeat the source unit's full values on every row, so they
+# take their weights here. Without this, a unit that split counts in full in each target.
+cw <- bind_rows(
+  cw_1990_21 %>%
+    filter(year <= 2020) %>%
+    left_join(cw_21to23_merging, by = "ags_21", relationship = "many-to-many") %>%
+    mutate(
+      area = area * area_w_21_23,
+      population = population * pop_w_21_23,
+      employees = employees * pop_w_21_23
+    ),
+  cw_1990_23 %>%
+    filter(year >= 2021) %>%
+    mutate(
+      area = area * area_cw,
+      population = population * pop_cw,
+      employees = employees * pop_cw
+    )
+)
 
 glimpse(cw)
 
-# Harmonize to ags 2021
+# Harmonize to ags 2023
 cw <- cw |>
   group_by(ags_2023, ags_name_23, year) |>
   summarise(

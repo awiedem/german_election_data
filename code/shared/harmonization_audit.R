@@ -253,3 +253,13 @@ gerda_weighted_counts <- function(x, keys, columns, weight) {
   }
   tibble::as_tibble(result)
 }
+
+# Flags describe what contributes to a target, so a crosswalk row with zero weight
+# must not set them (state_harm_* already guards flag_pooled this way). If no row of
+# the group has a positive weight, all rows count.
+gerda_flag_max <- function(flag, weight) {
+  keep <- !is.na(weight) & weight > 0
+  if (any(keep)) flag <- flag[keep]
+  if (all(is.na(flag))) return(flag[NA_integer_][1])
+  max(flag, na.rm = TRUE)
+}

@@ -351,6 +351,16 @@ muni_2024 <- read_excel(muni_2024, sheet = 2) %>% # ags, name, pop_2023, area_20
 
 glimpse(muni_2024)
 
+# BBSR's population and area of 31.12.2024 for the year-2024 rows. The
+# Gemeindeverzeichnis extract above holds the population of 31.12.2023.
+bbsr_24 <- as.data.frame(read_excel("data/crosswalks/raw/ref-gemeinden-2020-2024.xlsx", sheet = "2024"))
+bbsr_24 <- distinct(data.frame(ags = bbsr_24[[1]], bbsr_area = bbsr_24[[6]], bbsr_pop = bbsr_24[[7]], stringsAsFactors = FALSE))
+stopifnot(!anyDuplicated(bbsr_24$ags))
+muni_2024 <- muni_2024 |>
+    left_join(bbsr_24, by = "ags") |>
+    mutate(population = coalesce(bbsr_pop / 1000, population), area = coalesce(bbsr_area, area)) |>
+    select(-bbsr_area, -bbsr_pop)
+
 ## Apply changes ------------------------------------------------------------
 
 ## One  to one changes ------------------------------------------------------------

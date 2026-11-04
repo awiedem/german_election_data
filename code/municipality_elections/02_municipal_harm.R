@@ -646,8 +646,8 @@ flags <- df_cw |>
   group_by(ags_21, election_year) |>
   summarise(
     # for all that start with replaced_ take maximum
-    across(c(starts_with("replaced_"), flag_unsuccessful_naive_merge), ~ max(.x, na.rm = TRUE)),
-    flag_majority_vote = max_or_na(flag_majority_vote),
+    across(c(starts_with("replaced_"), flag_unsuccessful_naive_merge), ~ gerda_flag_max(.x, pop_cw)),
+    flag_majority_vote = as.integer(gerda_flag_max(flag_majority_vote, pop_cw)),
     .groups = "drop"
   ) |>
   rename(
@@ -719,6 +719,16 @@ df_post21_pre25 <- df |>
 
 # --- Map 2025+ data directly via cw_25_to_21 (incl. the 2026 HE Kommunalwahl,
 #     whose AGS are on 2025 boundaries) ---
+# The 2025+ rows take BBSR's 31.12.2024 on 2025 boundaries instead of the 2021 mass
+# in cw_25_to_21.
+cov_24_on_25 <- read_rds("data/crosswalks/final/crosswalk_ags_2024_to_2025.rds") |>
+  group_by(ags_25) |>
+  summarise(
+    area = sum(area * area_cw, na.rm = TRUE),
+    population = sum(population * pop_cw, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  transmute(ags_25, cov_area = area, cov_pop = population)
 df_post21_25 <- df |>
   filter(election_year >= 2025) |>
   mutate(ags_25 = ags) |>
@@ -726,10 +736,14 @@ df_post21_25 <- df |>
     cw_25_to_21,
     by = "ags_25"
   ) |>
+  left_join(cov_24_on_25, by = "ags_25") |>
   mutate(
     final_pop_cw  = pop_w_25_21,
-    final_area_cw = area_w_25_21
-  )
+    final_area_cw = area_w_25_21,
+    area = cov_area,
+    population = cov_pop
+  ) |>
+  select(-cov_area, -cov_pop)
 
 # --- Combine all post-2021 data ---
 df_post21_cw <- bind_rows(df_post21_pre25, df_post21_25)
@@ -819,8 +833,8 @@ flags_post21 <- df_post21_cw |>
   ) |>
   group_by(ags_21, election_year) |>
   summarise(
-    across(c(all_of(flag_cols), flag_unsuccessful_naive_merge), ~ max(.x, na.rm = TRUE)),
-    flag_majority_vote = max_or_na(flag_majority_vote),
+    across(c(all_of(flag_cols), flag_unsuccessful_naive_merge), ~ gerda_flag_max(.x, final_pop_cw)),
+    flag_majority_vote = as.integer(gerda_flag_max(flag_majority_vote, final_pop_cw)),
     .groups = "drop"
   ) |>
   rename(ags = ags_21, year = election_year)
@@ -938,6 +952,11 @@ df_harm <- df_harm |>
     "ags", "election_year", "election_date",
     "ags_name", "state_name", "state"
   )))
+
+# Elections after the covariates' last year take that year's values, marked as in
+# state_harm_* (BBSR's last year is 31.12.2024).
+df_harm <- df_harm |>
+  mutate(flag_covars_carried_forward = as.integer(election_year > 2024))
 
 ## save
 fwrite(df_harm, "data/municipal_elections/final/municipal_harm.csv")

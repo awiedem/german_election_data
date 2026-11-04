@@ -281,8 +281,11 @@ df_harm <- votes |>
 glimpse(df_harm)
 
 # Also provide area/population for 2025 (same boundaries as 2021)
-ags25 <- ags21 |>
-  mutate(election_year = 2025)
+# 31.12.2024 from the extended county panel
+ags25 <- read_rds("data/covars_county/final/cty_area_pop_emp.rds") |>
+  filter(year == 2024) |>
+  transmute(ags = county_code_21, election_year = 2025, area = area_cty,
+            population = round(population_cty * 1000, digits = 0))
 ags_area_pop <- bind_rows(ags21, ags25)
 
 # Continue transformation
@@ -389,6 +392,11 @@ inspect <- df_harm %>%
 # yes sometimes they do
 
 
+
+# Elections after the covariates' last year take that year's values, marked as in
+# state_harm_* (BBSR's last year is 31.12.2024).
+df_harm <- df_harm |>
+  mutate(flag_covars_carried_forward = as.integer(election_year > 2024))
 
 ## Save this now:
 

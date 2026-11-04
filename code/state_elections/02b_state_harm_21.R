@@ -534,6 +534,7 @@ df_harm <- df_harm |>
   left_join(
     df_cw |>
       mutate(id = paste0(ags_21, "_", election_year)) |>
+      filter(coalesce(pop_cw, 0) > 0) |>
       select(id, flag_unsuccessful_naive_merge) |>
       distinct() |>
       group_by(id) |>
@@ -644,16 +645,16 @@ glimpse(area_pop)
 
 # ags_name_21 is a property of the 2021 municipality, not of the election year:
 # every row takes the crosswalk's target name. Joined on (ags, year) from the
-# covariate panel, it was NA for every election after the panel's last year
-# (2021), and the panel's 2021 row spells some names the Gemeindeverzeichnis
+# covariate panel, it was NA for every election after the panel's last year,
+# and the panel's 2021 row spells some names the Gemeindeverzeichnis
 # way ("Altötting, St").
 ags_names_21 <- read_rds("data/crosswalks/final/ags_crosswalks.rds") |>
   distinct(ags = pad_zero_conditional(ags_21, 7), ags_name_21)
 stopifnot(!anyDuplicated(ags_names_21$ags))
 
 # Covariates describe the election year. Elections after the panel's last year
-# take that year's values, marked by flag_covars_carried_forward (the federal
-# and municipal files fill such years too, but without a flag).
+# take that year's values, marked by flag_covars_carried_forward, as in the federal,
+# municipal and county files.
 covars_last_year <- max(area_pop$election_year)
 
 df_final <- df_harm |>

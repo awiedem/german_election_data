@@ -122,7 +122,7 @@ GERDA includes federal, state, municipal, European, mayoral, and county (Kreista
 | Crosswalks                | Municipality         | 2024 → 2025      | --                | `crosswalk_ags_2024_to_2025` |
 | Crosswalks                | County               | 1990-2021        | --                | `cty_crosswalks`             |
 | Shapefiles                | Municipality/County  | 2000, 2021       | --                | `VG250_GEM` / `VG250_KRS`    |
-| Covariates                | Municipality/County  | 1990-2025        | Yes (2021)        | `ags_area_pop_emp` / `cty_area_pop_emp` |
+| Covariates                | Municipality/County  | 1990-2024        | Yes (2021)        | `ags_area_pop_emp` / `cty_area_pop_emp` |
 | Covariates                | Municipality         | 1990-2023        | Yes (2023)        | `ags_area_pop_emp_2023`      |
 
 ## Harmonization
@@ -240,7 +240,7 @@ For details on data structure and known issues, see the [Mayoral Elections READM
 
 ### Crosswalks
 
-Bundesinstitut für Bau-, Stadt- und Raumforschung. Umsteigeschlüssel für konsistente zeitreihen. [https://www.bbsr.bund.de/BBSR/DE/forschung/raumbeobachtung/umstiegsschluessel/umsteigeschluessel.html](https://www.bbsr.bund.de/BBSR/DE/forschung/raumbeobachtung/umstiegsschluessel/umsteigeschluessel.html) (2024).
+Bundesinstitut für Bau-, Stadt- und Raumforschung. Umsteigeschlüssel für konsistente zeitreihen. [https://www.bbsr.bund.de/BBSR/DE/forschung/raumbeobachtung/Raumabgrenzungen/umstiegsschluessel/umsteigeschluessel.html](https://www.bbsr.bund.de/BBSR/DE/forschung/raumbeobachtung/Raumabgrenzungen/umstiegsschluessel/umsteigeschluessel.html) (2024).
 
 ### Shapefiles
 

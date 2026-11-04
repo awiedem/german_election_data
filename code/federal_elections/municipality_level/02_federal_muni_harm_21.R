@@ -545,11 +545,12 @@ votes <- df_cw |>
     # A target made up only of them has no result: blanked below, as the
     # na.rm sums would otherwise publish it as 0.
     pooled_only = all(flag_pooled == 1 & is.na(valid_votes)),
-    flag_pooled = max(flag_pooled),
-    unique_mailin = max(unique_mailin),
-    unique_multi_mailin = max(unique_multi_mailin),
+    flag_pooled = gerda_flag_max(flag_pooled, pop_cw),
+    unique_mailin = gerda_flag_max(unique_mailin, pop_cw),
+    unique_multi_mailin = gerda_flag_max(unique_multi_mailin, pop_cw),
     across(
-      eligible_voters_orig:far_left_w_linke,
+      # unique_mailin sits inside this range and would be summed over the max() above
+      c(eligible_voters_orig:far_left_w_linke, -unique_mailin),
       ~ sum(.x * pop_cw, na.rm = TRUE)
     )
   ) |>
@@ -624,31 +625,14 @@ ags21 |>
 ags_21 <- ags21 |> select(-ags_name)
 
 # Get population & area for 2025 (map to 2021 boundaries via crosswalk)
-ags25_raw <- read_excel(
-  "data/covars_municipality/raw/municipality_sizes/AuszugGV4QAktuell_2024.xlsx",
-  sheet = 2
-) |>
-  slice(9:16018) |>
-  select(
-    Land = `...3`,
-    RB   = `...4`,
-    Kreis = `...5`,
-    Gemeinde = `...7`,
-    Gemeindename = `...8`,
-    area = `...9`,
-    population  = `...10`
-  ) |>
-  dplyr::filter(!is.na(Gemeinde)) |>
-  mutate(
-    Land     = pad_zero_conditional(Land, 1),
-    Kreis    = pad_zero_conditional(Kreis, 1),
-    Gemeinde = pad_zero_conditional(Gemeinde, 1, "00"),
-    Gemeinde = pad_zero_conditional(Gemeinde, 2, "0"),
-    ags_25   = paste0(Land, RB, Kreis, Gemeinde),
-    population = as.numeric(population) / 1000,
-    area = as.numeric(area)
-  ) |>
-  select(ags_25, area, population)
+# BBSR's 31.12.2024 on 2025 boundaries, through the hand-built key
+ags25_raw <- read_rds("data/crosswalks/final/crosswalk_ags_2024_to_2025.rds") |>
+  group_by(ags_25) |>
+  summarise(
+    area = sum(area * area_cw, na.rm = TRUE),
+    population = sum(population * pop_cw, na.rm = TRUE),
+    .groups = "drop"
+  )
 
 # Map 2025 data to 2021 boundaries using crosswalk
 ags25 <- ags25_raw |>
@@ -713,11 +697,14 @@ df_harm <- df_harm |>
     population.y = as.numeric(population.y),
     population = as.numeric(population),
     # Use area/population from ags21 or ags25 if available and not NA/0, otherwise keep original
-    # Priority: ags21 (area.x) > ags25 (area.y) > original (area)
-    area = ifelse(!is.na(area.x) & area.x > 0, area.x,
-           ifelse(!is.na(area.y) & area.y > 0, area.y, area)),
-    population = ifelse(!is.na(population.x) & population.x > 0, population.x,
-                 ifelse(!is.na(population.y) & population.y > 0, population.y, population))
+    # Priority: for 2025 the mapped 31.12.2024 values already in area and population,
+    # otherwise ags21 (area.x) > ags25 (area.y) > original (area)
+    area = ifelse(election_year == 2025 & !is.na(area), area,
+           ifelse(!is.na(area.x) & area.x > 0, area.x,
+           ifelse(!is.na(area.y) & area.y > 0, area.y, area))),
+    population = ifelse(election_year == 2025 & !is.na(population), population,
+                 ifelse(!is.na(population.x) & population.x > 0, population.x,
+                 ifelse(!is.na(population.y) & population.y > 0, population.y, population)))
   ) |>
   dplyr::select(-c(area.x, area.y, population.x, population.y))
 
@@ -1077,6 +1064,11 @@ cat("[OK] national valid_votes reconcile to the unharmonised file in every year\
 
 # Save --------------------------------------------------------------------
 
+# Elections after the covariates' last year take that year's values, marked as in
+# state_harm_* (BBSR's last year is 31.12.2024).
+df_harm <- df_harm |>
+  mutate(flag_covars_carried_forward = as.integer(election_year > 2024))
+
 ## Save this now:
 
 # Write .csv file
@@ -1148,6 +1140,8 @@ glimpse(df_harm)
 
 # number of ags with unique_mailin == 0 in each election
 n_joint <- df_harm |>
+  # donors without a source row (flag_pooled, 2021/2025) carry no mail-in data
+  dplyr::filter(!(flag_pooled == 1 & is.na(unique_mailin))) |>
   group_by(election_year) |>
   summarise(
     n = n_distinct(ags),

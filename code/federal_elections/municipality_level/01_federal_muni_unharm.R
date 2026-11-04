@@ -2893,7 +2893,6 @@ mailin_tab <- mailin_df |>
 1+3.5+3.5+3.5+3.5
 
 save_kable(mailin_tab, file = "output/tables/n_mailin.tex", keep_tex = T)
-save_kable(mailin_tab, file = "~/Dropbox (Princeton)/Apps/Overleaf/ElectionPaper/tables/n_mailin.tex", keep_tex = T)
 
 
 # plot barplot

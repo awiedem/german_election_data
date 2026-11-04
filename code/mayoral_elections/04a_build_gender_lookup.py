@@ -22,8 +22,11 @@ either way.
 import csv
 import os
 import re
+import atexit
+import shutil
 import subprocess
 import sys
+import tempfile
 import unicodedata
 
 try:
@@ -39,7 +42,11 @@ except ImportError:
 PROJ_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 INPUT_RDS = os.path.join(PROJ_ROOT, "data", "mayoral_elections", "final", "mayoral_candidates.rds")
 OUTPUT_CSV = os.path.join(PROJ_ROOT, "data", "mayoral_elections", "processed", "gender_guesser_lookup.csv")
-NAMES_TMP = "/tmp/all_first_names.csv"
+# Working lists of first names go in a private temporary folder, removed on exit.
+# One is built from the restricted twin, so they must not stay in a shared /tmp.
+NAMES_TMP_DIR = tempfile.mkdtemp(prefix="gerda-first-names-")
+atexit.register(shutil.rmtree, NAMES_TMP_DIR, ignore_errors=True)
+NAMES_TMP = os.path.join(NAMES_TMP_DIR, "all_first_names.csv")
 
 # Restricted (scientific-use-only) twin: same candidates, but the Sachsen-Anhalt
 # losers keep their names. Its first names go to a SEPARATE, gitignored lookup
@@ -49,7 +56,7 @@ RESTRICTED_RDS = os.path.join(PROJ_ROOT, "data", "mayoral_elections",
                               "final_restricted", "mayoral_candidates_restricted.rds")
 RESTRICTED_OUTPUT_CSV = os.path.join(PROJ_ROOT, "data", "mayoral_elections", "processed",
                                      "gender_guesser_lookup_restricted.csv")
-RESTRICTED_NAMES_TMP = "/tmp/all_first_names_restricted.csv"
+RESTRICTED_NAMES_TMP = os.path.join(NAMES_TMP_DIR, "all_first_names_restricted.csv")
 
 # ---------------------------------------------------------------------------
 # Manual gender overrides — typos, rare names, foreign names, ambiguous

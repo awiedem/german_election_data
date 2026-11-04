@@ -55,32 +55,15 @@ cw <- bind_rows(
 
 # Get population & area for 2025 (also used to describe the pre-1990 RP rows
 # added below)
-ags25 <- read_excel(
-  "data/covars_municipality/raw/municipality_sizes/AuszugGV4QAktuell_2024.xlsx",
-  sheet = 2
-) |>
-  slice(9:16018) |>
-  select(
-    Land = `...3`,
-    RB   = `...4`,
-    Kreis = `...5`,
-    Gemeinde = `...7`,
-    area = `...9`,
-    population  = `...10`
+# BBSR's 31.12.2024 on 2025 boundaries, through the hand-built key
+ags25 <- read_rds("data/crosswalks/final/crosswalk_ags_2024_to_2025.rds") |>
+  group_by(ags_25) |>
+  summarise(
+    area = sum(area * area_cw, na.rm = TRUE),
+    population = sum(population * pop_cw, na.rm = TRUE),
+    .groups = "drop"
   ) |>
-  filter(!is.na(Gemeinde)) |>
-  mutate(
-    Land     = pad_zero_conditional(Land, 1),
-    Kreis    = pad_zero_conditional(Kreis, 1),
-    Gemeinde = pad_zero_conditional(Gemeinde, 1, "00"),
-    Gemeinde = pad_zero_conditional(Gemeinde, 2, "0"),
-    ags = as.numeric(paste0(Land, RB, Kreis, Gemeinde)),
-    year = 2025,
-    population = as.numeric(population) / 1000,
-    area = as.numeric(area)
-  ) |>
-  filter(!is.na(Gemeinde)) |>
-  select(ags, year, area, population)
+  transmute(ags = as.numeric(ags_25), year = 2025, area, population)
 
 # Rheinland-Pfalz before 1990: the StaLA Sonderauswertung back-casts the whole
 # 1969-2019 series onto 2025 boundaries, so the pre-1990 rows are ALREADY
@@ -536,8 +519,8 @@ flags <- df_cw |>
   group_by(ags_25, election_year) |>
   summarise(
     # for all that start with replaced_ take maximum
-    across(c(starts_with("replaced_"), flag_unsuccessful_naive_merge), ~ max(.x, na.rm = TRUE)),
-    flag_majority_vote = max_or_na(flag_majority_vote),
+    across(c(starts_with("replaced_"), flag_unsuccessful_naive_merge), ~ gerda_flag_max(.x, pop_cw)),
+    flag_majority_vote = as.integer(gerda_flag_max(flag_majority_vote, pop_cw)),
     .groups = "drop"
   ) |>
   rename(
@@ -619,7 +602,8 @@ df_harm <- sums |>
   relocate(county, .after = state) |>
   mutate(ags = as.numeric(ags)) |>
   # Merge with 2025 area and population data
-  left_join_check_obs(ags25, by = c("ags", "year")) |>
+  # 2026 carries the same values, flagged below
+  left_join_check_obs(bind_rows(ags25, mutate(ags25, year = 2026)), by = c("ags", "year")) |>
   mutate(
     area = ifelse(!is.na(area.x), area.x, area.y),
     population = ifelse(!is.na(population.x), population.x, population.y)
@@ -659,6 +643,11 @@ df_harm <- df_harm |>
     "ags", "election_year", "election_date",
     "ags_name", "state_name", "state"
   )))
+
+# Elections after the covariates' last year take that year's values, marked as in
+# state_harm_* (BBSR's last year is 31.12.2024).
+df_harm <- df_harm |>
+  mutate(flag_covars_carried_forward = as.integer(election_year > 2024))
 
 ## save
 fwrite(df_harm, "data/municipal_elections/final/municipal_harm_25.csv")

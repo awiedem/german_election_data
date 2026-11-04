@@ -303,7 +303,9 @@ harmonization_counts <- cw_combined %>%
   group_by(year) %>%
   summarise(
     n_ags = n(),
-    n_ags_harmonized = sum(pop_cw < 1 | ags != ags_21),
+    # ags is numeric in this file and ags_21 an 8-character string, so pad before
+    # comparing: otherwise every code below 10000000 counts as harmonized.
+    n_ags_harmonized = sum(pop_cw < 1 | sprintf("%08.0f", as.numeric(ags)) != ags_21),
     # calculate total population & area for ags with pop_cw < 1
     total_population_harmonized = sum(population[pop_cw < 1], na.rm = TRUE),
     total_area_harmonized = sum(area[pop_cw < 1], na.rm = TRUE),
@@ -341,7 +343,6 @@ harm_tab <- harmonization_counts %>%
   column_spec(6, "3cm")
 
 save_kable(harm_tab, "output/tables/harmonization_counts.tex", keep_tex = T)
-save_kable(harm_tab, file = "~/Dropbox (Princeton)/Apps/Overleaf/ElectionPaper/tables/harmonization_counts.tex", keep_tex = T)
 
 # produce plot
 harmonization_counts %>%
@@ -356,6 +357,5 @@ harmonization_counts %>%
   scale_y_continuous(limits = c(0, 8200))
 
 ggsave("output/figures/mergers.pdf", width = 7, height = 3.5)
-ggsave("~/Dropbox (Princeton)/Apps/Overleaf/ElectionPaper/figures/mergers.pdf", width = 7, height = 3.5)
 
 ### END
