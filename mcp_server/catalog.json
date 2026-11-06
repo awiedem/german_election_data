@@ -10,18 +10,18 @@
         "end_year": 2025
       },
       "harmonization_year": 2025,
-      "release_identifier": "git:86ce618a355c1baa720c326b1a169e96958fd0ee",
+      "release_identifier": "git:88b28fc0e4b7f876111f00a91afcd3803004aa38",
       "source": {
-        "commit": "86ce618a355c1baa720c326b1a169e96958fd0ee",
-        "url": "https://media.githubusercontent.com/media/awiedem/german_election_data/86ce618a355c1baa720c326b1a169e96958fd0ee/data/federal_elections/municipality_level/final/federal_muni_harm_25.csv",
+        "commit": "88b28fc0e4b7f876111f00a91afcd3803004aa38",
+        "url": "https://media.githubusercontent.com/media/awiedem/german_election_data/88b28fc0e4b7f876111f00a91afcd3803004aa38/data/federal_elections/municipality_level/final/federal_muni_harm_25.csv",
         "canonical_download_url": "https://github.com/awiedem/german_election_data/raw/main/data/federal_elections/municipality_level/final/federal_muni_harm_25.csv",
-        "size_bytes": 64466108,
-        "sha256": "5177a26811e8fea3d41a806a17a287ac87db2aafac3258ca990bbdee05f078b8"
+        "size_bytes": 64938273,
+        "sha256": "6bc8a33da74ce3c16ade544717f855268d2da775dbfc07f5dc79fea08b273f15"
       },
       "artifact": {
         "filename": "federal_muni_harm_25.parquet",
         "metadata_filename": "federal_muni_harm_25.metadata.json",
-        "expected_rows": 107295
+        "expected_rows": 107515
       },
       "license": {
         "status": "CC-BY-4.0",
@@ -37,7 +37,7 @@
         "Use this harmonized dataset for comparisons over time on stable 2025 municipality boundaries.",
         "AGS, state, and county identifiers are strings; leading zeros are significant.",
         "Party values and turnout are proportions from 0 to 1, not percentages.",
-        "The federal municipality files use number_voters as the denominator for party vote shares."
+        "Party shares in this harmonized file sum to 1 within a row: they are shares of valid_votes, so multiply by valid_votes to recover counts, not by number_voters."
       ],
       "caveats": [
         "Joint mail-in voting district results are allocated to municipalities using polling-card voter weights.",
@@ -91,10 +91,10 @@
           "last_column": "far_left_w_linke"
         },
         "quality": {
-          "columns": ["flag_naive_turnout_above_1", "flag_unsuccessful_naive_merge", "total_votes", "flag_total_votes_incongruent", "total_votes_incogruence", "perc_total_votes_incogruence"]
+          "columns": ["flag_naive_turnout_above_1", "flag_unsuccessful_naive_merge", "total_votes", "flag_total_votes_incongruent", "total_votes_incogruence", "perc_total_votes_incogruence", "flag_pooled"]
         },
         "geographic_covariates": {
-          "columns": ["area_cw", "area", "population"]
+          "columns": ["area_cw", "area", "population", "flag_covars_carried_forward"]
         }
       },
       "column_definitions": {
@@ -120,7 +120,9 @@
         "flag_total_votes_incongruent": "Indicator that reconstructed total votes differ from reported valid votes.",
         "total_votes": "Sum of individual party vote columns.",
         "area": "Municipality area after harmonization.",
-        "population": "Municipality population used or attached during harmonization."
+        "population": "Municipality population in thousands used or attached during harmonization; the 2025 rows use 31.12.2024, on the Zensus 2022 base.",
+        "flag_pooled": "1 for a municipality the source counts inside a neighbour (its counts and shares are null) and for the neighbour whose counts include it; 2021 and 2025 only.",
+        "flag_covars_carried_forward": "1 where the election is later than the last covariate year, 2024, so area and population describe 31.12.2024."
       }
     }
   }
