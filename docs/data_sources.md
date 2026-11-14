@@ -40,6 +40,7 @@ Statistische Ämter des Bundes und der Länder. Landtagswahlen. [https://www.reg
 | Rheinland-Pfalz         | Statistisches Landesamt Rheinland-Pfalz                          | website (Excel, percentages only)        |
 | Saarland                | Statistisches Landesamt des Saarlandes                           | website (Excel)                          |
 | Sachsen                 | Statistisches Landesamt des Freistaates Sachsen (Bürgermeisteratlas) | website (Excel)                      |
+| Sachsen-Anhalt          | Statistisches Landesamt Sachsen-Anhalt: *Bürgermeisterwahlen in Sachsen-Anhalt ab 1994*, the Dezernat-13 extract (2019–2026), and the registers *Landräte und Bürgermeister* (B VII 702, 2004–2011: elected persons and parties, Landrat results 2001–2008) | email (workbook, extract, register scans); Statistische Bibliothek (2011 register) |
 | Schleswig-Holstein      | Statistisches Amt für Hamburg und Schleswig-Holstein              | web scraping (wahlen-sh.de)              |
 
 For details on data structure and known issues, see the [Mayoral Elections README](data/mayoral_elections/final/README.md) and [Known Issues](docs/mayoral_elections_known_issues.md).

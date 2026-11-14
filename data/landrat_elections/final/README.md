@@ -13,7 +13,7 @@ Direct-election results for heads of German Landkreise (rural counties) and equi
 | **Mecklenburg-Vorpommern (MV)** | 2000--2025 | 18 | PDF extraction from LAIV-MV Direktwahlen PDFs via [code/mayoral_elections/00_mv_parse.py](../../../code/mayoral_elections/00_mv_parse.py) (mayoral pipeline). Pre-/post-2011-reform Kreis codes are year-aware (e.g. Nordwestmecklenburg `13058000` pre-2011, `13074000` from 2011). Rügen, May 2001: the sole candidate's Ja/Nein runoff failed the 25 %-of-the-electorate quorum (§ 64 Abs. 3 KWG M-V) and a new election followed in September; the May cycle seats nobody (`is_winner = NA` for every candidate, winner fields NA in `landrat_unharm`) |
 | **Brandenburg (BB)** | 2010--2026 | 14 | scraped from `wahlen.brandenburg.de/.../landraetewahlen/` ([code/landrat_elections/00_bb_scrape.R](../../../code/landrat_elections/00_bb_scrape.R)). The portal shows only the latest cycle per Kreis under a fixed URL, so a later cycle is saved next to the cached one as `BB_<slug>_<date>.html` (Ostprignitz-Ruppin holds 2018 and 2026). **Every cycle since direct election began (Jan 2010)**: the 2010--2018 pages the portal had already overwritten are archived copies from the Wayback Machine, of the same portal URLs (2013--2018 cycles) or of the Landeswahlleiter's earlier site (2010, and two 2016 pages), all "Endgültiges Ergebnis"; provenance per file in [`raw/brandenburg/README.md`](../raw/brandenburg/README.md) |
 | **Sachsen (SN)** | 2002, 2008, 2015, 2020, 2022, 2025 | 13 | mixed sources ([code/landrat_elections/00_sn_scrape.R](../../../code/landrat_elections/00_sn_scrape.R)) — 2002 XLS winner-only; 2008 + 2015 per-Kreis HTML (wahlarchiv); 2020/2025 single-Kreis Excels; 2022 statewide Excel (9 Kreise, aggregated from Gemeinde rows) |
-| **Sachsen-Anhalt (ST)** | 2007--2026 | 11 | CSV downloads for 2007/2014 + 2015 per-Kreis HTML; 2019--2026 from the rolling `lr.csv`. The 2007 CSV has only Gemeinde-level rows (no Kreis summary), so the parser aggregates them by 5-digit Kreis prefix ([code/landrat_elections/00_st_scrape.R](../../../code/landrat_elections/00_st_scrape.R)) |
+| **Sachsen-Anhalt (ST)** | 2001--2026 | 11 | CSV downloads for 2007/2014 + 2015 per-Kreis HTML; 2019--2026 from the rolling `lr.csv`; 2001--2008 Kreis results of both rounds from the annex of the StaLA registers B VII 702 (see below). The 2007 CSV has only Gemeinde-level rows (no Kreis summary), so the parser aggregates them by 5-digit Kreis prefix ([code/landrat_elections/00_st_scrape.R](../../../code/landrat_elections/00_st_scrape.R)) |
 | **Thüringen (TH)** | 2000 (runoffs only), 2006, 2012, 2014, 2015, 2018, 2020, 2021, 2023, 2024, 2026 | 17 | parsed from Thüringer Landesamt für Statistik LR/LSInfoG xlsx files; the three runoffs of 28.05.2000 from the TLS report 29924 ([code/landrat_elections/00_th_parse.R](../../../code/landrat_elections/00_th_parse.R)) |
 | Hessen (HE) | 1993--2024 | 21 | HSL "Direktwahlen in Hessen seit 1993" workbook (mayoral pipeline, Landrat rows split off) |
 | Saarland (SL) | 2011, 2012, 2014, 2024 | 5 + RVS | RVS via mayoral pipeline; 5 Kreise (NK 2024 from clean PDF, others Wikipedia % only) ([code/landrat_elections/00_sl_extra.R](../../../code/landrat_elections/00_sl_extra.R)) |
@@ -72,23 +72,17 @@ Of the 14 first direct elections (10 Jan 2010 to 11 Dec 2016), 9 are flagged, wh
 
 Every other Brandenburg cycle clears the rule; the closest is Potsdam-Mittelmark 2022 at 16.1 % of the electorate. `01_landrat_combine.R` also **stops** if a Brandenburg Hauptwahl leader misses the rule and no Stichwahl page is on file (runoff not scraped yet), rather than seating the first-round leader. `99_audit.R` section 12 recomputes the rule from the published counts, pins all twelve cycles, and checks the 9-of-14 count.
 
-### Sachsen-Anhalt 2007: runoffs not on file (`flag_decisive_round_missing`)
+### Sachsen-Anhalt 2001–2008: Kreis results from the StaLA registers (13 November 2026)
 
-A Landrat in Sachsen-Anhalt needs more than half of the valid votes; failing that, the two leaders meet in a runoff. The Landeswahlleiter's 2007 download holds only the first round of 22 April 2007 and no runoff results. In five of the nine new Kreise nobody won a majority, so the Landrat was decided in a runoff that is not in the data. Until October 2026 the first-round leader was published as the Landrat. Now:
+A Landrat in Sachsen-Anhalt needs more than half of the valid votes; failing that, the two leaders meet in a runoff. The Landeswahlleiter's 2007 download (`lr07dat3.csv`) holds only the Gemeinde rows of the first round of 22 April 2007. From October to 13 November 2026 the five Kreise without a first-round majority therefore carried `flag_decisive_round_missing` and seated nobody.
 
-- `flag_decisive_round_missing = TRUE` on every row of the cycle, in both files (`FALSE` everywhere else, never `NA`);
-- `landrat_candidates`: `is_winner = NA` for every candidate of the cycle. Since either leader may have lost the runoff, no candidate of these cycles is named (losing candidates in Sachsen-Anhalt are not named; the restricted twin keeps the names);
-- `landrat_unharm`: the Hauptwahl row keeps its round leader, like every Hauptwahl that went to a runoff.
+The annex of the Statistisches Landesamt's registers *Landräte und Bürgermeister* (B VII 702, Stand 1 August 2007 and 1 January 2009; two scans that agree figure for figure) prints the Kreis results of both rounds. GERDA now takes the 2007 elections from it:
 
-| Kreis | First round | Leader | Second |
-|---|---|---|---|
-| Anhalt-Bitterfeld | 22 Apr 2007 | CDU 45.6 % | Die Linke. 20.5 % |
-| Mansfeld-Südharz | 22 Apr 2007 | CDU 30.7 % | SPD 25.6 % |
-| Saalekreis | 22 Apr 2007 | CDU 35.2 % | SPD 27.1 % |
-| Salzlandkreis | 22 Apr 2007 | CDU 32.0 % | SPD 27.2 % |
-| Wittenberg | 22 Apr 2007 | CDU 28.3 % | Die Linke. 22.1 % |
+- the runoffs of 6 May 2007 are in both files. Elected: Schulze (CDU, Anhalt-Bitterfeld), Schatz (CDU, Mansfeld-Südharz), Bannert (CDU, Saalekreis), Gerstner (SPD, Salzlandkreis), Dannenberg (Die Linke., Wittenberg). No Sachsen-Anhalt cycle carries `flag_decisive_round_missing` any more;
+- in Börde, Burgenlandkreis, Saalekreis and Wittenberg the sum of the Gemeinde rows was 954 to 4,543 valid votes short of the Kreis result, with the same electorate: the postal votes counted at Kreis level were missing. The first-round counts are now the Kreis totals (Burgenlandkreis: Reiche 33,803 votes, 51.5 %);
+- three elections GERDA lacked: Altmarkkreis Salzwedel 6 May 2001 (code 15370000, the Kreis before 1 July 2007) and 24 February/9 March 2008, and Landkreis Stendal 18 December 2005 (15363000).
 
-`01_landrat_combine.R` stops if any other Sachsen-Anhalt Hauptwahl lacks both a majority and a runoff. `99_audit.R` section 12b pins the five cycles.
+Candidate names and labels stay as `lr07dat3.csv` prints them; the losing candidates are not named, as everywhere in Sachsen-Anhalt. `01_landrat_combine.R` (`st_b702_annex()`) stops if the annex and `lr07dat3.csv` disagree on the candidates of an election, and if any Sachsen-Anhalt Hauptwahl lacks both a majority and a runoff. `99_audit.R` section 12b pins the runoffs, the Kreis totals and the added elections.
 
 The same 2007 file had a reader error, fixed in October 2026. It lists up to 11 candidates per Kreis, but `read.csv2()` sized the table from its first lines, so the longer rows lost their last candidates. Burgenlandkreis lost three, among them Harri Reiche, who won outright with 51.2 %, and the 13.8 % runner-up was published as Landrat. Landkreis Harz lost one candidate (its winner is unchanged). The parser now stops unless every round's candidate votes add up to its valid votes.
 

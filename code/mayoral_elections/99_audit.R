@@ -1292,11 +1292,16 @@ if ("was_predecessor_mayor" %in% names(mp)) {
   # Anhalt village elections of 2008/2010 filed under their successor's code
   # (Lagendorf, Gieseritz, Uchtdorf) moved to their own code (30e); two by-
   # elections the year dedup had dropped entered (Lützen 2010, Könnecke).
-  check(all(mp$was_predecessor_mayor %in% 0:1) && sum(mp_nb$was_predecessor_mayor) == 164 &&
+  # 164 -> 165 terms, 109 -> 110 people (2026-11-13): the Kläden (Altmarkkreis)
+  # mayor of 1995 and 2002 (B VII 702) also won there on 07.06.2009, an election
+  # GERDA had filed under the other Kläden's code. Two Gemeinden of that name
+  # were renumbered in 2007, so the lineage rule cannot link the codes and the
+  # 2009 term enters as a merger link.
+  check(all(mp$was_predecessor_mayor %in% 0:1) && sum(mp_nb$was_predecessor_mayor) == 165 &&
           all(mp$person_id_method[mp$was_predecessor_mayor == 1] %in%
                 c("merger_name_link", "candidate_name_variant_link")) &&
-          n_distinct(mp_nb$person_id[mp_nb$person_id_method == "merger_name_link"]) == 109,
-        "26e was_predecessor_mayor: 164 terms of people linked across a merger (109 merger_name_link people + 1 whose name-variant link takes precedence; the 5 Thüringen 1999-2004 terms went with the TLS names)",
+          n_distinct(mp_nb$person_id[mp_nb$person_id_method == "merger_name_link"]) == 110,
+        "26e was_predecessor_mayor: 165 terms of people linked across a merger (110 merger_name_link people + 1 whose name-variant link takes precedence; the 5 Thüringen 1999-2004 terms went with the TLS names)",
         sprintf("26e was_predecessor_mayor (outside BB): %d rows, %d merger-linked people",
                 sum(mp_nb$was_predecessor_mayor), n_distinct(mp_nb$person_id[mp_nb$person_id_method == "merger_name_link"])))
 } else {
@@ -1534,9 +1539,11 @@ nv <- mp %>% filter(person_id_method == "candidate_name_variant_link")
 # Jörg Heinrich (Ellefeld) was father and son, so it went (30c). 70 / 177
 # (2026-10-28): the Heidenrod 2025 term joins its 2019 holder
 # (he_name_variant_links in 03; the counted HSL terms keep their method).
-check(n_distinct(nv$person_id) == 70 && nrow(nv) == 177,
-      "28b candidate_name_variant_link: 70 people (33 from the August 2026 alias table + 36 pinned pairs + Heidenrod), 177 terms",
-      sprintf("28b candidate_name_variant_link: %d people, %d terms (expected 70 / 177)",
+# 69 / 172 (2026-11-13): the Jerichow alias Bother -> Bothe went; the 2001 slot
+# is now spelt Bothe at the source (B VII 702 pin) and the 2006 copy is dropped.
+check(n_distinct(nv$person_id) == 69 && nrow(nv) == 172,
+      "28b candidate_name_variant_link: 69 people (32 from the August 2026 alias table + 36 pinned pairs + Heidenrod), 172 terms",
+      sprintf("28b candidate_name_variant_link: %d people, %d terms (expected 69 / 172)",
               n_distinct(nv$person_id), nrow(nv)))
 ch <- mp %>% filter(ags == "12060045", election_year <= 2019) %>% arrange(election_date)
 sa <- mp %>% filter(ags == "05382056", election_year == 2025)
@@ -1951,7 +1958,11 @@ PF_NA_LABELS <- 290; PF_PANEL_DISAGREE <- 17
 # Municipal supplement: HE adds 48 comparable terms, 24 switches, 13 first-family wins.
 # Bayern duplicate rows (by_source_duplicate_rows.csv): Babenhausen loses its copied
 # 2015 term; Gundelsheim's switch moves from 1996 to 2002.
-PF_N_SWITCH <- 8987; PF_N_CMP <- 39297; PF_N_NEW <- 11817
+# 8987 / 39297 / 11817 until the StaLA registers B VII 702 (2026-11-13) filled 265
+# Sachsen-Anhalt winner parties and added 76 winner-only elections (Sachsen-Anhalt only;
+# every other state's panel rows are unchanged).
+PF_N_SWITCH <- 9232; PF_N_CMP <- 39374; PF_N_NEW <- 12003
+PTY39_N <- 516; CP39_N <- 0; BY39_N <- 37
 pf_allowed <- c("cdu_csu", "spd", "gruene", "linke_pds", "fdp", "afd", "fw_wg",
                 "independent", "other", "joint_list")
 pf_fix <- tribble(
@@ -2127,6 +2138,146 @@ check(all(same38$kept) && all(same38_kept %in% same38$key),
       sprintf("38 rounds repeating another date's counts unexplained: %s; pins no longer found: %s",
               paste(same38$key[!same38$kept], collapse = "; "),
               paste(setdiff(same38_kept, same38$key), collapse = "; ")))
+
+cat("\n39. Sachsen-Anhalt registers B VII 702 (StaLA, 13 November 2026)\n")
+# 00_st_hist_parse.py applies the pins in metadata/st_b702_*.csv (see
+# raw/sachsen_anhalt/stala_b702/README.md, known issues §27). Calibrated: every
+# check fails on the build of 2026-11-05 (4b9a8e2).
+st39 <- m %>% filter(state == "15")
+st39c <- mc %>% filter(state == "15")
+added39 <- read.csv("data/mayoral_elections/metadata/st_b702_added_elections.csv",
+                    colClasses = "character")
+wo39 <- st39c %>% semi_join(added39 %>% transmute(ags, election_date = as.Date(election_date)),
+                            by = c("ags", "election_date"))
+check(nrow(added39) == 79 && n_distinct(paste(wo39$ags, wo39$election_date)) == 79 &&
+        all(is.na(wo39$n_candidates)) && all(wo39$is_winner %in% TRUE) &&
+        all(!is.na(wo39$candidate_last_name) & nzchar(wo39$candidate_last_name)),
+      "39a 79 register elections enter winner-only: one named winner each, n_candidates NA",
+      sprintf("39a register elections: %d pinned, %d found, %d with n_candidates, %d unnamed or not winning",
+              nrow(added39), n_distinct(paste(wo39$ags, wo39$election_date)), sum(!is.na(wo39$n_candidates)),
+              sum(!(wo39$is_winner %in% TRUE) | is.na(wo39$candidate_last_name))))
+has39 <- function(a, d, rnd = NULL) any(st39$ags == a & st39$election_date == as.Date(d) &
+                                          (is.null(rnd) | st39$round %in% rnd))
+pid39 <- function(a, d) mp$person_id[mp$ags == a & mp$election_date == as.Date(d) & !is.na(mp$person_id)]
+one39 <- function(a, d, b, e) length(pid39(a, d)) == 1 && length(pid39(b, e)) == 1 &&
+  identical(pid39(a, d), pid39(b, e))
+win39 <- function(a, d) st39c$candidate_last_name[st39c$ags == a & st39c$election_date == as.Date(d) &
+                                                     st39c$is_winner %in% TRUE]
+fix39 <- c(
+  colbitz_2007 = has39("15362023", "2007-04-22") && !any(st39$election_date == as.Date("2007-05-28")),
+  jerchel = has39("15370047", "2005-11-13"),
+  roxfoerde = has39("15370095", "2006-11-05"),
+  losse = has39("15363078", "2002-09-22") && !has39("15256055", "2002-09-22"),
+  aue_fallstein = has39("15357042", "2003-12-14"),
+  klaeden = has39("15081260", "2009-06-07") && has39("15363064", "2005-04-24"),
+  bad_koesen = one39("15256004", "1994-06-12", "15256004", "2001-05-06"),
+  bucha = length(pid39("15256012", "2007-04-22")) == 1,
+  marienborn = identical(win39("15355037", "2002-06-30"), "Frenkel") &&
+    one39("15355037", "2002-06-30", "15083375", "2009-02-08"),
+  colbitz_2000 = one39("15362023", "2000-01-30", "15362023", "1994-06-12"),
+  arendsee = identical(win39("15370006", "1994-06-12"), "Kohlhepp") &&
+    all(is.na(st39$valid_votes[st39$ags == "15370006" & st39$election_date == as.Date("1994-06-12")])) &&
+    has39("15370006", "1994-06-26", "stichwahl"),
+  jerichow = !has39("15358025", "2006-11-06"),
+  schenkenhorst = !has39("15370099", "2001-06-18") && has39("15370099", "2000-06-18"),
+  runoffs = has39("15355022", "2001-05-20", "stichwahl") && has39("15268013", "2001-06-10", "stichwahl"),
+  wallwitz = has39("15265054", "2001-06-10") && !has39("15265054", "2001-05-06"),
+  seated_1994 = identical(win39("15171044", "1994-06-12"), "Lönning") &&
+    identical(win39("15362038", "1994-06-12"), "Boehnke") &&
+    identical(win39("15364023", "1994-06-12"), "Maertens"))
+check(all(fix39),
+      sprintf("39b register corrections hold (%d): dates, namesake codes, Bad Kösen, Bucha, Marienborn, Colbitz, Arendsee, the Jerichow/Schenkenhorst copies, two runoffs, Wallwitz, three 1994 winners", length(fix39)),
+      sprintf("39b register corrections missing: %s", paste(names(fix39)[!fix39], collapse = ", ")))
+pty39 <- st39c %>% filter(is_winner %in% TRUE, !is.na(candidate_party), nzchar(candidate_party),
+                          election_date < as.Date("2012-01-01"))
+check(nrow(pty39) == PTY39_N,
+      sprintf("39c Sachsen-Anhalt winners 1994-2011 with a ballot party: %d (245 before the register fills)", PTY39_N),
+      sprintf("39c Sachsen-Anhalt winners 1994-2011 with a ballot party: %d, expected %d", nrow(pty39), PTY39_N))
+# 39d: a round copied under another code on another date (Arendsee 1994 =
+# Burgkemnitz 2000; Jerichow 2006 = 2016 under the pre-2007 code, which §38's
+# per-code test cannot see): the same four counts and winner votes. Council
+# votes (electorate <= 60: Bayern OB elections of 1946-1949) coincide and are
+# left out. All states; the build of 2026-11-05 has the 2 Sachsen-Anhalt copies.
+cp39 <- m %>%
+  filter(!is.na(eligible_voters), !is.na(number_voters), !is.na(valid_votes), !is.na(invalid_votes),
+         !is.na(winner_votes), eligible_voters > 60) %>%
+  group_by(eligible_voters, number_voters, valid_votes, invalid_votes, winner_votes) %>%
+  filter(n_distinct(ags) > 1, n_distinct(election_date) > 1) %>%
+  summarise(key = paste(sort(unique(paste(ags, election_date))), collapse = " / "), .groups = "drop")
+check(nrow(cp39) == CP39_N,
+      sprintf("39d rounds repeating another code's counts and winner votes on another date: %d (calibrated)", CP39_N),
+      sprintf("39d rounds repeating another Gemeinde's counts: %d, expected %d: %s",
+              nrow(cp39), CP39_N, paste(head(cp39$key, 5), collapse = "; ")))
+# 39e: birth years from the registers are not published (decision of
+# 2026-11-13). 00_st_hist_parse.py lists them; the public file must hold none of
+# them, the tracked pin tables none at all, and the restricted twin all of them.
+by39_file <- "data/mayoral_elections/raw/sachsen_anhalt/stala_b702/st_b702_birth_years_restricted.csv"
+fills39 <- read.csv("data/mayoral_elections/metadata/st_b702_fills.csv", colClasses = "character")
+corr39 <- read.csv("data/mayoral_elections/metadata/st_b702_corrections.csv", colClasses = "character")
+tracked39 <- all(fills39$kind == "party") && !any(nzchar(corr39$new_value[corr39$kind == "birth_year"]))
+check(tracked39,
+      "39e the tracked pin tables hold no register birth year",
+      "39e a register birth year sits in st_b702_fills.csv or st_b702_corrections.csv")
+if (file.exists(by39_file)) {
+  by39 <- read.csv(by39_file, colClasses = "character") %>%
+    mutate(election_date = as.Date(election_date), birth_year = as.numeric(birth_year))
+  pub39 <- st39c %>% filter(is_winner %in% TRUE) %>%
+    inner_join(by39 %>% select(ags, election_date, candidate_last_name),
+               by = c("ags", "election_date", "candidate_last_name"))
+  check(nrow(by39) == BY39_N && nrow(pub39) == BY39_N && all(is.na(pub39$candidate_birth_year)),
+        sprintf("39e the %d register birth years of elected mayors are absent from the public file", BY39_N),
+        sprintf("39e register birth years: %d listed (expected %d), %d public rows, %d still carry a year",
+                nrow(by39), BY39_N, nrow(pub39), sum(!is.na(pub39$candidate_birth_year))))
+  tw39_path <- "data/mayoral_elections/final_restricted/mayoral_candidates_restricted.rds"
+  if (file.exists(tw39_path)) {
+    tw39 <- readRDS(tw39_path) %>% filter(state == "15", is_winner %in% TRUE) %>%
+      inner_join(by39, by = c("ags", "election_date", "candidate_last_name"))
+    check(nrow(tw39) == BY39_N && isTRUE(all(tw39$candidate_birth_year == tw39$birth_year)),
+          sprintf("39e the restricted twin keeps all %d register birth years (runoff winners included)", BY39_N),
+          sprintf("39e restricted twin: %d rows, %d with the register year (expected %d)",
+                  nrow(tw39), sum(tw39$candidate_birth_year == tw39$birth_year, na.rm = TRUE), BY39_N))
+  } else {
+    warn("39e mayoral_candidates_restricted.rds absent (scientific-use twin not built here)")
+  }
+} else {
+  warn("39e st_b702_birth_years_restricted.csv absent (run 00_st_hist_parse.py with the registers)")
+}
+
+cat("\n40. Sachsen-Anhalt winners keep the workbook's birth year (runoff winners included)\n")
+# 01b gives the birth year to the decisive round's winner row; for a runoff
+# winner that is the runoff row, and until 2026-11-14 the HW/SW pivot kept the
+# first round's empty value, so 0 of 480 runoff winners had a birth year (the
+# workbook gives one for 278). Every stage-0 winner birth year must reach the
+# public file, except the register years kept restricted (39e). Calibrated: the
+# build of 2026-11-13 fails with 274 missing.
+st40_file <- "data/mayoral_elections/raw/sachsen_anhalt/st_stala_parsed.csv"
+if (file.exists(st40_file)) {
+  st40 <- read.csv(st40_file, colClasses = "character", encoding = "UTF-8") %>%
+    filter(is_winner == "True", nzchar(winner_birth_year), winner_birth_year != "None") %>%
+    transmute(ags, d = as.Date(election_date), candidate_last_name, by0 = as.numeric(winner_birth_year)) %>%
+    distinct()
+  pub40 <- st39c %>% filter(is_winner %in% TRUE) %>%
+    select(ags, election_date, election_date_sw, candidate_last_name, candidate_birth_year) %>%
+    mutate(hw_key = election_date, sw_key = election_date_sw)
+  m40 <- bind_rows(
+    st40 %>% inner_join(pub40, by = c("ags", "d" = "hw_key", "candidate_last_name")),
+    st40 %>% inner_join(pub40 %>% filter(!is.na(sw_key)), by = c("ags", "d" = "sw_key", "candidate_last_name"))
+  ) %>% distinct(ags, d, candidate_last_name, .keep_all = TRUE)
+  # the register years kept restricted (39e), matched on the election itself
+  if (exists("by39")) {
+    m40 <- m40 %>% anti_join(by39 %>% select(ags, election_date, candidate_last_name),
+                             by = c("ags", "election_date", "candidate_last_name"))
+  }
+  miss40 <- m40 %>% filter(is.na(candidate_birth_year) | candidate_birth_year != by0)
+  check(nrow(miss40) == 0,
+        sprintf("40 all %d Sachsen-Anhalt winners with a workbook birth year carry it in the public file (%d runoff winners)",
+                nrow(m40), sum(!is.na(m40$election_date_sw))),
+        sprintf("40 %d of %d Sachsen-Anhalt winners lack the workbook's birth year in the public file (%d of them runoff winners), e.g. %s",
+                nrow(miss40), nrow(m40), sum(!is.na(miss40$election_date_sw)),
+                paste(head(paste(miss40$ags, miss40$d), 3), collapse = "; ")))
+} else {
+  warn("40 st_stala_parsed.csv absent (gitignored Stage-0 file not built here)")
+}
 
 cat("\n════════════════════════════════════════════════════════════════════\n")
 if (failed == 0) {

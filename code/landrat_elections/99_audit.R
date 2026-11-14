@@ -592,67 +592,84 @@ check(nrow(first_direct) == 14 && max(first_direct$election_date) < as.Date("201
               nrow(first_direct), sum(first_direct$flag), max(first_direct$election_date)))
 
 # ============================================================================
-# 12b. Sachsen-Anhalt 2007: runoffs not on file (flag_decisive_round_missing)
+# 12b. Sachsen-Anhalt 2001-2008: StaLA B VII 702 annex (Kreis totals, runoffs)
 # ============================================================================
-# lr07dat3.csv holds only the first round of 22.04.2007 (2007 published no
-# runoff results). Five Kreise had no majority, so their Landrat was decided
-# in a runoff we do not hold: flagged, nobody seated. Burgenlandkreis was won
-# outright by Reiche (51.2 %), whom a read.csv2() row-wrap had dropped along
-# with candidates 10-11, seating the 13.8 % runner-up (data audit 2026-10-12).
-cat("\n12b. Sachsen-Anhalt 2007 (flag_decisive_round_missing)\n")
+# lr07dat3.csv holds only the Gemeinde rows of the first round of 22.04.2007:
+# the five runoffs of 06.05.2007 were missing (flag_decisive_round_missing until
+# 2026-11-13) and four Kreise lacked their postal votes. The annex of the StaLA
+# registers "Landräte und Bürgermeister" (Stand 2007 and 2009, see
+# 01_landrat_combine.R, st_b702_annex()) gives the Kreis results of both rounds
+# and three elections GERDA lacked. Burgenlandkreis was won outright by Reiche,
+# whom a read.csv2() row-wrap had once dropped (data audit 2026-10-12).
+# Calibrated: fails on the build of 2026-11-05.
+cat("\n12b. Sachsen-Anhalt Landrat 2001-2008 (B VII 702 annex)\n")
 check(is.logical(l$flag_decisive_round_missing) && !anyNA(l$flag_decisive_round_missing) &&
         is.logical(lc$flag_decisive_round_missing) && !anyNA(lc$flag_decisive_round_missing),
       "flag_decisive_round_missing is logical and never NA in both files",
       "flag_decisive_round_missing is not a complete logical column")
-st_pinned <- paste(c("15082000", "15087000", "15088000", "15089000", "15091000"),
-                   "2007-04-22")
-fl_u <- l %>% filter(flag_decisive_round_missing)
-fl_c <- lc %>% filter(flag_decisive_round_missing)
-check(setequal(paste(fl_u$ags, fl_u$election_date), st_pinned) && nrow(fl_u) == 5L &&
-        setequal(unique(paste(fl_c$ags, fl_c$election_date)), st_pinned),
-      "flag_decisive_round_missing: exactly the 5 ST Kreise of 22.04.2007, in both files",
-      sprintf("flag_decisive_round_missing on: %s",
-              paste(unique(paste(fl_c$ags, fl_c$election_date)), collapse = ", ")))
-st_cyc <- lc %>%
-  filter(paste(ags, election_date) %in% st_pinned) %>%
-  group_by(ags, election_date) %>%
-  summarise(all_flag = all(flag_decisive_round_missing), no_winner = all(is.na(is_winner)),
-            .groups = "drop")
-check(nrow(st_cyc) == 5L && all(st_cyc$all_flag) && all(st_cyc$no_winner) &&
-        all(fl_u$round == "hauptwahl") && !anyNA(fl_u$winner_party) &&
-        all(fl_u$winner_voteshare <= 0.5),
-      "ST 2007: flagged cycles seat nobody (is_winner NA); unharm Hauptwahl keeps its sub-50 % leader",
-      "ST 2007: a flagged cycle still seats a candidate or lost its Hauptwahl leader")
-# Independent of the parser: no other ST Hauptwahl lacks both majority and runoff
+check(!any(l$flag_decisive_round_missing & l$state == "15") &&
+        !any(lc$flag_decisive_round_missing & lc$state == "15"),
+      "ST: no Landrat cycle flagged flag_decisive_round_missing (the 2007 runoffs are on file)",
+      sprintf("ST: flag_decisive_round_missing on %s",
+              paste(unique(paste(lc$ags, lc$election_date)[lc$flag_decisive_round_missing & lc$state == "15"]),
+                    collapse = ", ")))
+st_runoffs <- c("15082000" = "Schulze", "15087000" = "Schatz", "15088000" = "Bannert",
+                "15089000" = "Gerstner", "15091000" = "Dannenberg")
+st_rw <- lc %>%
+  filter(ags %in% names(st_runoffs), election_date == as.Date("2007-04-22"))
+st_rw_ok <- st_rw %>%
+  group_by(ags) %>%
+  summarise(sw_date = first(election_date_sw), n_sw = sum(!is.na(candidate_votes_sw)),
+            sw_sum = sum(candidate_votes_sw, na.rm = TRUE),
+            winner = paste(candidate_last_name[is_winner %in% TRUE], collapse = "|"), .groups = "drop")
+sw_valid <- l %>% filter(ags %in% names(st_runoffs), election_date == as.Date("2007-05-06"), round == "stichwahl")
+check(nrow(st_rw_ok) == 5L && all(st_rw_ok$sw_date == as.Date("2007-05-06")) && all(st_rw_ok$n_sw == 2L) &&
+        all(st_rw_ok$winner == st_runoffs[st_rw_ok$ags]) && nrow(sw_valid) == 5L &&
+        all(st_rw_ok$sw_sum == sw_valid$valid_votes[match(st_rw_ok$ags, sw_valid$ags)]),
+      "ST 2007: the five runoffs of 06.05.2007 seat Schulze, Schatz, Bannert, Gerstner, Dannenberg; runoff votes add up",
+      sprintf("ST 2007 runoffs: %s", paste(st_rw_ok$ags, st_rw_ok$winner, st_rw_ok$n_sw, collapse = "; ")))
+# Independent of the parser: no ST Hauptwahl lacks both majority and runoff
 st_hw <- l %>% filter(state == "15", round == "hauptwahl", winner_voteshare <= 0.5)
 st_sw <- l %>% filter(state == "15", round == "stichwahl") %>% select(ags, sw = election_date)
 st_open <- st_hw %>%
   left_join(st_sw, by = "ags", relationship = "many-to-many") %>%
   group_by(ags, election_date) %>%
-  summarise(has_sw = any(sw > election_date & sw - election_date < 60, na.rm = TRUE),
-            flag = any(flag_decisive_round_missing), .groups = "drop") %>%
+  summarise(has_sw = any(sw > election_date & sw - election_date < 60, na.rm = TRUE), .groups = "drop") %>%
   filter(!has_sw)
-check(nrow(st_open) > 0 && all(st_open$flag),
-      "ST: every Hauptwahl without majority and without runoff is flagged",
-      sprintf("ST: unflagged Hauptwahl without majority or runoff: %s",
-              paste(st_open$ags[!st_open$flag], st_open$election_date[!st_open$flag],
-                    collapse = ", ")))
+check(nrow(st_hw) >= 6L && nrow(st_open) == 0L,
+      sprintf("ST: all %d Hauptwahlen without a majority have a runoff", nrow(st_hw)),
+      sprintf("ST: Hauptwahl without majority or runoff: %s",
+              paste(st_open$ags, st_open$election_date, collapse = ", ")))
 st07 <- lc %>% filter(state == "15", election_date == as.Date("2007-04-22")) %>%
   group_by(ags) %>%
   summarise(n = n(), votes = sum(candidate_votes_hw), valid = first(valid_votes),
             .groups = "drop")
-check(nrow(st07) == 9L && all(st07$votes == st07$valid),
-      "ST 2007: every Kreis's candidate votes add up to its valid votes",
-      sprintf("ST 2007: votes != valid in %s",
+check(nrow(st07) == 9L && all(st07$votes == st07$valid) &&
+        st07$valid[st07$ags == "15083000"] == 60531 && st07$valid[st07$ags == "15091000"] == 45153,
+      "ST 2007: Kreis totals of the annex (Börde 60,531, Wittenberg 45,153 valid votes); candidate votes add up",
+      sprintf("ST 2007: votes != valid in %s, or Gemeinde sums instead of Kreis totals",
               paste(st07$ags[st07$votes != st07$valid], collapse = ", ")))
 blk <- lc %>% filter(ags == "15084000", election_date == as.Date("2007-04-22"))
 blk_w <- blk %>% filter(is_winner %in% TRUE)
-check(nrow(blk) == 11L && nrow(blk_w) == 1L && blk_w$candidate_votes_hw == 31263 &&
+check(nrow(blk) == 11L && nrow(blk_w) == 1L && blk_w$candidate_votes_hw == 33803 &&
         blk_w$candidate_last_name %in% "Reiche" &&
-        l$winner_votes[l$ags == "15084000" & l$election_date == as.Date("2007-04-22")] == 31263,
-      "ST 2007 Burgenlandkreis: 11 candidates, Reiche elected with 31,263 votes (51.2 %)",
+        l$winner_votes[l$ags == "15084000" & l$election_date == as.Date("2007-04-22")] == 33803,
+      "ST 2007 Burgenlandkreis: 11 candidates, Reiche elected with 33,803 votes (51.5 %)",
       sprintf("ST 2007 Burgenlandkreis: %d candidates, winner %s",
               nrow(blk), paste(blk_w$candidate_last_name, blk_w$candidate_votes_hw)))
+st_added <- lc %>%
+  filter(paste(ags, election_date) %in% c("15370000 2001-05-06", "15363000 2005-12-18", "15081000 2008-02-24"),
+         is_winner %in% TRUE)
+st_added_n <- lc %>%
+  filter(paste(ags, election_date) %in% c("15370000 2001-05-06", "15363000 2005-12-18", "15081000 2008-02-24")) %>%
+  count(ags) %>% arrange(ags)
+check(nrow(st_added) == 3L && identical(st_added_n$n, c(3L, 5L, 5L)) &&
+        setequal(paste(st_added$ags, st_added$candidate_last_name),
+               c("15370000 Ostermann", "15363000 Hellmuth", "15081000 Ziche")) &&
+        identical(as.character(st_added$election_date_sw[st_added$ags == "15081000"]), "2008-03-09") &&
+        all(is.na(st_added$election_date_sw[st_added$ags != "15081000"])),
+      "ST annex adds Altmarkkreis Salzwedel 2001 (Ostermann, 5 candidates), Stendal 2005 (Hellmuth, 5), Altmarkkreis 2008 (Ziche, runoff, 3)",
+      sprintf("ST annex elections: %s", paste(st_added$ags, st_added$candidate_last_name, collapse = ", ")))
 
 # ============================================================================
 # 13. Coverage summary

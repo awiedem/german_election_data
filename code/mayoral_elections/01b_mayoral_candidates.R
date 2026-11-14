@@ -3173,10 +3173,16 @@ if (file.exists(st_stala_file)) {
     # five Gemeinde names differently, so an unconditional ags_name key would
     # split an election whenever a portal supplement row joined it.
     mutate(.shared_key = ifelse(flag_shared_ags %in% TRUE, ags_name, NA_character_)) %>%
+    # winner_only: elections added from the StaLA registers B VII 702 (see
+    # 00_st_hist_parse.py, apply_b702()) name only the elected person, so the
+    # field size is unknown (as for the Brandenburg and Thüringen winner-only
+    # rows). The column is absent from the portal file.
+    mutate(x_winner_only = as.character(if ("winner_only" %in% names(.)) winner_only else NA) %in%
+             c("TRUE", "True", "true")) %>%
     group_by(ags, .shared_key, election_date, round) %>%
     mutate(
       candidate_rank = rank(-candidate_votes, ties.method = "min", na.last = "keep"),
-      n_candidates = n(),
+      n_candidates = if (any(x_winner_only)) NA_integer_ else n(),
       # Prefer StaLA's explicit winner flag; else rank-based (portal-supp rows).
       is_winner = dplyr::coalesce(as.logical(is_winner), candidate_rank == 1)
     ) %>%
@@ -3795,7 +3801,13 @@ sw_to_join <- sw_keyed %>%
     .sw_last = if_else(.sw_by, candidate_last_name, NA_character_),
     .sw_first = if_else(.sw_by, candidate_first_name, NA_character_),
     .sw_gender = if_else(.sw_by, candidate_gender, NA_character_),
-    .sw_birth = if_else(.sw_by, as.numeric(candidate_birth_year), NA_real_)
+    .sw_birth = if_else(.sw_by, as.numeric(candidate_birth_year), NA_real_),
+    # All states: a birth year known only from the runoff row (Sachsen-Anhalt
+    # gives the winner's on the decisive round's winner row) is the same
+    # person's; Step 4 carries it to the first-round row, which the wide row
+    # is built from. Before 2026-11-14 every ST runoff winner lost it (0 of 480
+    # had one). Restricted rows never pass anything on.
+    .sw_birth_any = if_else(!(name_restricted %in% TRUE), as.numeric(candidate_birth_year), NA_real_)
   ) %>%
   select(-.sw_by)
 
@@ -3847,9 +3859,15 @@ wide <- hw_keyed %>%
     candidate_last_name = if_else(.fill_sw, .sw_last, candidate_last_name),
     candidate_first_name = if_else(.fill_sw, .sw_first, candidate_first_name),
     candidate_gender = if_else(.fill_sw & is.na(candidate_gender), .sw_gender, candidate_gender),
-    candidate_birth_year = ifelse(.fill_sw & is.na(candidate_birth_year), .sw_birth, candidate_birth_year)
+    candidate_birth_year = ifelse(.fill_sw & is.na(candidate_birth_year), .sw_birth, candidate_birth_year),
+    .fill_by = is.na(candidate_birth_year) & !is.na(.sw_birth_any) & !(name_restricted %in% TRUE),
+    candidate_birth_year = ifelse(.fill_by, .sw_birth_any, candidate_birth_year)
   )
 cat("  Bayern first-round rows named from their linked runoff row:", sum(wide$.fill_sw), "\n")
+cat("  birth years carried from the linked runoff row, by state:",
+    paste(names(table(wide$state[wide$.fill_by])), table(wide$state[wide$.fill_by]), sep = " ", collapse = ", "),
+    "\n")
+wide <- wide %>% select(-.fill_by)
 wide <- wide %>%
   select(-match_key, -is_winner_sw, -round, -flag_superseded_sw, -starts_with(".sw_"), -.fill_sw)
 
@@ -4542,6 +4560,30 @@ for (.df in list(mayoral_candidates, landrat_candidates)) {
                    (!is.na(.df$candidate_last_name) | !is.na(.df$candidate_name) |
                       !is.na(.df$candidate_birth_year) | !is.na(.df$candidate_profession))))
 }
+# Sachsen-Anhalt: birth years taken from the StaLA registers B VII 702 stay in
+# the restricted twin (decision of 2026-11-13). 00_st_hist_parse.py lists every
+# one (elected persons only); each must hit exactly one public winner row whose
+# year is the listed one (runoff winners included since Step 4 carries the
+# runoff row's year).
+st_by_file <- "data/mayoral_elections/raw/sachsen_anhalt/stala_b702/st_b702_birth_years_restricted.csv"
+if (!file.exists(st_by_file)) stop("missing ", st_by_file, ": run 00_st_hist_parse.py")
+st_by <- fread(st_by_file, colClasses = list(character = c("ags", "candidate_last_name",
+                                                           "candidate_first_name")))
+st_by_idx <- vapply(seq_len(nrow(st_by)), function(i) {
+  w <- which(mayoral_candidates$state %in% "15" & mayoral_candidates$ags == st_by$ags[i] &
+               mayoral_candidates$election_date == as.Date(st_by$election_date[i]) &
+               mayoral_candidates$candidate_last_name %in% st_by$candidate_last_name[i] &
+               mayoral_candidates$is_winner %in% TRUE)
+  ok <- length(w) == 1L &&
+    identical(as.numeric(mayoral_candidates$candidate_birth_year[w]), as.numeric(st_by$birth_year[i]))
+  if (!ok)
+    stop("register birth year ", st_by$ags[i], " ", st_by$election_date[i],
+         ": ", length(w), " public winner rows, or the year differs")
+  w
+}, integer(1))
+mayoral_candidates$candidate_birth_year[st_by_idx] <- NA_real_
+cat("  mayoral_candidates: ", length(st_by_idx), " Sachsen-Anhalt birth years from the B VII 702 ",
+    "registers kept in the restricted twin only\n", sep = "")
 
 # ---- Brandenburg: tracked, name-stripped copy of the workbook input ---------
 # bb_lwl_parsed.csv (00_bb_lwl_parse.py) names every Bewerber of 2010-2026 and,

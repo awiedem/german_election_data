@@ -1,0 +1,10 @@
+# The scans and every table parsed from them name office holders with
+# profession and birth year, and the results annexes name losing candidates.
+# Kept out of git until the StaLA Sachsen-Anhalt says GERDA may publish the
+# personal details (asked 2026-10-13, Vorgang 2026_1083; the reply of
+# 2026-11-13 carried only the general copyright line). Only the README, the
+# manifest and this file are tracked.
+*
+!.gitignore
+!README.md
+!_source_manifest.csv

@@ -167,6 +167,119 @@ anonymise_losers <- function(df, label) {
 # ============================================================================
 # Sachsen-Anhalt parser (CSVs in ISO-8859-1)
 # ============================================================================
+# ---- Sachsen-Anhalt: StaLA B VII 702 annex (Kreis totals, both rounds) --------
+# The StaLA registers "Landräte und Bürgermeister" of 01.08.2007 and 01.01.2009
+# print the official Kreis results of the Landrat elections, both rounds
+# (mayoral raw/sachsen_anhalt/stala_b702, parsed by 00_st_b702_parse.py; the
+# table is gitignored because it names losing candidates). The two scans agree
+# figure for figure. For 22.04.2007 they supersede lr07dat3.csv:
+#  * lr07dat3.csv holds Gemeinde rows only. In Börde, Burgenlandkreis,
+#    Saalekreis and Wittenberg their sum is 954-4,543 valid votes short of the
+#    Kreis result with the same electorate (postal votes counted at Kreis level);
+#  * the runoffs of 06.05.2007 (Anhalt-Bitterfeld, Mansfeld-Südharz, Saalekreis,
+#    Salzlandkreis, Wittenberg) were never on file and were flagged
+#    flag_decisive_round_missing until 2026-11-13.
+# Candidates are matched to the lr07dat3.csv rows by surname, and names and
+# labels stay as that file prints them; the two candidate sets must agree. The
+# annex also adds three elections GERDA lacked: Altmarkkreis Salzwedel 06.05.2001
+# and 24.02./09.03.2008 and Landkreis Stendal 18.12.2005, under the code of the
+# election day (the Kreise before 1 July 2007 were 15370 and 15363).
+st_b702_annex_file <- "data/mayoral_elections/raw/sachsen_anhalt/stala_b702/st_b702_results_restricted.csv"
+st_b702_annex <- function(st_all, f = st_b702_annex_file) {
+  if (!file.exists(f)) return(st_all)
+  a <- fread(f, encoding = "UTF-8", na.strings = "",
+             colClasses = list(character = c("stand", "kreis", "unit", "election_type", "hw_date",
+                                             "sw_date", "title", "last_name", "first_name", "party")))
+  surname_key <- function(x) {
+    x <- sub(",.*$", "", x)
+    x <- gsub("(Prof\\.|Dr\\.)\\s*", "", x)
+    tolower(stringi::stri_trans_general(word(str_squish(x), 1), "Latin-ASCII"))
+  }
+  a <- as_tibble(a) %>%
+    filter(election_type == "Landratswahl") %>%
+    mutate(key = surname_key(last_name))
+  # a surname twice within one issue's election would collapse in the dedup below
+  twice <- a %>% count(stand, kreis, hw_date, key) %>% filter(n > 1)
+  if (nrow(twice) > 0) {
+    stop("ST annex: two candidates share a surname in ", paste(twice$kreis, twice$hw_date, collapse = ", "))
+  }
+  # one copy per election: the 2009 issue repeats the 2007 annex
+  differ <- a %>%
+    group_by(kreis, hw_date, key) %>%
+    summarise(n_val = n_distinct(paste(votes_hw, votes_sw, eligible_hw, voters_hw, valid_hw,
+                                       eligible_sw, voters_sw, valid_sw)), .groups = "drop") %>%
+    filter(n_val > 1)
+  if (nrow(differ) > 0) {
+    stop("ST annex: the 2007 and 2009 issues disagree on ",
+         paste(differ$kreis, differ$hw_date, differ$key, collapse = "; "))
+  }
+  old_code <- c("15081" = "15370", "15090" = "15363")
+  a <- a %>%
+    arrange(stand) %>%
+    distinct(kreis, hw_date, key, .keep_all = TRUE) %>%
+    mutate(pre = as.Date(hw_date) < as.Date("2007-01-01"))
+  if (any(a$pre & !a$kreis %in% names(old_code))) {
+    stop("ST annex: no pre-2007 Kreis code for ", paste(unique(a$kreis[a$pre & !a$kreis %in% names(old_code)]), collapse = ", "))
+  }
+  a <- a %>% mutate(ags = paste0(if_else(pre, unname(old_code[kreis]), kreis), "000"))
+
+  out <- st_all
+  for (el in split(a, paste(a$ags, a$hw_date))) {
+    if (anyDuplicated(el$key)) stop("ST annex: two candidates share a surname in ", el$ags[1], " ", el$hw_date[1])
+    ags_ <- el$ags[1]
+    hw <- as.Date(el$hw_date[1])
+    sw <- if (!is.na(el$sw_date[1])) as.Date(el$sw_date[1]) else as.Date(NA)
+    cur <- out %>% filter(ags == ags_, election_date == hw, round == "hauptwahl")
+    if (nrow(cur) > 0) {
+      cur_key <- surname_key(cur$candidate_name)
+      if (anyDuplicated(cur_key) || !setequal(cur_key, el$key)) {
+        stop("ST annex: candidates of ", ags_, " ", hw, " differ from lr07dat3.csv: ",
+             paste(sort(setdiff(union(cur_key, el$key), intersect(cur_key, el$key))), collapse = ", "))
+      }
+      who <- tibble(key = cur_key, candidate_name = cur$candidate_name,
+                    candidate_party = cur$candidate_party, ags_name = cur$ags_name)
+    } else {
+      who <- el %>% transmute(key,
+                              candidate_name = str_squish(paste0(last_name, ", ", first_name,
+                                                                 if_else(is.na(title), "", paste0(", ", title)))),
+                              candidate_party = coalesce(party, ""), ags_name = unit)
+    }
+    round_rows <- function(rnd, date, votes, eligible, voters, invalid, valid) {
+      el %>%
+        transmute(key, candidate_votes = as.numeric(.data[[votes]])) %>%
+        filter(!is.na(candidate_votes)) %>%
+        inner_join(who, by = "key") %>%
+        transmute(
+          candidate_name, candidate_party, candidate_votes,
+          candidate_voteshare = candidate_votes / el[[valid]][1],
+          ags = ags_, ags_name, state = "15", state_name = "Sachsen-Anhalt",
+          election_year = as.integer(format(date, "%Y")), election_date = date,
+          election_type = "Landratswahl", round = rnd,
+          eligible_voters = as.numeric(el[[eligible]][1]), number_voters = as.numeric(el[[voters]][1]),
+          valid_votes = as.numeric(el[[valid]][1]), invalid_votes = as.numeric(el[[invalid]][1]),
+          turnout = as.numeric(el[[voters]][1]) / as.numeric(el[[eligible]][1])
+        )
+    }
+    new_rows <- round_rows("hauptwahl", hw, "votes_hw", "eligible_hw", "voters_hw", "invalid_hw", "valid_hw")
+    if (!is.na(sw)) {
+      sw_rows <- round_rows("stichwahl", sw, "votes_sw", "eligible_sw", "voters_sw", "invalid_sw", "valid_sw")
+      if (nrow(sw_rows) != 2) stop("ST annex: runoff of ", ags_, " ", sw, " has ", nrow(sw_rows), " candidates")
+      new_rows <- bind_rows(new_rows, sw_rows)
+    }
+    if (nrow(cur) > 0) {
+      d_valid <- new_rows$valid_votes[1] - cur$valid_votes[1]
+      cat(sprintf("  ST annex %s %s: Kreis totals replace lr07dat3.csv (valid %+d)%s\n", ags_, hw, as.integer(d_valid),
+                  if (!is.na(sw)) paste0(", runoff ", sw, " added") else ""))
+    } else {
+      cat(sprintf("  ST annex %s %s: election added%s\n", ags_, hw, if (!is.na(sw)) paste0(" with runoff ", sw) else ""))
+    }
+    out <- out %>%
+      filter(!(ags == ags_ & election_date %in% c(hw, sw))) %>%
+      bind_rows(new_rows)
+  }
+  out
+}
+
 parse_st <- function(raw_dir) {
   out <- list()
 
@@ -554,6 +667,8 @@ parse_st <- function(raw_dir) {
     }
     st_all$ags_name[placeholder] <- fixed
   }
+
+  st_all <- st_b702_annex(st_all)
 
   # Every round's candidate votes must add up to its valid votes. A dropped
   # candidate column passes every other check (see the read.csv2() note above).
@@ -1237,8 +1352,10 @@ apply_elected_by_council <- function(df, council) {
 #     Hauptwahl that went to a runoff.
 # Pinned: any other ST Hauptwahl without a majority and without a runoff stops
 # the run, so a newly missing round is looked at instead of flagged unseen.
-st_missing_runoff_expected <- paste(
-  c("15082000", "15087000", "15088000", "15089000", "15091000"), "2007-04-22")
+# Since 2026-11-13 the runoffs of 06.05.2007 come from the StaLA B VII 702 annex
+# (st_b702_annex() above), so no ST cycle is expected here any more. The
+# machinery stays: a Hauptwahl without a majority and without a runoff stops.
+st_missing_runoff_expected <- character(0)
 
 st_missing_runoff_cycles <- function(st_long) {
   hw <- st_long %>%

@@ -788,7 +788,6 @@ candidate_name_aliases <- tribble(
   "15352021", "Herrmann",           "Klaus-Jürgen",                "Hermann",             "Klaus-Jürgen",
   "15355034", "Willamowski",        "Joachim",                     "Williamowski",        "Joachim",
   "15357016", "Barthels",           "Anno",                        "Bartels",             "Arno",
-  "15358025", "Bother",             "Harald",                      "Bothe",               "Harald",
   "15358033", "Hildebrandt",        "Gunter",                      "Hildebrand",          "Gunter",
   "15362045", "Thraene",            "Hans",                        "Thräne",              "Hans",
   "15362069", "Schmid",             "Wolfgang",                    "Schmidt",             "Wolfgang",

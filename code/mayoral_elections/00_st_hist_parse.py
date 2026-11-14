@@ -62,12 +62,19 @@ Output (candidate-level long, one row per candidate per round — same schema as
 before, so stages 01/01b consume it unchanged):
   data/mayoral_elections/raw/sachsen_anhalt/st_stala_parsed.csv
 
+Since 2026-11-13 the output also takes the StaLA registers B VII 702
+(2004-2011): party and birth-year fills, 13 pinned corrections and 76
+winner-only elections the historical file lacks (apply_b702() below).
+
 Run order:
   python3 code/mayoral_elections/00_st_stala_parse.py   # -> st_bmbm_parsed.csv
+  python3 code/mayoral_elections/00_st_b702_parse.py    # -> stala_b702/st_b702_*_restricted.csv
   python3 code/mayoral_elections/00_st_hist_parse.py    # -> st_stala_parsed.csv
 """
 
 import csv
+import difflib
+import hashlib
 import os
 import re
 import sys
@@ -160,6 +167,25 @@ def classify_election_type(art: str) -> str:
     """
     a = (art or "").replace(" ", " ").strip().lower()
     return "Oberbürgermeisterwahl" if a == "haob" else "Bürgermeisterwahl"
+
+
+# Rows whose own Wahlsieger columns name someone other than the candidate the
+# parser seats (or nobody is seated). Each is settled in
+# metadata/st_b702_corrections.csv, except Kemberg 1994, kept as the votes show.
+# Keyed on (AGS, date, Wahlsieger surname, seated surname), so a known row that
+# starts seating someone else stops the run too. The Wahlsieger surname is
+# stored as a short SHA-1 (`_sieger_hash`): Kemberg's names a person GERDA
+# publishes nowhere else, and the key only has to recognise the row.
+SIEGER_MISMATCH_KNOWN = {
+    ("15370006", "1994-06-12", "8608a75cae", "Gutsfeld"),  # Arendsee: counts copied from Burgkemnitz 2000 (winner_only pin)
+    ("15355037", "2002-06-30", "449a51833e", "Glöggler"),  # Marienborn: winner's slot mislabelled (rename_winner pin)
+    ("15256012", "2007-04-22", "edeaf7af46", ""),          # Bucha: winner's slot unnamed (fill_name pin)
+    ("15171028", "1994-12-04", "cffc022fe6", "Pecher"),    # Kemberg: the runoff votes seat Pecher (kept, open)
+}
+
+
+def _sieger_hash(name: str) -> str:
+    return hashlib.sha1((name or "").encode("utf-8")).hexdigest()[:10]
 
 
 def ratio(num, den) -> Optional[float]:
@@ -353,6 +379,316 @@ def repair_source_rows(data: list) -> tuple:
                   "n_unresolved": len(shared_flag), "shared_flag": shared_flag}
 
 
+# =========================================================================
+# B VII 702 "Landräte und Bürgermeister" (registers 2004-2011)
+# =========================================================================
+# The StaLA's printed registers of every office holder (Stand 01.01.2004,
+# 01.08.2007, 01.01.2009, 01.03.2010, 01.10.2011) are parsed by
+# 00_st_b702_parse.py and compared with this file's output by
+# code/checks/check_st_b702_register.py, which derived three tracked pin tables
+# (data/mayoral_elections/metadata/st_b702_*.csv; see
+# raw/sachsen_anhalt/stala_b702/README.md):
+#   st_b702_fills.csv            the winner's party (whitelisted ballot labels,
+#                                all issues agree) where the matched election
+#                                here has none;
+#   st_b702_corrections.csv      21 hand-checked corrections (dates, namesake
+#                                codes, copied rounds, misnamed winners, missing
+#                                runoffs, an impossible birth year blanked);
+#   st_b702_added_elections.csv  79 elections the source file lacks, mostly
+#                                by-elections of 1997-2003. Each record was
+#                                checked against the scan. They enter
+#                                winner-only (winner_only = True): only the
+#                                elected person is known, no counts.
+# Register birth years are NOT published (decision of 2026-11-13). Their pins
+# sit in the gitignored stala_b702/st_b702_birth_year_pins_restricted.csv, and
+# every birth year this step takes from a register is listed in
+# stala_b702/st_b702_birth_years_restricted.csv, which 01b reads to keep them in
+# the restricted twin only.
+# Every pin is keyed on the value it replaces and stops the run if that value
+# is gone, so a corrected source file is looked at instead of overwritten.
+B702_DIR = os.path.join(RAW_DIR, "stala_b702")
+B702_REGISTER = os.path.join(B702_DIR, "st_b702_register_restricted.csv")
+META_DIR = os.path.join(ROOT, "data", "mayoral_elections", "metadata")
+B702_FILLS = os.path.join(META_DIR, "st_b702_fills.csv")
+B702_CORR = os.path.join(META_DIR, "st_b702_corrections.csv")
+B702_ADDED = os.path.join(META_DIR, "st_b702_added_elections.csv")
+B702_TAG = "StaLA B VII 702 Landräte und Bürgermeister"
+B702_BEFORE = os.path.join(B702_DIR, "st_stala_parsed_before_b702_restricted.csv")
+B702_BY_PINS = os.path.join(B702_DIR, "st_b702_birth_year_pins_restricted.csv")
+B702_BY_OUT = os.path.join(B702_DIR, "st_b702_birth_years_restricted.csv")
+B702_PARTY = {"CDU": "CDU", "SPD": "SPD", "FDP": "FDP", "WG": "WG", "PDS": "PDS",
+              "DIE LINKE": "DIE LINKE", "Die Linke.": "Die Linke.", "Die Linke": "Die Linke.",
+              "GRÜNE": "GRÜNE", "NPD": "NPD"}
+
+
+def _days(a: str, b: str) -> int:
+    from datetime import date
+    return (date.fromisoformat(b) - date.fromisoformat(a)).days
+
+
+def apply_b702(rows: list, cols: list) -> list:
+    for p in (B702_REGISTER, B702_FILLS, B702_CORR, B702_ADDED, B702_BY_PINS):
+        if not os.path.exists(p):
+            sys.exit(f"missing {p}: run 00_st_b702_parse.py (and see stala_b702/README.md)")
+
+    def load(p):
+        with open(p, encoding="utf-8", newline="") as fh:
+            return list(csv.DictReader(fh))
+
+    def is_true(v):
+        return v is True or str(v) == "True"
+
+    def same(a, b):
+        return (a or "").strip().casefold() == (b or "").strip().casefold()
+
+    def stop(pin, why):
+        sys.exit(f"B VII 702 pin no longer applies ({why}): {dict(pin)} - review the pin tables")
+
+    def cycle(pin):
+        """Rows of the cycle whose Hauptwahl is pinned: that day's Hauptwahl rows
+        and any runoff of the same code within 60 days. The Hauptwahl must exist."""
+        ags, d = pin["ags"], pin["election_date"]
+        hw = [r for r in rows if r["ags"] == ags and r["election_date"] == d and r["round"] == "hauptwahl"]
+        if not hw:
+            stop(pin, "no Hauptwahl on the pinned date")
+        sw = [r for r in rows if r["ags"] == ags and r["round"] == "stichwahl"
+              and 0 < _days(d, r["election_date"]) <= 60]
+        return hw + sw
+
+    def original(pin):
+        """The Hauptwahl rows of the round a copy repeats (old_value = code|date)."""
+        a_, d_ = pin["old_value"].split("|")
+        o = [r for r in rows if r["ags"] == a_ and r["election_date"] == d_ and r["round"] == "hauptwahl"]
+        if not o:
+            stop(pin, "the original round is gone")
+        return o
+
+    def fingerprint(rs):
+        r0 = rs[0]
+        return (tuple(_num(r0[k]) for k in ("eligible_voters", "number_voters", "invalid_votes", "valid_votes")),
+                tuple(sorted(-1 if _num(r["candidate_votes"]) is None else _num(r["candidate_votes"])
+                             for r in rs)))
+
+    def decisive_winner(cyc, pin):
+        """The cycle's winner row in its last round; exactly one."""
+        last = max(r["election_date"] for r in cyc)
+        w = [r for r in cyc if r["election_date"] == last and is_true(r["is_winner"])]
+        if len(w) != 1:
+            stop(pin, f"{len(w)} winners in the decisive round")
+        return w[0]
+
+    def person_rows(cyc, last, first):
+        """The rows of one person in the cycle: at most one per round."""
+        hit = [r for r in cyc if same(r["candidate_last_name"], last) and same(r["candidate_first_name"], first)]
+        per_round = {}
+        for r in hit:
+            per_round.setdefault(r["election_date"], []).append(r)
+        if any(len(v) > 1 for v in per_round.values()):
+            return None
+        return hit
+
+    for r in rows:
+        r.setdefault("winner_only", False)
+
+    # (1) party fills, keyed on the source file's values
+    n_fill = {"party": 0, "birth_year": 0}
+    by_rows = []   # (ags, Hauptwahl date, last, first, birth year) taken from a register
+    for f in load(B702_FILLS):
+        cyc = cycle(f)
+        w = decisive_winner(cyc, f)
+        if not same(w["candidate_last_name"], f["winner_last_name"]):
+            stop(f, f"decisive winner is {w['candidate_last_name']!r}")
+        if f["kind"] == "party":
+            hit = person_rows(cyc, w["candidate_last_name"], w["candidate_first_name"])
+            if not hit:
+                stop(f, "winner not identifiable in every round")
+            if any(r["candidate_party"] != f["old_value"] for r in hit):
+                stop(f, "party no longer blank")
+            for r in hit:
+                r["candidate_party"] = f["new_value"]
+        else:
+            # register birth years are restricted: their pins live in the
+            # gitignored B702_BY_PINS, never in the tracked table
+            stop(f, "unknown kind (birth years belong in the restricted pin file)")
+        n_fill[f["kind"]] += 1
+
+    # (2) corrections
+    n_corr = 0
+    drop_ids = set()
+    extra_rows = []
+    for c in load(B702_CORR):
+        k = c["kind"]
+        cyc = cycle(c)
+        if k != "fill_name" and not any(same(r["candidate_last_name"], c["winner_last_name"]) for r in cyc):
+            stop(c, "named candidate not in the election")
+        if k == "date":
+            if any(r["round"] == "stichwahl" for r in cyc):
+                stop(c, "the cycle has a runoff")
+            if any(r["ags"] == c["ags"] and r["election_date"] == c["new_value"] for r in rows):
+                stop(c, "an election on the new date exists")
+            for r in cyc:
+                r["election_date"] = c["new_value"]
+                r["election_year"] = int(c["new_value"][:4])
+        elif k == "ags":
+            dates = {r["election_date"] for r in cyc}
+            if any(r["ags"] == c["new_value"] and r["election_date"] in dates for r in rows):
+                stop(c, "the target code already holds a round of this cycle")
+            for r in cyc:
+                r["ags"] = c["new_value"]
+        elif k in ("swap_name", "fill_name", "rename_winner"):
+            old_last, old_first = c["old_value"].split("|")
+            new_last, new_first = c["new_value"].split("|")
+            hit = [r for r in cyc if same(r["candidate_last_name"], old_last)
+                   and same(r["candidate_first_name"], old_first)
+                   and (k != "fill_name" or is_true(r["is_winner"]))]
+            if not hit or len({r["election_date"] for r in hit}) != len(hit):
+                stop(c, f"{len(hit)} matching rows")
+            for r in hit:
+                r["candidate_last_name"], r["candidate_first_name"] = new_last, new_first
+                r["candidate_name"] = f"{new_last}, {new_first}".strip(", ")
+            if k == "rename_winner":
+                # the source's own "Wahlsieger" columns name this person; the
+                # renamed slot is the only candidate with a majority, or the only one
+                last = max(r["election_date"] for r in cyc)
+                rnd = [r for r in cyc if r["election_date"] == last]
+                for r in rnd:
+                    r["is_winner"] = r in hit
+        elif k == "winner":
+            rnd = [r for r in cyc if r["election_date"] == c["election_date"]]
+            hit = [r for r in rnd if same(r["candidate_last_name"], c["winner_last_name"])]
+            if len(hit) != 1 or str(is_true(hit[0]["is_winner"])) != c["old_value"] or any(is_true(r["is_winner"]) for r in rnd):
+                stop(c, "winner flag not as pinned")
+            hit[0]["is_winner"] = True
+        elif k == "birth_year":
+            # an impossible source year is blanked here; a register's year for
+            # it is restricted (B702_BY_PINS)
+            if c["new_value"] or any(str(r["winner_birth_year"]) != c["old_value"] for r in cyc):
+                stop(c, "birth year not as pinned")
+            for r in cyc:
+                r["winner_birth_year"] = ""
+        elif k == "drop_round":
+            # a round the source repeats under another date (old_value = the
+            # original's code|date): counts and every candidate vote must match
+            if any(r["round"] == "stichwahl" for r in cyc) or fingerprint(cyc) != fingerprint(original(c)):
+                stop(c, "the round is not a copy of the pinned original")
+            drop_ids.update(id(r) for r in cyc)
+        elif k == "winner_only":
+            # the source's candidate rows and counts are a copy of another
+            # Gemeinde's election (old_value = the copied valid votes); keep the
+            # source's own winner columns: new_value = last|first|runoff date
+            if any(r["round"] == "stichwahl" for r in cyc) or fingerprint(cyc) != fingerprint(original(c)):
+                stop(c, "the round is not a copy of the pinned original")
+            new_last, new_first, sw = c["new_value"].split("|")
+            base = dict(cyc[0])
+            drop_ids.update(id(r) for r in cyc)
+            for rnd, d, win in (("hauptwahl", c["election_date"], not sw), ("stichwahl", sw, True)):
+                if not d:
+                    continue
+                extra_rows.append(dict(
+                    base, election_date=d, election_year=int(d[:4]), round=rnd,
+                    eligible_voters=None, number_voters=None, valid_votes=None, invalid_votes=None,
+                    turnout=None, candidate_name=f"{new_last}, {new_first}",
+                    candidate_last_name=new_last, candidate_first_name=new_first, candidate_title="",
+                    candidate_party="", candidate_gender="", candidate_votes=None, candidate_voteshare=None,
+                    is_winner=win, winner_only=True))
+        elif k == "add_runoff":
+            # the Hauptwahl has no majority and the register prints the runoff
+            # date; the runoff enters winner-only (new_value = runoff date)
+            if any(r["round"] == "stichwahl" for r in cyc):
+                stop(c, "the cycle already has a runoff")
+            valid = _num(cyc[0]["valid_votes"])
+            w = [r for r in cyc if same(r["candidate_last_name"], c["winner_last_name"])]
+            if len(w) != 1 or not valid or any(2 * (_num(r["candidate_votes"]) or 0) > valid for r in cyc) \
+                    or _num(w[0]["candidate_votes"]) != max(_num(r["candidate_votes"]) or 0 for r in cyc):
+                stop(c, "the pinned candidate does not lead, or someone has a majority")
+            for r in cyc:
+                r["is_winner"] = False
+            d = c["new_value"]
+            extra_rows.append(dict(
+                w[0], election_date=d, election_year=int(d[:4]), round="stichwahl",
+                eligible_voters=None, number_voters=None, valid_votes=None, invalid_votes=None,
+                turnout=None, candidate_votes=None, candidate_voteshare=None, is_winner=True))
+        else:
+            stop(c, "unknown kind")
+        n_corr += 1
+    rows[:] = [r for r in rows if id(r) not in drop_ids] + extra_rows
+
+    # (2b) register birth years (restricted: 01b keeps them out of the public
+    # file), applied after the corrections and keyed on the corrected values
+    for f in load(B702_BY_PINS):
+        if f["kind"] != "birth_year" or not f["new_value"]:
+            stop(f, "not a birth-year pin")
+        cyc = cycle(f)
+        w = decisive_winner(cyc, f)
+        if not same(w["candidate_last_name"], f["winner_last_name"]):
+            stop(f, f"decisive winner is {w['candidate_last_name']!r}")
+        if any(str(r["winner_birth_year"]) != f["old_value"] for r in cyc):
+            stop(f, "birth year no longer as pinned")
+        for r in cyc:
+            r["winner_birth_year"] = int(f["new_value"])
+        by_rows.append((f["ags"], f["election_date"], w["candidate_last_name"],
+                        w["candidate_first_name"], int(f["new_value"])))
+        n_fill["birth_year"] += 1
+
+    # (3) elections the source file lacks, winner-only from the register
+    reg = [r for r in load(B702_REGISTER) if r["office"] == "Bürgermeister"
+           and r["section"] in ("bm", "bm_after", "bm_former")]
+    n_add = 0
+    for a in load(B702_ADDED):
+        rec = [r for r in reg if r["stand"] == a["register_stand"] and r["ags"] == a["register_ags"]
+               and r["election_date"] == a["election_date"]]
+        if len(rec) != 1:
+            stop(a, f"{len(rec)} register records")
+        rec = rec[0]
+        if rec["runoff_date"] != a["runoff_date"] or not rec["last_name"]:
+            stop(a, "register record differs from the pin")
+        dates = [a["election_date"]] + ([a["runoff_date"]] if a["runoff_date"] else [])
+        if any(r["ags"] == a["ags"] and r["election_date"] in dates for r in rows):
+            stop(a, "the source file now holds a round of this election")
+        common = dict(
+            ags=a["ags"], ags_name=rec["unit_name"], state=STATE, state_name=STATE_NAME,
+            election_type=a["election_type"], source_url=f"{B702_TAG} (Stand {rec['stand']})",
+            ags_current="", ags_name_current="", ergebnisart="", amtsantritt_date="",
+            winner_birth_year=int(rec["birth_year"]) if rec["birth_year"] else "",
+            flag_shared_ags=False, winner_only=True,
+        )
+        person = dict(
+            candidate_name=f"{rec['last_name']}, {rec['first_name']}".strip(", "),
+            candidate_last_name=rec["last_name"], candidate_first_name=rec["first_name"],
+            candidate_title=rec["title"], candidate_party=B702_PARTY.get(rec["party"], ""),
+            candidate_gender="", candidate_votes=None, candidate_voteshare=None,
+            eligible_voters=None, number_voters=None, valid_votes=None, invalid_votes=None, turnout=None,
+        )
+        sw = a["runoff_date"]
+        if rec["birth_year"]:
+            by_rows.append((a["ags"], a["election_date"], rec["last_name"], rec["first_name"],
+                            int(rec["birth_year"])))
+        rows.append(dict(common, **person, election_year=int(a["election_date"][:4]),
+                         election_date=a["election_date"], round="hauptwahl", is_winner=not sw))
+        if sw:
+            rows.append(dict(common, **person, election_year=int(sw[:4]), election_date=sw,
+                             round="stichwahl", is_winner=True))
+        n_add += 1
+    if "winner_only" not in cols:
+        cols.append("winner_only")
+    if len({k[:2] for k in by_rows}) != len(by_rows):
+        sys.exit("B VII 702: two register birth years for one election")
+    with open(B702_BY_OUT, "w", encoding="utf-8", newline="") as fh:
+        wr = csv.writer(fh)
+        wr.writerow(["ags", "election_date", "candidate_last_name", "candidate_first_name", "birth_year"])
+        wr.writerows(sorted(by_rows))
+    print(f"  B VII 702: {n_fill['party']} winner parties and {n_fill['birth_year']} birth years "
+          f"filled, {n_corr} corrections, {n_add} winner-only elections added; "
+          f"{len(by_rows)} register birth years listed as restricted")
+    return rows
+
+
+def _num(v):
+    try:
+        return int(float(v))
+    except (TypeError, ValueError):
+        return None
+
 def main() -> None:
     if not os.path.exists(IN_XLSX):
         sys.exit(f"missing input: {IN_XLSX}")
@@ -396,6 +732,8 @@ def main() -> None:
     warn_sum_hw = warn_sum_sw = 0
     warn_winner = 0
     n_anz_mismatch = 0
+    sieger_mismatch: list = []
+    sieger_names: dict = {}   # readable Wahlsieger names for the error message only
 
     for ridx, r in enumerate(data, start=6):
         ags = cell(r, C_AGS_WT)
@@ -532,6 +870,15 @@ def main() -> None:
         # when a Ja/Nein round polls <50%); fall back to top votes on the
         # decisive round when the winner is un-named (common in 1994).
         decisive_key = "v_sw" if sw_date is not None else "v_hw"
+
+        def close(a, b):
+            return bool(a) and bool(b) and \
+                difflib.SequenceMatcher(None, norm_name(a), norm_name(b)).ratio() >= 0.75
+
+        def named_winner(c):
+            """The Wahlsieger columns name this slot: a spelling variant of the
+            surname, or both fields swapped (Jävenitz 2001, Bad Kösen 2001)."""
+            return close(w_last, c["last"]) or (close(w_first, c["last"]) and close(w_last, c["first"]))
         is_win = [False] * len(cands)
         if w_last:
             hits = [i for i, c in enumerate(cands)
@@ -547,10 +894,34 @@ def main() -> None:
                 warn_winner += 1
                 sys.stderr.write(f"  ! row {ridx} {ags} {gname} {hw_date}: winner "
                                  f"{w_last!r} matched {len(hits)} slots\n")
+            elif not any(c[decisive_key] is not None for c in cands):
+                # No votes decide the round, and the Wahlsieger is spelt differently
+                # from his slot (Möhlau 1994 Lönnig/Lönning, Lindstedt 2008
+                # Lemke/Lembke): seat the one candidate whose surname is close
+                # (2026-11-13; Möhlau 1994 had no winner before). With votes the
+                # votes decide.
+                fuzzy = [i for i, c in enumerate(cands) if named_winner(c)]
+                if len(fuzzy) == 1:
+                    is_win[fuzzy[0]] = True
         if not any(is_win) and cands:
             scored = [i for i, c in enumerate(cands) if c[decisive_key] is not None]
             if scored:
                 is_win[max(scored, key=lambda i: cands[i][decisive_key])] = True
+        # The row's own "Wahlsieger" columns must name the seated candidate, up to
+        # spelling (Schulteß/Schultheß) or swapped fields (Jävenitz 2001). When they
+        # name someone else, the candidate slots belong to another election or the
+        # winner's slot is mislabelled (Marienborn 2002, Arendsee 1994: B VII 702
+        # check, 2026-11-13); when nobody is seated, a misspelt slot without votes
+        # (Colbitz 2000). Every such row must be pinned in SIEGER_MISMATCH_KNOWN.
+        if w_last:
+            seated = next((cands[i] for i, w in enumerate(is_win) if w), None)
+            tied = len(hits) > 1 and (
+                any(cands[i][decisive_key] is None for i in hits)
+                or sorted(cands[i][decisive_key] for i in hits)[-1]
+                == sorted(cands[i][decisive_key] for i in hits)[-2])
+            if tied or (not hits and (seated is None or not named_winner(seated))):
+                sieger_mismatch.append((ags, hw_date, _sieger_hash(w_last), seated["last"] if seated else None))
+                sieger_names[(ags, hw_date)] = w_last
 
         common = dict(
             ags=ags, ags_name=gname, state=STATE, state_name=STATE_NAME,
@@ -621,6 +992,12 @@ def main() -> None:
 
     if not out_rows:
         sys.exit("no rows emitted — abort")
+    found = set(sieger_mismatch)
+    if found != SIEGER_MISMATCH_KNOWN or len(found) != len(sieger_mismatch):
+        sys.exit("rows whose Wahlsieger is not the seated candidate changed:\n  new: "
+                 + str(sorted(((*k, sieger_names.get(k[:2])) for k in found - SIEGER_MISMATCH_KNOWN), key=str))
+                 + "\n  gone: " + str(sorted(SIEGER_MISMATCH_KNOWN - found, key=str))
+                 + f"\n  ({len(sieger_mismatch)} mismatches, {len(found)} distinct)")
 
     # =====================================================================
     # MERGE with the bmbm.csv extract (st_bmbm_parsed.csv).
@@ -744,16 +1121,28 @@ def main() -> None:
         # (3) genuine historical election
         out_rows.extend(rows)
         n_hist_rounds += 1
-    with open(OUT_CSV, "w", encoding="utf-8", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=cols)
-        w.writeheader()
-        for row in out_rows:
-            for k in ("eligible_voters", "number_voters", "valid_votes",
-                      "invalid_votes", "candidate_votes"):
-                v = row.get(k)
-                if isinstance(v, float) and v == int(v):
-                    row[k] = int(v)
-            w.writerow(row)
+    def write_rows(path, rows_):
+        with open(path, "w", encoding="utf-8", newline="") as fh:
+            w = csv.DictWriter(fh, fieldnames=cols)
+            w.writeheader()
+            for row in rows_:
+                row = dict(row)
+                row.setdefault("winner_only", False)
+                for k in ("eligible_voters", "number_voters", "valid_votes",
+                          "invalid_votes", "candidate_votes"):
+                    v = row.get(k)
+                    if isinstance(v, float) and v == int(v):
+                        row[k] = int(v)
+                w.writerow(row)
+
+    # The source file as parsed, before the register pins: the input from which
+    # check_st_b702_register.py --write-pins derives them (deriving them from the
+    # patched output would erase them; code review 2026-11-13).
+    if "winner_only" not in cols:
+        cols.append("winner_only")
+    write_rows(B702_BEFORE, out_rows)
+    out_rows = apply_b702(out_rows, cols)
+    write_rows(OUT_CSV, out_rows)
 
     years = sorted({str(r["election_date"])[:4] for r in out_rows})
     n_elections = len({(r["ags"], r["election_date"], r["round"]) for r in out_rows})
